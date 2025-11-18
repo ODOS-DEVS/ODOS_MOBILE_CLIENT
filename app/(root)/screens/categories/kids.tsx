@@ -74,7 +74,7 @@ const KidsScreen = () => {
         {/* 🧢 Product List */}
         <FlatList
           data={filteredData}
-          numColumns={2}
+          numColumns={3}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => <ProductCard {...item} />}

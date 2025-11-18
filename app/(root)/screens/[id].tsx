@@ -97,7 +97,7 @@ export default function ProductDetail() {
           <CollapsibleShippingCard
             title="Description"
             icon={
-              <Ionicons name="information-outline" size={20} color={"grey"} />
+              <Ionicons name="information-outline" size={22} color={"grey"} />
             }
             description={[
               "Lorem Ipsum is simply dummy text of the printing and typesetting industry",
@@ -106,7 +106,7 @@ export default function ProductDetail() {
           />
           <CollapsibleShippingCard
             title="Shipping"
-            icon={<Ionicons name="arrow-up-right-box" />}
+            icon={<Ionicons name="arrow-up-right-box" size={18}/>}
             description={["Choose your preferred delivery method."]}
             shippingOptions={[
               {
@@ -129,7 +129,7 @@ export default function ProductDetail() {
           />
           <CollapsibleShippingCard
             title="Return Policy"
-            icon={<Ionicons name="at-circle" />}
+            icon={<Ionicons name="at-circle" size={18} />}
             description={[
               "We accept returns of products purchased in online stores by following our Returns Policy below:\n",
               "1. Return within 30 days from the date of ordered through online store.\n",

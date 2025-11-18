@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   LayoutAnimation,
@@ -57,7 +58,11 @@ const CollapsibleShippingCard: React.FC<CollapsibleShippingCardProps> = ({
           <Text className="text-lg font-semibold text-[#333]">{title}</Text>
         </View>
         <Text className="text-2xl text-[#666] ml-2">
-          {isExpanded ? "⌄" : "›"}
+          {isExpanded ? (
+            <Ionicons name="chevron-down" size={22}/>
+          ) : (
+            <Ionicons name="chevron-forward" size={22}/>
+          )}
         </Text>
       </TouchableOpacity>
 

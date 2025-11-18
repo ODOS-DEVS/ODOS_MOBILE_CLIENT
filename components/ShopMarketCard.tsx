@@ -3,33 +3,24 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
-interface ProductCardProps {
+interface ShopMarketCardProps {
   id: string;
   image: any;
   title: string;
   category?: string;
-  price?: number;
-  oldPrice?: number;
-  discount?: string;
   rating?: number;
   reviews?: string;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({
+const ShopMarketCard: React.FC<ShopMarketCardProps> = ({
   id,
   image,
   title,
   category,
-  price,
-  oldPrice,
-  discount,
   rating,
   reviews,
 }) => {
   const [liked, setLiked] = useState(false);
-
-  // 💡 Check if price section exists
-  const hasPrice = !!price || !!oldPrice;
 
   return (
     <TouchableOpacity
@@ -40,32 +31,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             image,
             title,
             category,
-            price,
-            oldPrice,
-            discount,
             rating,
             reviews,
           },
         })
       }
     >
-      <View className="w-[120px] rounded-2xl mr-3 mb-4 mt-4">
+      <View className="w-[150px] rounded-2xl mr-3 mb-4 mt-4">
         {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[150px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+        <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
           <Image
             source={image}
             className="w-full h-full bg-tertiary"
             resizeMode="cover"
           />
-
-          {/* Discount badge */}
-          {discount && (
-            <View className="absolute top-2 left-2 bg-gray-800 px-2 py-1 rounded-md">
-              <Text className="text-white text-[10px] font-semibold">
-                {discount}
-              </Text>
-            </View>
-          )}
 
           {/* Like (Heart) Button */}
           <TouchableOpacity
@@ -83,7 +62,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         {/* ---------- TEXT SECTION ---------- */}
         <View className="p-3">
           <Text
-            className="text-[13px] font-montserrat-bold text-text"
+            className="text-[13px] mb-2 font-montserrat-bold text-text text-center"
             numberOfLines={1}
           >
             {title}
@@ -95,42 +74,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {category}
               </Text>
             )}
-            {reviews && (
-              <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
-                {reviews}
-              </Text>
-            )}
-          </View>
-
-          {/* ---------- PRICE & RATING SECTION ---------- */}
-          <View
-            className={`flex-row items-center mt-2 ${
-              hasPrice ? "" : "justify-start"
-            }`}
-          >
-            {/* ✅ PRICE & OLD PRICE (Only if available) */}
-            {hasPrice && (
-              <>
-                {price && (
-                  <Text className="text-[13px] font-bold text-subtext-200 font-montserrat-extraBold">
-                    ${price}
-                  </Text>
-                )}
-                {oldPrice && (
-                  <Text className="text-[12px] text-red-500 line-through ml-2 font-montserrat-extraBold">
-                    ${oldPrice}
-                  </Text>
-                )}
-              </>
-            )}
-
-            {/* ✅ RATING: Moves based on price existence */}
             {rating && (
-              <View
-                className={`flex-row items-center ${
-                  hasPrice ? "ml-auto" : "mt-1"
-                }`}
-              >
+              <View className={"flex-row items-center"}>
                 <Ionicons name="star" size={14} color="#facc15" />
                 <Text className="ml-1 text-xs text-subtext-200 font-montserrat-extraBold">
                   {rating.toFixed(1)}
@@ -144,4 +89,4 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
-export default ProductCard;
+export default ShopMarketCard;

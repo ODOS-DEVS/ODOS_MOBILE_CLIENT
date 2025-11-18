@@ -1,11 +1,26 @@
-import { View, StatusBar, Text, FlatList, ScrollView, TouchableOpacity } from "react-native";
-import React, { useEffect, useState } from "react";
+import FlashSalesCard from "@/components/FlashSaleCard";
 import { HomeHeader } from "@/components/HomeHeader";
-import { SearchBar } from "@/components/SearchBar";
 import ProductCard from "@/components/ProductCard";
-import { flashSales, markets, PopularProducts, recommendations, Stores } from "@/constants/Data";
 import PromoBanner from "@/components/PromoBanner";
 import RecommendationCard from "@/components/RecommendationCard";
+import { SearchBar } from "@/components/SearchBar";
+import ShopMarketCard from "@/components/ShopMarketCard";
+import {
+  flashSales,
+  markets,
+  PopularProducts,
+  recommendations,
+  Stores,
+} from "@/constants/Data";
+import React, { useEffect, useState } from "react";
+import {
+  FlatList,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const HomeScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
@@ -52,14 +67,17 @@ const HomeScreen = () => {
           </Text>
         </View>
 
-        <FlatList
-          data={flashSales}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard {...item} />}
-          contentContainerStyle={{ paddingHorizontal: 20 }}
-        />
+        <View className="ml-[-20]">
+          <FlatList
+            data={flashSales}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <FlashSalesCard {...item} />}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          />
+
+        </View>
         <PromoBanner />
         <View className="flex-row justify-between mx-6 mt-8 ">
           <Text className="text-lg font-montserrat-semiBold ">
@@ -86,7 +104,7 @@ const HomeScreen = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard {...item} />}
+          renderItem={({ item }) => <ShopMarketCard {...item} />}
           contentContainerStyle={{ paddingHorizontal: 20 }}
         />
         <View className="flex-row justify-between mx-6 mt-8 ">
@@ -106,9 +124,7 @@ const HomeScreen = () => {
           contentContainerStyle={{ paddingHorizontal: 20 }}
         />
         <View className="flex-row justify-between mx-6 mt-8 ">
-          <Text className="text-lg font-montserrat-semiBold ">
-            Market
-          </Text>
+          <Text className="text-lg font-montserrat-semiBold ">Market</Text>
           <TouchableOpacity>
             <Text className="text-lg font-montserrat-semiBold">See All</Text>
           </TouchableOpacity>
@@ -118,7 +134,7 @@ const HomeScreen = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard {...item} />}
+          renderItem={({ item }) => <ShopMarketCard {...item} />}
           contentContainerStyle={{ paddingHorizontal: 20 }}
         />
       </View>

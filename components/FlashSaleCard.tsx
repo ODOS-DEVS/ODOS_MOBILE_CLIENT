@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
-interface ProductCardProps {
+interface FlashSalesCardProps {
   id: string;
   image: any;
   title: string;
@@ -15,7 +15,7 @@ interface ProductCardProps {
   reviews?: string;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({
+const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   id,
   image,
   title,
@@ -49,9 +49,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         })
       }
     >
-      <View className="w-[120px] rounded-2xl mr-3 mb-4 mt-4">
+      <View className="w-[183px] rounded-2xl mr-3 mb-4 mt-4">
         {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[150px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+        <View className="relative h-[250px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
           <Image
             source={image}
             className="w-full h-full bg-tertiary"
@@ -144,4 +144,4 @@ const ProductCard: React.FC<ProductCardProps> = ({
   );
 };
 
-export default ProductCard;
+export default FlashSalesCard;
