@@ -23,7 +23,7 @@ const CategoryScreen = () => {
 
   return (
     <ScrollView>
-      <View>
+      <View className="mb-24">
         <StatusBar barStyle={"dark-content"} />
         <Text className="font-montserrat-extraBold text-xl pt-16 text-center">
           Explore

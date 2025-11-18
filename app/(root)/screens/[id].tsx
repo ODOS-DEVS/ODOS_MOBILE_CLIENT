@@ -40,7 +40,7 @@ export default function ProductDetail() {
         </TouchableOpacity>
       </View>
 
-      <View className="px-4">
+      <View className="px-2">
         {/* Image */}
         <View className="flex-row justify-center mt-3">
           <Image

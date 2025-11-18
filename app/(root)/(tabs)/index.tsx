@@ -15,7 +15,6 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
-  ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -26,7 +25,7 @@ const HomeScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
 
   useEffect(() => {
-    const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000; // 6 hours from now
+    const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
@@ -52,92 +51,125 @@ const HomeScreen = () => {
   }, []);
 
   return (
-    <ScrollView>
-      <View>
-        <StatusBar barStyle={"dark-content"} />
-        <HomeHeader />
-        <SearchBar />
+    <View style={{ flex: 1 }}>
+      <StatusBar barStyle={"dark-content"} />
 
-        <View className="flex-row justify-between mt-8 mx-8">
-          <Text className="text-base font-montserrat-extraBold text-gray-800">
-            Flash Sales
-          </Text>
-          <Text className="font-montserrat-semiBold text-primary">
-            {timeLeft}
-          </Text>
-        </View>
+      <FlatList
+        data={[]} // empty, we use header as the full page
+        keyExtractor={() => "dummy"}
+        renderItem={() => null}
+        ListHeaderComponent={
+          <View className="pb-20">
+            {/* Header */}
+            <HomeHeader />
+            <SearchBar />
 
-        <View className="ml-[-20]">
-          <FlatList
-            data={flashSales}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <FlashSalesCard {...item} />}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          />
-        </View>
-        <PromoBanner />
-        <View className="flex-row justify-between mx-6 mt-8 ">
-          <Text className="text-lg font-montserrat-semiBold ">
-            Recommendation
-          </Text>
-          <TouchableOpacity>
-            <Text className="text-lg font-montserrat-semiBold">See All</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={recommendations}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <RecommendationCard {...item} />}
-          contentContainerStyle={{ paddingHorizontal: 25 }}
-        />
-        <View className="flex-row justify-between mx-6 mt-8 ">
-          <Text className="text-lg font-montserrat-semiBold ">Stores</Text>
-          <TouchableOpacity>
-            <Text className="text-lg font-montserrat-semiBold">See All</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={Stores}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ShopMarketCard {...item} />}
-          contentContainerStyle={{ paddingHorizontal: 20 }}
-        />
-        <View className="flex-row justify-between mx-6 mt-8 ">
-          <Text className="text-lg font-montserrat-semiBold ">
-            Popular products
-          </Text>
-          <TouchableOpacity>
-            <Text className="text-lg font-montserrat-semiBold">See All</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={PopularProducts}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard {...item} />}
-          contentContainerStyle={{ paddingHorizontal: 20 }}
-        />
-        <View className="flex-row justify-between mx-6 mt-8 ">
-          <Text className="text-lg font-montserrat-semiBold ">Market</Text>
-          <TouchableOpacity>
-            <Text className="text-lg font-montserrat-semiBold">See All</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={markets}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ShopMarketCard {...item} />}
-          contentContainerStyle={{ paddingHorizontal: 20 }}
-        />
-      </View>
-    </ScrollView>
+            {/* Flash Sales */}
+            <View className="flex-row justify-between mt-8 mx-8">
+              <Text className="text-base font-montserrat-extraBold text-gray-800">
+                Flash Sales
+              </Text>
+              <Text className="font-montserrat-semiBold text-primary">
+                {timeLeft}
+              </Text>
+            </View>
+
+            <View className="ml-[-20]">
+              <FlatList
+                data={flashSales}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <FlashSalesCard {...item} />}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+              />
+            </View>
+
+            <PromoBanner />
+
+            {/* Recommendations */}
+            <View className="flex-row justify-between mx-6 mt-8 ">
+              <Text className="text-lg font-montserrat-semiBold ">
+                Recommendation
+              </Text>
+              <TouchableOpacity>
+                <Text className="text-lg font-montserrat-semiBold">
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="mx-4">
+              <FlatList
+                data={recommendations}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <RecommendationCard {...item} />}
+                contentContainerStyle={{ paddingHorizontal: 25 }}
+              />
+            </View>
+
+            {/* Stores */}
+            <View className="flex-row justify-between mx-6 mt-8 ">
+              <Text className="text-lg font-montserrat-semiBold ">Stores</Text>
+              <TouchableOpacity>
+                <Text className="text-lg font-montserrat-semiBold">
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={Stores}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <ShopMarketCard {...item} />}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+            />
+
+            {/* Popular Products */}
+            <View className="flex-row justify-between mx-6 mt-8 ">
+              <Text className="text-lg font-montserrat-semiBold ">
+                Popular products
+              </Text>
+              <TouchableOpacity>
+                <Text className="text-lg font-montserrat-semiBold">
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={PopularProducts}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <ProductCard {...item} />}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+            />
+
+            {/* Market */}
+            <View className="flex-row justify-between mx-6 mt-8 ">
+              <Text className="text-lg font-montserrat-semiBold ">Market</Text>
+              <TouchableOpacity>
+                <Text className="text-lg font-montserrat-semiBold">
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={markets}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <ShopMarketCard {...item} />}
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+            />
+          </View>
+        }
+      />
+    </View>
   );
 };
 
