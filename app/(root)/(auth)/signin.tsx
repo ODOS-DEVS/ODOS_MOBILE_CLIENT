@@ -1,6 +1,6 @@
 import AuthHeader from "@/components/AuthHeader";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
 import Divider from "@/components/Divider";
-import PrimaryButton from "@/components/PrimaryButton";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
 import { useRouter } from "expo-router";
@@ -49,7 +49,12 @@ const SignInScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <PrimaryButton title="Sign In" onPress={() => {router.replace("../(tabs)/")}} />
+        <PrimaryButton
+          title="Sign In"
+          onPress={() => {
+            router.replace("../(tabs)/");
+          }}
+        />
 
         <View className="flex flex-row justify-center mt-10">
           <Text className="font-montserrat-light">Dont have an account? </Text>

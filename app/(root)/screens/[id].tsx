@@ -1,5 +1,5 @@
-import CollapsibleShippingCard from "@/components/CollapsableCard";
-import ProductCard from "@/components/ProductCard";
+import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
+import ProductCard from "@/components/cards/ProductCard";
 import { PopularProducts } from "@/constants/Data";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -106,7 +106,7 @@ export default function ProductDetail() {
           />
           <CollapsibleShippingCard
             title="Shipping"
-            icon={<Ionicons name="arrow-up-right-box" size={18}/>}
+            icon={<Ionicons name="arrow-up-right-box" size={18} />}
             description={["Choose your preferred delivery method."]}
             shippingOptions={[
               {

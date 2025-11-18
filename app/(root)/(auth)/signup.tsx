@@ -1,6 +1,6 @@
 import AuthHeader from "@/components/AuthHeader";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
 import Divider from "@/components/Divider";
-import PrimaryButton from "@/components/PrimaryButton";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
 import { useRouter } from "expo-router";
@@ -8,7 +8,6 @@ import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 const SignUpScreen = () => {
-
   const router = useRouter();
 
   return (
@@ -23,14 +22,8 @@ const SignUpScreen = () => {
       />
 
       <View className="p-5">
-        <TextInputField
-          label="Full name"
-          placeholder="Enter your full name"
-        />
-        <TextInputField
-          label="Email Address"
-          placeholder="Enter your email"
-        />
+        <TextInputField label="Full name" placeholder="Enter your full name" />
+        <TextInputField label="Email Address" placeholder="Enter your email" />
         <TextInputField
           label="Password"
           placeholder="Enter your password"
@@ -50,9 +43,12 @@ const SignUpScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <PrimaryButton title="Create Account" onPress={() => {
-              router.push("/verification")
-        }} />
+        <PrimaryButton
+          title="Create Account"
+          onPress={() => {
+            router.push("/verification");
+          }}
+        />
 
         <View className="flex flex-row justify-center mt-6">
           <Text className="font-montserrat-light">Have an account? </Text>

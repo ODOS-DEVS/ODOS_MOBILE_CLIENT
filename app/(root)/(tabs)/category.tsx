@@ -1,4 +1,4 @@
-import CategoryCard from "@/components/CategoryCard";
+import CategoryCard from "@/components/cards/CategoryCard";
 import { SearchBar } from "@/components/SearchBar";
 import { categories } from "@/constants/Data";
 import { router } from "expo-router";
@@ -6,7 +6,6 @@ import React from "react";
 import { FlatList, ScrollView, StatusBar, Text, View } from "react-native";
 
 const CategoryScreen = () => {
-
   const handlePress = (id: string) => {
     switch (id) {
       case "1":
@@ -16,7 +15,7 @@ const CategoryScreen = () => {
         router.push("/(root)/screens/categories/ladies");
         break;
       case "3":
-        router.push("/(root)/screens/categories/kids")
+        router.push("/(root)/screens/categories/kids");
       default:
         break;
     }

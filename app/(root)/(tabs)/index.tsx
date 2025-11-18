@@ -1,10 +1,10 @@
-import FlashSalesCard from "@/components/FlashSaleCard";
+import FlashSalesCard from "@/components/cards/FlashSaleCard";
+import ProductCard from "@/components/cards/ProductCard";
+import PromoBanner from "@/components/cards/PromoBanner";
+import RecommendationCard from "@/components/cards/RecommendationCard";
+import ShopMarketCard from "@/components/cards/ShopMarketCard";
 import { HomeHeader } from "@/components/HomeHeader";
-import ProductCard from "@/components/ProductCard";
-import PromoBanner from "@/components/PromoBanner";
-import RecommendationCard from "@/components/RecommendationCard";
 import { SearchBar } from "@/components/SearchBar";
-import ShopMarketCard from "@/components/ShopMarketCard";
 import {
   flashSales,
   markets,
@@ -76,7 +76,6 @@ const HomeScreen = () => {
             renderItem={({ item }) => <FlashSalesCard {...item} />}
             contentContainerStyle={{ paddingHorizontal: 20 }}
           />
-
         </View>
         <PromoBanner />
         <View className="flex-row justify-between mx-6 mt-8 ">

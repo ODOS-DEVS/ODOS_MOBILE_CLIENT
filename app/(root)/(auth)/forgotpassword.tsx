@@ -1,4 +1,4 @@
-import PrimaryButton from "@/components/PrimaryButton";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";

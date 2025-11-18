@@ -1,9 +1,9 @@
-import { View, Text, StatusBar, TouchableOpacity } from "react-native";
-import React from "react";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
-import PrimaryButton from "@/components/PrimaryButton";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React from "react";
+import { StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 const CreatePasswordScreen = () => {
   return (
@@ -25,14 +25,22 @@ const CreatePasswordScreen = () => {
         Enter your new password
       </Text>
       <View className="px-4">
-        <TextInputField label="New Password" placeholder="Enter your new password" secureTextEntry />
-        <TextInputField label="Confirm Password" placeholder="Confirm your new password" secureTextEntry />
+        <TextInputField
+          label="New Password"
+          placeholder="Enter your new password"
+          secureTextEntry
+        />
+        <TextInputField
+          label="Confirm Password"
+          placeholder="Confirm your new password"
+          secureTextEntry
+        />
       </View>
       <View className="px-4">
         <PrimaryButton
           title="Create new password"
           onPress={() => {
-            alert("You have created your new password")
+            alert("You have created your new password");
           }}
         />
       </View>

@@ -1,5 +1,5 @@
-import BannerCard from "@/components/BannerCard";
-import ProductCard from "@/components/ProductCard";
+import BannerCard from "@/components/cards/BannerCard";
+import ProductCard from "@/components/cards/ProductCard";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { gentsData, ladiesData } from "@/constants/Data";

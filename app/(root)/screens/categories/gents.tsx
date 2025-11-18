@@ -1,11 +1,11 @@
-import BannerCard from "@/components/BannerCard";
-import ProductCard from "@/components/ProductCard";
+import BannerCard from "@/components/cards/BannerCard";
+import ProductCard from "@/components/cards/ProductCard";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { gentsData } from "@/constants/Data";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   ScrollView,
