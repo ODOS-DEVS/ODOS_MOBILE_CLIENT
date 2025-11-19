@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
-interface ShopMarketCardProps {
+interface StoreCardProps {
   id: string;
   image: any;
   title: string;
@@ -12,7 +12,7 @@ interface ShopMarketCardProps {
   reviews?: string;
 }
 
-const ShopMarketCard: React.FC<ShopMarketCardProps> = ({
+const StoreCard: React.FC<StoreCardProps> = ({
   id,
   image,
   title,
@@ -89,4 +89,4 @@ const ShopMarketCard: React.FC<ShopMarketCardProps> = ({
   );
 };
 
-export default ShopMarketCard;
+export default StoreCard;

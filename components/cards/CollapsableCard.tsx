@@ -23,7 +23,7 @@ interface ShippingOption {
   price: string;
 }
 
-interface CollapsibleShippingCardProps {
+interface CollapsibleCardProps {
   title?: string;
   icon?: any;
   description?: string[];
@@ -31,12 +31,12 @@ interface CollapsibleShippingCardProps {
   defaultExpanded?: boolean;
 }
 
-const CollapsibleShippingCard: React.FC<CollapsibleShippingCardProps> = ({
+const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   title,
   icon,
   description,
   shippingOptions,
-  defaultExpanded = true,
+  defaultExpanded = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -59,9 +59,9 @@ const CollapsibleShippingCard: React.FC<CollapsibleShippingCardProps> = ({
         </View>
         <Text className="text-2xl text-[#666] ml-2">
           {isExpanded ? (
-            <Ionicons name="chevron-down" size={22}/>
+            <Ionicons name="chevron-down" size={22} />
           ) : (
-            <Ionicons name="chevron-forward" size={22}/>
+            <Ionicons name="chevron-forward" size={22} />
           )}
         </Text>
       </TouchableOpacity>
@@ -102,4 +102,4 @@ const CollapsibleShippingCard: React.FC<CollapsibleShippingCardProps> = ({
   );
 };
 
-export default CollapsibleShippingCard;
+export default CollapsibleCard;

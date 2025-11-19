@@ -1,8 +1,9 @@
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
+import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
 import RecommendationCard from "@/components/cards/RecommendationCard";
-import ShopMarketCard from "@/components/cards/ShopMarketCard";
+import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
 import { SearchBar } from "@/components/SearchBar";
 import {
@@ -123,7 +124,7 @@ const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ShopMarketCard {...item} />}
+              renderItem={({ item }) => <StoreCard {...item} />}
               contentContainerStyle={{ paddingHorizontal: 20 }}
             />
 
@@ -163,7 +164,7 @@ const HomeScreen = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ShopMarketCard {...item} />}
+              renderItem={({ item }) => <MarketCard {...item} />}
               contentContainerStyle={{ paddingHorizontal: 20 }}
             />
           </View>
