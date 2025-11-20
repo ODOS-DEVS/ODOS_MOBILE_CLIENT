@@ -76,6 +76,7 @@ const KidsScreen = () => {
           data={filteredData}
           numColumns={3}
           keyExtractor={(item) => item.id}
+          scrollEnabled={false}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => <ProductCard {...item} />}
           contentContainerStyle={{

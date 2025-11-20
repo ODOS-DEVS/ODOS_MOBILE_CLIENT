@@ -13,6 +13,7 @@ import {
   recommendations,
   Stores,
 } from "@/constants/Data";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -52,7 +53,7 @@ const HomeScreen = () => {
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <StatusBar barStyle={"dark-content"} />
 
       <FlatList
@@ -93,7 +94,11 @@ const HomeScreen = () => {
               <Text className="text-lg font-montserrat-semiBold ">
                 Recommendation
               </Text>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  router.push("../screens/recommendation");
+                }}
+              >
                 <Text className="text-lg font-montserrat-semiBold">
                   See All
                 </Text>
@@ -112,7 +117,11 @@ const HomeScreen = () => {
             {/* Stores */}
             <View className="flex-row justify-between mx-6 mt-8 ">
               <Text className="text-lg font-montserrat-semiBold ">Stores</Text>
-              <TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  router.push("../screens/stores");
+                }}
+              >
                 <Text className="text-lg font-montserrat-semiBold">
                   See All
                 </Text>

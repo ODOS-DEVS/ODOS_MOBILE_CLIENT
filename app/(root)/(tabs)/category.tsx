@@ -3,7 +3,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { categories } from "@/constants/Data";
 import { router } from "expo-router";
 import React from "react";
-import { FlatList, ScrollView, StatusBar, Text, View } from "react-native";
+import { FlatList, StatusBar, Text, View } from "react-native";
 
 const CategoryScreen = () => {
   const handlePress = (id: string) => {
@@ -22,26 +22,36 @@ const CategoryScreen = () => {
   };
 
   return (
-    <ScrollView>
-      <View className="mb-24">
-        <StatusBar barStyle={"dark-content"} />
-        <Text className="font-montserrat-extraBold text-xl pt-16 text-center">
-          Explore
-        </Text>
-        <SearchBar />
+    <View className="mb-24">
+      <StatusBar barStyle={"dark-content"} />
+      <FlatList
+        data={[]}
+        keyExtractor={() => "dummy"}
+        renderItem={() => null}
+        ListHeaderComponent={
+          <View>
+            <Text className="font-montserrat-extraBold text-xl pt-16 text-center">
+              Explore
+            </Text>
+            <SearchBar />
 
-        <View className="mt-8">
-          <FlatList
-            data={categories}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <CategoryCard {...item} onPress={() => handlePress(item.id)} />
-            )}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          />
-        </View>
-      </View>
-    </ScrollView>
+            <View className="mt-8">
+              <FlatList
+                data={categories}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <CategoryCard
+                    {...item}
+                    onPress={() => handlePress(item.id)}
+                  />
+                )}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+              />
+            </View>
+          </View>
+        }
+      />
+    </View>
   );
 };
 
