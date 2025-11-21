@@ -1,4 +1,5 @@
 import Colors from "@/constants/Colors";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -67,83 +68,97 @@ export default function Onboarding() {
               width,
               alignItems: "center",
               justifyContent: "flex-start",
-              paddingTop: 80,
+              paddingTop: rV(80),
             }}
           >
-            <View style={{ marginTop: 40 }}>
+            {/* IMAGE */}
+            <View style={{ marginTop: rV(40) }}>
               <Image
                 source={item.image}
                 style={{
-                  width: width * 95,
-                  height: 500,
+                  width: width * 0.95,
+                  height: rV(380),
                   resizeMode: "contain",
                 }}
               />
             </View>
+
+            {/* CARD */}
             <View
               style={{
                 position: "absolute",
-                bottom: 60,
+                bottom: rV(60),
                 backgroundColor: Colors.white,
                 width: width * 0.8,
-                borderRadius: 20,
-                paddingVertical: 60,
-                paddingHorizontal: 39,
+                borderRadius: rS(20),
+                paddingVertical: rV(40),
+                paddingHorizontal: rS(30),
                 alignSelf: "center",
                 alignItems: "center",
               }}
             >
+              {/* TITLE */}
               <Text
                 style={{
-                  fontSize: 20,
+                  fontSize: rMS(18),
                   fontWeight: "bold",
                   textAlign: "center",
-                  marginBottom: 10,
+                  marginBottom: rV(10),
                   position: "relative",
-                  bottom: 30,
+                  bottom: rV(25),
                 }}
               >
                 {item.title}
               </Text>
+
+              {/* TEXT */}
               <Text
                 style={{
                   color: Colors.secondary,
+                  fontSize: rMS(14),
                   position: "relative",
-                  bottom: 30,
+                  bottom: rV(25),
                   textAlign: "center",
-                  marginBottom: 10,
+                  marginBottom: rV(10),
                 }}
               >
                 {item.text}
               </Text>
 
-              
-              <View style={{ flexDirection: "row", marginBottom: 20 }}>
+              {/* DOTS */}
+              <View style={{ flexDirection: "row", marginBottom: rV(15) }}>
                 {slides.map((_, index) => (
                   <View
                     key={index}
                     style={{
-                      height: 8,
-                      width: index === currentIndex ? 18 : 8,
-                      borderRadius: 4,
+                      height: rS(8),
+                      width: index === currentIndex ? rS(18) : rS(8),
+                      borderRadius: rS(4),
                       backgroundColor:
                         index === currentIndex ? "#66797F" : "#ddd",
-                      marginHorizontal: 4,
+                      marginHorizontal: rS(4),
                     }}
                   />
                 ))}
               </View>
 
+              {/* BUTTON */}
               <TouchableOpacity
                 onPress={handleNext}
                 style={{
                   backgroundColor: Colors.primary,
-                  borderRadius: 20,
-                  paddingVertical: 15,
-                  paddingHorizontal: 30,
+                  borderRadius: rS(20),
+                  paddingVertical: rV(12),
+                  paddingHorizontal: rS(25),
                 }}
               >
-                <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                <Text
+                  style={{
+                    color: "#ffffff",
+                    fontWeight: "600",
+                    fontSize: rMS(14),
+                  }}
+                >
                   {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
                 </Text>
               </TouchableOpacity>

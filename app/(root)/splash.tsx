@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
-import { View, Image, ActivityIndicator } from "react-native";
-import Colors from "@/constants/Colors"
+import Colors from "@/constants/Colors";
+import { rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
+import React, { useEffect } from "react";
+import { ActivityIndicator, Image, View } from "react-native";
 
 export default function SplashScreen() {
-
   useEffect(() => {
     const timer = setTimeout(() => {
       router.replace("./(auth)/onboarding");
@@ -19,14 +19,24 @@ export default function SplashScreen() {
         backgroundColor: Colors.primary,
         justifyContent: "center",
         alignItems: "center",
+        paddingBottom: rV(40),
       }}
     >
       <Image
         source={require("@/assets/images/splash.png")}
-        style={{ width: 200, height: 170, marginBottom: 300 }}
+        style={{
+          width: rS(200),
+          height: rV(170),
+          marginBottom: rV(300),
+          resizeMode: "contain",
+        }}
       />
-      
-      <ActivityIndicator color={"#ffffff"} style={{ marginTop: 40 }} />
+
+      <ActivityIndicator
+        color={"#ffffff"}
+        size="large"
+        style={{ marginTop: rV(40) }}
+      />
     </View>
   );
 }

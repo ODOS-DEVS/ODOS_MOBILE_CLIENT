@@ -3,6 +3,7 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import Divider from "@/components/Divider";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
+import { rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -30,19 +31,6 @@ const SignUpScreen = () => {
           secureTextEntry
         />
 
-        <View className="flex flex-row justify-between mt-2">
-          <TouchableOpacity>
-            <Text className="text-secondary font-montserrat pl-4">
-              Remember Me
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text className="text-secondary font-montserrat">
-              Forgot Password
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         <PrimaryButton
           title="Create Account"
           onPress={() => {
@@ -50,7 +38,10 @@ const SignUpScreen = () => {
           }}
         />
 
-        <View className="flex flex-row justify-center mt-6">
+        <View
+          className="flex flex-row justify-center"
+          style={{ marginTop: rV(18) }}
+        >
           <Text className="font-montserrat-light">Have an account? </Text>
           <TouchableOpacity onPress={() => router.replace("/signin")}>
             <Text className="text-primary font-montserrat-extraBold">
@@ -59,7 +50,10 @@ const SignUpScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <View className="mt-2 mb-4 items-center">
+        <View
+          className="items-center"
+          style={{ marginTop: rV(10), marginBottom: rV(18) }}
+        >
           <Divider />
           <SocialLoginButtons />
         </View>
