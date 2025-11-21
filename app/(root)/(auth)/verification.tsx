@@ -1,4 +1,5 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -34,7 +35,10 @@ export default function OTPScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white px-6 pt-24">
+    <View
+      className="flex-1 bg-white"
+      style={{ paddingHorizontal: rS(20), paddingTop: rV(50) }}
+    >
       <StatusBar barStyle={"dark-content"} />
       <TouchableOpacity
         onPress={() => {
@@ -43,16 +47,25 @@ export default function OTPScreen() {
       >
         <Ionicons name="arrow-back" size={20} className="" />
       </TouchableOpacity>
-      <Text className="text-primary text-2xl font-extrabold text-center mb-4">
+      <Text
+        className="text-primary text-2xl font-extrabold text-center"
+        style={{ marginBottom: rV(16) }}
+      >
         Enter OTP
       </Text>
 
-      <Text className="text-center text-primary mb-10">
+      <Text
+        className="text-center text-primary"
+        style={{ marginBottom: rV(16) }}
+      >
         We have sent a 4-digit code to your email{" "}
         <Text className="font-extrabold text-primary">example@gmail.com</Text>
       </Text>
 
-      <View className="flex-row gap-2 justify-center mb-12 space-x-4">
+      <View
+        className="flex-row gap-2 justify-center space-x-4"
+        style={{ marginBottom: rV(36) }}
+      >
         {otp.map((digit, index) => (
           <TextInput
             key={index}
@@ -63,14 +76,15 @@ export default function OTPScreen() {
             onChangeText={(text) => handleChange(text, index)}
             keyboardType="number-pad"
             maxLength={1}
-            className="w-14 h-14 border border-primary rounded-xl text-center text-xl"
+            className="border border-primary rounded-xl text-center text-xl"
+            style={{ width: rS(40), height: rV(40) }}
           />
         ))}
       </View>
 
       <PrimaryButton title="Continue" onPress={handleContinue} />
 
-      <Text className="text-center text-primary mt-8">
+      <Text className="text-center text-primary" style={{ marginTop: rV(20) }}>
         Didn’t receive code?{" "}
         <Text className="text-primary font-bold">Resend Code</Text>
       </Text>
