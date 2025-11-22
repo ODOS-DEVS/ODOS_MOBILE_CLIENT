@@ -7,7 +7,7 @@ import { StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 const ForgotPasswordScreen = () => {
   return (
-    <View className="flex-1 bg-white px-6 pt-24">
+    <View className="flex-1 bg-white px-6 pt-24 pb-1">
       <StatusBar barStyle={"dark-content"} />
       <TouchableOpacity
         onPress={() => {
