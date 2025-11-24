@@ -1,5 +1,6 @@
+import { rS, rV } from "@/styles/responsive";
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList } from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 
 interface SortTabsProps {
   options: string[];
@@ -20,13 +21,13 @@ const SortTabs: React.FC<SortTabsProps> = ({
   };
 
   return (
-    <View className="mt-3">
+    <View className="mt-3" style={{ marginTop: rV(15) }}>
       <FlatList
         data={options}
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: rS(16) }}
         renderItem={({ item }) => {
           const isActive = item === selected;
           return (

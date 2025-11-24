@@ -1,10 +1,19 @@
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 
 export const SearchBar = () => {
   return (
-    <View className="flex-row items-center mx-8 mt-8 bg-accent rounded-full px-4 py-3 shadow-sm border border-primary">
+    <View
+      className="flex-row items-center bg-accent rounded-full shadow-sm border border-primary"
+      style={{
+        marginHorizontal: rS(18),
+        marginTop: rV(18),
+        paddingHorizontal: rS(10),
+        paddingVertical: rV(8),
+      }}
+    >
       <TouchableOpacity
         className="ml-3 bg-accent p-2 rounded-lg"
         activeOpacity={0.7}
