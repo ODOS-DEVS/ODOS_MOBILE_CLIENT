@@ -136,7 +136,7 @@ export default function ProductDetail() {
               "2. Products through online purchases can only be returned to the UNIQLO warehouse for getting refund by returned product in new and original, unused, and still has the price tag and invoice attached.\n",
               "3. The amount refunded is based on the amount you have paid even if the discount has ended with the promotion.\n",
               "4. Products can be exchanged/refunded if there is a factory error.\n",
-              "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwear, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
+              "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwearr, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
             ]}
           />
         </View>
