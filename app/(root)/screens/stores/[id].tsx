@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
-  const { id, title, image } = useLocalSearchParams();
+  const { title, image } = useLocalSearchParams();
 
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
