@@ -1,3 +1,4 @@
+import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { PopularProducts } from "@/constants/Data";
@@ -136,7 +137,7 @@ export default function ProductDetail() {
               "2. Products through online purchases can only be returned to the UNIQLO warehouse for getting refund by returned product in new and original, unused, and still has the price tag and invoice attached.\n",
               "3. The amount refunded is based on the amount you have paid even if the discount has ended with the promotion.\n",
               "4. Products can be exchanged/refunded if there is a factory error.\n",
-              "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwearr, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
+              "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwear, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
             ]}
           />
         </View>
@@ -156,7 +157,7 @@ export default function ProductDetail() {
         />
 
         {/* Buttons */}
-        <View className="flex-row items-center mt-10 mb-10 px-2">
+        <View className="flex-row items-center mt-10 mb-4 px-2">
           {/* Like Button */}
           <TouchableOpacity
             onPress={() => setLiked(!liked)}
@@ -192,6 +193,9 @@ export default function ProductDetail() {
               Chat Vendor
             </Text>
           </TouchableOpacity>
+        </View>
+        <View className="mb-16">
+          <AddToCartBtn />
         </View>
       </View>
     </ScrollView>

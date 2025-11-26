@@ -10,7 +10,7 @@ const AddToCartBtn = () => {
         style={{
           marginTop: rV(2),
           backgroundColor: AppColors.secondary,
-          paddingVertical: rV(8),
+          paddingVertical: rV(12),
           borderRadius: rS(12),
           justifyContent: "center",
           alignItems: "center",

@@ -500,3 +500,31 @@ export const kidsData = [
     image: require("@/assets/images/wallet1.png"),
   },
 ];
+
+export const vouchers = [
+  {
+    id: "1",
+    image: require("@/assets/images/wallet1.png"),
+    amount: 100,
+  },
+  {
+    id: "2",
+    image: require("@/assets/images/wallet1.png"),
+    amount: 100,
+  },
+  {
+    id: "3",
+    image: require("@/assets/images/wallet1.png"),
+    amount: 100,
+  },
+  {
+    id: "4",
+    image: require("@/assets/images/wallet1.png"),
+    amount: 100,
+  },
+  {
+    id: "5",
+    image: require("@/assets/images/wallet1.png"),
+    amount: 100,
+  },
+];

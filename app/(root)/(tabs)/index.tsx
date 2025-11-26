@@ -119,7 +119,7 @@ const HomeScreen = () => {
               <Text className="text-lg font-montserrat-semiBold ">Stores</Text>
               <TouchableOpacity
                 onPress={() => {
-                  router.push("../screens/stores");
+                  router.push("../screens/stores/stores");
                 }}
               >
                 <Text className="text-lg font-montserrat-semiBold">

@@ -1,6 +1,7 @@
 import StoreCard from "@/components/cards/StoreCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Stores } from "@/constants/Data";
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -33,7 +34,7 @@ const StoreScreen = () => {
       </View>
       <SearchBar />
 
-      <View className="mx-4">
+      <View style={{ paddingHorizontal: rS(15), marginTop: rV(10) }}>
         <FlatList
           data={Stores}
           keyExtractor={(item) => item.id}
