@@ -232,7 +232,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
         </View>
 
         <View style={{paddingHorizontal: rS(4)}}>
-          <AddToCartBtn />
+          {/* <AddToCartBtn /> */}
         </View>
       </View>
     </TouchableOpacity>
