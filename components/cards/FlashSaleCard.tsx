@@ -61,9 +61,9 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
           borderRadius: rS(16),
           backgroundColor: "transparent",
           overflow: "hidden",
+          shadowColor: "#000",
           shadowOpacity: 0.1,
           shadowRadius: rS(8),
-          elevation: 3,
         }}
       >
         {/* ---------- IMAGE ---------- */}
