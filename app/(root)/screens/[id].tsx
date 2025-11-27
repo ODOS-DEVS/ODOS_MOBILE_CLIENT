@@ -1,4 +1,3 @@
-import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { PopularProducts } from "@/constants/Data";
@@ -157,7 +156,7 @@ export default function ProductDetail() {
         />
 
         {/* Buttons */}
-        <View className="flex-row items-center mt-10 mb-4 px-2">
+        <View className="flex-row items-center mt-10 mb-16 px-2">
           {/* Like Button */}
           <TouchableOpacity
             onPress={() => setLiked(!liked)}
@@ -193,9 +192,6 @@ export default function ProductDetail() {
               Chat Vendor
             </Text>
           </TouchableOpacity>
-        </View>
-        <View className="mb-16">
-          <AddToCartBtn />
         </View>
       </View>
     </ScrollView>

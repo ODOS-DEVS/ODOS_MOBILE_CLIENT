@@ -3,7 +3,6 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import AddToCartBtn from "../buttons/AddToCartBtn";
 
 interface FlashSalesCardProps {
   id: string;
@@ -62,7 +61,6 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
           borderRadius: rS(16),
           backgroundColor: "transparent",
           overflow: "hidden",
-          shadowColor: "#000",
           shadowOpacity: 0.1,
           shadowRadius: rS(8),
           elevation: 3,
@@ -231,9 +229,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
           </View>
         </View>
 
-        <View style={{paddingHorizontal: rS(4)}}>
-          {/* <AddToCartBtn /> */}
-        </View>
+        <View style={{ paddingHorizontal: rS(4) }}></View>
       </View>
     </TouchableOpacity>
   );
