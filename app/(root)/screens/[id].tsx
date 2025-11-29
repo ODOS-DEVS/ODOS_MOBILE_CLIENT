@@ -177,6 +177,15 @@ export default function ProductDetail() {
           <TouchableOpacity
             className="flex-1 bg-secondary py-4 rounded-2xl"
             activeOpacity={0.8}
+            onPress={() => {
+              router.push({
+                pathname: "./productDetails/[id]" as any,
+                params: {
+                  image,
+                  price,
+                },
+              });
+            }}
           >
             <Text className="text-accent text-center font-montserrat-extraBold">
               Buy Now
