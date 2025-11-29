@@ -32,7 +32,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
         style={{
           marginBottom: rV(5),
           paddingLeft: rS(10),
-          paddingBottom: rV(6),
+          paddingBottom: rV(5),
           fontFamily: Fonts.textBold,
           color: Colors.primary,
         }}
