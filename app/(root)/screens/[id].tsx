@@ -1,9 +1,9 @@
+import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { PopularProducts } from "@/constants/Data";
-import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
 import {
   FlatList,
   Image,
@@ -14,7 +14,6 @@ import {
 } from "react-native";
 
 export default function ProductDetail() {
-  const [liked, setLiked] = useState(false);
   const { image, title, category, price, oldPrice, discount, rating, reviews } =
     useLocalSearchParams();
 
@@ -65,9 +64,21 @@ export default function ProductDetail() {
             </View>
           </View>
 
-          {category && (
-            <Text className="text-md py-1 text-text">{category}</Text>
-          )}
+          <View className="flex-row justify-between py-2">
+            {category && (
+              <Text className="text-md py-1 text-text">{category}</Text>
+            )}
+
+            <View className="flex-row">
+              <Ionicons name="star" size={14} color="#facc15" />
+              <Text className="ml-1 text-md text-text">{rating}</Text>
+              {reviews && (
+                <Text className="ml-1 text-md font-montserrat-semiBold text-text">
+                  ({reviews} reviews)
+                </Text>
+              )}
+            </View>
+          </View>
 
           <View className="flex-row justify-between items-center mt-2">
             <View className="flex-row">
@@ -81,14 +92,9 @@ export default function ProductDetail() {
               )}
             </View>
 
-            <View className="flex-row">
-              <Ionicons name="star" size={14} color="#facc15" />
-              <Text className="ml-1 text-md text-text">{rating}</Text>
-              {reviews && (
-                <Text className="ml-1 text-md font-montserrat-semiBold text-text">
-                  ({reviews} reviews)
-                </Text>
-              )}
+            {/* Wrapper to scale the wishlist icon */}
+            <View style={{ transform: [{ scale: 1.5 }] }} className="px-8">
+              <AddToWishList />
             </View>
           </View>
         </View>
@@ -157,22 +163,6 @@ export default function ProductDetail() {
 
         {/* Buttons */}
         <View className="flex-row items-center mt-10 mb-16 px-2">
-          {/* Like Button */}
-          <TouchableOpacity
-            onPress={() => setLiked(!liked)}
-            className=" bg-white p-3 rounded-full shadow-md z-10"
-            activeOpacity={0.7}
-          >
-            <FontAwesome
-              name={liked ? "heart" : "heart-o"}
-              size={22}
-              color={liked ? "red" : "#444"}
-            />
-          </TouchableOpacity>
-          <Text className="text-text font-montserrat-semiBold ml-2 mr-2">
-            Add to wishlist
-          </Text>
-
           {/* Buy Now */}
           <TouchableOpacity
             className="flex-1 bg-secondary py-4 rounded-2xl"

@@ -3,7 +3,7 @@ import React from "react";
 import { Image, ScrollView, View } from "react-native";
 
 const BuyProductScreen = () => {
-  const { price, image } = useLocalSearchParams();
+  const { image } = useLocalSearchParams();
   return (
     <ScrollView
       className="flex-1 bg-white"

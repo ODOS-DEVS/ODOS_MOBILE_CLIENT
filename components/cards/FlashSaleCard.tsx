@@ -1,8 +1,10 @@
 import { rS, rV } from "@/styles/responsive";
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import AddToCart from "../buttons/AddToCart";
+import AddToWishList from "../buttons/AddToWishList";
 
 interface FlashSalesCardProps {
   id: string;
@@ -27,8 +29,6 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   rating,
   reviews,
 }) => {
-  const [liked, setLiked] = useState(false);
-
   const hasPrice = !!price || !!oldPrice;
 
   return (
@@ -81,9 +81,13 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             style={{
               width: "100%",
               height: "100%",
-              borderRadius: rS(12), // keeps the curve
+              borderRadius: rS(12),
             }}
           />
+          <View className="absolute top-2 bottom-2 right-2 z-20 flex-col gap-5 py-2">
+            <AddToWishList />
+            <AddToCart />
+          </View>
 
           {/* Discount */}
           {discount && (
@@ -105,26 +109,6 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               </Text>
             </View>
           )}
-
-          {/* Like Button */}
-          <TouchableOpacity
-            onPress={() => setLiked(!liked)}
-            style={{
-              position: "absolute",
-              top: rS(8),
-              right: rS(8),
-              backgroundColor: "#fff",
-              padding: rS(6),
-              borderRadius: rS(50),
-              elevation: 2,
-            }}
-          >
-            <FontAwesome
-              name={liked ? "heart" : "heart-o"}
-              size={rS(14)}
-              color={liked ? "red" : "#444"}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* ---------- TEXT ---------- */}
