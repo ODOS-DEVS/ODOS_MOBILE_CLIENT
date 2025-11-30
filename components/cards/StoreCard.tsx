@@ -59,13 +59,13 @@ const StoreCard: React.FC<StoreCardProps> = ({
         {/* ---------- TEXT SECTION ---------- */}
         <View className="p-3">
           <Text
-            className="text-[13px] mb-2 font-montserrat-bold text-text text-center"
+            className="text-[13px] mb-2 font-montserrat-bold text-text text-left"
             numberOfLines={1}
           >
             {title}
           </Text>
 
-          <View className="flex-row justify-between">
+          <View className="flex-row justify-start gap-4">
             {category && (
               <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
                 {category}

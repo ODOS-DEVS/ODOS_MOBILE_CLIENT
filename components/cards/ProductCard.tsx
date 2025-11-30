@@ -2,6 +2,7 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useWishlist } from "@/context/WishlistContext";
 
 interface ProductCardProps {
   id: string;
@@ -12,7 +13,7 @@ interface ProductCardProps {
   oldPrice?: number;
   discount?: string;
   rating?: number;
-  reviews?: string;
+  reviews?: any;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -27,6 +28,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
   reviews,
 }) => {
   const [liked, setLiked] = useState(false);
+  const { addToWishlist } = useWishlist();
+
+  const handleLike = () => {
+    setLiked(!liked);
+
+    if (!liked) {
+      addToWishlist({
+        id,
+        image,
+        title,
+        category,
+        price,
+        oldPrice,
+        rating,
+        reviews,
+      });
+    }
+  };
 
   // 💡 Check if price section exists
   const hasPrice = !!price || !!oldPrice;
@@ -69,7 +88,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Like (Heart) Button */}
           <TouchableOpacity
-            onPress={() => setLiked(!liked)}
+            onPress={handleLike}
             className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-sm"
           >
             <FontAwesome

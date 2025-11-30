@@ -49,7 +49,7 @@ export default function ProductDetail() {
           />
         </View>
 
-        <View className="mt-8">
+        <View className="mt-6 px-4">
           <View className="flex-row items-center mt-3 justify-between">
             <Text className="text-xl font-montserrat-extraBold">{title}</Text>
             <View className="flex-row">
@@ -173,6 +173,7 @@ export default function ProductDetail() {
                 params: {
                   image,
                   price,
+                  title,
                 },
               });
             }}

@@ -2,17 +2,21 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useWishlist } from "@/context/WishlistContext";
+
 
 interface RecommendationCardProps {
+  id: any,
   image: any;
   title: string;
   category?: string;
-  price: number;
+  price?: number;
   rating?: number;
   reviews?: number;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
+  id,
   image,
   title,
   category,
@@ -20,7 +24,14 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   rating,
   reviews,
 }) => {
-  const [liked, setLiked] = useState(false);
+
+  const { removeFromWishlist, wishlist } = useWishlist();
+
+  const liked = wishlist.some((item) => item.id === id);
+
+  const handleUnlike = () => {
+    removeFromWishlist(id);
+  };
 
   return (
     <TouchableOpacity
@@ -38,7 +49,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         })
       }
     >
-      <View className="flex-row items-center rounded-2xl  mb-4 pt-8 ">
+      <View className="flex-row items-center rounded-2xl  mb-2 pt-6 ">
         <Image
           source={image}
           className="w-[90px] h-[90px] rounded-xl mr-4 bg-tertiary"
@@ -80,7 +91,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         </View>
 
         <TouchableOpacity
-          onPress={() => setLiked(!liked)}
+          onPress={handleUnlike}
           className="ml-3 pr-4"
           activeOpacity={0.8}
         >

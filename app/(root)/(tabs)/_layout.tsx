@@ -80,23 +80,23 @@ const TabsLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="store"
+        name="cart"
         options={{
-          title: "Store",
+          title: "Cart",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="cart-outline" focused={focused} title="Store" />
+            <TabIcon name="cart-outline" focused={focused} title="Cart" />
           ),
         }}
       />
       <Tabs.Screen
-        name="market"
+        name="wishlist"
         options={{
           title: "Wishlist",
           tabBarIcon: ({ focused }) => (
             <TabIcon
               name="pricetags-outline"
               focused={focused}
-              title="Market"
+              title="Wishlist"
             />
           ),
         }}

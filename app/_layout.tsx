@@ -1,10 +1,10 @@
-import { SplashScreen, Stack } from "expo-router";
-import "./global.css"
-import { useEffect } from "react";
+import { WishlistProvider } from "@/context/WishlistContext";
 import { useFonts } from "expo-font";
+import { SplashScreen, Stack } from "expo-router";
+import { useEffect } from "react";
+import "./global.css";
 
 export default function RootLayout() {
-
   const [fontsLoaded] = useFonts({
     "Montserrat-Black": require("@/assets/fonts/Montserrat-Black.ttf"),
     "Montserrat-Bold": require("@/assets/fonts/Montserrat-Bold.ttf"),
@@ -24,11 +24,14 @@ export default function RootLayout() {
     return null; // wait until fonts are loaded
   }
 
-  
-  return <Stack 
-  screenOptions={{
-    headerShown: false,
-  }}
-  />;
+  return (
+    <WishlistProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      />
+      ;
+    </WishlistProvider>
+  );
 }
-

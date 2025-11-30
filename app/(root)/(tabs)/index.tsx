@@ -128,14 +128,15 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={Stores}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <StoreCard {...item} />}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
+            <View className="px-6">
+              <FlatList
+                data={Stores}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <StoreCard {...item} />}
+              />
+            </View>
 
             {/* Popular Products */}
             <View className="flex-row justify-between mx-6 mt-8 ">

@@ -58,7 +58,7 @@ const MarketCard: React.FC<MarketCardProps> = ({
         {/* ---------- TEXT SECTION ---------- */}
         <View className="p-3">
           <Text
-            className="text-[13px] mb-2 font-montserrat-bold text-text text-center"
+            className="text-[13px] mb-2 font-montserrat-bold text-text text-left"
             numberOfLines={1}
           >
             {title}
