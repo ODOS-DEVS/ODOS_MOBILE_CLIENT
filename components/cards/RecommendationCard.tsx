@@ -1,6 +1,5 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { useWishlist } from "@/context/WishlistContext";
 

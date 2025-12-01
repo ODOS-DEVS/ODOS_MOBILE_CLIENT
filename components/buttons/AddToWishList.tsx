@@ -1,28 +1,52 @@
-import { rS } from "@/styles/responsive";
+import React from "react";
+import { TouchableOpacity } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { useWishlist } from "@/context/WishlistContext";
 
-const AddToWishList = () => {
-  const [liked, setLiked] = useState(false);
+interface AddToWishListProps {
+  product: {
+    id: string;
+    image: any;
+    title: string;
+    category?: string;
+    price?: number;
+    oldPrice?: number;
+    rating?: number;
+    reviews?: number;
+  };
+  size?: number;
+}
+
+const AddToWishList: React.FC<AddToWishListProps> = ({
+  product,
+  size = 18,
+}) => {
+  const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+
+  // check if already added
+  const liked = wishlist.some((item) => item.id === product.id);
+
+  const toggleWishlist = () => {
+    if (liked) removeFromWishlist(product.id);
+    else addToWishlist(product);
+  };
+
   return (
-    <View>
-      <TouchableOpacity
-        onPress={() => setLiked(!liked)}
-         style={{
-           backgroundColor: "#fff",
-           padding: rS(10),
-           borderRadius: rS(50),
-           elevation: 2,
-         }}
-      >
-        <FontAwesome
-          name={liked ? "heart" : "heart-o"}
-          size={rS(14)}
-          color={liked ? "red" : "#444"}
-        />
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity
+      onPress={toggleWishlist}
+      style={{
+        backgroundColor: "#fff",
+        padding: 8,
+        borderRadius: 50,
+        elevation: 3,
+      }}
+    >
+      <FontAwesome
+        name={liked ? "heart" : "heart-o"}
+        size={size}
+        color={liked ? "red" : "#444"}
+      />
+    </TouchableOpacity>
   );
 };
 
