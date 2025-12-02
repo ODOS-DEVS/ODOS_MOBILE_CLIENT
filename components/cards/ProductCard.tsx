@@ -151,7 +151,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 }`}
               >
                 <Ionicons name="star" size={14} color="#facc15" />
-                <Text className="ml-1 text-xs text-subtext-200 font-montserrat-extraBold">
+                <Text className="ml-1 text-md text-subtext-200 font-montserrat-extraBold">
                   {rating.toFixed(1)}
                 </Text>
               </View>
