@@ -1,3 +1,4 @@
+import AddToCart from "@/components/buttons/AddToCart";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
@@ -14,7 +15,7 @@ import {
 } from "react-native";
 
 export default function ProductDetail() {
-  const { image, title, category, price, oldPrice, discount, rating, reviews } =
+  const { id, image, title, category, price, oldPrice, discount, rating, reviews } =
     useLocalSearchParams();
 
   return (
@@ -93,9 +94,10 @@ export default function ProductDetail() {
             </View>
 
             {/* Wrapper to scale the wishlist icon */}
-            <View style={{ transform: [{ scale: 1.5 }] }} className="px-8">
-              <AddToWishList />
-            </View>
+            <View
+              style={{ transform: [{ scale: 1.5 }] }}
+              className="px-8"
+            ></View>
           </View>
         </View>
 
@@ -163,6 +165,20 @@ export default function ProductDetail() {
 
         {/* Buttons */}
         <View className="flex-row items-center mt-10 mb-16 px-2">
+          <View>
+            <AddToWishList
+              product={{
+                id: String(id), // ⚠️ ideally use ID — see note below
+                image,
+                title: title as string,
+                category: category as string,
+                price: Number(price),
+                oldPrice: oldPrice ? Number(oldPrice) : undefined,
+                rating: Number(rating),
+                reviews: reviews as string,
+              }}
+            />
+          </View>
           {/* Buy Now */}
           <TouchableOpacity
             className="flex-1 bg-secondary py-4 rounded-2xl"
@@ -192,6 +208,9 @@ export default function ProductDetail() {
               Chat Vendor
             </Text>
           </TouchableOpacity>
+          <View>
+            <AddToCart />
+          </View>
         </View>
       </View>
     </ScrollView>

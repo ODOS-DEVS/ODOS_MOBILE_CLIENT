@@ -1,8 +1,8 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import { useWishlist } from "@/context/WishlistContext";
+import AddToCart from "../buttons/AddToCart";
+import AddToWishList from "../buttons/AddToWishList";
 
 interface ProductCardProps {
   id: string;
@@ -27,26 +27,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   reviews,
 }) => {
-  const [liked, setLiked] = useState(false);
-  const { addToWishlist } = useWishlist();
-
-  const handleLike = () => {
-    setLiked(!liked);
-
-    if (!liked) {
-      addToWishlist({
-        id,
-        image,
-        title,
-        category,
-        price,
-        oldPrice,
-        rating,
-        reviews,
-      });
-    }
-  };
-
   // 💡 Check if price section exists
   const hasPrice = !!price || !!oldPrice;
 
@@ -68,9 +48,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         })
       }
     >
-      <View className="w-[120px] rounded-2xl mr-3 mb-4 mt-4">
+      <View className="w-[180px] rounded-2xl mr-3 mb-4 mt-4">
         {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[150px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+        <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
           <Image
             source={image}
             className="w-full h-full bg-tertiary"
@@ -86,17 +66,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </View>
           )}
 
-          {/* Like (Heart) Button */}
-          <TouchableOpacity
-            onPress={handleLike}
-            className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-sm"
-          >
-            <FontAwesome
-              name={liked ? "heart" : "heart-o"}
-              size={14}
-              color={liked ? "red" : "#444"}
+          <View className="absolute top-1 bottom-2 right-1 flex-col gap-5 py-2">
+            <AddToWishList
+              product={{
+                id,
+                image,
+                title,
+                category,
+                price,
+                rating,
+                reviews,
+              }}
             />
-          </TouchableOpacity>
+            <AddToCart />
+          </View>
         </View>
 
         {/* ---------- TEXT SECTION ---------- */}

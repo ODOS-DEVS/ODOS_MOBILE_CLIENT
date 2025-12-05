@@ -8,7 +8,7 @@ const WishlistScreen = () => {
 
   return (
     <ScrollView className="p-4 mt-16">
-      <Text className="text-lg font-montserrat-extraBold text-center">
+      <Text className="text-2xl font-montserrat-extraBold text-black text-center">
         Wishlist
       </Text>
       {wishlist.length === 0 ? (
@@ -23,6 +23,7 @@ const WishlistScreen = () => {
             image={item.image}
             title={item.title}
             category={item.category}
+            oldPrice={item.oldPrice}
             price={item.price}
             rating={item.rating}
             reviews={item.reviews}

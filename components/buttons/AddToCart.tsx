@@ -10,7 +10,6 @@ const AddToCart = () => {
         backgroundColor: "#fff",
         padding: rS(10),
         borderRadius: rS(50),
-        elevation: 2,
       }}
     >
       <TouchableOpacity

@@ -4,12 +4,13 @@
     "slug": "odos-mobile-expo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "", 
+    "icon": "",
     "scheme": "odosmobileexpo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.odos-mobile-expo"
     },
     "android": {
       "adaptiveIcon": {

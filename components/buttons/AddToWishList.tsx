@@ -2,6 +2,7 @@ import React from "react";
 import { TouchableOpacity } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useWishlist } from "@/context/WishlistContext";
+import { rS } from "@/styles/responsive";
 
 interface AddToWishListProps {
   product: {
@@ -12,7 +13,7 @@ interface AddToWishListProps {
     price?: number;
     oldPrice?: number;
     rating?: number;
-    reviews?: number;
+    reviews?: any;
   };
   size?: number;
 }
@@ -23,7 +24,6 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
 }) => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
-  // check if already added
   const liked = wishlist.some((item) => item.id === product.id);
 
   const toggleWishlist = () => {
@@ -36,8 +36,11 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
       onPress={toggleWishlist}
       style={{
         backgroundColor: "#fff",
-        padding: 8,
-        borderRadius: 50,
+        width: rS(34),
+        height: rS(34),
+        borderRadius: rS(17),
+        justifyContent: "center",
+        alignItems: "center",
         elevation: 3,
       }}
     >

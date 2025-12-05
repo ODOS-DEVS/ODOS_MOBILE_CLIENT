@@ -15,7 +15,7 @@ interface FlashSalesCardProps {
   oldPrice?: number;
   discount?: string;
   rating?: number;
-  reviews?: string;
+  reviews?: any;
 }
 
 const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
@@ -77,15 +77,26 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
         >
           <Image
             source={image}
-            resizeMode="stretch"
+            resizeMode="cover"
             style={{
               width: "100%",
               height: "100%",
               borderRadius: rS(12),
             }}
           />
-          <View className="absolute top-2 bottom-2 right-2 z-20 flex-col gap-5 py-2">
-            <AddToWishList />
+          <View className="absolute top-2 bottom-2 right-2 flex-col gap-5 py-2">
+            <AddToWishList
+              product={{
+                id,
+                image,
+                title,
+                category,
+                price,
+                oldPrice,
+                rating,
+                reviews,
+              }}
+            />
             <AddToCart />
           </View>
 

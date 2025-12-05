@@ -1,6 +1,5 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface StoreCardProps {
@@ -20,8 +19,6 @@ const StoreCard: React.FC<StoreCardProps> = ({
   rating,
   reviews,
 }) => {
-  const [liked, setLiked] = useState(false);
-
   return (
     <TouchableOpacity
       onPress={() =>
@@ -42,18 +39,6 @@ const StoreCard: React.FC<StoreCardProps> = ({
             className="w-full h-full bg-tertiary"
             resizeMode="cover"
           />
-
-          {/* Like (Heart) Button */}
-          <TouchableOpacity
-            onPress={() => setLiked(!liked)}
-            className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-sm"
-          >
-            <FontAwesome
-              name={liked ? "heart" : "heart-o"}
-              size={14}
-              color={liked ? "red" : "#444"}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* ---------- TEXT SECTION ---------- */}
@@ -65,9 +50,9 @@ const StoreCard: React.FC<StoreCardProps> = ({
             {title}
           </Text>
 
-          <View className="flex-row justify-start gap-4">
+          <View className="flex justify-start gap-1">
             {category && (
-              <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
+              <Text className="text-xs text-subtext" numberOfLines={1}>
                 {category}
               </Text>
             )}

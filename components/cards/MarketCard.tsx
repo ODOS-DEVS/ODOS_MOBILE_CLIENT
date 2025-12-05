@@ -1,6 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface MarketCardProps {
@@ -18,8 +16,6 @@ const MarketCard: React.FC<MarketCardProps> = ({
   title,
   category,
 }) => {
-  const [liked, setLiked] = useState(false);
-
   return (
     <TouchableOpacity
       onPress={() =>
@@ -41,18 +37,6 @@ const MarketCard: React.FC<MarketCardProps> = ({
             className="w-full h-full bg-tertiary"
             resizeMode="cover"
           />
-
-          {/* Like (Heart) Button */}
-          <TouchableOpacity
-            onPress={() => setLiked(!liked)}
-            className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-sm"
-          >
-            <FontAwesome
-              name={liked ? "heart" : "heart-o"}
-              size={14}
-              color={liked ? "red" : "#444"}
-            />
-          </TouchableOpacity>
         </View>
 
         {/* ---------- TEXT SECTION ---------- */}

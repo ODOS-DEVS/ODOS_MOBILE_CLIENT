@@ -1,14 +1,16 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { rS } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import { useWishlist } from "@/context/WishlistContext";
-
+import AddToCart from "../buttons/AddToCart";
+import AddToWishList from "../buttons/AddToWishList";
 
 interface RecommendationCardProps {
-  id: any,
+  id: any;
   image: any;
   title: string;
   category?: string;
+  oldPrice?: number;
   price?: number;
   rating?: number;
   reviews?: number;
@@ -19,18 +21,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   image,
   title,
   category,
+  oldPrice,
   price,
   rating,
   reviews,
 }) => {
-
-  const { removeFromWishlist, wishlist } = useWishlist();
-
-  const liked = wishlist.some((item) => item.id === id);
-
-  const handleUnlike = () => {
-    removeFromWishlist(id);
-  };
+  const hasPrice = !!price || !!oldPrice;
 
   return (
     <TouchableOpacity
@@ -41,6 +37,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             image,
             title,
             category,
+            oldPrice,
             price,
             rating,
             reviews,
@@ -69,9 +66,35 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           )}
 
           <View className="flex-row items-center mt-1.5">
-            <Text className="text-[13px] text-gray-900 mr-3 font-montserrat-extraBold">
-              ${price}
-            </Text>
+            {hasPrice && (
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {price && (
+                  <Text
+                    style={{
+                      fontSize: rS(13),
+                      fontWeight: "800",
+                      color: "#222",
+                    }}
+                  >
+                    ${price}
+                  </Text>
+                )}
+
+                {oldPrice && (
+                  <Text
+                    style={{
+                      fontSize: rS(11),
+                      marginLeft: rS(6),
+                      color: "red",
+                      textDecorationLine: "line-through",
+                      fontWeight: "700",
+                    }}
+                  >
+                    ${oldPrice}
+                  </Text>
+                )}
+              </View>
+            )}
 
             {rating && (
               <View className="flex-row items-center ml-4">
@@ -89,17 +112,21 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={handleUnlike}
-          className="ml-3 pr-4"
-          activeOpacity={0.8}
-        >
-          <FontAwesome
-            name={liked ? "heart" : "heart-o"}
-            size={22}
-            color={liked ? "red" : "#696969"}
+        <View className="flex-row items-center gap-3 ml-4 mr-2">
+          <AddToCart />
+          <AddToWishList
+            product={{
+              id,
+              image,
+              title,
+              category,
+              oldPrice,
+              price,
+              rating,
+              reviews,
+            }}
           />
-        </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
