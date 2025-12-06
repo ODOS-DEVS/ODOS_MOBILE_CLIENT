@@ -4,8 +4,8 @@ import React from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 
 interface SearchBarProps {
-  value: string,
-  onChangeText: (text: string) => void,
+  value?: string,
+  onChangeText?: (text: string) => void,
 }
 
 export const SearchBar = ({ value, onChangeText }: SearchBarProps) => {

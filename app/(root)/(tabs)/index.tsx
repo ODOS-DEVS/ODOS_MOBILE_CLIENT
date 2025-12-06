@@ -14,7 +14,7 @@ import {
   Stores,
 } from "@/constants/Data";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   FlatList,
   StatusBar,
@@ -63,8 +63,8 @@ const HomeScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // ---------------- SEARCH LOGIC --------------------
-  const handleSearch = () => {
+  // ---------------- SEARCH HANDLER (STABLE) --------------------
+  const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
@@ -74,8 +74,6 @@ const HomeScreen = () => {
       ...flashSales,
       ...recommendations,
       ...PopularProducts,
-      ...Stores,
-      ...markets,
     ];
 
     const results = allProducts.filter((item) =>
@@ -83,9 +81,9 @@ const HomeScreen = () => {
     );
 
     setSearchResults(results);
-  };
+  }, [searchQuery]);
 
-  // 🔥 SEARCH DEBOUNCE — automatically search 5 sec after user stops typing
+  // ---------------- DEBOUNCED SEARCH (5 SECONDS) --------------------
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setSearchResults([]);
@@ -94,10 +92,10 @@ const HomeScreen = () => {
 
     const delay = setTimeout(() => {
       handleSearch();
-    }, 1000); // 1 seconds debounce
+    }, 1000); 
 
     return () => clearTimeout(delay);
-  }, [searchQuery]);
+  }, [searchQuery, handleSearch]);
 
   return (
     <View className="flex-1">
@@ -122,7 +120,7 @@ const HomeScreen = () => {
             data={searchResults}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <View className="mb-4">
+              <View className="px-1">
                 <ProductCard {...item} />
               </View>
             )}
@@ -137,7 +135,6 @@ const HomeScreen = () => {
           renderItem={() => null}
           ListHeaderComponent={
             <View className="pb-20">
-              {/* Header */}
               <HomeHeader />
 
               {/* Search Bar */}
