@@ -74,7 +74,7 @@ const KidsScreen = () => {
         {/* 🧢 Product List */}
         <FlatList
           data={filteredData}
-          numColumns={3}
+          numColumns={2}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
           showsVerticalScrollIndicator={false}
