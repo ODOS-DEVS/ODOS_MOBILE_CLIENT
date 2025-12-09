@@ -14,7 +14,7 @@ import {
   Stores,
 } from "@/constants/Data";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   FlatList,
   StatusBar,
@@ -23,9 +23,20 @@ import {
   View,
 } from "react-native";
 
+type SearchItem = {
+  id: string;
+  title: string;
+  image: any;
+  [key: string]: any;
+};
+
 const HomeScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
+
+  // ---------------- TIMER --------------------
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
 
@@ -52,134 +63,204 @@ const HomeScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // ---------------- SEARCH HANDLER (STABLE) --------------------
+  const handleSearch = useCallback(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const allProducts: SearchItem[] = [
+      ...flashSales,
+      ...recommendations,
+      ...PopularProducts,
+    ];
+
+    const results = allProducts.filter((item) =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    setSearchResults(results);
+  }, [searchQuery]);
+
+  // ---------------- DEBOUNCED SEARCH (5 SECONDS) --------------------
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+
+    const delay = setTimeout(() => {
+      handleSearch();
+    }, 1000); 
+
+    return () => clearTimeout(delay);
+  }, [searchQuery, handleSearch]);
+
   return (
     <View className="flex-1">
       <StatusBar barStyle={"dark-content"} />
 
-      <FlatList
-        data={[]} // empty, we use header as the full page
-        keyExtractor={() => "dummy"}
-        renderItem={() => null}
-        ListHeaderComponent={
-          <View className="pb-20">
-            {/* Header */}
-            <HomeHeader />
-            <SearchBar />
+      {/* ---------------- SEARCH RESULTS MODE ---------------- */}
+      {searchQuery.length > 0 && searchResults.length > 0 ? (
+        <View className="mt-6 px-4">
+          <SearchBar
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              if (text === "") setSearchResults([]);
+            }}
+          />
 
-            {/* Flash Sales */}
-            <View className="flex-row justify-between mt-8 mx-8">
-              <Text className="text-base font-montserrat-extraBold text-gray-800">
-                Flash Sales
-              </Text>
-              <Text className="font-montserrat-semiBold text-primary">
-                {timeLeft}
-              </Text>
-            </View>
+          <Text className="text-lg font-montserrat-bold mt-6 mb-4">
+            Search Results
+          </Text>
 
-            <View className="ml-[-20]">
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View className="px-1">
+                <ProductCard {...item} />
+              </View>
+            )}
+            numColumns={2}
+          />
+        </View>
+      ) : (
+        // ---------------- HOMEPAGE MODE ----------------
+        <FlatList
+          data={[]}
+          keyExtractor={() => "dummy"}
+          renderItem={() => null}
+          ListHeaderComponent={
+            <View className="pb-20">
+              <HomeHeader />
+
+              {/* Search Bar */}
+              <SearchBar
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  if (text === "") setSearchResults([]);
+                }}
+              />
+
+              {/* Flash Sales Section */}
+              <View className="flex-row justify-between mt-8 mx-8">
+                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                  Flash Sales
+                </Text>
+                <Text className="font-montserrat-semiBold text-primary">
+                  {timeLeft}
+                </Text>
+              </View>
+
+              <View className="ml-[-20]">
+                <FlatList
+                  data={flashSales}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <FlashSalesCard {...item} />}
+                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                />
+              </View>
+
+              <PromoBanner />
+
+              {/* Recommendations */}
+              <View className="flex-row justify-between mx-6 mt-8 ">
+                <Text className="text-lg font-montserrat-semiBold ">
+                  Recommendation
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("../screens/recommendation")}
+                >
+                  <Text className="text-lg font-montserrat-semiBold">
+                    See All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View className="mx-4">
+                <FlatList
+                  data={recommendations}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <RecommendationCard {...item} />}
+                  contentContainerStyle={{ paddingHorizontal: 25 }}
+                />
+              </View>
+
+              {/* Stores */}
+              <View className="flex-row justify-between mx-6 mt-8 ">
+                <Text className="text-lg font-montserrat-semiBold ">
+                  Stores
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("../screens/stores/stores")}
+                >
+                  <Text className="text-lg font-montserrat-semiBold">
+                    See All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View className="px-6">
+                <FlatList
+                  data={Stores}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <StoreCard {...item} />}
+                />
+              </View>
+
+              {/* Popular Products */}
+              <View className="flex-row justify-between mx-6 mt-8 ">
+                <Text className="text-lg font-montserrat-semiBold ">
+                  Popular products
+                </Text>
+                <TouchableOpacity>
+                  <Text className="text-lg font-montserrat-semiBold">
+                    See All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <FlatList
-                data={flashSales}
+                data={PopularProducts}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <FlashSalesCard {...item} />}
+                renderItem={({ item }) => <ProductCard {...item} />}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+              />
+
+              {/* Market */}
+              <View className="flex-row justify-between mx-6 mt-8 ">
+                <Text className="text-lg font-montserrat-semiBold ">
+                  Market
+                </Text>
+                <TouchableOpacity>
+                  <Text className="text-lg font-montserrat-semiBold">
+                    See All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={markets}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <MarketCard {...item} />}
                 contentContainerStyle={{ paddingHorizontal: 20 }}
               />
             </View>
-
-            <PromoBanner />
-
-            {/* Recommendations */}
-            <View className="flex-row justify-between mx-6 mt-8 ">
-              <Text className="text-lg font-montserrat-semiBold ">
-                Recommendation
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push("../screens/recommendation");
-                }}
-              >
-                <Text className="text-lg font-montserrat-semiBold">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="mx-4">
-              <FlatList
-                data={recommendations}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <RecommendationCard {...item} />}
-                contentContainerStyle={{ paddingHorizontal: 25 }}
-              />
-            </View>
-
-            {/* Stores */}
-            <View className="flex-row justify-between mx-6 mt-8 ">
-              <Text className="text-lg font-montserrat-semiBold ">Stores</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push("../screens/stores/stores");
-                }}
-              >
-                <Text className="text-lg font-montserrat-semiBold">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="px-6">
-              <FlatList
-                data={Stores}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <StoreCard {...item} />}
-              />
-            </View>
-
-            {/* Popular Products */}
-            <View className="flex-row justify-between mx-6 mt-8 ">
-              <Text className="text-lg font-montserrat-semiBold ">
-                Popular products
-              </Text>
-              <TouchableOpacity>
-                <Text className="text-lg font-montserrat-semiBold">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={PopularProducts}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ProductCard {...item} />}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
-
-            {/* Market */}
-            <View className="flex-row justify-between mx-6 mt-8 ">
-              <Text className="text-lg font-montserrat-semiBold ">Market</Text>
-              <TouchableOpacity>
-                <Text className="text-lg font-montserrat-semiBold">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={markets}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <MarketCard {...item} />}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </View>
   );
 };
