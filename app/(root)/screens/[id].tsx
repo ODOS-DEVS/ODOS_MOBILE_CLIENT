@@ -40,12 +40,12 @@ export default function ProductDetail() {
         </TouchableOpacity>
       </View>
 
-      <View className="px-2">
+      <View className="">
         {/* Image */}
         <View className="flex-row justify-center mt-3">
           <Image
             source={image as any}
-            className="w-full h-[300px] rounded-xl"
+            className="w-full h-[300px] rounded-sm"
             resizeMode="cover"
           />
         </View>
