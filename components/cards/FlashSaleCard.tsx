@@ -3,7 +3,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import AddToCart from "../buttons/AddToCart";
 import AddToWishList from "../buttons/AddToWishList";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 

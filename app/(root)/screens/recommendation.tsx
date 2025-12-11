@@ -1,5 +1,4 @@
 import RecommendationCard from "@/components/cards/RecommendationCard";
-import { SearchBar } from "@/components/SearchBar";
 import { recommendations } from "@/constants/Data";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
