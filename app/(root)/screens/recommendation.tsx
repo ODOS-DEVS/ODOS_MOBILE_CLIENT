@@ -1,7 +1,6 @@
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { SearchBar } from "@/components/SearchBar";
 import { recommendations } from "@/constants/Data";
-import { useWishlist } from "@/context/WishlistContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -26,8 +25,6 @@ interface RecommendationCardProps {
 }
 
 const RecommendationScreen: React.FC<RecommendationCardProps> = () => {
-  const { wishlist } = useWishlist();
-
   return (
     <ScrollView
       className="flex-1 bg-white pt-16"
@@ -46,12 +43,13 @@ const RecommendationScreen: React.FC<RecommendationCardProps> = () => {
           Recommendation
         </Text>
       </View>
-      <SearchBar />
+      {/* <SearchBar /> */}
 
       <View className="mx-4">
         <FlatList
           data={recommendations}
           renderItem={({ item }) => <RecommendationCard {...item} />}
+          scrollEnabled={false}
         />
       </View>
     </ScrollView>
