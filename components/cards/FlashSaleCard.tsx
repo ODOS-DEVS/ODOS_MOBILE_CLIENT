@@ -5,6 +5,7 @@ import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import AddToCart from "../buttons/AddToCart";
 import AddToWishList from "../buttons/AddToWishList";
+import AddToCartBtn from "../buttons/AddToCartBtn";
 
 interface FlashSalesCardProps {
   id: string;
@@ -97,7 +98,15 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                 reviews,
               }}
             />
-            <AddToCart />
+            <AddToCartBtn
+              item={{
+                id,
+                title,
+                category,
+                price: price ?? 0,
+                image,
+              }}
+            />
           </View>
 
           {/* Discount */}

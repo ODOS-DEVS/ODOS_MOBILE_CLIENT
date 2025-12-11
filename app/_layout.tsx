@@ -1,3 +1,4 @@
+import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
@@ -25,12 +26,14 @@ export default function RootLayout() {
   }
 
   return (
-    <WishlistProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      />
-    </WishlistProvider>
+    <CartProvider>
+      <WishlistProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        />
+      </WishlistProvider>
+    </CartProvider>
   );
 }
