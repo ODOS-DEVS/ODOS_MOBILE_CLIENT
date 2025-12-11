@@ -1,4 +1,5 @@
 import { CartProvider } from "@/context/CartContext";
+import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
@@ -26,14 +27,16 @@ export default function RootLayout() {
   }
 
   return (
-    <CartProvider>
-      <WishlistProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
-      </WishlistProvider>
-    </CartProvider>
+    <ToastProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          />
+        </WishlistProvider>
+      </CartProvider>
+    </ToastProvider>
   );
 }

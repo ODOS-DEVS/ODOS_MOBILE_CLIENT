@@ -1,4 +1,5 @@
 import { useCart } from "@/context/CartContext";
+import { useToast } from "@/context/ToastContext";
 import { rS } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -16,6 +17,7 @@ interface AddToCartBtnProps {
 
 const AddToCart = ({ item }: AddToCartBtnProps) => {
   const { addToCart } = useCart();
+   const { showToast } = useToast();
   return (
     <View
       style={{
@@ -24,7 +26,10 @@ const AddToCart = ({ item }: AddToCartBtnProps) => {
         borderRadius: rS(50),
       }}
     >
-      <TouchableOpacity onPress={() => addToCart(item)}>
+      <TouchableOpacity onPress={() => {
+        addToCart(item)
+        showToast("Added to cart successfully");
+        } }>
         <Ionicons name="add" size={rS(14)} color={"#000"} />
       </TouchableOpacity>
     </View>
