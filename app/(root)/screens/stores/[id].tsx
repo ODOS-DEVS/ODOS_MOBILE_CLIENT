@@ -108,7 +108,7 @@ const StoreDetailScreen = () => {
         <View>
           <FlatList
             data={gentsData}
-            numColumns={3}
+            numColumns={2}
             scrollEnabled={false} // IMPORTANT
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <ProductCard {...item} />}
