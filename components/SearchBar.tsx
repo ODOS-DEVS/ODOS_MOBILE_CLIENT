@@ -1,14 +1,36 @@
 import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 
 interface SearchBarProps {
-  value?: string,
-  onChangeText?: (text: string) => void,
+  data: any[];
+  onResults: (results: any[]) => void;
+  onStartSearch?: () => void;
 }
 
-export const SearchBar = ({ value, onChangeText }: SearchBarProps) => {
+export const SearchBar = ({
+  data,
+  onResults,
+  onStartSearch,
+}: SearchBarProps) => {
+  const [query, setQuery] = useState("");
+
+  const handleSearch = () => {
+    onStartSearch?.(); // notify parent to show search screen
+
+    if (query.trim() === "") {
+      onResults([]);
+      return;
+    }
+
+    const filtered = data.filter((item) =>
+      item.title.toLowerCase().includes(query.toLowerCase())
+    );
+
+    onResults(filtered);
+  };
+
   return (
     <View
       className="flex-row items-center bg-accent rounded-full shadow-sm border border-primary"
@@ -21,24 +43,22 @@ export const SearchBar = ({ value, onChangeText }: SearchBarProps) => {
     >
       <TouchableOpacity
         className="ml-3 bg-accent p-2 rounded-lg"
-        activeOpacity={0.7}
+        onPress={handleSearch}
       >
-        <Ionicons name="search-outline" size={18} color={"#696969"} />
+        <Ionicons name="search-outline" size={18} color="#696969" />
       </TouchableOpacity>
 
       <TextInput
-      value={value}
-      onChangeText={onChangeText}
+        value={query}
+        onChangeText={setQuery}
         placeholder="Search..."
         placeholderTextColor="#696969"
         className="flex-1 text-gray-800"
+        returnKeyType="search"
+        onSubmitEditing={handleSearch} // press ENTER to search
       />
 
-      <TouchableOpacity
-        className="ml-3 bg-accent p-2 rounded-lg"
-        activeOpacity={0.7}
-        onPress={() => console.log("Filter pressed")}
-      >
+      <TouchableOpacity className="ml-3 bg-accent p-2 rounded-lg">
         <Ionicons name="funnel-outline" size={18} color="#696969" />
       </TouchableOpacity>
     </View>
