@@ -128,7 +128,7 @@ const HomeScreen = () => {
               />
 
               {/* Flash Sales Section */}
-              <View className="flex-row justify-between mt-8 mx-8">
+              <View className="flex-row justify-between mt-8 mx-6">
                 <Text className="text-base font-montserrat-extraBold text-gray-800">
                   Flash Sales
                 </Text>
@@ -152,13 +152,13 @@ const HomeScreen = () => {
 
               {/* Recommendations */}
               <View className="flex-row justify-between mx-6 mt-8 ">
-                <Text className="text-lg font-montserrat-semiBold ">
+                <Text className="text-base font-montserrat-extraBold text-gray-800">
                   Recommendation
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("../screens/recommendation")}
                 >
-                  <Text className="text-lg font-montserrat-semiBold">
+                  <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>
                 </TouchableOpacity>
@@ -175,13 +175,13 @@ const HomeScreen = () => {
 
               {/* Stores */}
               <View className="flex-row justify-between mx-6 mt-8 ">
-                <Text className="text-lg font-montserrat-semiBold ">
+                <Text className="text-base font-montserrat-extraBold text-gray-800">
                   Stores
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("../screens/stores/stores")}
                 >
-                  <Text className="text-lg font-montserrat-semiBold">
+                  <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>
                 </TouchableOpacity>
@@ -199,11 +199,11 @@ const HomeScreen = () => {
 
               {/* Popular Products */}
               <View className="flex-row justify-between mx-6 mt-8 ">
-                <Text className="text-lg font-montserrat-semiBold ">
+                <Text className="text-base font-montserrat-extraBold text-gray-800">
                   Popular products
                 </Text>
                 <TouchableOpacity>
-                  <Text className="text-lg font-montserrat-semiBold">
+                  <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>
                 </TouchableOpacity>
@@ -211,22 +211,22 @@ const HomeScreen = () => {
 
               <View className="px-6">
                 <FlatList
-                data={PopularProducts}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <ProductCard {...item} />}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
-              />
+                  data={PopularProducts}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <ProductCard {...item} />}
+                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                />
               </View>
 
               {/* Market */}
               <View className="flex-row justify-between mx-6 mt-8 ">
-                <Text className="text-lg font-montserrat-semiBold ">
+                <Text className="text-base font-montserrat-extraBold text-gray-800">
                   Market
                 </Text>
                 <TouchableOpacity>
-                  <Text className="text-lg font-montserrat-semiBold">
+                  <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>
                 </TouchableOpacity>
@@ -234,13 +234,13 @@ const HomeScreen = () => {
 
               <View className="px-6">
                 <FlatList
-                data={markets}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <MarketCard {...item} />}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
-              />
+                  data={markets}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <MarketCard {...item} />}
+                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                />
               </View>
             </View>
           }
