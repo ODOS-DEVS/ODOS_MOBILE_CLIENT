@@ -13,30 +13,27 @@ import {
   recommendations,
   Stores,
 } from "@/constants/Data";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
+  ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
-type SearchItem = {
-  id: string;
-  title: string;
-  image: any;
-  [key: string]: any;
-};
-
 const HomeScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
+  // Combine all searchable items
+  const allProducts = [...flashSales, ...recommendations, ...PopularProducts];
 
-  // ---------------- TIMER --------------------
+  // ---------------- TIMER (UNCHANGED) --------------------
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
 
@@ -63,70 +60,56 @@ const HomeScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // ---------------- SEARCH HANDLER (STABLE) --------------------
-  const handleSearch = useCallback(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    const allProducts: SearchItem[] = [
-      ...flashSales,
-      ...recommendations,
-      ...PopularProducts,
-    ];
-
-    const results = allProducts.filter((item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    setSearchResults(results);
-  }, [searchQuery]);
-
-  // ---------------- DEBOUNCED SEARCH (5 SECONDS) --------------------
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setSearchResults([]);
-      return;
-    }
-
-    const delay = setTimeout(() => {
-      handleSearch();
-    }, 1000); 
-
-    return () => clearTimeout(delay);
-  }, [searchQuery, handleSearch]);
-
   return (
     <View className="flex-1">
       <StatusBar barStyle={"dark-content"} />
 
       {/* ---------------- SEARCH RESULTS MODE ---------------- */}
-      {searchQuery.length > 0 && searchResults.length > 0 ? (
-        <View className="mt-6 px-4">
-          <SearchBar
-            value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              if (text === "") setSearchResults([]);
-            }}
-          />
+      {isSearching ? (
+        <ScrollView>
+          <View className="mt-12 px-4">
+            <View className="flex-row items-center mt-6 mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  setIsSearching(false);
+                  setSearchResults([]);
+                }}
+                className="mr-2 p-2"
+              >
+                <Ionicons name="arrow-back" size={24} color="black" />
+              </TouchableOpacity>
 
-          <Text className="text-lg font-montserrat-bold mt-6 mb-4">
-            Search Results
-          </Text>
+              <Text className="text-lg font-montserrat-bold">
+                Search Results
+              </Text>
+            </View>
+            <View className="relative bottom-8">
+              <SearchBar
+                data={allProducts}
+                onStartSearch={() => setIsSearching(true)}
+                onResults={setSearchResults}
+              />
+            </View>
 
-          <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View className="px-1">
-                <ProductCard {...item} />
-              </View>
+            {searchResults.length === 0 ? (
+              <Text className="text-xl text-center font-montserrat-semiBold mt-12 text-primary">
+                No results found
+              </Text>
+            ) : (
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View className="px-1">
+                    <ProductCard {...item} />
+                  </View>
+                )}
+                numColumns={2}
+                scrollEnabled={false}
+              />
             )}
-            numColumns={2}
-          />
-        </View>
+          </View>
+        </ScrollView>
       ) : (
         // ---------------- HOMEPAGE MODE ----------------
         <FlatList
@@ -139,11 +122,9 @@ const HomeScreen = () => {
 
               {/* Search Bar */}
               <SearchBar
-                value={searchQuery}
-                onChangeText={(text) => {
-                  setSearchQuery(text);
-                  if (text === "") setSearchResults([]);
-                }}
+                data={allProducts}
+                onResults={setSearchResults}
+                onStartSearch={() => setIsSearching(true)}
               />
 
               {/* Flash Sales Section */}
