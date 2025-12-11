@@ -1,34 +1,39 @@
-import { AppColors } from "@/constants/Colors";
-import { rS, rV } from "@/styles/responsive";
+import { useCart } from "@/context/CartContext";
+import { useToast } from "@/context/ToastContext";
+import { rS } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
-const AddToCartBtn = () => {
+interface AddToCartBtnProps {
+  item: {
+    id: string;
+    title: string;
+    category?: string;
+    price: number;
+    image?: any;
+  };
+}
+
+const AddToCart = ({ item }: AddToCartBtnProps) => {
+  const { addToCart } = useCart();
+   const { showToast } = useToast();
   return (
-    <View>
-      <TouchableOpacity
-        style={{
-          marginTop: rV(2),
-          backgroundColor: AppColors.secondary,
-          paddingVertical: rV(12),
-          borderRadius: rS(12),
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        onPress={() => {}}
-      >
-        <Text
-          style={{
-            color: AppColors.white,
-            fontSize: rS(12),
-            fontWeight: "700",
-          }}
-        >
-          Add to Cart
-        </Text>
+    <View
+      style={{
+        backgroundColor: "#fff",
+        padding: rS(10),
+        borderRadius: rS(50),
+      }}
+    >
+      <TouchableOpacity onPress={() => {
+        addToCart(item)
+        showToast("Added to cart successfully");
+        } }>
+        <Ionicons name="add" size={rS(14)} color={"#000"} />
       </TouchableOpacity>
     </View>
   );
 };
 
-export default AddToCartBtn;
+export default AddToCart;
