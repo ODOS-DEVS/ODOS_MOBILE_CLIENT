@@ -209,7 +209,8 @@ const HomeScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <FlatList
+              <View className="px-6">
+                <FlatList
                 data={PopularProducts}
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -217,6 +218,7 @@ const HomeScreen = () => {
                 renderItem={({ item }) => <ProductCard {...item} />}
                 contentContainerStyle={{ paddingHorizontal: 20 }}
               />
+              </View>
 
               {/* Market */}
               <View className="flex-row justify-between mx-6 mt-8 ">
@@ -230,7 +232,8 @@ const HomeScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <FlatList
+              <View className="px-6">
+                <FlatList
                 data={markets}
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -238,6 +241,7 @@ const HomeScreen = () => {
                 renderItem={({ item }) => <MarketCard {...item} />}
                 contentContainerStyle={{ paddingHorizontal: 20 }}
               />
+              </View>
             </View>
           }
         />
