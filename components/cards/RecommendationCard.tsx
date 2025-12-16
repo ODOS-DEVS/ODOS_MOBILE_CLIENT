@@ -45,7 +45,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         })
       }
     >
-      <View className="flex-row items-center rounded-2xl  mb-2 pt-6 ">
+      <View className="flex-row items-center rounded-2xl pt-4 ">
         <Image
           source={image}
           className="w-[90px] h-[90px] rounded-xl mr-4 bg-tertiary"
