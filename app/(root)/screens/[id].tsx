@@ -67,7 +67,7 @@ export default function ProductDetail() {
 
           <View className="flex-row justify-between py-2">
             {category && (
-              <Text className="text-md py-1 text-text">{category}</Text>
+              <Text className="text-md py-1 text-text font-montserrat">{category}</Text>
             )}
 
             <View className="flex-row">
