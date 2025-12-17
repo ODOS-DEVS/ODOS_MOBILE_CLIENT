@@ -1,5 +1,6 @@
 import { MenuItem } from "@/components/MenuItem";
 import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -74,18 +75,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F7F7F7",
-    paddingHorizontal: 16,
-    paddingVertical: 30,
+    paddingHorizontal: rS(16),
+    paddingVertical: rV(30),
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 20,
-    marginBottom: 24,
+    padding: rMS(16),
+    borderRadius: rMS(16),
+    marginTop: rV(20),
+    marginBottom: rV(20),
+    backgroundColor: "#fff",
   },
   subHeader: {
     flexDirection: "row",
@@ -93,37 +95,37 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 12,
+    width: rS(50),
+    height: rV(50),
+    borderRadius: rMS(28),
+    marginRight: rS(12),
   },
 
   name: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111",
+    fontSize: rMS(16),
+    fontFamily: Fonts.title,
   },
 
   email: {
-    fontSize: 13,
+    fontSize: rMS(13),
     color: "#777",
-    marginTop: 2,
+    marginTop: rMS(2),
+    fontFamily: Fonts.text,
   },
 
   sectionTitle: {
-    fontSize: 15,
+    fontSize: rMS(15),
     fontWeight: "600",
     color: "#444",
-    marginBottom: 8,
-    marginLeft: 4,
-    fontFamily: Fonts.titleBold,
+    marginBottom: rMS(8),
+    marginLeft: rMS(4),
+    fontFamily: Fonts.title,
   },
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    marginBottom: 20,
+    borderRadius: rMS(16),
+    marginBottom: rMS(20),
     overflow: "hidden",
   },
 
@@ -131,14 +133,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    marginBottom: 90,
+    paddingVertical: rV(14),
+    marginBottom: rMS(90),
   },
 
   logoutText: {
     color: "#E53935",
-    fontSize: 15,
-    marginLeft: 8,
+    fontSize: rMS(15),
+    marginLeft: rMS(8),
     fontWeight: "500",
   },
 });
