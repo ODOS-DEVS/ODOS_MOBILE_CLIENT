@@ -59,10 +59,20 @@ export default function ProfileScreen() {
           icon="notifications-outline"
           label="Notification"
           onPress={() => {
-            router.push("../screens/profileScreens/Notification");
+            router.push(
+              "../screens/profileScreens/personalization/Notification"
+            );
           }}
         />
-        <MenuItem icon="options-outline" label="Preferences" />
+        <MenuItem
+          icon="options-outline"
+          label="Preferences"
+          onPress={() => {
+            router.push(
+              "../screens/profileScreens/personalization/Preferences"
+            );
+          }}
+        />
         <MenuItem icon="language-outline" label="Language" />
       </View>
 

@@ -1,3 +1,5 @@
+import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { StyleSheet, Switch, Text, View } from "react-native";
 
 /* -------------------- Reusable Row -------------------- */
@@ -18,10 +20,10 @@ export const NotificationItem = ({
         value={value}
         onValueChange={onValueChange}
         trackColor={{
-          false: "#E5E5E5",
+          false: "#E5E5E9",
           true: "#111",
         }}
-        thumbColor="#fff"
+        thumbColor="#E5E1DA"
       />
     </View>
   );
@@ -32,14 +34,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 0.5,
+    paddingHorizontal: rS(16),
+    paddingVertical: rV(16),
+    borderBottomWidth: rMS(0.5),
     borderBottomColor: "#EEE",
   },
 
   itemText: {
-    fontSize: 15,
+    fontFamily: Fonts.title,
+    fontSize: rMS(14),
     color: "#222",
   },
 });
