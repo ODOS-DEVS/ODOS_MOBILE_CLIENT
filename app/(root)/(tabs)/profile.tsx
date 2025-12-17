@@ -55,7 +55,13 @@ export default function ProfileScreen() {
       {/* Personalization */}
       <Text style={styles.sectionTitle}>Personalization</Text>
       <View style={styles.card}>
-        <MenuItem icon="notifications-outline" label="Notification" />
+        <MenuItem
+          icon="notifications-outline"
+          label="Notification"
+          onPress={() => {
+            router.push("../screens/profileScreens/Notification");
+          }}
+        />
         <MenuItem icon="options-outline" label="Preferences" />
         <MenuItem icon="language-outline" label="Language" />
       </View>
