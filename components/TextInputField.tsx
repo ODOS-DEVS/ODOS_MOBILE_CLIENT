@@ -13,14 +13,20 @@ import {
 
 interface TextInputFieldProps {
   label: string;
+  icon?: any
   placeholder?: string;
+  value?: string;
+  onChangeText?: ((text: string) => void);
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
 }
 
 const TextInputField: React.FC<TextInputFieldProps> = ({
   label,
+  icon,
   placeholder,
+  value,
+  onChangeText,
   keyboardType,
   secureTextEntry = false,
 }) => {
@@ -51,9 +57,12 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           paddingVertical: rV(15),
         }}
       >
+        <Ionicons className="mr-2" name={icon} size={18} color="#777" />
         <TextInput
           placeholder={placeholder}
           placeholderTextColor={"#696969"}
+          value={value}
+          onChangeText={onChangeText}
           style={{ flex: 1, fontFamily: Fonts.textBold }}
           secureTextEntry={secureTextEntry && !isVisible}
           keyboardType={keyboardType}

@@ -2,6 +2,7 @@ import { MenuItem } from "@/components/MenuItem";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import {
   Image,
@@ -16,21 +17,27 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.subHeader}>
-          <Image
-            source={{
-              uri: "https://i.pravatar.cc/502",
-            }}
-            style={styles.avatar}
-          />
-          <View>
-            <Text style={styles.name}>Domenic Aura</Text>
-            <Text style={styles.email}>esaomens@gmail.com</Text>
+      <TouchableOpacity
+        onPress={() => {
+          router.push("../screens/profileScreens/CustomerProfile");
+        }}
+      >
+        <View style={styles.header}>
+          <View style={styles.subHeader}>
+            <Image
+              source={{
+                uri: "https://i.pravatar.cc/502",
+              }}
+              style={styles.avatar}
+            />
+            <View>
+              <Text style={styles.name}>Domenic Aura</Text>
+              <Text style={styles.email}>esaomens@gmail.com</Text>
+            </View>
           </View>
+          <Ionicons name="arrow-forward-circle" size={28} color="#111" />
         </View>
-        <Ionicons name="arrow-forward-circle" size={28} color="#111" />
-      </View>
+      </TouchableOpacity>
 
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
