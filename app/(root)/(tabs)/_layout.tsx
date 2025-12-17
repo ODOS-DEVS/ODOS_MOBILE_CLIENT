@@ -94,7 +94,7 @@ const TabsLayout = () => {
           title: "Wishlist",
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              name="pricetags-outline"
+              name="heart"
               focused={focused}
               title="Wishlist"
             />
@@ -107,7 +107,7 @@ const TabsLayout = () => {
           title: "Profile",
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              name="person"
+              name="person-sharp"
               focused={focused}
               title="Profile"
             />
