@@ -1,5 +1,7 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { NotificationItem } from "@/components/NotificationItem";
+import Fonts from "@/constants/Fonts";
+import { rMS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -77,21 +79,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F6F6F6",
-    paddingHorizontal: 16,
-    paddingVertical: 25,
+    paddingHorizontal: rMS(16),
+    paddingVertical: rV(25),
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: rMS(20),
+    marginBottom: rMS(24),
   },
 
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: rMS(40),
+    height: rMS(40),
+    borderRadius: rMS(20),
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
@@ -100,29 +102,14 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
-    fontWeight: "600",
+    fontSize: rMS(17),
+    fontFamily: Fonts.textBold,
     color: "#111",
   },
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 8,
-  },
-
-  saveButton: {
-    backgroundColor: "#6D6D6D",
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 40,
-    marginBottom: 30,
-    alignItems: "center",
-  },
-
-  saveText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
+    borderRadius: rMS(18),
+    paddingVertical: rV(8),
   },
 });
