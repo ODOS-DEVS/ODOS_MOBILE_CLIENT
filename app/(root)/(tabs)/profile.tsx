@@ -42,7 +42,9 @@ export default function ProfileScreen() {
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
       <View style={styles.card}>
-        <MenuItem icon="receipt-outline" label="Orders" />
+        <MenuItem icon="receipt-outline" label="Orders" onPress={()=>{
+          router.push("../screens/profileScreens/orders/[orderId]")
+        }} />
         <MenuItem icon="return-up-back-outline" label="Returns" />
         <MenuItem icon="location-outline" label="Addresses" />
         <MenuItem icon="chatbubble-outline" label="Chats" />
