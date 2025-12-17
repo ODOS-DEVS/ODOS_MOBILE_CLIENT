@@ -23,7 +23,7 @@ export const NotificationItem = ({
           false: "#E5E5E9",
           true: "#111",
         }}
-        thumbColor="#E5E1DA"
+        thumbColor="#EEEEEE"
       />
     </View>
   );
