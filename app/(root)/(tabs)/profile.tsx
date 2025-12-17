@@ -73,7 +73,13 @@ export default function ProfileScreen() {
             );
           }}
         />
-        <MenuItem icon="language-outline" label="Language" />
+        <MenuItem
+          icon="language-outline"
+          label="Language"
+          onPress={() => {
+            router.push("../screens/profileScreens/personalization/Language");
+          }}
+        />
       </View>
 
       {/* Help & Support */}
