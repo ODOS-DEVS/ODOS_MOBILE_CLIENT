@@ -2,7 +2,7 @@ import { rS } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import AddToCart from "../buttons/AddToCart";
+import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
 interface RecommendationCardProps {
@@ -113,7 +113,15 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         </View>
 
         <View className="flex-row items-center gap-3 ml-4 mr-2">
-          <AddToCart />
+          <AddToCartBtn
+            item={{
+              id,
+              title,
+              category,
+              price: price ?? 0,
+              image,
+            }}
+          />
           <AddToWishList
             product={{
               id,

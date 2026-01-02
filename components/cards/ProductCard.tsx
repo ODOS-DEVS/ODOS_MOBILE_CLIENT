@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import AddToCart from "../buttons/AddToCart";
+import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
 interface ProductCardProps {
@@ -78,7 +78,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 reviews,
               }}
             />
-            <AddToCart />
+            <AddToCartBtn
+              item={{
+                id,
+                title,
+                category,
+                price: price ?? 0,
+                image,
+              }}
+            />
           </View>
         </View>
 
