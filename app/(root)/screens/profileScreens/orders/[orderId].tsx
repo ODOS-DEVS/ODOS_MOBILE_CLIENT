@@ -3,7 +3,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 
-import DeliveredTab from "./components/DeliveredTab";
+import DeliveredTab from "./components/delivered/DeliveredTab";
 import ProcessingTab from "./components/ProcessingTab";
 import CancelledTab from "./components/CancelledTab";
 
