@@ -1,8 +1,9 @@
-import AddToCart from "@/components/buttons/AddToCart";
+import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { PopularProducts } from "@/constants/Data";
+import { rS } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -67,7 +68,9 @@ export default function ProductDetail() {
 
           <View className="flex-row justify-between py-2">
             {category && (
-              <Text className="text-md py-1 text-text font-montserrat">{category}</Text>
+              <Text className="text-md py-1 text-text font-montserrat">
+                {category}
+              </Text>
             )}
 
             <View className="flex-row">
@@ -209,7 +212,21 @@ export default function ProductDetail() {
             </Text>
           </TouchableOpacity>
           <View>
-            <AddToCart />
+            <AddToCartBtn
+              item={{
+                id,
+                title,
+                category,
+                price: price ?? 0,
+                image,
+              }}
+              iconSize={22}
+              containerStyle={{
+                padding: rS(16),
+                backgroundColor: "#000",
+              }}
+              iconColor="#fff"
+            />
           </View>
         </View>
       </View>
