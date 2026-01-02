@@ -37,7 +37,7 @@ const AddToCartBtn = ({
           padding: rS(10),
           borderRadius: rS(50),
         },
-        containerStyle, // ✅ override here
+        containerStyle, 
       ]}
     >
       <TouchableOpacity
