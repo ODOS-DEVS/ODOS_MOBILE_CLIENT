@@ -2,6 +2,7 @@ import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
+import { AppColors } from "@/constants/Colors";
 import { PopularProducts } from "@/constants/Data";
 import { rS } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -16,8 +17,20 @@ import {
 } from "react-native";
 
 export default function ProductDetail() {
-  const { id, image, title, category, price, oldPrice, discount, rating, reviews } =
-    useLocalSearchParams();
+  const getParam = (param: string | string[] | undefined) =>
+    Array.isArray(param) ? param[0] : param;
+
+  const params = useLocalSearchParams();
+
+  const id = getParam(params.id) ?? "";
+  const title = getParam(params.title) ?? "";
+  const category = getParam(params.category);
+  const image = getParam(params.image);
+  const price = Number(getParam(params.price) ?? 0);
+  const oldPrice = Number(getParam(params.oldPrice) ?? 0);
+  const rating = Number(getParam(params.rating) ?? 0);
+  const reviews = getParam(params.reviews);
+  const discount = getParam(params.discount);
 
   return (
     <ScrollView className="flex-1 bg-white py-12">
@@ -167,18 +180,25 @@ export default function ProductDetail() {
         />
 
         {/* Buttons */}
-        <View className="flex-row items-center mt-10 mb-16 px-2">
+        <View className="flex-row items-center mt-10 mb-16 px-2 gap-2">
           <View>
             <AddToWishList
               product={{
-                id: String(id), // ⚠️ ideally use ID — see note below
+                id,
                 image,
-                title: title as string,
-                category: category as string,
-                price: Number(price),
-                oldPrice: oldPrice ? Number(oldPrice) : undefined,
-                rating: Number(rating),
-                reviews: reviews as string,
+                title,
+                category,
+                price,
+                oldPrice,
+                rating,
+                reviews,
+              }}
+              size={19}
+              iconColor="#fff"
+              activeIconColor="#ff4d4d"
+              containerStyle={{
+                backgroundColor: AppColors.secondary,
+                padding: rS(13),
               }}
             />
           </View>
@@ -217,13 +237,13 @@ export default function ProductDetail() {
                 id,
                 title,
                 category,
-                price: price ?? 0,
+                price,
                 image,
               }}
               iconSize={22}
               containerStyle={{
-                padding: rS(16),
-                backgroundColor: "#000",
+                padding: rS(13),
+                backgroundColor: AppColors.secondary,
               }}
               iconColor="#fff"
             />
