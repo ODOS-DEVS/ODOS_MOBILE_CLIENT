@@ -1,5 +1,5 @@
 import React from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, ViewStyle, StyleProp } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useWishlist } from "@/context/WishlistContext";
 import { rS } from "@/styles/responsive";
@@ -15,39 +15,52 @@ interface AddToWishListProps {
     rating?: number;
     reviews?: any;
   };
+
   size?: number;
+  iconColor?: string;
+  activeIconColor?: string;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 const AddToWishList: React.FC<AddToWishListProps> = ({
   product,
   size = 18,
+  iconColor = "#444",
+  activeIconColor = "red",
+  containerStyle,
 }) => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
   const liked = wishlist.some((item) => item.id === product.id);
 
   const toggleWishlist = () => {
-    if (liked) removeFromWishlist(product.id);
-    else addToWishlist(product);
+    if (liked) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product);
+    }
   };
 
   return (
     <TouchableOpacity
       onPress={toggleWishlist}
-      style={{
-        backgroundColor: "#fff",
-        width: rS(34),
-        height: rS(34),
-        borderRadius: rS(17),
-        justifyContent: "center",
-        alignItems: "center",
-        elevation: 3,
-      }}
+      activeOpacity={0.7}
+      style={[
+        {
+          backgroundColor: "#fff",
+          padding: rS(10),
+          borderRadius: rS(50),
+          justifyContent: "center",
+          alignItems: "center",
+          elevation: 3,
+        },
+        containerStyle, 
+      ]}
     >
       <FontAwesome
         name={liked ? "heart" : "heart-o"}
         size={size}
-        color={liked ? "red" : "#444"}
+        color={liked ? activeIconColor : iconColor}
       />
     </TouchableOpacity>
   );
