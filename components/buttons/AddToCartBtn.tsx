@@ -3,7 +3,7 @@ import { useToast } from "@/context/ToastContext";
 import { rS } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { StyleProp, TouchableOpacity, View, ViewStyle } from "react-native";
 
 interface AddToCartBtnProps {
   item: {
@@ -13,27 +13,43 @@ interface AddToCartBtnProps {
     price: number;
     image?: any;
   };
+
+  /** 👇 NEW */
+  containerStyle?: StyleProp<ViewStyle>;
+  iconSize?: number;
+  iconColor?: string;
 }
 
-const AddToCart = ({ item }: AddToCartBtnProps) => {
+const AddToCartBtn = ({
+  item,
+  containerStyle,
+  iconSize = rS(14),
+  iconColor = "#000",
+}: AddToCartBtnProps) => {
   const { addToCart } = useCart();
-   const { showToast } = useToast();
+  const { showToast } = useToast();
+
   return (
     <View
-      style={{
-        backgroundColor: "#fff",
-        padding: rS(10),
-        borderRadius: rS(50),
-      }}
+      style={[
+        {
+          backgroundColor: "#fff",
+          padding: rS(10),
+          borderRadius: rS(50),
+        },
+        containerStyle, // ✅ override here
+      ]}
     >
-      <TouchableOpacity onPress={() => {
-        addToCart(item)
-        showToast("Added to cart successfully");
-        } }>
-        <Ionicons name="add" size={rS(14)} color={"#000"} />
+      <TouchableOpacity
+        onPress={() => {
+          addToCart(item);
+          showToast("Added to cart successfully");
+        }}
+      >
+        <Ionicons name="add" size={iconSize} color={iconColor} />
       </TouchableOpacity>
     </View>
   );
 };
 
-export default AddToCart;
+export default AddToCartBtn;
