@@ -1,8 +1,8 @@
-import React from "react";
-import { TouchableOpacity, ViewStyle, StyleProp } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
 import { useWishlist } from "@/context/WishlistContext";
 import { rS } from "@/styles/responsive";
+import { FontAwesome } from "@expo/vector-icons";
+import React from "react";
+import { StyleProp, TouchableOpacity, ViewStyle } from "react-native";
 
 interface AddToWishListProps {
   product: {
@@ -31,13 +31,14 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
 }) => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
-  const liked = wishlist.some((item) => item.id === product.id);
+  const normalizedId = String(product.id);
+  const liked = wishlist.some((item) => item.id === normalizedId);
 
   const toggleWishlist = () => {
     if (liked) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(normalizedId);
     } else {
-      addToWishlist(product);
+      addToWishlist({ ...product, id: normalizedId });
     }
   };
 
@@ -54,7 +55,7 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
           alignItems: "center",
           elevation: 3,
         },
-        containerStyle, 
+        containerStyle,
       ]}
     >
       <FontAwesome
