@@ -39,9 +39,9 @@ const BuyProductScreen = () => {
           {title}
         </Text>
 
-        <View>
+        {/* <View>
           <AddToWishList />
-        </View>
+        </View> */}
       </SafeAreaView>
       <View style={styles.bottomSec}></View>
     </ScrollView>
