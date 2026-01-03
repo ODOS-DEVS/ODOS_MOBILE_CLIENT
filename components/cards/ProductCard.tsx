@@ -36,6 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         router.push({
           pathname: "/screens/[id]" as any,
           params: {
+            id,
             image,
             title,
             category,
