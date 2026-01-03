@@ -205,6 +205,7 @@ export default function ProductDetail() {
               router.push({
                 pathname: "./productDetails/[id]" as any,
                 params: {
+                  id,
                   image,
                   price,
                   title,
