@@ -23,10 +23,15 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const [wishlist, setWishlist] = useState<Product[]>([]);
 
   const addToWishlist = (product: Product) => {
+    const normalizedProduct = {
+      ...product,
+      id: String(product.id), // 🔒 enforce string
+    };
+
     setWishlist((prev) => {
-      const exists = prev.find((item) => item.id === product.id);
-      if (exists) return prev; // prevents duplicates
-      return [...prev, product];
+      const exists = prev.some((item) => item.id === normalizedProduct.id);
+      if (exists) return prev;
+      return [...prev, normalizedProduct];
     });
   };
 

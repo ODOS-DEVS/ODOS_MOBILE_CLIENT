@@ -1,6 +1,6 @@
 export const flashSales = [
   {
-    id: "1",
+    id: "flash-1",
     title: "Karia blo ping backpack",
     category: "Backpack travel",
     price: 59,
@@ -10,7 +10,7 @@ export const flashSales = [
     image: require("@/assets/images/watch1.png"),
   },
   {
-    id: "2",
+    id: "flash-2",
     title: "Erliana blo ping backpack",
     category: "Backpack travel",
     price: 55,
@@ -21,7 +21,7 @@ export const flashSales = [
     image: require("@/assets/images/wallet1.png"),
   },
   {
-    id: "3",
+    id: "flash-3",
     title: "Erliana blo ping backpack",
     category: "Backpack travel",
     price: 55,
@@ -32,7 +32,7 @@ export const flashSales = [
     image: require("@/assets/images/handbag.png"),
   },
   {
-    id: "4",
+    id: "flash-4",
     title: "Erliana blo ping backpack",
     category: "Backpack travel",
     price: 55,
@@ -43,7 +43,7 @@ export const flashSales = [
     image: require("@/assets/images/shoe5.png"),
   },
   {
-    id: "5",
+    id: "flash-5",
     title: "Erliana blo ping backpack",
     category: "Backpack travel",
     price: 55,
@@ -57,7 +57,7 @@ export const flashSales = [
 
 export const recommendations = [
   {
-    id: "1",
+    id: "rec-1",
     title: "Karia backpack",
     category: "Backpack, travel",
     price: 59,
@@ -67,7 +67,7 @@ export const recommendations = [
     favorite: true,
   },
   {
-    id: "2",
+    id: "rec-2",
     title: "Eliana backpack",
     category: "Backpack, travel",
     price: 70,
@@ -77,7 +77,7 @@ export const recommendations = [
     favorite: false,
   },
   {
-    id: "3",
+    id: "rec-3",
     title: "Geria backpack",
     category: "Backpack, travel",
     price: 77,
@@ -90,7 +90,7 @@ export const recommendations = [
 
 export const Stores = [
   {
-    id: "1",
+    id: "st-1",
     title: "Zara Store",
     category: "Bags",
     rating: 4.4,
@@ -98,7 +98,7 @@ export const Stores = [
     favorite: true,
   },
   {
-    id: "2",
+    id: "st-2",
     title: "Gucci Store",
     category: "Fashion",
     rating: 4.4,
@@ -106,7 +106,7 @@ export const Stores = [
     favorite: true,
   },
   {
-    id: "3",
+    id: "st-3",
     title: "Topman Store",
     category: "Shoes",
     rating: 4.4,
@@ -114,7 +114,7 @@ export const Stores = [
     favorite: true,
   },
   {
-    id: "4",
+    id: "st-4",
     title: "Deon Store",
     category: "Groceries",
     rating: 4.4,
@@ -122,7 +122,7 @@ export const Stores = [
     favorite: true,
   },
   {
-    id: "5",
+    id: "st-5",
     title: "Wheel Store",
     category: "Cars",
     rating: 4.4,
@@ -133,7 +133,7 @@ export const Stores = [
 
 export const PopularProducts = [
   {
-    id: "1",
+    id: "pop-1",
     title: "Karia blo ping backpack",
     category: "Backpack travel",
     price: 59,
@@ -142,7 +142,7 @@ export const PopularProducts = [
     image: require("@/assets/images/handbag.png"),
   },
   {
-    id: "2",
+    id: "pop-2",
     title: "Zara",
     category: "Slimfit shirt",
     price: 59,
@@ -152,7 +152,7 @@ export const PopularProducts = [
     image: require("@/assets/images/shoe5.png"),
   },
   {
-    id: "3",
+    id: "pop-3",
     title: "Zara",
     category: "Slimfit shirt",
     price: 59,
@@ -161,7 +161,7 @@ export const PopularProducts = [
     image: require("@/assets/images/wallet1.png"),
   },
   {
-    id: "4",
+    id: "pop-4",
     title: "Zara",
     category: "Slimfit shirt",
     price: 59,
@@ -172,27 +172,27 @@ export const PopularProducts = [
 
 export const markets = [
   {
-    id: "1",
+    id: "mar-1",
     title: "Campus",
     image: require("@/assets/images/shoe5.png"),
   },
   {
-    id: "2",
+    id: "mar-2",
     title: "Kejetia",
     image: require("@/assets/images/handbag.png"),
   },
   {
-    id: "3",
+    id: "mar-3",
     title: "Kanta",
     image: require("@/assets/images/watch1.png"),
   },
   {
-    id: "4",
+    id: "mar-4",
     title: "Campus",
     image: require("@/assets/images/watch1.png"),
   },
   {
-    id: "5",
+    id: "mar-5",
     title: "Tudu",
     image: require("@/assets/images/backpack1.png"),
   },

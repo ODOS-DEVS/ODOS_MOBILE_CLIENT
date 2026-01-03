@@ -22,7 +22,7 @@ export default function ProductDetail() {
 
   const params = useLocalSearchParams();
 
-  const id = getParam(params.id) ?? "";
+  const id = String(getParam(params.id) ?? "");
   const title = getParam(params.title) ?? "";
   const category = getParam(params.category);
   const image = getParam(params.image);
@@ -98,22 +98,17 @@ export default function ProductDetail() {
           </View>
 
           <View className="flex-row justify-between items-center mt-2">
-            <View className="flex-row">
+            <Text className="flex-row items-center">
               <Text className="text-xl font-montserrat-semiBold text-subtext-200">
                 ₵{price}
               </Text>
-              {oldPrice && (
+
+              {oldPrice ? (
                 <Text className="ml-2 text-xl font-montserrat-semiBold text-red-500 line-through">
                   ₵{oldPrice}
                 </Text>
-              )}
-            </View>
-
-            {/* Wrapper to scale the wishlist icon */}
-            <View
-              style={{ transform: [{ scale: 1.5 }] }}
-              className="px-8"
-            ></View>
+              ) : null}
+            </Text>
           </View>
         </View>
 
@@ -195,7 +190,7 @@ export default function ProductDetail() {
               }}
               size={19}
               iconColor="#fff"
-              activeIconColor="#ff4d4d"
+              activeIconColor="#fff"
               containerStyle={{
                 backgroundColor: AppColors.secondary,
                 padding: rS(13),

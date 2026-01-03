@@ -34,6 +34,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         router.push({
           pathname: "/screens/[id]" as any,
           params: {
+            id,
             image,
             title,
             category,

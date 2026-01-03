@@ -25,6 +25,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
         router.push({
           pathname: "/screens/stores/[id]" as any,
           params: {
+            id,
             image,
             title,
           },
