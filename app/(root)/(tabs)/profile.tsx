@@ -42,9 +42,13 @@ export default function ProfileScreen() {
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
       <View style={styles.card}>
-        <MenuItem icon="receipt-outline" label="Orders" onPress={()=>{
-          router.push("../screens/profileScreens/orders/[orderId]")
-        }} />
+        <MenuItem
+          icon="receipt-outline"
+          label="Orders"
+          onPress={() => {
+            router.push("../screens/profileScreens/orders/[orderId]");
+          }}
+        />
         <MenuItem icon="return-up-back-outline" label="Returns" />
         <MenuItem icon="location-outline" label="Addresses" />
         <MenuItem icon="chatbubble-outline" label="Chats" />
@@ -87,10 +91,22 @@ export default function ProfileScreen() {
       {/* Help & Support */}
       <Text style={styles.sectionTitle}>Help & Support</Text>
       <View style={styles.card}>
-        <MenuItem icon="help-circle-outline" label="Get Help" />
+        <MenuItem
+          icon="help-circle-outline"
+          label="Get Help"
+          onPress={() => {
+            router.push("../screens/profileScreens/helpAndSupport/GetHelp");
+          }}
+        />
         <MenuItem icon="document-text-outline" label="Legal & Policy" />
         <MenuItem icon="library-outline" label="Resources" />
-        <MenuItem icon="help-outline" label="FAQ" />
+        <MenuItem
+          icon="help-outline"
+          label="FAQ"
+          onPress={() => {
+            router.push("../screens/profileScreens/helpAndSupport/FAQ");
+          }}
+        />
       </View>
 
       {/* Logout */}
