@@ -50,11 +50,25 @@ export default function ProfileScreen() {
           }}
         />
         <MenuItem icon="return-up-back-outline" label="Returns" />
-        <MenuItem icon="location-outline" label="Addresses" />
+        <MenuItem
+          icon="location-outline"
+          label="Addresses"
+          onPress={() => {
+            router.push("../screens/profileScreens/Account/Addresses");
+          }}
+        />
         <MenuItem icon="chatbubble-outline" label="Chats" />
-        <MenuItem icon="card-outline" label="Payment Method" />
+        <MenuItem icon="card-outline" label="Payment Method" onPress={() => {
+            router.push("../screens/profileScreens/Account/Wallet");
+          }} />
         <MenuItem icon="star-outline" label="Reviews" />
-        <MenuItem icon="ticket-outline" label="Vouchers" />
+        <MenuItem
+          icon="ticket-outline"
+          label="Vouchers"
+          onPress={() => {
+            router.push("../screens/profileScreens/Account/Vouchers");
+          }}
+        />
         <MenuItem icon="briefcase-outline" label="Request to be a vendor" />
       </View>
 
@@ -66,7 +80,7 @@ export default function ProfileScreen() {
           label="Notification"
           onPress={() => {
             router.push(
-              "../screens/profileScreens/personalization/Notification"
+              "../screens/profileScreens/personalization/Notification",
             );
           }}
         />
@@ -75,7 +89,7 @@ export default function ProfileScreen() {
           label="Preferences"
           onPress={() => {
             router.push(
-              "../screens/profileScreens/personalization/Preferences"
+              "../screens/profileScreens/personalization/Preferences",
             );
           }}
         />
@@ -98,7 +112,13 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/helpAndSupport/GetHelp");
           }}
         />
-        <MenuItem icon="document-text-outline" label="Legal & Policy" />
+        <MenuItem
+          icon="document-text-outline"
+          label="Legal & Policy"
+          onPress={() => {
+            router.push("../screens/profileScreens/helpAndSupport/LegalPolicy");
+          }}
+        />
         <MenuItem icon="library-outline" label="Resources" />
         <MenuItem
           icon="help-outline"

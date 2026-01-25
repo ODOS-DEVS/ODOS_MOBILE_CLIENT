@@ -1,4 +1,4 @@
-import Colors, { AppColors } from "@/constants/Colors";
+import  { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,7 +62,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
             <Ionicons
               name={isVisible ? "eye" : "eye-off"}
               size={20}
-              color={Colors.secondary}
+              color={AppColors.secondary}
             />
           </TouchableOpacity>
         )}
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     paddingLeft: rS(8),
     fontFamily: Fonts.textBold,
     fontSize: rMS(13),
-    color: Colors.primary,
+    color: AppColors.primary,
   },
 
   inputWrapper: {
