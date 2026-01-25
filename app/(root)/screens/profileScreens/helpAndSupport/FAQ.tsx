@@ -1,7 +1,7 @@
 import CollapsibleCard from "@/components/cards/CollapsableCard";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
-import Colors, { AppColors } from "@/constants/Colors";
+import  { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -140,8 +140,8 @@ const styles = StyleSheet.create({
   },
 
   activeChip: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
 
   chipText: {
