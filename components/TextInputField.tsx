@@ -106,5 +106,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     fontSize: rMS(14),
     color: AppColors.text,
+    margin: 0,
+    padding: 0
   },
 });
