@@ -36,7 +36,7 @@ const SignInScreen = () => {
 
         <View
           className="flex flex-row justify-between"
-          style={{ marginTop: rV(15) }}
+          style={{ marginTop: rV(2) }}
         >
           <TouchableOpacity>
             <Text
