@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: rV(14),
-    marginBottom: rMS(90),
+    marginBottom: rMS(180),
   },
 
   logoutText: {
