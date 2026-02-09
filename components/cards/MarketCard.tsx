@@ -1,3 +1,4 @@
+import { rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
@@ -29,20 +30,35 @@ const MarketCard: React.FC<MarketCardProps> = ({
         })
       }
     >
-      <View className="w-[150px] rounded-2xl mr-3 mb-4 mt-4">
-        {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+      <View
+        style={{
+          width: rS(150),
+          borderRadius: rS(16),
+          marginRight: rS(12),
+          marginBottom: rV(16),
+          marginTop: rV(4),
+        }}
+      >
+        <View
+          style={{
+            height: rV(160),
+            backgroundColor: "#f3f4f6",
+            borderTopLeftRadius: rS(16),
+            borderTopRightRadius: rS(16),
+            overflow: "hidden",
+          }}
+        >
           <Image
             source={image}
-            className="w-full h-full bg-tertiary"
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
         </View>
 
-        {/* ---------- TEXT SECTION ---------- */}
-        <View className="p-3">
+        <View style={{ padding: rS(12) }}>
           <Text
-            className="text-[13px] mb-2 font-montserrat-bold text-text text-left"
+            className="font-montserrat-bold text-text text-left"
+            style={{ fontSize: rS(13), marginBottom: rV(8) }}
             numberOfLines={1}
           >
             {title}
@@ -50,7 +66,11 @@ const MarketCard: React.FC<MarketCardProps> = ({
 
           <View className="flex-row justify-between">
             {category && (
-              <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
+              <Text
+                className="text-subtext"
+                style={{ fontSize: rS(11), marginTop: 2 }}
+                numberOfLines={1}
+              >
                 {category}
               </Text>
             )}

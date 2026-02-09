@@ -1,4 +1,10 @@
 import {
+  useProfile,
+  type MomoNetwork,
+  type PaymentType,
+} from "@/context/ProfileContext";
+import { router, useLocalSearchParams } from "expo-router";
+import {
   ChevronLeft,
   CreditCard,
   Phone,
@@ -18,38 +24,24 @@ import {
   View,
 } from "react-native";
 
-// ------------------
-// Types
-// ------------------
-type PaymentType = "card" | "momo";
-type MomoNetwork = "MTN" | "Telecel" | "AT";
+const getParam = (p: string | string[] | undefined) =>
+  Array.isArray(p) ? p[0] : p;
 
-interface PaymentMethod {
-  id: string;
-  type: PaymentType;
-  label: string;
-  isDefault?: boolean;
-
-  // Card
-  cardName?: string;
-  cardNumber?: string;
-  expiry?: string;
-  cvv?: string;
-
-  // MoMo
-  network?: MomoNetwork;
-  phone?: string;
-}
-
-// ------------------
-// Component
-// ------------------
 export default function WalletScreen() {
-  const [payments, setPayments] = useState<PaymentMethod[]>([]);
+  const {
+    paymentMethods,
+    addPayment,
+    removePayment,
+    setDefaultPayment,
+    setCheckoutPaymentId,
+  } = useProfile();
+
+  const params = useLocalSearchParams();
+  const fromCheckout = getParam(params.fromCheckout) === "1";
+
   const [showModal, setShowModal] = useState(false);
   const [type, setType] = useState<PaymentType>("card");
-
-  const [form, setForm] = useState<Partial<PaymentMethod>>({});
+  const [form, setForm] = useState<Record<string, string>>({});
 
   const resetForm = () => {
     setForm({});
@@ -63,34 +55,31 @@ export default function WalletScreen() {
         Alert.alert("Missing fields", "Please fill all card details.");
         return;
       }
-    }
-
-    if (type === "momo") {
+      addPayment({
+        type: "card",
+        label: `**** ${cardNumber.slice(-4)}`,
+        isDefault: paymentMethods.length === 0,
+        cardName,
+        cardNumber,
+        expiry,
+        cvv,
+      });
+    } else {
       const { network, phone } = form;
       if (!network || !phone) {
         Alert.alert("Missing fields", "Please complete MoMo details.");
         return;
       }
+      addPayment({
+        type: "momo",
+        label: `${network} MoMo`,
+        isDefault: paymentMethods.length === 0,
+        network: network as MomoNetwork,
+        phone,
+      });
     }
-
-    const newPayment: PaymentMethod = {
-      id: Date.now().toString(),
-      type,
-      label:
-        type === "card"
-          ? `**** ${form.cardNumber?.slice(-4)}`
-          : `${form.network} MoMo`,
-      isDefault: payments.length === 0,
-      ...form,
-    };
-
-    setPayments((prev) => [...prev, newPayment]);
     resetForm();
     setShowModal(false);
-  };
-
-  const setDefault = (id: string) => {
-    setPayments((prev) => prev.map((p) => ({ ...p, isDefault: p.id === id })));
   };
 
   const handleDelete = (id: string) => {
@@ -99,21 +88,28 @@ export default function WalletScreen() {
       {
         text: "Remove",
         style: "destructive",
-        onPress: () => setPayments((prev) => prev.filter((p) => p.id !== id)),
+        onPress: () => removePayment(id),
       },
     ]);
   };
 
+  const handleUseForCheckout = (id: string) => {
+    setCheckoutPaymentId(id);
+    router.back();
+  };
+
   return (
     <View className="flex-1 bg-gray-100">
-      {/* Header */}
       <View className="bg-white px-4 pt-16 pb-4 flex-row items-center border-b border-gray-200">
-        <ChevronLeft size={24} />
-        <Text className="text-xl font-semibold ml-3">Wallet</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <ChevronLeft size={24} />
+        </TouchableOpacity>
+        <Text className="text-xl font-semibold ml-3">
+          {fromCheckout ? "Choose payment" : "Wallet"}
+        </Text>
       </View>
 
-      {/* Empty State */}
-      {payments.length === 0 && (
+      {paymentMethods.length === 0 && (
         <View className="flex-1 items-center justify-center px-8">
           <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
             <CreditCard size={40} color="#6B7280" />
@@ -125,9 +121,8 @@ export default function WalletScreen() {
         </View>
       )}
 
-      {/* List */}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-        {payments.map((p) => (
+        {paymentMethods.map((p) => (
           <View key={p.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm">
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-3">
@@ -143,7 +138,6 @@ export default function WalletScreen() {
                   </Text>
                 </View>
               </View>
-
               {p.isDefault && (
                 <View className="bg-black px-3 py-1 rounded-full">
                   <Text className="text-white text-xs">Default</Text>
@@ -152,45 +146,63 @@ export default function WalletScreen() {
             </View>
 
             <View className="flex-row mt-5 gap-2">
-              {!p.isDefault && (
+              {fromCheckout && (
                 <TouchableOpacity
-                  onPress={() => setDefault(p.id)}
-                  className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
+                  onPress={() => handleUseForCheckout(p.id)}
+                  className="flex-1 bg-black rounded-xl py-3 items-center"
                 >
-                  <Star size={16} />
-                  <Text className="text-xs font-semibold mt-1">
-                    Set Default
+                  <Text className="text-white text-sm font-semibold">
+                    Use this method
                   </Text>
                 </TouchableOpacity>
               )}
-
-              <TouchableOpacity
-                onPress={() => handleDelete(p.id)}
-                className="flex-1 bg-red-50 rounded-xl py-3 items-center"
-              >
-                <Trash2 size={16} color="#DC2626" />
-                <Text className="text-xs font-semibold text-red-600 mt-1">
-                  Remove
-                </Text>
-              </TouchableOpacity>
+              {!fromCheckout && (
+                <>
+                  {!p.isDefault && (
+                    <TouchableOpacity
+                      onPress={() => setDefaultPayment(p.id)}
+                      className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
+                    >
+                      <Star size={16} />
+                      <Text className="text-xs font-semibold mt-1">
+                        Set Default
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => handleDelete(p.id)}
+                    className="flex-1 bg-red-50 rounded-xl py-3 items-center"
+                  >
+                    <Trash2 size={16} color="#DC2626" />
+                    <Text className="text-xs font-semibold text-red-600 mt-1">
+                      Remove
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         ))}
       </ScrollView>
 
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        onPress={() => setShowModal(true)}
-        className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
-      >
-        <Plus size={26} color="white" />
-      </TouchableOpacity>
+      {!fromCheckout && (
+        <TouchableOpacity
+          onPress={() => setShowModal(true)}
+          className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
+        >
+          <Plus size={26} color="white" />
+        </TouchableOpacity>
+      )}
 
-      {/* Add Modal */}
       <Modal visible={showModal} animationType="slide">
         <View className="flex-1 bg-white px-5 pt-14">
           <View className="flex-row items-center mb-6">
-            <TouchableOpacity onPress={() => setShowModal(false)}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowModal(false);
+                resetForm();
+              }}
+            >
               <X size={26} />
             </TouchableOpacity>
             <Text className="text-xl font-semibold ml-4">
@@ -198,12 +210,11 @@ export default function WalletScreen() {
             </Text>
           </View>
 
-          {/* Type Selector */}
           <View className="flex-row gap-3 mb-6">
-            {["card", "momo"].map((t) => (
+            {(["card", "momo"] as const).map((t) => (
               <TouchableOpacity
                 key={t}
-                onPress={() => setType(t as PaymentType)}
+                onPress={() => setType(t)}
                 className={`flex-1 py-4 rounded-xl items-center ${
                   type === t ? "bg-black" : "bg-gray-100"
                 }`}
@@ -224,29 +235,32 @@ export default function WalletScreen() {
             ))}
           </View>
 
-          {/* Card Fields */}
           {type === "card" && (
             <>
               <TextInput
                 placeholder="Cardholder Name"
+                value={form.cardName ?? ""}
                 onChangeText={(t) => setForm({ ...form, cardName: t })}
                 className="bg-gray-100 rounded-xl px-4 py-4 mb-4"
               />
               <TextInput
                 placeholder="Card Number"
                 keyboardType="number-pad"
+                value={form.cardNumber ?? ""}
                 onChangeText={(t) => setForm({ ...form, cardNumber: t })}
                 className="bg-gray-100 rounded-xl px-4 py-4 mb-4"
               />
               <View className="flex-row gap-3">
                 <TextInput
                   placeholder="MM/YY"
+                  value={form.expiry ?? ""}
                   onChangeText={(t) => setForm({ ...form, expiry: t })}
                   className="flex-1 bg-gray-100 rounded-xl px-4 py-4"
                 />
                 <TextInput
                   placeholder="CVV"
                   keyboardType="number-pad"
+                  value={form.cvv ?? ""}
                   onChangeText={(t) => setForm({ ...form, cvv: t })}
                   className="flex-1 bg-gray-100 rounded-xl px-4 py-4"
                 />
@@ -254,17 +268,14 @@ export default function WalletScreen() {
             </>
           )}
 
-          {/* MoMo Fields */}
           {type === "momo" && (
             <>
               <Text className="font-semibold mb-3">Select Network</Text>
               <View className="flex-row gap-3 mb-4">
-                {["MTN", "Telecel", "AT"].map((n) => (
+                {(["MTN", "Telecel", "AT"] as const).map((n) => (
                   <TouchableOpacity
                     key={n}
-                    onPress={() =>
-                      setForm({ ...form, network: n as MomoNetwork })
-                    }
+                    onPress={() => setForm({ ...form, network: n })}
                     className={`flex-1 py-4 rounded-xl items-center ${
                       form.network === n ? "bg-black" : "bg-gray-100"
                     }`}
@@ -279,10 +290,10 @@ export default function WalletScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-
               <TextInput
                 placeholder="Phone Number"
                 keyboardType="phone-pad"
+                value={form.phone ?? ""}
                 onChangeText={(t) => setForm({ ...form, phone: t })}
                 className="bg-gray-100 rounded-xl px-4 py-4"
               />

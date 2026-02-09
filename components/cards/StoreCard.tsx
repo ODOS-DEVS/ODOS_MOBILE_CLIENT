@@ -1,3 +1,4 @@
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -32,35 +33,59 @@ const StoreCard: React.FC<StoreCardProps> = ({
         })
       }
     >
-      <View className="w-[180px] rounded-2xl mr-3 mb-4 mt-4">
-        {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+      <View
+        style={{
+          width: rS(180),
+          borderRadius: rS(16),
+          marginRight: rS(12),
+          marginBottom: rV(16),
+          marginTop: rV(4),
+        }}
+      >
+        <View
+          style={{
+            position: "relative",
+            height: rV(160),
+            backgroundColor: "#f3f4f6",
+            borderTopLeftRadius: rS(16),
+            borderTopRightRadius: rS(16),
+            overflow: "hidden",
+          }}
+        >
           <Image
             source={image}
-            className="w-full h-full bg-tertiary"
+            className="bg-tertiary"
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
         </View>
 
-        {/* ---------- TEXT SECTION ---------- */}
-        <View className="p-3">
+        <View style={{ padding: rS(12) }}>
           <Text
-            className="text-[13px] mb-2 font-montserrat-bold text-text text-left"
+            className="font-montserrat-bold text-text text-left"
+            style={{ fontSize: rS(13), marginBottom: rV(8) }}
             numberOfLines={1}
           >
             {title}
           </Text>
 
-          <View className="flex justify-start gap-1">
+          <View style={{ flexDirection: "column", gap: 4 }}>
             {category && (
-              <Text className="text-xs text-subtext" numberOfLines={1}>
+              <Text
+                className="text-subtext"
+                style={{ fontSize: rS(11) }}
+                numberOfLines={1}
+              >
                 {category}
               </Text>
             )}
             {rating && (
-              <View className={"flex-row items-center"}>
-                <Ionicons name="star" size={14} color="#facc15" />
-                <Text className="ml-1 text-xs text-subtext-200 font-montserrat-extraBold">
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Text
+                  className="text-subtext-200 font-montserrat-extraBold"
+                  style={{ fontSize: rS(11), marginLeft: rS(4) }}
+                >
                   {rating.toFixed(1)}
                 </Text>
               </View>
