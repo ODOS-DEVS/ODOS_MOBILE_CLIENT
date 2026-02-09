@@ -1,4 +1,5 @@
 import { CartProvider } from "@/context/CartContext";
+import { ProfileProvider } from "@/context/ProfileContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { useFonts } from "expo-font";
@@ -28,15 +29,17 @@ export default function RootLayout() {
 
   return (
     <ToastProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          />
-        </WishlistProvider>
-      </CartProvider>
+      <ProfileProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            />
+          </WishlistProvider>
+        </CartProvider>
+      </ProfileProvider>
     </ToastProvider>
   );
 }

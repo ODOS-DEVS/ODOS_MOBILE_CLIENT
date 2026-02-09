@@ -1,4 +1,4 @@
-import { rS } from "@/styles/responsive";
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -46,33 +46,57 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         })
       }
     >
-      <View className="flex-row items-center rounded-2xl pt-4 ">
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: rS(16),
+          paddingTop: rV(16),
+        }}
+      >
         <Image
           source={image}
-          className="w-[90px] h-[90px] rounded-xl mr-4 bg-tertiary"
+          style={{
+            width: rS(90),
+            height: rS(80),
+            borderRadius: rS(12),
+            marginRight: rS(10),
+            backgroundColor: "#E5E7EB",
+          }}
           resizeMode="contain"
         />
 
-        <View className="flex-1">
+        <View style={{ flex: 1 }}>
           <Text
-            className="text-[14px] font-montserrat-semiBold text-subtext-200"
+            className="font-montserrat-semiBold text-subtext-200"
+            style={{ fontSize: rS(12) }}
             numberOfLines={1}
           >
             {title}
           </Text>
           {category && (
-            <Text className="text-xs text-subtext-200 mt-0.5" numberOfLines={1}>
+            <Text
+              className="text-subtext-200"
+              style={{ fontSize: rS(8), marginTop: 2 }}
+              numberOfLines={1}
+            >
               {category}
             </Text>
           )}
 
-          <View className="flex-row items-center mt-1.5">
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginTop: rV(6),
+            }}
+          >
             {hasPrice && (
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 {price && (
                   <Text
                     style={{
-                      fontSize: rS(13),
+                      fontSize: rS(12),
                       fontWeight: "800",
                       color: "#222",
                     }}
@@ -84,7 +108,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 {oldPrice && (
                   <Text
                     style={{
-                      fontSize: rS(11),
+                      fontSize: rS(12),
                       marginLeft: rS(6),
                       color: "red",
                       textDecorationLine: "line-through",
@@ -98,13 +122,25 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             )}
 
             {rating && (
-              <View className="flex-row items-center ml-4">
-                <Ionicons name="star" color="#facc15" />
-                <Text className="ml-1 text-xs font-montserrat-extraBold text-subtext-200">
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginLeft: rS(10),
+                }}
+              >
+                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Text
+                  className="font-montserrat-extraBold text-subtext-200"
+                  style={{ fontSize: rS(11), marginLeft: rS(4) }}
+                >
                   {rating.toFixed(1)}
                 </Text>
                 {reviews && (
-                  <Text className="text-xs text-subtext-200 ml-1">
+                  <Text
+                    className="text-subtext-200"
+                    style={{ fontSize: rS(11), marginLeft: rS(4) }}
+                  >
                     ({reviews} Review{reviews > 1 ? "s" : ""})
                   </Text>
                 )}
@@ -113,7 +149,15 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           </View>
         </View>
 
-        <View className="flex-row items-center gap-3 ml-4 mr-2">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: rS(8),
+            marginBottom: rS(20),
+            marginRight: rS(-4),
+          }}
+        >
           <AddToCartBtn
             item={{
               id,

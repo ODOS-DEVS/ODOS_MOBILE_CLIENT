@@ -1,3 +1,4 @@
+import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -14,6 +15,8 @@ interface ProductCardProps {
   discount?: string;
   rating?: number;
   reviews?: any;
+  /** Optional width for grid layouts (e.g. search results); otherwise uses scaled default */
+  cardWidth?: number;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -26,9 +29,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
   discount,
   rating,
   reviews,
+  cardWidth,
 }) => {
-  // 💡 Check if price section exists
   const hasPrice = !!price || !!oldPrice;
+  const width = cardWidth ?? rS(160);
+  const imageHeight = rV(130);
 
   return (
     <TouchableOpacity
@@ -49,9 +54,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
         })
       }
     >
-      <View className="w-[180px] rounded-2xl mr-3 mb-4 mt-4">
+      <View
+        style={{
+          width,
+          borderRadius: rS(16),
+          marginRight: rS(12),
+          marginBottom: rV(16),
+          marginTop: rV(4),
+        }}
+      >
         {/* ---------- IMAGE SECTION ---------- */}
-        <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
+        <View
+          style={{
+            position: "relative",
+            height: imageHeight,
+            backgroundColor: "#f3f4f6",
+            borderTopLeftRadius: rS(16),
+            borderTopRightRadius: rS(16),
+            borderBottomLeftRadius: rS(16),
+            borderBottomRightRadius: rS(16),
+            overflow: "hidden",
+          }}
+        >
           <Image
             source={image}
             className="w-full h-full bg-tertiary"
@@ -60,14 +84,40 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Discount badge */}
           {discount && (
-            <View className="absolute top-2 left-2 bg-gray-800 px-2 py-1 rounded-md">
-              <Text className="text-white text-[10px] font-semibold">
+            <View
+              style={{
+                position: "absolute",
+                top: rV(8),
+                left: rS(8),
+                backgroundColor: "#1f2937",
+                paddingHorizontal: rS(8),
+                paddingVertical: rV(4),
+                borderRadius: rS(6),
+              }}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: rS(10),
+                  fontWeight: "600",
+                }}
+              >
                 {discount}
               </Text>
             </View>
           )}
 
-          <View className="absolute top-1 bottom-2 right-1 flex-col gap-5 py-2">
+          <View
+            style={{
+              position: "absolute",
+              top: rV(4),
+              bottom: rV(8),
+              right: rS(4),
+              flexDirection: "column",
+              gap: rV(20),
+              paddingVertical: rV(8),
+            }}
+          >
             <AddToWishList
               product={{
                 id,
@@ -92,9 +142,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </View>
 
         {/* ---------- TEXT SECTION ---------- */}
-        <View className="p-3">
+        <View style={{ padding: rS(12) }}>
           <Text
-            className="text-[13px] font-montserrat-bold text-text"
+            className="font-montserrat-bold text-text"
+            style={{ fontSize: rS(13) }}
             numberOfLines={1}
           >
             {title}
@@ -102,48 +153,72 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           <View className="flex-row justify-between">
             {category && (
-              <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
+              <Text
+                className="text-subtext"
+                style={{ fontSize: rS(11), marginTop: 2 }}
+                numberOfLines={1}
+              >
                 {category}
               </Text>
             )}
             {reviews && (
-              <Text className="text-xs text-subtext mt-0.5" numberOfLines={1}>
+              <Text
+                className="text-subtext"
+                style={{ fontSize: rS(11), marginTop: 2 }}
+                numberOfLines={1}
+              >
                 {reviews}
               </Text>
             )}
           </View>
 
-          {/* ---------- PRICE & RATING SECTION ---------- */}
           <View
-            className={`flex-row items-center mt-2 ${
-              hasPrice ? "" : "justify-start"
-            }`}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginTop: rV(8),
+              justifyContent: hasPrice ? "flex-start" : "flex-start",
+            }}
           >
-            {/* ✅ PRICE & OLD PRICE (Only if available) */}
             {hasPrice && (
               <>
                 {price && (
-                  <Text className="text-[13px] font-bold text-subtext-200 font-montserrat-extraBold">
+                  <Text
+                    className="font-montserrat-extraBold text-subtext-200"
+                    style={{ fontSize: rS(13), fontWeight: "700" }}
+                  >
                     ${price}
                   </Text>
                 )}
                 {oldPrice && (
-                  <Text className="text-[12px] text-red-500 line-through ml-2 font-montserrat-extraBold">
+                  <Text
+                    className="text-red-500 font-montserrat-extraBold"
+                    style={{
+                      fontSize: rS(12),
+                      marginLeft: rS(8),
+                      textDecorationLine: "line-through",
+                    }}
+                  >
                     ${oldPrice}
                   </Text>
                 )}
               </>
             )}
 
-            {/* ✅ RATING: Moves based on price existence */}
             {rating && (
               <View
-                className={`flex-row items-center ${
-                  hasPrice ? "ml-auto" : "mt-1"
-                }`}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginLeft: hasPrice ? "auto" : 0,
+                  marginTop: hasPrice ? 0 : rV(4),
+                }}
               >
-                <Ionicons name="star" size={14} color="#facc15" />
-                <Text className="ml-1 text-sm text-subtext-200 font-montserrat-extraBold">
+                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Text
+                  className="ml-1 text-subtext-200 font-montserrat-extraBold"
+                  style={{ fontSize: rS(12), marginLeft: rS(4) }}
+                >
                   {rating.toFixed(1)}
                 </Text>
               </View>
