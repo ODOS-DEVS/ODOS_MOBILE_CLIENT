@@ -1,3 +1,4 @@
+import { useResponsive } from "@/styles/responsive";
 import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -15,9 +16,10 @@ export const SearchBar = ({
   onStartSearch,
 }: SearchBarProps) => {
   const [query, setQuery] = useState("");
+  const { horizontalPadding } = useResponsive();
 
   const handleSearch = () => {
-    onStartSearch?.(); // notify parent to show search screen
+    onStartSearch?.();
 
     if (query.trim() === "") {
       onResults([]);
@@ -35,17 +37,17 @@ export const SearchBar = ({
     <View
       className="flex-row items-center bg-accent rounded-full shadow-sm border border-primary"
       style={{
-        marginHorizontal: rS(18),
+        marginHorizontal: horizontalPadding,
         marginTop: rV(18),
-        paddingHorizontal: rS(10),
-        paddingVertical: rV(8),
+        paddingHorizontal: rS(14),
+        paddingVertical: rV(10),
       }}
     >
       <TouchableOpacity
-        className="ml-3 bg-accent p-2 rounded-lg"
+        style={{ marginLeft: rS(12), padding: rS(8), borderRadius: rS(8) }}
         onPress={handleSearch}
       >
-        <Ionicons name="search-outline" size={18} color="#696969" />
+        <Ionicons name="search-outline" size={rS(18)} color="#696969" />
       </TouchableOpacity>
 
       <TextInput
@@ -58,8 +60,10 @@ export const SearchBar = ({
         onSubmitEditing={handleSearch} // press ENTER to search
       />
 
-      <TouchableOpacity className="ml-3 bg-accent p-2 rounded-lg">
-        <Ionicons name="funnel-outline" size={18} color="#696969" />
+      <TouchableOpacity
+        style={{ marginLeft: rS(12), padding: rS(8), borderRadius: rS(8) }}
+      >
+        <Ionicons name="funnel-outline" size={rS(18)} color="#696969" />
       </TouchableOpacity>
     </View>
   );
