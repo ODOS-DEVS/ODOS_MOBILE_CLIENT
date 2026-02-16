@@ -1,8 +1,8 @@
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ChevronLeft,
   Edit2,
   MapPin,
   Plus,
@@ -104,15 +104,7 @@ export default function AddressScreen() {
 
   return (
     <View className="flex-1 bg-gray-100">
-      {/* Header */}
-      <View className="bg-white px-4 pt-16 pb-4 flex-row items-center border-b border-gray-200">
-        <TouchableOpacity onPress={() => router.back()}>
-          <ChevronLeft size={24} />
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold ml-3">
-          {fromCheckout ? "Choose address" : "My Addresses"}
-        </Text>
-      </View>
+      <ProfileHeader title={fromCheckout ? "Choose Address" : "My Addresses"} />
 
       {/* Empty State */}
       {addresses.length === 0 && (

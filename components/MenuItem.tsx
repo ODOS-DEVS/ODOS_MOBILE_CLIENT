@@ -1,4 +1,6 @@
+import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -10,12 +12,12 @@ type MenuItemProps = {
 
 export const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress }) => {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.75}>
       <View style={styles.menuLeft}>
-        <Ionicons name={icon} size={20} color="#555" />
+        <Ionicons name={icon} size={rMS(19)} color={AppColors.secondary} />
         <Text style={styles.menuText}>{label}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#999" />
+      <Ionicons name="chevron-forward" size={rMS(17)} color={AppColors.subtext[100]} />
     </TouchableOpacity>
   );
 };
@@ -25,10 +27,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#eee",
+    paddingVertical: rV(14),
+    paddingHorizontal: rS(16),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#ECEFF3",
   },
 
   menuLeft: {
@@ -37,9 +39,9 @@ const styles = StyleSheet.create({
   },
 
   menuText: {
-    fontSize: 15,
-    marginLeft: 12,
-    color: "#222",
+    fontSize: rMS(15),
+    marginLeft: rS(12),
+    color: AppColors.text,
     fontFamily: Fonts.title,
   },
 });

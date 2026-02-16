@@ -1,161 +1,109 @@
-import CollapsibleCard from "@/components/cards/CollapsableCard";
 import { SearchBar } from "@/components/SearchBar";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import SortTabs from "@/components/SortTabs";
-import  { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import CollapsibleCard from "@/components/cards/CollapsableCard";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useMemo, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
-const FAQScreen = () => {
-  const router = useRouter();
-
-  return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={20} color={AppColors.text} />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>FAQ</Text>
-      </View>
-
-      {/* Search */}
-      <View>
-        <SearchBar
-          data={[]}
-          onResults={function (results: any[]): void {
-            throw new Error("Function not implemented.");
-          }}
-        />
-      </View>
-
-      {/* Filters */}
-      <View className="pt-4">
-        <SortTabs
-          options={[
-            "All",
-            "Get Started",
-            "Payment",
-            "Be a vendor",
-            "Vouchers",
-            "Markets",
-          ]}
-          onChange={() => {}}
-          defaultOption="All"
-        />
-      </View>
-
-      {/* FAQ List */}
-      <View style={styles.list}>
-        <CollapsibleCard
-          title="Are there fees if I pay by Credit/Debit Card?"
-          description={[
-            "No, there are no additional fees for payments by Credit / Debit cards.",
-          ]}
-        />
-
-        <CollapsibleCard
-          title="Why can't I check out with my credit/debit card?"
-          description={[
-            "Lorem ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.",
-          ]}
-        />
-
-        <CollapsibleCard
-          title="What payment methods are supported for Postpaid bills?"
-          description={[
-            "Lorem ipsum is simply dummy text of the printing and typesetting industry.",
-          ]}
-        />
-
-        <CollapsibleCard
-          title="How to make purchases with Apple Pay?"
-          description={[
-            "Lorem ipsum is simply dummy text of the printing and typesetting industry.",
-          ]}
-        />
-      </View>
-    </ScrollView>
-  );
+type FAQItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string[];
 };
 
-export default FAQScreen;
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    id: "faq-1",
+    category: "Payment",
+    title: "Are there fees if I pay by Credit/Debit Card?",
+    description: ["No, there are no additional fees for payments by credit or debit card."],
+  },
+  {
+    id: "faq-2",
+    category: "Payment",
+    title: "Why can't I check out with my card?",
+    description: ["Ensure your card details are valid, has enough funds, and supports online payments."],
+  },
+  {
+    id: "faq-3",
+    category: "Vouchers",
+    title: "How do I use vouchers at checkout?",
+    description: ["On checkout, pick an active voucher from your profile wallet before placing an order."],
+  },
+  {
+    id: "faq-4",
+    category: "Get Started",
+    title: "How do I update my profile details?",
+    description: ["Go to Profile > Customer Profile, update your details, then tap Save Changes."],
+  },
+];
+
+const FILTERS = ["All", "Get Started", "Payment", "Be a vendor", "Vouchers", "Markets"];
+
+export default function FAQScreen() {
+  const [selectedFilter, setSelectedFilter] = useState("All");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const filtered = useMemo(() => {
+    const base = isSearching ? (searchResults as FAQItem[]) : FAQ_ITEMS;
+    if (selectedFilter === "All") return base;
+    return base.filter((item) => item.category.toLowerCase() === selectedFilter.toLowerCase());
+  }, [isSearching, searchResults, selectedFilter]);
+
+  const searchData = FAQ_ITEMS.map((item) => ({ ...item, title: item.title }));
+
+  return (
+    <View style={styles.container}>
+      <ProfileHeader title="FAQ" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        <SearchBar
+          data={searchData}
+          onStartSearch={() => setIsSearching(true)}
+          onResults={(results) => setSearchResults(results)}
+        />
+
+        <View style={styles.sortWrap}>
+          <SortTabs
+            options={FILTERS}
+            defaultOption="All"
+            onChange={(value) => setSelectedFilter(value)}
+          />
+        </View>
+
+        <View style={styles.listWrap}>
+          {filtered.map((item) => (
+            <CollapsibleCard key={item.id} title={item.title} description={item.description} />
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
+  content: {
     paddingHorizontal: rS(16),
-    paddingBottom: rV(30),
+    paddingTop: rV(12),
+    paddingBottom: rV(28),
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: rV(60),
-    marginBottom: rV(20),
+  sortWrap: {
+    marginTop: rV(8),
   },
-
-  backButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F2F2F2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(12),
-  },
-
-  headerTitle: {
-    fontSize: rMS(18),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-
-  filterRow: {
-    marginVertical: rV(16),
-  },
-
-  chip: {
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(8),
-    borderRadius: rMS(20),
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    marginRight: rS(10),
-  },
-
-  activeChip: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
-  },
-
-  chipText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: "#666",
-  },
-
-  activeChipText: {
-    color: "#fff",
-    fontFamily: Fonts.textBold,
-  },
-
-  list: {
+  listWrap: {
     marginTop: rV(10),
+    borderRadius: rMS(16),
+    overflow: "hidden",
+    gap: rV(10),
   },
 });

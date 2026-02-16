@@ -1,378 +1,318 @@
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   Image,
-  TouchableOpacity,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-export default function DeliveredDetails({
-  order,
-  onBack,
-}: {
-  order?: any;
-  onBack?: () => void;
-}) {
+type DeliveredOrder = {
+  id: string;
+  title: string;
+  category: string;
+  total: number;
+  qty: number;
+  deliveredOn: string;
+  image: any;
+};
+
+const deliveredOrders: DeliveredOrder[] = [
+  {
+    id: "ORD-10492",
+    title: "Karia Backpack",
+    category: "Travel Bag",
+    total: 98,
+    qty: 1,
+    deliveredOn: "Delivered on Feb 10, 2026",
+    image: require("@/assets/images/backpack1.png"),
+  },
+  {
+    id: "ORD-10311",
+    title: "Classic Watch",
+    category: "Accessories",
+    total: 129,
+    qty: 1,
+    deliveredOn: "Delivered on Feb 02, 2026",
+    image: require("@/assets/images/watch1.png"),
+  },
+  {
+    id: "ORD-10244",
+    title: "Urban Sneakers",
+    category: "Footwear",
+    total: 88,
+    qty: 1,
+    deliveredOn: "Delivered on Jan 28, 2026",
+    image: require("@/assets/images/shoe5.png"),
+  },
+];
+
+export default function DeliveredTab() {
+  const [selectedOrder, setSelectedOrder] = useState<DeliveredOrder | null>(null);
+
+  if (selectedOrder) {
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+        <TouchableOpacity
+          style={styles.backLink}
+          onPress={() => setSelectedOrder(null)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={rMS(16)} color={AppColors.secondary} />
+          <Text style={styles.backLinkText}>Back to Delivered Orders</Text>
+        </TouchableOpacity>
+
+        <View style={styles.card}>
+          <View style={styles.orderTop}>
+            <View style={styles.imageWrap}>
+              <Image source={selectedOrder.image} style={styles.image} resizeMode="contain" />
+            </View>
+            <View style={styles.orderInfo}>
+              <Text style={styles.orderId}>#{selectedOrder.id}</Text>
+              <Text style={styles.title}>{selectedOrder.title}</Text>
+              <Text style={styles.sub}>{selectedOrder.category}</Text>
+            </View>
+            <View style={styles.badgeDelivered}>
+              <Text style={styles.badgeDeliveredText}>Delivered</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Quantity</Text>
+            <Text style={styles.metaValue}>{selectedOrder.qty}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Delivery Date</Text>
+            <Text style={styles.metaValue}>{selectedOrder.deliveredOn.replace("Delivered on ", "")}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Payment</Text>
+            <Text style={styles.metaValue}>MTN Mobile Money</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Shipping</Text>
+            <Text style={styles.metaValue}>Regular Delivery</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.metaRow}>
+            <Text style={styles.totalLabel}>Amount Paid</Text>
+            <Text style={styles.totalValue}>₵{selectedOrder.total.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
+            <Text style={styles.secondaryBtnText}>Download Invoice</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push("/(root)/screens/profileScreens/Account/Reviews")}
+          >
+            <Text style={styles.primaryBtnText}>Rate Product</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Product Card */}
-      <View style={styles.productCard}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: "https://via.placeholder.com/70" }}
-            style={styles.image}
-          />
-        </View>
-
-        <View style={styles.productInfo}>
-          <Text style={styles.orderId}>Order #21342</Text>
-          <Text style={styles.name}>Karia backpack</Text>
-          <Text style={styles.sub}>Backpack, travel</Text>
-        </View>
-
-        <View style={styles.statusBadge}>
-          <Text style={styles.status}>Delivered</Text>
-        </View>
-      </View>
-
-      {/* Progress Timeline */}
-      <View style={styles.timeline}>
-        <View style={styles.timelineItem}>
-          <View style={[styles.dot, styles.dotCompleted]} />
-          <View style={[styles.line, styles.lineCompleted]} />
-          <Text style={styles.timelineLabel}>Order</Text>
-        </View>
-
-        <View style={styles.timelineItem}>
-          <View style={[styles.dot, styles.dotCompleted]} />
-          <View style={[styles.line, styles.lineCompleted]} />
-          <Text style={styles.timelineLabel}>Processing</Text>
-        </View>
-
-        <View style={styles.timelineItem}>
-          <View style={[styles.dot, styles.dotCompleted]} />
-          <View style={[styles.line, styles.lineCompleted]} />
-          <Text style={styles.timelineLabel}>Packed</Text>
-        </View>
-
-        <View style={styles.timelineItem}>
-          <View style={[styles.dot, styles.dotCompleted]} />
-          <View style={[styles.line, styles.lineCompleted]} />
-          <Text style={styles.timelineLabel}>Shipped</Text>
-        </View>
-
-        <View style={styles.timelineItem}>
-          <View style={[styles.dot, styles.dotCompleted]} />
-          <Text style={styles.timelineLabel}>Arrived</Text>
-        </View>
-      </View>
-
-      {/* Details Sections */}
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>Delivery Address</Text>
-        <Text style={styles.detailText}>
-          Dew Street, Kokorko road, GZJ-291-1999
-        </Text>
-      </View>
-
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>Shipping Method</Text>
-        <Text style={styles.detailText}>
-          Regular. Arrives in 4-5 business days
-        </Text>
-      </View>
-
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>Estimate Time</Text>
-        <Text style={styles.detailText}>
-          November 24, 2022 at 09:00 - 12:00 AM
-        </Text>
-      </View>
-
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        <Text style={styles.detailText}>MTN Mobile Money</Text>
-      </View>
-
-      {/* Price Breakdown */}
-      <View style={styles.priceCard}>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Total</Text>
-          <Text style={styles.priceValue}>$69</Text>
-        </View>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Shipping Default (Regular)</Text>
-          <Text style={styles.priceValue}>$29</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.priceRow}>
-          <Text style={styles.totalLabel}>Amount Payable</Text>
-          <Text style={styles.totalValue}>$98</Text>
-        </View>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.rateButton} activeOpacity={0.8}>
-          <Text style={styles.rateButtonText}>Rate</Text>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+      {deliveredOrders.map((item) => (
+        <TouchableOpacity
+          key={item.id}
+          style={styles.card}
+          onPress={() => setSelectedOrder(item)}
+          activeOpacity={0.82}
+        >
+          <View style={styles.orderTop}>
+            <View style={styles.imageWrap}>
+              <Image source={item.image} style={styles.image} resizeMode="contain" />
+            </View>
+            <View style={styles.orderInfo}>
+              <Text style={styles.orderId}>#{item.id}</Text>
+              <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.sub}>{item.category}</Text>
+              <Text style={styles.deliveredOn}>{item.deliveredOn}</Text>
+            </View>
+            <View style={styles.rightColumn}>
+              <View style={styles.badgeDelivered}>
+                <Text style={styles.badgeDeliveredText}>Delivered</Text>
+              </View>
+              <Text style={styles.price}>₵{item.total}</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={rMS(16)}
+                color={AppColors.subtext[100]}
+              />
+            </View>
+          </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.downloadButton} activeOpacity={0.8}>
-          <Text style={styles.downloadButtonText}>Download</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ height: 20 }} />
+      ))}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    paddingBottom: rV(16),
   },
-
-  productCard: {
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(16),
+    padding: rS(14),
+    marginBottom: rV(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
+  },
+  orderTop: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
   },
-
-  imageContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 14,
-    backgroundColor: "#F8F9FA",
+  imageWrap: {
+    width: rMS(66),
+    height: rMS(66),
+    borderRadius: rMS(12),
+    backgroundColor: "#F1F4F7",
+    alignItems: "center",
+    justifyContent: "center",
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
-
   image: {
-    width: "100%",
-    height: "100%",
+    width: "84%",
+    height: "84%",
   },
-
-  productInfo: {
+  orderInfo: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: rS(12),
   },
-
   orderId: {
-    fontSize: 13,
-    color: "#6B7280",
-    fontWeight: "500",
-    marginBottom: 4,
+    fontSize: rMS(11),
+    color: AppColors.subtext[100],
+    fontFamily: Fonts.text,
   },
-
-  name: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 3,
+  title: {
+    marginTop: rV(2),
+    fontSize: rMS(15),
+    color: AppColors.text,
+    fontFamily: Fonts.title,
   },
-
   sub: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    fontWeight: "500",
+    marginTop: rV(2),
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
   },
-
-  statusBadge: {
-    backgroundColor: "#D1FAE5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  deliveredOn: {
+    marginTop: rV(5),
+    fontSize: rMS(11),
+    color: "#15803D",
+    fontFamily: Fonts.textBold,
   },
-
-  status: {
-    fontSize: 12,
-    color: "#059669",
-    fontWeight: "700",
-  },
-
-  timeline: {
-    flexDirection: "row",
+  rightColumn: {
+    alignItems: "flex-end",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    height: rMS(66),
   },
-
-  timelineItem: {
+  badgeDelivered: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: rMS(999),
+    paddingHorizontal: rS(9),
+    paddingVertical: rV(4),
+  },
+  badgeDeliveredText: {
+    fontSize: rMS(10),
+    color: "#166534",
+    fontFamily: Fonts.textBold,
+  },
+  price: {
+    fontSize: rMS(16),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+  },
+  backLink: {
+    flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+    marginBottom: rV(10),
+    gap: rS(3),
   },
-
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 8,
+  backLinkText: {
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.textBold,
   },
-
-  dotCompleted: {
-    backgroundColor: "#10B981",
-  },
-
-  line: {
-    position: "absolute",
-    top: 12,
-    left: "50%",
-    width: "100%",
-    height: 2,
-    backgroundColor: "#E5E7EB",
-    zIndex: -1,
-  },
-
-  lineCompleted: {
-    backgroundColor: "#10B981",
-  },
-
-  timelineLabel: {
-    fontSize: 11,
-    color: "#6B7280",
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  detailsCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-
-  detailText: {
-    fontSize: 14,
-    color: "#6B7280",
-    fontWeight: "500",
-    lineHeight: 20,
-  },
-
-  priceCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-
-  priceLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
-
-  priceValue: {
-    fontSize: 14,
-    color: "#1F2937",
-    fontWeight: "600",
-  },
-
   divider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginVertical: 12,
+    marginVertical: rV(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8ECF1",
   },
-
-  totalLabel: {
-    fontSize: 16,
-    color: "#1F2937",
-    fontWeight: "700",
-  },
-
-  totalValue: {
-    fontSize: 18,
-    color: "#1F2937",
-    fontWeight: "800",
-  },
-
-  buttonContainer: {
+  metaRow: {
     flexDirection: "row",
-    gap: 12,
-  },
-
-  rateButton: {
-    flex: 1,
-    backgroundColor: "#6B7280",
-    paddingVertical: 16,
-    borderRadius: 12,
+    justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    marginBottom: rV(8),
   },
-
-  rateButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  metaLabel: {
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
   },
-
-  downloadButton: {
+  metaValue: {
+    fontSize: rMS(12),
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
+  },
+  totalLabel: {
+    fontSize: rMS(14),
+    color: AppColors.text,
+    fontFamily: Fonts.title,
+  },
+  totalValue: {
+    fontSize: rMS(16),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: rS(10),
+    marginTop: rV(4),
+  },
+  primaryBtn: {
     flex: 1,
-    backgroundColor: "#1F2937",
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: rMS(12),
+    backgroundColor: AppColors.primary,
+    paddingVertical: rV(13),
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    justifyContent: "center",
   },
-
-  downloadButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  primaryBtnText: {
+    fontSize: rMS(13),
+    color: AppColors.white,
+    fontFamily: Fonts.textBold,
+  },
+  secondaryBtn: {
+    flex: 1,
+    borderRadius: rMS(12),
+    backgroundColor: AppColors.white,
+    borderWidth: 1,
+    borderColor: "#D6DCE5",
+    paddingVertical: rV(13),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryBtnText: {
+    fontSize: rMS(13),
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
   },
 });

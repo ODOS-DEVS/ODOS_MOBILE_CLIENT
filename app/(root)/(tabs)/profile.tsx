@@ -1,4 +1,5 @@
 import { MenuItem } from "@/components/MenuItem";
+import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -61,7 +62,13 @@ export default function ProfileScreen() {
         <MenuItem icon="card-outline" label="Payment Method" onPress={() => {
             router.push("../screens/profileScreens/Account/Wallet");
           }} />
-        <MenuItem icon="star-outline" label="Reviews" />
+        <MenuItem
+          icon="star-outline"
+          label="Reviews"
+          onPress={() => {
+            router.push("../screens/profileScreens/Account/Reviews");
+          }}
+        />
         <MenuItem
           icon="ticket-outline"
           label="Vouchers"
@@ -141,9 +148,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#F5F7FA",
     paddingHorizontal: rS(16),
-    paddingVertical: rV(30),
+    paddingTop: rV(34),
   },
 
   header: {
@@ -154,7 +161,9 @@ const styles = StyleSheet.create({
     borderRadius: rMS(16),
     marginTop: rV(20),
     marginBottom: rV(20),
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
   },
   subHeader: {
     flexDirection: "row",
@@ -171,29 +180,33 @@ const styles = StyleSheet.create({
   name: {
     fontSize: rMS(16),
     fontFamily: Fonts.title,
+    color: AppColors.text,
   },
 
   email: {
     fontSize: rMS(13),
-    color: "#777",
+    color: AppColors.subtext[100],
     marginTop: rMS(2),
     fontFamily: Fonts.text,
   },
 
   sectionTitle: {
-    fontSize: rMS(15),
-    fontWeight: "600",
-    color: "#444",
+    fontSize: rMS(14),
+    color: AppColors.secondary,
     marginBottom: rMS(8),
     marginLeft: rMS(4),
-    fontFamily: Fonts.title,
+    fontFamily: Fonts.textBold,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
     borderRadius: rMS(16),
     marginBottom: rMS(20),
     overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
   },
 
   logout: {
