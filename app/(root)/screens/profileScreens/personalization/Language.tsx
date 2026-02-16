@@ -1,17 +1,10 @@
-import PrimaryButton from "@/components/buttons/PrimaryButton";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-/* -------------------- Language Item -------------------- */
 interface LanguageItemProps {
   label: string;
   selected: boolean;
@@ -20,7 +13,7 @@ interface LanguageItemProps {
 
 const LanguageItem = ({ label, selected, onPress }: LanguageItemProps) => {
   return (
-    <TouchableOpacity style={styles.languageItem} onPress={onPress}>
+    <TouchableOpacity style={styles.languageItem} onPress={onPress} activeOpacity={0.8}>
       <Text style={styles.languageText}>{label}</Text>
       <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
         {selected && <View style={styles.radioInner} />}
@@ -29,104 +22,72 @@ const LanguageItem = ({ label, selected, onPress }: LanguageItemProps) => {
   );
 };
 
-/* -------------------- Main Screen -------------------- */
 export default function LanguageScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState("English (US)");
-
-  const languages = [
-    "English (US)",
-    "English (UK)",
-    "French",
-    "Twi",
-    "Mandarin",
-    "Arabic",
-  ];
+  const languages = ["English (US)", "English (UK)", "French", "Twi", "Mandarin", "Arabic"];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} />
+    <View style={styles.container}>
+      <ProfileHeader title="Language" />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          {languages.map((lang) => (
+            <LanguageItem
+              key={lang}
+              label={lang}
+              selected={selectedLanguage === lang}
+              onPress={() => setSelectedLanguage(lang)}
+            />
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
+          <Text style={styles.actionBtnText}>Save Changes</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Language</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Language List */}
-      <View style={styles.card}>
-        {languages.map((lang) => (
-          <LanguageItem
-            key={lang}
-            label={lang}
-            selected={selectedLanguage === lang}
-            onPress={() => setSelectedLanguage(lang)}
-          />
-        ))}
-      </View>
-
-      <View>
-        <PrimaryButton title="Save changes" onPress={() => {}} />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-/* -------------------- Styles -------------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F6F6",
-    paddingHorizontal: rS(16),
-    paddingTop: rV(25),
+    backgroundColor: "#F5F7FA",
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: rV(20),
-    marginBottom: rV(24),
-  },
-
-  backButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  title: {
+  scroll: {
     flex: 1,
-    textAlign: "center",
-    fontSize: rMS(17),
-    color: "#111",
-    fontFamily: Fonts.textBold,
   },
-
+  content: {
+    paddingHorizontal: rS(16),
+    paddingTop: rV(16),
+    paddingBottom: rV(28),
+  },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: rMS(18),
-    paddingVertical: rV(8),
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(16),
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
   },
-
   languageItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: rS(16),
-    paddingVertical: rV(18),
-    borderBottomWidth: rMS(0.5),
-    borderBottomColor: "#EEE",
+    paddingVertical: rV(16),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#ECEFF3",
   },
-
   languageText: {
     fontSize: rMS(14),
-    color: "#1C1C1E",
+    color: AppColors.text,
     fontFamily: Fonts.title,
   },
-
   radioOuter: {
     width: rMS(20),
     height: rMS(20),
@@ -136,15 +97,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   radioOuterSelected: {
-    borderColor: "#111",
+    borderColor: AppColors.primary,
   },
-
   radioInner: {
     width: rMS(10),
     height: rMS(10),
     borderRadius: rMS(5),
-    backgroundColor: "#111",
+    backgroundColor: AppColors.primary,
+  },
+  actionBtn: {
+    marginTop: rV(18),
+    borderRadius: rMS(12),
+    backgroundColor: AppColors.primary,
+    paddingVertical: rV(14),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionBtnText: {
+    fontSize: rMS(15),
+    fontFamily: Fonts.textBold,
+    color: AppColors.white,
   },
 });

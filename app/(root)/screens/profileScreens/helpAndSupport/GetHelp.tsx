@@ -1,151 +1,135 @@
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const GetHelp = () => {
+const channels = [
+  { id: "facebook", icon: <FontAwesome name="facebook" size={22} color="#1877F2" />, label: "Facebook" },
+  { id: "twitter", icon: <FontAwesome name="twitter" size={22} color="#1DA1F2" />, label: "Twitter" },
+  { id: "whatsapp", icon: <FontAwesome name="whatsapp" size={22} color="#25D366" />, label: "WhatsApp" },
+  { id: "chat", icon: <Ionicons name="chatbubble-ellipses" size={22} color="#111827" />, label: "Live Chat" },
+];
+
+export default function GetHelp() {
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={20} color="#000" />
-        </TouchableOpacity>
+      <ProfileHeader title="Get Help" />
 
-        <Text style={styles.headerTitle}>Get Help</Text>
-      </View>
-
-      {/* Content */}
       <View style={styles.content}>
-        {/* Icon Circle */}
-        <View style={styles.outerCircle}>
-          <View style={styles.innerCircle}>
-            <Ionicons name="help" size={36} color="#fff" />
+        <View style={styles.heroCircle}>
+          <View style={styles.heroInner}>
+            <Ionicons name="help-outline" size={rMS(36)} color={AppColors.white} />
           </View>
         </View>
 
-        {/* Text */}
-        <Text style={styles.title}>We are here to help</Text>
-
+        <Text style={styles.title}>We are here to support you</Text>
         <Text style={styles.subtitle}>
-          Please get in touch with us, contact one of our social media
+          Reach out to us through any channel below and our team will respond quickly.
         </Text>
 
-        {/* Social Buttons */}
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialButton}>
-            <FontAwesome name="facebook" size={22} color="#1877F2" />
-          </TouchableOpacity>
+        <View style={styles.channelGrid}>
+          {channels.map((item) => (
+            <TouchableOpacity key={item.id} style={styles.channelCard} activeOpacity={0.8}>
+              {item.icon}
+              <Text style={styles.channelLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-          <TouchableOpacity style={styles.socialButton}>
-            <FontAwesome name="twitter" size={22} color="#1DA1F2" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <FontAwesome name="whatsapp" size={22} color="#25D366" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="chatbubble-ellipses" size={22} color="#000" />
-          </TouchableOpacity>
+        <View style={styles.infoCard}>
+          <Ionicons name="time-outline" size={rMS(16)} color={AppColors.secondary} />
+          <Text style={styles.infoText}>Support hours: Mon - Sat, 8:00 AM - 8:00 PM</Text>
         </View>
       </View>
     </View>
   );
-};
-
-export default GetHelp;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 16,
+    backgroundColor: "#F5F7FA",
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 60,
-    marginBottom: 24,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F2F2F2",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    fontFamily: Fonts.titleBold,
-  },
-
   content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "flex-start",
-    paddingVertical: 60,
+    paddingHorizontal: rS(16),
+    paddingTop: rV(20),
   },
-
-  outerCircle: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "#E0E0E0",
+  heroCircle: {
+    width: rMS(180),
+    height: rMS(180),
+    borderRadius: rMS(90),
+    backgroundColor: "#E6EBEF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 32,
+    marginBottom: rV(20),
   },
-
-  innerCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#666666",
+  heroInner: {
+    width: rMS(72),
+    height: rMS(72),
+    borderRadius: rMS(36),
+    backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-    fontFamily: Fonts.textBold,
+    fontSize: rMS(20),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
   },
-
   subtitle: {
-    fontSize: 14,
+    marginTop: rV(8),
+    fontSize: rMS(13),
     color: AppColors.secondary,
     textAlign: "center",
-    paddingHorizontal: 32,
-    marginBottom: 32,
-    fontFamily: Fonts.textBold,
+    lineHeight: rMS(20),
+    fontFamily: Fonts.text,
+    paddingHorizontal: rS(12),
   },
-
-  socialRow: {
+  channelGrid: {
+    marginTop: rV(22),
+    width: "100%",
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    width: "80%",
+    gap: rS(10),
   },
-
-  socialButton: {
-    width: 70,
-    height: 66,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+  channelCard: {
+    width: "48%",
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
+    paddingVertical: rV(16),
     alignItems: "center",
     justifyContent: "center",
+    gap: rV(8),
+  },
+  channelLabel: {
+    fontSize: rMS(12),
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
+  },
+  infoCard: {
+    marginTop: rV(16),
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: rV(12),
+    borderRadius: rMS(12),
+    backgroundColor: AppColors.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
+    gap: rS(8),
+  },
+  infoText: {
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
   },
 });

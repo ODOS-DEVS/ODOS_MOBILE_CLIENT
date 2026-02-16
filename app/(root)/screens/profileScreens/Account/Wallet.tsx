@@ -3,9 +3,9 @@ import {
   type MomoNetwork,
   type PaymentType,
 } from "@/context/ProfileContext";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ChevronLeft,
   CreditCard,
   Phone,
   Plus,
@@ -109,14 +109,7 @@ export default function WalletScreen() {
 
   return (
     <View className="flex-1 bg-gray-100">
-      <View className="bg-white px-4 pt-16 pb-4 flex-row items-center border-b border-gray-200">
-        <TouchableOpacity onPress={() => router.back()}>
-          <ChevronLeft size={24} />
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold ml-3">
-          {fromCheckout ? "Choose payment" : "Wallet"}
-        </Text>
-      </View>
+      <ProfileHeader title={fromCheckout ? "Choose Payment" : "Wallet"} />
 
       {paymentMethods.length === 0 && (
         <View className="flex-1 items-center justify-center px-8">
