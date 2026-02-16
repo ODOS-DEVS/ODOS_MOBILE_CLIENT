@@ -36,6 +36,8 @@ export default function CheckoutScreen() {
   const price = Number(getParam(params.price) ?? 0);
   const oldPrice = Number(getParam(params.oldPrice) ?? 0);
   const category = getParam(params.category);
+  const selectedColor = getParam(params.selectedColor);
+  const selectedSize = getParam(params.selectedSize);
 
   const {
     selectedAddress,
@@ -112,6 +114,20 @@ export default function CheckoutScreen() {
                   {category}
                 </Text>
               ) : null}
+              {(selectedColor || selectedSize) && (
+                <View style={styles.variantRow}>
+                  {selectedColor ? (
+                    <View style={styles.variantPill}>
+                      <Text style={styles.variantPillText}>Color: {selectedColor}</Text>
+                    </View>
+                  ) : null}
+                  {selectedSize ? (
+                    <View style={styles.variantPill}>
+                      <Text style={styles.variantPillText}>Size: {selectedSize}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
               <View style={styles.priceRow}>
                 <Text style={styles.price}>₵{price.toFixed(2)}</Text>
                 {oldPrice > 0 && (
@@ -340,6 +356,23 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     color: AppColors.secondary,
     marginBottom: rV(6),
+  },
+  variantRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(6),
+    marginBottom: rV(8),
+  },
+  variantPill: {
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(4),
+    borderRadius: rMS(8),
+    backgroundColor: "#EEF2F5",
+  },
+  variantPillText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
   },
   priceRow: {
     flexDirection: "row",
