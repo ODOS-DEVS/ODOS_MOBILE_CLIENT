@@ -51,12 +51,14 @@ type ProfileContextType = {
   selectedAddress: Address | null;
   selectedPayment: PaymentMethod | null;
 
-  addAddress: (address: Omit<Address, "id">) => void;
+  addAddress: (address: Omit<Address, "id">) => string;
   updateAddress: (id: string, address: Partial<Address>) => void;
   removeAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
 
-  addPayment: (payment: Omit<PaymentMethod, "id" | "label"> & { label?: string }) => void;
+  addPayment: (
+    payment: Omit<PaymentMethod, "id" | "label"> & { label?: string }
+  ) => string;
   removePayment: (id: string) => void;
   setDefaultPayment: (id: string) => void;
 
@@ -104,12 +106,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       id: Date.now().toString(),
     };
     setAddresses((prev) =>
-      address.isDefault
+      address.isDefault || prev.length === 0
         ? prev
             .map((a) => ({ ...a, isDefault: false }))
             .concat({ ...newAddress, isDefault: true })
         : [...prev, newAddress]
     );
+    return newAddress.id;
   }, []);
 
   const updateAddress = useCallback((id: string, payload: Partial<Address>) => {
@@ -143,6 +146,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         isDefault: paymentMethods.length === 0,
       };
       setPaymentMethods((prev) => [...prev, newPayment]);
+      return newPayment.id;
     },
     [paymentMethods.length]
   );

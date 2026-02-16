@@ -68,7 +68,19 @@ export default function AddressScreen() {
     if (editingId) {
       updateAddress(editingId, form);
     } else {
-      addAddress(form);
+      const newId = addAddress(form);
+      if (fromCheckout && newId) {
+        setCheckoutAddressId(newId);
+      }
+    }
+    if (fromCheckout) {
+      if (editingId) {
+        setCheckoutAddressId(editingId);
+      }
+      resetForm();
+      setShowModal(false);
+      router.back();
+      return;
     }
     resetForm();
     setShowModal(false);
@@ -187,14 +199,15 @@ export default function AddressScreen() {
         ))}
       </ScrollView>
 
-      {!fromCheckout && (
-        <TouchableOpacity
-          onPress={() => setShowModal(true)}
-          className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        >
-          <Plus size={26} color="white" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        onPress={() => {
+          resetForm();
+          setShowModal(true);
+        }}
+        className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
+      >
+        <Plus size={26} color="white" />
+      </TouchableOpacity>
 
       <Modal visible={showModal} animationType="slide">
         <View className="flex-1 bg-white px-5 pt-14">
