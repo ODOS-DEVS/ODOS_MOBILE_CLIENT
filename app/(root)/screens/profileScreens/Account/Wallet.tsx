@@ -49,13 +49,15 @@ export default function WalletScreen() {
   };
 
   const handleSave = () => {
+    let savedPaymentId: string | null = null;
+
     if (type === "card") {
       const { cardName, cardNumber, expiry, cvv } = form;
       if (!cardName || !cardNumber || !expiry || !cvv) {
         Alert.alert("Missing fields", "Please fill all card details.");
         return;
       }
-      addPayment({
+      savedPaymentId = addPayment({
         type: "card",
         label: `**** ${cardNumber.slice(-4)}`,
         isDefault: paymentMethods.length === 0,
@@ -70,13 +72,20 @@ export default function WalletScreen() {
         Alert.alert("Missing fields", "Please complete MoMo details.");
         return;
       }
-      addPayment({
+      savedPaymentId = addPayment({
         type: "momo",
         label: `${network} MoMo`,
         isDefault: paymentMethods.length === 0,
         network: network as MomoNetwork,
         phone,
       });
+    }
+    if (fromCheckout && savedPaymentId) {
+      setCheckoutPaymentId(savedPaymentId);
+      resetForm();
+      setShowModal(false);
+      router.back();
+      return;
     }
     resetForm();
     setShowModal(false);
@@ -185,14 +194,15 @@ export default function WalletScreen() {
         ))}
       </ScrollView>
 
-      {!fromCheckout && (
-        <TouchableOpacity
-          onPress={() => setShowModal(true)}
-          className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        >
-          <Plus size={26} color="white" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        onPress={() => {
+          resetForm();
+          setShowModal(true);
+        }}
+        className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
+      >
+        <Plus size={26} color="white" />
+      </TouchableOpacity>
 
       <Modal visible={showModal} animationType="slide">
         <View className="flex-1 bg-white px-5 pt-14">

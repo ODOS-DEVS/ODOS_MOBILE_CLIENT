@@ -3,12 +3,14 @@ import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { AppColors } from "@/constants/Colors";
-import { PopularProducts } from "@/constants/Data";
+import { flashSales, PopularProducts, recommendations } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import React, { useMemo, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   Image,
   ScrollView,
@@ -17,6 +19,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+const productColorOptions = [
+  { id: "charcoal", label: "Charcoal", hex: "#374151" },
+  { id: "sand", label: "Sand", hex: "#C8B08F" },
+  { id: "sage", label: "Sage", hex: "#7C8C74" },
+  { id: "ocean", label: "Ocean", hex: "#3E5F7D" },
+];
+
+const productSizeOptions = ["XS", "S", "M", "L", "XL"];
+const screenWidth = Dimensions.get("window").width;
 
 export default function ProductDetail() {
   const getParam = (param: string | string[] | undefined) =>
@@ -33,11 +45,33 @@ export default function ProductDetail() {
   const rating = Number(getParam(params.rating) ?? 0);
   const reviews = getParam(params.reviews);
   const discount = getParam(params.discount);
+  const [selectedColor, setSelectedColor] = useState(productColorOptions[0].id);
+  const [selectedSize, setSelectedSize] = useState(productSizeOptions[2]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const activeColor =
+    productColorOptions.find((item) => item.id === selectedColor) ?? productColorOptions[0];
+  const productImages = useMemo(() => {
+    const fallbackImages = [...flashSales, ...recommendations, ...PopularProducts].map(
+      (item) => item.image
+    );
+    const merged = [image, ...fallbackImages].filter(Boolean);
+    const unique = Array.from(new Set(merged));
+    if (unique.length === 1) return [unique[0], unique[0], unique[0]];
+    return unique.slice(0, 6);
+  }, [image]);
 
   const handleBuyNow = () => {
     router.push({
       pathname: "/screens/Checkout" as any,
-      params: { id, title, price, oldPrice, category },
+      params: {
+        id,
+        title,
+        price,
+        oldPrice,
+        category,
+        selectedColor: activeColor.label,
+        selectedSize,
+      },
     });
   };
 
@@ -65,11 +99,32 @@ export default function ProductDetail() {
       >
         {/* Image */}
         <View style={styles.imageWrap}>
-          <Image
-            source={image as any}
-            style={styles.image}
-            resizeMode="cover"
+          <FlatList
+            data={productImages}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, idx) => `${id}-img-${idx}`}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+              setActiveImageIndex(index);
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.imageSlide}>
+                <Image source={item as any} style={styles.image} resizeMode="cover" />
+              </View>
+            )}
           />
+          {productImages.length > 1 && (
+            <View style={styles.imageDotsRow}>
+              {productImages.map((_, index) => (
+                <View
+                  key={`${id}-dot-${index}`}
+                  style={[styles.imageDot, activeImageIndex === index && styles.imageDotActive]}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Info */}
@@ -108,6 +163,50 @@ export default function ProductDetail() {
             {oldPrice > 0 && (
               <Text style={styles.oldPrice}>₵{oldPrice}</Text>
             )}
+          </View>
+
+          <View style={styles.variantCard}>
+            <View style={styles.variantHeader}>
+              <Text style={styles.variantTitle}>Choose Color</Text>
+              <Text style={styles.variantValue}>{activeColor.label}</Text>
+            </View>
+            <View style={styles.colorRow}>
+              {productColorOptions.map((item) => {
+                const isActive = selectedColor === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.colorBtn, isActive && styles.colorBtnActive]}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedColor(item.id)}
+                  >
+                    <View style={[styles.colorDot, { backgroundColor: item.hex }]} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.variantHeader}>
+              <Text style={styles.variantTitle}>Choose Size</Text>
+              <Text style={styles.variantValue}>Size {selectedSize}</Text>
+            </View>
+            <View style={styles.sizeRow}>
+              {productSizeOptions.map((item) => {
+                const isActive = selectedSize === item;
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    style={[styles.sizeBtn, isActive && styles.sizeBtnActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedSize(item)}
+                  >
+                    <Text style={[styles.sizeBtnText, isActive && styles.sizeBtnTextActive]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
 
@@ -261,10 +360,35 @@ const styles = StyleSheet.create({
     width: "100%",
     height: rV(300),
     backgroundColor: "#F5F5F5",
+    position: "relative",
+  },
+  imageSlide: {
+    width: screenWidth,
+    height: rV(300),
   },
   image: {
     width: "100%",
     height: "100%",
+  },
+  imageDotsRow: {
+    position: "absolute",
+    bottom: rV(12),
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rS(6),
+  },
+  imageDot: {
+    width: rMS(6),
+    height: rMS(6),
+    borderRadius: rMS(3),
+    backgroundColor: "rgba(255,255,255,0.65)",
+  },
+  imageDotActive: {
+    width: rMS(18),
+    backgroundColor: AppColors.white,
   },
   info: {
     paddingHorizontal: rS(16),
@@ -341,6 +465,79 @@ const styles = StyleSheet.create({
     color: AppColors.subtext[100],
     marginLeft: rS(10),
     textDecorationLine: "line-through",
+  },
+  variantCard: {
+    marginTop: rV(16),
+    padding: rS(14),
+    borderRadius: rMS(14),
+    backgroundColor: "#F7F7F8",
+    gap: rV(12),
+  },
+  variantHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  variantTitle: {
+    fontSize: rMS(14),
+    fontFamily: Fonts.title,
+    color: AppColors.text,
+  },
+  variantValue: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+  },
+  colorRow: {
+    flexDirection: "row",
+    gap: rS(10),
+  },
+  colorBtn: {
+    width: rMS(34),
+    height: rMS(34),
+    borderRadius: rMS(17),
+    borderWidth: 1,
+    borderColor: "#DBDBDB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: AppColors.white,
+  },
+  colorBtnActive: {
+    borderColor: AppColors.secondary,
+    borderWidth: 2,
+  },
+  colorDot: {
+    width: rMS(22),
+    height: rMS(22),
+    borderRadius: rMS(11),
+  },
+  sizeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+  },
+  sizeBtn: {
+    minWidth: rMS(46),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(8),
+    borderRadius: rMS(10),
+    borderWidth: 1,
+    borderColor: "#D6D6D8",
+    backgroundColor: AppColors.white,
+  },
+  sizeBtnActive: {
+    borderColor: AppColors.secondary,
+    backgroundColor: AppColors.secondary,
+  },
+  sizeBtnText: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  sizeBtnTextActive: {
+    color: AppColors.white,
   },
   sections: {
     marginTop: rV(24),
