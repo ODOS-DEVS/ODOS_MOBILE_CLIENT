@@ -81,10 +81,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     alignItems: "center",
-    backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingVertical: rV(18),
     marginBottom: rV(12),
   },
@@ -95,7 +92,7 @@ const styles = StyleSheet.create({
   },
   editAvatar: {
     position: "absolute",
-    top: rV(88),
+    top: rV(78),
     right: "36%",
     backgroundColor: AppColors.primary,
     width: rMS(34),
@@ -117,12 +114,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
   },
   formCard: {
-    backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    paddingVertical: rV(6),
-    overflow: "hidden",
   },
   saveBtn: {
     marginTop: rV(18),

@@ -45,6 +45,8 @@ const MarketCard: React.FC<MarketCardProps> = ({
             backgroundColor: "#f3f4f6",
             borderTopLeftRadius: rS(16),
             borderTopRightRadius: rS(16),
+            borderBottomLeftRadius: rS(16),
+            borderBottomRightRadius: rS(16),
             overflow: "hidden",
           }}
         >
