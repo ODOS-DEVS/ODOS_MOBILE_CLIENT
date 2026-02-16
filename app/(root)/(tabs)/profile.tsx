@@ -126,7 +126,13 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/helpAndSupport/LegalPolicy");
           }}
         />
-        <MenuItem icon="library-outline" label="Resources" />
+        <MenuItem
+          icon="library-outline"
+          label="Resources"
+          onPress={() => {
+            router.push("../screens/profileScreens/helpAndSupport/Resources");
+          }}
+        />
         <MenuItem
           icon="help-outline"
           label="FAQ"
