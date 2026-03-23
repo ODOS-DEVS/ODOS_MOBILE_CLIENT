@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F7FA",
     paddingHorizontal: rS(16),
-    paddingTop: rV(34),
+    paddingTop: rV(54),
   },
 
   header: {
@@ -199,7 +199,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: rMS(14),
     color: AppColors.secondary,
-    marginBottom: rMS(8),
+    marginTop: rMS(20),
+    marginBottom: rMS(14),
     marginLeft: rMS(4),
     fontFamily: Fonts.textBold,
     textTransform: "uppercase",

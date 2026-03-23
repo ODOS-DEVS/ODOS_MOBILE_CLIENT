@@ -143,13 +143,40 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* ---------- TEXT SECTION ---------- */}
         <View style={{ padding: rS(12) }}>
-          <Text
-            className="font-montserrat-bold text-text"
-            style={{ fontSize: rS(13) }}
-            numberOfLines={1}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: rS(8),
+            }}
           >
-            {title}
-          </Text>
+            <Text
+              className="font-montserrat-bold text-text"
+              style={{ fontSize: rS(13), flex: 1 }}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+
+            {rating && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Text
+                  className="ml-1 text-subtext-200 font-montserrat-extraBold"
+                  style={{ fontSize: rS(12), marginLeft: rS(4) }}
+                >
+                  {rating.toFixed(1)}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View className="flex-row justify-between">
             {category && (
@@ -161,7 +188,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 {category}
               </Text>
             )}
-            {reviews && (
+            {/* {reviews && (
               <Text
                 className="text-subtext"
                 style={{ fontSize: rS(11), marginTop: 2 }}
@@ -169,7 +196,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               >
                 {reviews}
               </Text>
-            )}
+            )} */}
           </View>
 
           <View
@@ -205,7 +232,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </>
             )}
 
-            {rating && (
+            {/* {rating && (
               <View
                 style={{
                   flexDirection: "row",
@@ -222,7 +249,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   {rating.toFixed(1)}
                 </Text>
               </View>
-            )}
+            )} */}
           </View>
         </View>
       </View>

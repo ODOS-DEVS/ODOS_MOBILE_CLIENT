@@ -29,7 +29,7 @@ const CategoryScreen = () => {
         keyExtractor={() => "dummy"}
         renderItem={() => null}
         ListHeaderComponent={
-          <View>
+          <View className="pt-8">
             <Text className="font-montserrat-extraBold text-xl pt-16 text-center">
               Explore
             </Text>

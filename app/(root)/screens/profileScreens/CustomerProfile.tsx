@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
+    marginTop: rMS(20)
   },
   scroll: {
     flex: 1,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: rV(18),
-    borderRadius: rMS(12),
+    borderRadius: rMS(50),
     backgroundColor: AppColors.primary,
     paddingVertical: rV(14),
     alignItems: "center",
