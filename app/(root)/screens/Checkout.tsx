@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   },
   placeOrderBtn: {
     backgroundColor: AppColors.primary,
-    borderRadius: rMS(14),
+    borderRadius: rMS(50),
     paddingVertical: rV(16),
     alignItems: "center",
     justifyContent: "center",

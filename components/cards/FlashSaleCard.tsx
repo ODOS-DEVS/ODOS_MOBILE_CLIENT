@@ -3,8 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-import AddToWishList from "../buttons/AddToWishList";
 import AddToCartBtn from "../buttons/AddToCartBtn";
+import AddToWishList from "../buttons/AddToWishList";
 
 interface FlashSalesCardProps {
   id: string;
@@ -132,16 +132,45 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
 
         {/* ---------- TEXT ---------- */}
         <View style={{ padding: rS(10) }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: rS(13),
-              fontWeight: "700",
-              color: "#222",
-            }}
-          >
-            {title}
-          </Text>
+          <View style={{
+            flexDirection: "row",
+            marginRight: rV(10)
+          }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: rS(13),
+                fontWeight: "700",
+                color: "#222",
+                marginRight: rV(43),
+              }}
+            >
+              {title}
+            </Text>
+
+            {/* Rating */}
+            {rating && (
+              <View
+                style={{
+                  marginLeft: rV(-24),
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Text
+                  style={{
+                    marginLeft: rS(2),
+                    fontSize: rS(11),
+                    fontWeight: "700",
+                    color: "#444",
+                  }}
+                >
+                  {rating.toFixed(1)}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View
             style={{
@@ -158,14 +187,14 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                 {category}
               </Text>
             )}
-            {reviews && (
+            {/* {reviews && (
               <Text
                 style={{ fontSize: rS(11), color: "#777" }}
                 numberOfLines={1}
               >
                 {reviews}
               </Text>
-            )}
+            )} */}
           </View>
 
           {/* ---------- PRICE + RATING ---------- */}
@@ -207,7 +236,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               </View>
             )}
 
-            {/* Rating */}
+            {/* Rating
             {rating && (
               <View
                 style={{
@@ -228,7 +257,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                   {rating.toFixed(1)}
                 </Text>
               </View>
-            )}
+            )} */}
           </View>
         </View>
 

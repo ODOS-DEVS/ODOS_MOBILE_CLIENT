@@ -13,7 +13,7 @@ import {
   recommendations,
   Stores,
 } from "@/constants/Data";
-import { useResponsive } from "@/styles/responsive";
+import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -159,7 +159,9 @@ const HomeScreen = () => {
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => <FlashSalesCard {...item} />}
-                  contentContainerStyle={{ paddingHorizontal: horizontalPadding }}
+                  contentContainerStyle={{
+                    paddingHorizontal: horizontalPadding,
+                  }}
                 />
               </View>
 
@@ -204,6 +206,7 @@ const HomeScreen = () => {
                   justifyContent: "space-between",
                   paddingHorizontal: horizontalPadding,
                   marginTop: sectionSpacing,
+                  marginBottom: rS(10),
                 }}
               >
                 <Text className="text-base font-montserrat-extraBold text-gray-800">
@@ -235,6 +238,7 @@ const HomeScreen = () => {
                   justifyContent: "space-between",
                   paddingHorizontal: horizontalPadding,
                   marginTop: sectionSpacing,
+                  marginBottom: rS(10),
                 }}
               >
                 <Text className="text-base font-montserrat-extraBold text-gray-800">
@@ -267,6 +271,7 @@ const HomeScreen = () => {
                   justifyContent: "space-between",
                   paddingHorizontal: horizontalPadding,
                   marginTop: sectionSpacing,
+                  marginBottom: rS(10),
                 }}
               >
                 <Text className="text-base font-montserrat-extraBold text-gray-800">

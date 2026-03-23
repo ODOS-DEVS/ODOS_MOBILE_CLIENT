@@ -16,7 +16,7 @@ export const HomeHeader = () => {
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: horizontalPadding,
-        paddingTop: Math.max(insets.top, rV(16)),
+        paddingTop: Math.max(insets.top, rV(66)),
         paddingBottom: rV(8),
       }}
     >
