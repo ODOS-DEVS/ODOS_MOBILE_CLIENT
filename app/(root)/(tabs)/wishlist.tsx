@@ -18,7 +18,7 @@ const WishlistScreen = () => {
 
   return (
     <ScrollView>
-      <View className="flex-1 px-4">
+      <View className="flex-1 px-4 pt-8">
         {/* Title */}
         <View className="items-center pt-16 mb-6">
           <Text className="text-xl font-montserrat-extraBold text-black text-center">

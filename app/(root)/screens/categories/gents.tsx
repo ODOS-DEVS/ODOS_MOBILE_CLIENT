@@ -99,7 +99,7 @@ const GentsScreen = () => {
           className="flex-1 bg-white"
         >
           {/* HEADER */}
-          <View className="flex-row items-center justify-center mb-3 mt-4 px-4">
+          <View className="flex-row items-center justify-center mb-3 mt-12 px-4">
             <TouchableOpacity
               onPress={() => router.back()}
               className="absolute left-6"
@@ -144,7 +144,7 @@ const GentsScreen = () => {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <ProductCard {...item} />}
             contentContainerStyle={{
-              paddingHorizontal: 20,
+              paddingHorizontal: 8,
               paddingTop: 16,
             }}
           />

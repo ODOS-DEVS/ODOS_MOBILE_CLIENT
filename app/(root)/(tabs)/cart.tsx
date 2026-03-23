@@ -28,7 +28,7 @@ const MyCart = () => {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <View className="flex-1 px-4">
+      <View className="flex-1 px-4 pt-8">
         {/* Header */}
         <View className="items-center pt-16 mb-6">
           <Text className="text-xl font-montserrat-extraBold">My Cart</Text>

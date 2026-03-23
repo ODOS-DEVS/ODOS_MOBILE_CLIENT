@@ -1,18 +1,11 @@
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import {
   useProfile,
   type MomoNetwork,
   type PaymentType,
 } from "@/context/ProfileContext";
-import ProfileHeader from "@/components/profile/ProfileHeader";
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  CreditCard,
-  Phone,
-  Plus,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react-native";
+import { CreditCard, Phone, Plus, Star, Trash2, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   Alert,
@@ -108,7 +101,7 @@ export default function WalletScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100">
+    <View className="flex-1 bg-gray-100 pt-6">
       <ProfileHeader title={fromCheckout ? "Choose Payment" : "Wallet"} />
 
       {paymentMethods.length === 0 && (
@@ -199,14 +192,15 @@ export default function WalletScreen() {
 
       <Modal visible={showModal} animationType="slide">
         <View className="flex-1 bg-white px-5 pt-14">
-          <View className="flex-row items-center mb-6">
+          <View className="flex-row items-center mb-6 mt-10">
             <TouchableOpacity
               onPress={() => {
                 setShowModal(false);
                 resetForm();
               }}
+              className="w-10 h-10 rounded-full bg-black/10 items-center justify-center"
             >
-              <X size={26} />
+              <X size={20} color="#111827" />
             </TouchableOpacity>
             <Text className="text-xl font-semibold ml-4">
               Add Payment Method

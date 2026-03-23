@@ -103,7 +103,7 @@ export default function AddressScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100">
+    <View className="flex-1 bg-gray-100 pt-6">
       <ProfileHeader title={fromCheckout ? "Choose Address" : "My Addresses"} />
 
       {/* Empty State */}
@@ -203,14 +203,15 @@ export default function AddressScreen() {
 
       <Modal visible={showModal} animationType="slide">
         <View className="flex-1 bg-white px-5 pt-14">
-          <View className="flex-row items-center mb-6">
+          <View className="flex-row items-center mb-6 mt-10">
             <TouchableOpacity
               onPress={() => {
                 setShowModal(false);
                 resetForm();
               }}
+              className="w-10 h-10 rounded-full bg-black/10 items-center justify-center"
             >
-              <X size={26} />
+              <X size={20} color="#111827" />
             </TouchableOpacity>
             <Text className="text-xl font-semibold ml-4">
               {editingId ? "Edit Address" : "Add Address"}

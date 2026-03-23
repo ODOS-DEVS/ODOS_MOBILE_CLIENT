@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
+    paddingTop: rMS(20),
   },
   scroll: {
     flex: 1,
@@ -80,8 +81,8 @@ const styles = StyleSheet.create({
     borderColor: "#E6EAF0",
   },
   actionBtn: {
-    marginTop: rV(18),
-    borderRadius: rMS(12),
+    marginTop: rV(130),
+    borderRadius: rMS(50),
     backgroundColor: AppColors.primary,
     paddingVertical: rV(14),
     alignItems: "center",

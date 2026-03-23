@@ -136,14 +136,14 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 >
                   {rating.toFixed(1)}
                 </Text>
-                {reviews && (
+                {/* {reviews && (
                   <Text
                     className="text-subtext-200"
                     style={{ fontSize: rS(11), marginLeft: rS(4) }}
                   >
                     ({reviews} Review{reviews > 1 ? "s" : ""})
                   </Text>
-                )}
+                )} */}
               </View>
             )}
           </View>

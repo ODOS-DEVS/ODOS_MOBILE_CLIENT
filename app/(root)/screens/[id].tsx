@@ -283,7 +283,7 @@ export default function ProductDetail() {
               rating,
               reviews,
             }}
-            size={19}
+            size={20}
             iconColor="#fff"
             activeIconColor="#fff"
             containerStyle={styles.iconBtn}
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: rS(16),
-    paddingTop: rV(38),
+    paddingTop: rV(58),
     paddingBottom: rV(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#EEE",
@@ -557,20 +557,20 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: rV(24),
+    marginTop: rV(14),
     marginHorizontal: rS(16),
-    gap: rS(10),
+    gap: rS(8),
   },
   iconBtn: {
     backgroundColor: AppColors.secondary,
-    padding: rS(13),
-    borderRadius: rMS(14),
+    padding: rS(14),
+    borderRadius: rMS(24),
   },
   buyNowBtn: {
     flex: 1,
     backgroundColor: AppColors.secondary,
-    paddingVertical: rV(16),
-    borderRadius: rMS(14),
+    paddingVertical: rV(12),
+    borderRadius: rMS(24),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -584,9 +584,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rS(6),
-    paddingVertical: rV(16),
-    paddingHorizontal: rS(16),
-    borderRadius: rMS(14),
+    paddingVertical: rV(12),
+    paddingHorizontal: rS(20),
+    borderRadius: rMS(24),
     backgroundColor: AppColors.secondary,
   },
   chatBtnText: {
@@ -595,6 +595,6 @@ const styles = StyleSheet.create({
     color: AppColors.white,
   },
   bottomSpacer: {
-    height: rV(40),
+    height: rV(1),
   },
 });
