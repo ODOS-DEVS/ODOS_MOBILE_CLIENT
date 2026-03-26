@@ -142,7 +142,7 @@ const KidsScreen = () => {
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => <ProductCard {...item} />}
             contentContainerStyle={{
-              paddingHorizontal: 20,
+              paddingHorizontal: 8,
               paddingTop: 16,
             }}
           />

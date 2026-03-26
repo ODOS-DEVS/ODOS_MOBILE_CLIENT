@@ -3,6 +3,7 @@ import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import VoucherCard from "@/components/cards/VoucherCard";
 import { flashSales, gentsData, vouchers } from "@/constants/Data";
+import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -20,6 +21,9 @@ const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
   const { title, image } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { gridCardWidth } = useResponsive();
+  const gridGap = rS(6);
+  const gridPadding = rS(17);
 
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
@@ -89,10 +93,10 @@ const StoreDetailScreen = () => {
       <View>
         {/* Flash Sales */}
         <View className="flex-row justify-between mt-8 mx-8">
-          <Text className="text-base font-montserrat-extraBold text-gray-800">
+          <Text className="text-xl font-montserrat-extraBold text-gray-800 mt-8">
             Flash Sales
           </Text>
-          <Text className="font-montserrat-semiBold text-primary">
+          <Text className="font-montserrat-semiBold text-primary mt-8">
             {timeLeft}
           </Text>
         </View>
@@ -109,7 +113,7 @@ const StoreDetailScreen = () => {
         </View>
 
         <View className="mx-6 mt-8">
-          <Text className="text-base font-montserrat-extraBold text-gray-800">
+          <Text className="text-xl font-montserrat-extraBold text-gray-800">
             Product line
           </Text>
         </View>
@@ -118,11 +122,18 @@ const StoreDetailScreen = () => {
           <FlatList
             data={gentsData}
             numColumns={2}
-            scrollEnabled={false} // IMPORTANT
+            scrollEnabled={false}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ProductCard {...item} />}
+            columnWrapperStyle={{ columnGap: gridGap }}
+            renderItem={({ item }) => (
+              <ProductCard
+                {...item}
+                cardWidth={gridCardWidth(2, gridGap)}
+                horizontalSpacing={7}
+              />
+            )}
             contentContainerStyle={{
-              paddingHorizontal: 10,
+              paddingHorizontal: gridPadding,
               paddingTop: 16,
             }}
           />

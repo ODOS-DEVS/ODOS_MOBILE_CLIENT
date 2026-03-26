@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   filterBtn: {
     paddingHorizontal: rS(14),
     paddingVertical: rV(8),
-    borderRadius: rMS(999),
+    borderRadius: rMS(99),
     borderWidth: 1,
     borderColor: "#D1D5DB",
     backgroundColor: AppColors.white,
