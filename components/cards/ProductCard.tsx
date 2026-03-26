@@ -17,7 +17,11 @@ interface ProductCardProps {
   reviews?: any;
   /** Optional width for grid layouts (e.g. search results); otherwise uses scaled default */
   cardWidth?: number;
+  /** Optional override for horizontal spacing (margin-right) to tune grid gaps */
+  horizontalSpacing?: number;
 }
+
+export type { ProductCardProps };
 
 const ProductCard: React.FC<ProductCardProps> = ({
   id,
@@ -30,10 +34,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   reviews,
   cardWidth,
+  horizontalSpacing,
 }) => {
   const hasPrice = !!price || !!oldPrice;
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
+  const spacingRight = horizontalSpacing ?? rS(12);
 
   return (
     <TouchableOpacity
@@ -58,7 +64,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         style={{
           width,
           borderRadius: rS(16),
-          marginRight: rS(12),
+          marginRight: spacingRight,
           marginBottom: rV(16),
           marginTop: rV(4),
         }}
@@ -114,8 +120,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               bottom: rV(8),
               right: rS(4),
               flexDirection: "column",
-              gap: rV(20),
-              paddingVertical: rV(8),
+              gap: rV(10),
+              paddingVertical: rV(4),
             }}
           >
             <AddToWishList
@@ -148,7 +154,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: rS(8),
+              gap: rS(2),
             }}
           >
             <Text

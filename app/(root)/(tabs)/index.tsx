@@ -81,7 +81,7 @@ const HomeScreen = () => {
                 <Ionicons name="arrow-back" size={24} color="black" />
               </TouchableOpacity>
 
-              <Text className="text-lg font-montserrat-bold">
+              <Text className="text-xl font-montserrat-extraBold text-gray-800">
                 Search Results
               </Text>
             </View>
@@ -144,7 +144,7 @@ const HomeScreen = () => {
                   paddingHorizontal: horizontalPadding,
                 }}
               >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Flash Sales
                 </Text>
                 <Text className="font-montserrat-semiBold text-primary">
@@ -176,7 +176,7 @@ const HomeScreen = () => {
                   marginTop: sectionSpacing,
                 }}
               >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Recommendation
                 </Text>
                 <TouchableOpacity
@@ -209,7 +209,7 @@ const HomeScreen = () => {
                   marginBottom: rS(10),
                 }}
               >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Stores
                 </Text>
                 <TouchableOpacity
@@ -241,7 +241,7 @@ const HomeScreen = () => {
                   marginBottom: rS(10),
                 }}
               >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Popular products
                 </Text>
                 <TouchableOpacity>
@@ -274,7 +274,7 @@ const HomeScreen = () => {
                   marginBottom: rS(10),
                 }}
               >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
+                <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Market
                 </Text>
                 <TouchableOpacity>

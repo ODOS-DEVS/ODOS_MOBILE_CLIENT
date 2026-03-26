@@ -85,6 +85,7 @@ const LadiesCategory = () => {
                     <ProductCard {...item} />
                   </View>
                 )}
+                
               />
             )}
           </View>
@@ -138,7 +139,7 @@ const LadiesCategory = () => {
             scrollEnabled={false}
             renderItem={({ item }) => <ProductCard {...item} />}
             contentContainerStyle={{
-              paddingHorizontal: 20,
+              paddingHorizontal: 8,
               paddingTop: 16,
             }}
           />
