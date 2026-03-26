@@ -1,32 +1,30 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Text, View } from "react-native";
+import { Image, ImageSourcePropType, Text, View } from "react-native";
 
 const TabsLayout = () => {
   type TabIconProps = {
     focused: boolean;
-    name: keyof typeof Ionicons.glyphMap;
+    source: ImageSourcePropType;
     title: string;
   };
 
-  const TabIcon = ({ focused, name, title }: TabIconProps) => {
+  const TabIcon = ({ focused, source, title }: TabIconProps) => {
     return (
-      <View className="items-center justify-center mt-12">
-        <View
-          className={`w-12 h-12 rounded-full items-center justify-center ${
-            focused ? "bg-gray-700" : "bg-transparent"
-          }`}
-        >
-          <Ionicons
-            name={name}
-            size={19}
-            color={focused ? "#fff" : "#8E8E93"}
-          />
-        </View>
+      <View className="items-center justify-center mt-10 mb-2">
+        <Image
+          source={source}
+          style={{
+            width: focused ? 28 : 24,
+            height: focused ? 28 : 24,
+            tintColor: focused ? "#111827" : "#9CA3AF",
+            transform: [{ scale: focused ? 1.05 : 1 }],
+          }}
+          resizeMode="contain"
+        />
 
         <Text
-          className={`text-sm w-20 text-center ${
+          className={`text-[10px] mt-2 w-20 text-center ${
             focused
               ? "text-text font-montserrat-extraBold"
               : "text-subtext-200 font-montserrat-semiBold"
@@ -48,11 +46,11 @@ const TabsLayout = () => {
           bottom: 0,
           left: 0,
           right: 20,
-          height: 88,
-          paddingBottom: 30,
+          height: 83,
+          paddingBottom: 80,
           paddingHorizontal: 10,
           borderRadius: 30,
-          backgroundColor: "#fff",
+          backgroundColor: "#D9D9D9",
           shadowColor: "#000",
           shadowOpacity: 0.6,
           shadowRadius: 8,
@@ -66,7 +64,11 @@ const TabsLayout = () => {
         options={{
           title: "Home",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="home-outline" focused={focused} title="Home" />
+            <TabIcon
+              source={require("../../../assets/images/home.png")}
+              focused={focused}
+              title="Home"
+            />
           ),
         }}
       />
@@ -75,7 +77,11 @@ const TabsLayout = () => {
         options={{
           title: "Category",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="grid-outline" focused={focused} title="Category" />
+            <TabIcon
+              source={require("../../../assets/images/Category.png")}
+              focused={focused}
+              title="Category"
+            />
           ),
         }}
       />
@@ -84,7 +90,11 @@ const TabsLayout = () => {
         options={{
           title: "Cart",
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="cart-outline" focused={focused} title="Cart" />
+            <TabIcon
+              source={require("../../../assets/images/bag.png")}
+              focused={focused}
+              title="Cart"
+            />
           ),
         }}
       />
@@ -94,7 +104,7 @@ const TabsLayout = () => {
           title: "Wishlist",
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              name="heart"
+              source={require("../../../assets/images/Heart.png")}
               focused={focused}
               title="Wishlist"
             />
@@ -107,7 +117,7 @@ const TabsLayout = () => {
           title: "Profile",
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              name="person-sharp"
+              source={require("../../../assets/images/Profile.png")}
               focused={focused}
               title="Profile"
             />

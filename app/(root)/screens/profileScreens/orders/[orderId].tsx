@@ -66,7 +66,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
-    paddingTop: rMS(20),
   },
   topSection: {
     paddingHorizontal: rS(16),
@@ -85,7 +84,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    borderRadius: rMS(12),
+    borderRadius: rMS(99),
     borderWidth: 1,
     borderColor: "#D4DAE2",
     backgroundColor: AppColors.white,
@@ -93,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: rS(6),
+    gap: rS(2),
   },
   tabButtonActive: {
     borderColor: AppColors.primary,

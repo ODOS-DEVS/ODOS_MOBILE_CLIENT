@@ -45,6 +45,7 @@ export default function ProductDetail() {
   const rating = Number(getParam(params.rating) ?? 0);
   const reviews = getParam(params.reviews);
   const discount = getParam(params.discount);
+  const isVoucher = getParam(params.isVoucher) === "true";
   const [selectedColor, setSelectedColor] = useState(productColorOptions[0].id);
   const [selectedSize, setSelectedSize] = useState(productSizeOptions[2]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -106,12 +107,18 @@ export default function ProductDetail() {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(_, idx) => `${id}-img-${idx}`}
             onMomentumScrollEnd={(event) => {
-              const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+              const index = Math.round(
+                event.nativeEvent.contentOffset.x / screenWidth,
+              );
               setActiveImageIndex(index);
             }}
             renderItem={({ item }) => (
               <View style={styles.imageSlide}>
-                <Image source={item as any} style={styles.image} resizeMode="cover" />
+                <Image
+                  source={item as any}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
               </View>
             )}
           />
@@ -120,7 +127,10 @@ export default function ProductDetail() {
               {productImages.map((_, index) => (
                 <View
                   key={`${id}-dot-${index}`}
-                  style={[styles.imageDot, activeImageIndex === index && styles.imageDotActive]}
+                  style={[
+                    styles.imageDot,
+                    activeImageIndex === index && styles.imageDotActive,
+                  ]}
                 />
               ))}
             </View>
@@ -133,81 +143,96 @@ export default function ProductDetail() {
             <Text style={styles.productTitle} numberOfLines={2}>
               {title}
             </Text>
-            <View style={styles.badges}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>In Stock</Text>
-              </View>
-              {discount ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{discount}</Text>
-                </View>
-              ) : null}
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>In Stock</Text>
             </View>
+            {!isVoucher && (
+              <View style={styles.badges}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>In Stock</Text>
+                </View>
+                {discount ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{discount}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
           </View>
 
           <View style={styles.metaRow}>
-            {category ? (
-              <Text style={styles.category}>{category}</Text>
-            ) : null}
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={14} color="#facc15" />
-              <Text style={styles.ratingText}>{rating || "—"}</Text>
-              {reviews != null && (
-                <Text style={styles.reviewsText}>({reviews} reviews)</Text>
-              )}
-            </View>
+            {category ? <Text style={styles.category}>{category}</Text> : null}
+            {!isVoucher && (
+              <View style={styles.ratingRow}>
+                <Ionicons name="star" size={14} color="#facc15" />
+                <Text style={styles.ratingText}>{rating || "—"}</Text>
+                {reviews != null && (
+                  <Text style={styles.reviewsText}>({reviews} reviews)</Text>
+                )}
+              </View>
+            )}
           </View>
 
           <View style={styles.priceRow}>
             <Text style={styles.price}>₵{price}</Text>
-            {oldPrice > 0 && (
-              <Text style={styles.oldPrice}>₵{oldPrice}</Text>
-            )}
+            {oldPrice > 0 && <Text style={styles.oldPrice}>₵{oldPrice}</Text>}
           </View>
 
-          <View style={styles.variantCard}>
-            <View style={styles.variantHeader}>
-              <Text style={styles.variantTitle}>Choose Color</Text>
-              <Text style={styles.variantValue}>{activeColor.label}</Text>
-            </View>
-            <View style={styles.colorRow}>
-              {productColorOptions.map((item) => {
-                const isActive = selectedColor === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.colorBtn, isActive && styles.colorBtnActive]}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedColor(item.id)}
-                  >
-                    <View style={[styles.colorDot, { backgroundColor: item.hex }]} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          {!isVoucher && (
+            <View style={styles.variantCard}>
+              <View style={styles.variantHeader}>
+                <Text style={styles.variantTitle}>Choose Color</Text>
+                <Text style={styles.variantValue}>{activeColor.label}</Text>
+              </View>
+              <View style={styles.colorRow}>
+                {productColorOptions.map((item) => {
+                  const isActive = selectedColor === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.colorBtn,
+                        isActive && styles.colorBtnActive,
+                      ]}
+                      activeOpacity={0.8}
+                      onPress={() => setSelectedColor(item.id)}
+                    >
+                      <View
+                        style={[styles.colorDot, { backgroundColor: item.hex }]}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            <View style={styles.variantHeader}>
-              <Text style={styles.variantTitle}>Choose Size</Text>
-              <Text style={styles.variantValue}>Size {selectedSize}</Text>
+              <View style={styles.variantHeader}>
+                <Text style={styles.variantTitle}>Choose Size</Text>
+                <Text style={styles.variantValue}>Size {selectedSize}</Text>
+              </View>
+              <View style={styles.sizeRow}>
+                {productSizeOptions.map((item) => {
+                  const isActive = selectedSize === item;
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      style={[styles.sizeBtn, isActive && styles.sizeBtnActive]}
+                      activeOpacity={0.85}
+                      onPress={() => setSelectedSize(item)}
+                    >
+                      <Text
+                        style={[
+                          styles.sizeBtnText,
+                          isActive && styles.sizeBtnTextActive,
+                        ]}
+                      >
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            <View style={styles.sizeRow}>
-              {productSizeOptions.map((item) => {
-                const isActive = selectedSize === item;
-                return (
-                  <TouchableOpacity
-                    key={item}
-                    style={[styles.sizeBtn, isActive && styles.sizeBtnActive]}
-                    activeOpacity={0.85}
-                    onPress={() => setSelectedSize(item)}
-                  >
-                    <Text style={[styles.sizeBtnText, isActive && styles.sizeBtnTextActive]}>
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Description, Shipping, Returns */}
@@ -215,39 +240,57 @@ export default function ProductDetail() {
           <CollapsibleShippingCard
             title="Description"
             icon={
-              <Ionicons name="information-outline" size={22} color={AppColors.subtext[100]} />
+              <Ionicons
+                name="information-outline"
+                size={22}
+                color={AppColors.subtext[100]}
+              />
             }
             description={[
               "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
             ]}
             defaultExpanded={false}
           />
-          <CollapsibleShippingCard
-            title="Shipping"
-            icon={<Ionicons name="arrow-up-right-box" size={18} color={AppColors.subtext[100]} />}
-            description={["Choose your preferred delivery method."]}
-            shippingOptions={[
-              {
-                type: "Economy",
-                deliveryTime: "Arrives in 7-10 business days",
-                price: "GHC19",
-              },
-              {
-                type: "Regular",
-                deliveryTime: "Arrives in 4-5 business days",
-                price: "GHC29",
-              },
-              {
-                type: "One day",
-                deliveryTime: "Arrives in 1 business day",
-                price: "GHC49",
-              },
-            ]}
-            defaultExpanded={false}
-          />
+          {!isVoucher && (
+            <CollapsibleShippingCard
+              title="Shipping"
+              icon={
+                <Ionicons
+                  name="arrow-up-right-box"
+                  size={18}
+                  color={AppColors.subtext[100]}
+                />
+              }
+              description={["Choose your preferred delivery method."]}
+              shippingOptions={[
+                {
+                  type: "Economy",
+                  deliveryTime: "Arrives in 7-10 business days",
+                  price: "GHC19",
+                },
+                {
+                  type: "Regular",
+                  deliveryTime: "Arrives in 4-5 business days",
+                  price: "GHC29",
+                },
+                {
+                  type: "One day",
+                  deliveryTime: "Arrives in 1 business day",
+                  price: "GHC49",
+                },
+              ]}
+              defaultExpanded={false}
+            />
+          )}
           <CollapsibleShippingCard
             title="Return Policy"
-            icon={<Ionicons name="at-circle" size={18} color={AppColors.subtext[100]} />}
+            icon={
+              <Ionicons
+                name="at-circle"
+                size={18}
+                color={AppColors.subtext[100]}
+              />
+            }
             description={[
               "We accept returns of products purchased in online stores by following our Returns Policy below:\n",
               "1. Return within 30 days from the date of ordered through online store.\n",
@@ -296,7 +339,11 @@ export default function ProductDetail() {
             <Text style={styles.buyNowText}>Buy Now</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.chatBtn} activeOpacity={0.85}>
-            <Ionicons name="chatbubble-outline" size={20} color={AppColors.white} />
+            <Ionicons
+              name="chatbubble-outline"
+              size={20}
+              color={AppColors.white}
+            />
             <Text style={styles.chatBtnText}>Chat</Text>
           </TouchableOpacity>
           <AddToCartBtn

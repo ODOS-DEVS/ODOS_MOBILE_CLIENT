@@ -9,6 +9,10 @@ interface MarketCardProps {
   category?: string;
   rating?: number;
   reviews?: string;
+  /** Optional width override to match product cards */
+  cardWidth?: number;
+  /** Optional override for horizontal spacing (margin-right) */
+  horizontalSpacing?: number;
 }
 
 const MarketCard: React.FC<MarketCardProps> = ({
@@ -16,7 +20,13 @@ const MarketCard: React.FC<MarketCardProps> = ({
   image,
   title,
   category,
+  cardWidth,
+  horizontalSpacing,
 }) => {
+  const width = cardWidth ?? rS(160);
+  const imageHeight = rV(130);
+  const spacingRight = horizontalSpacing ?? rS(12);
+
   return (
     <TouchableOpacity
       onPress={() =>
@@ -32,16 +42,16 @@ const MarketCard: React.FC<MarketCardProps> = ({
     >
       <View
         style={{
-          width: rS(150),
+          width,
           borderRadius: rS(16),
-          marginRight: rS(12),
+          marginRight: spacingRight,
           marginBottom: rV(16),
           marginTop: rV(4),
         }}
       >
         <View
           style={{
-            height: rV(160),
+            height: imageHeight,
             backgroundColor: "#f3f4f6",
             borderTopLeftRadius: rS(16),
             borderTopRightRadius: rS(16),
