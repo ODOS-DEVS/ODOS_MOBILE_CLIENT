@@ -53,7 +53,7 @@ const WishlistScreen = () => {
             data={wishlist}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 120, gap: 12 }}
             scrollEnabled={false}
             renderItem={({ item }) => (
               <RecommendationCard

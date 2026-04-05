@@ -51,7 +51,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           flexDirection: "row",
           alignItems: "center",
           borderRadius: rS(16),
-          paddingTop: rV(16),
+          paddingTop: rV(5),
         }}
       >
         <Image

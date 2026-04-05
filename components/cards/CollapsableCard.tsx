@@ -1,3 +1,5 @@
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -46,18 +48,42 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   };
 
   return (
-    <View className="bg-[#f8f8f8] rounded-xl border border-[#e0e0e0] overflow-hidden mb-4">
+    <View
+      style={{
+        backgroundColor: "#F8FAFC",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        overflow: "hidden",
+        marginBottom: 12,
+      }}
+    >
       {/* HEADER */}
       <TouchableOpacity
-        className="flex-row justify-between items-center p-4 bg-[#f8f8f8]"
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          backgroundColor: "#F8FAFC",
+        }}
         onPress={toggleExpand}
         activeOpacity={0.7}
       >
-        <View className="flex-row items-center flex-1">
-          <Text className="text-2xl mr-2">{icon}</Text>
-          <Text className="text-lg font-semibold text-[#333]">{title}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <Text style={{ fontSize: 22, marginRight: 8 }}>{icon}</Text>
+          <Text
+            style={{
+              fontSize: 16,
+              fontFamily: Fonts.titleBold,
+              color: AppColors.text,
+            }}
+          >
+            {title}
+          </Text>
         </View>
-        <Text className="text-2xl text-[#666] ml-2">
+        <Text style={{ fontSize: 20, color: AppColors.subtext[100], marginLeft: 8 }}>
           {isExpanded ? (
             <Ionicons name="chevron-down" size={22} />
           ) : (
@@ -68,29 +94,78 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
 
       {/* CONTENT */}
       {isExpanded && (
-        <View className="px-4 pb-4 pt-0">
-          <Text className="text-sm text-[#666] leading-relaxed mb-4 ">
-            {description}
-          </Text>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, paddingTop: 6 }}>
+          {description && (
+            <View
+              style={{
+                gap: 8,
+                marginBottom: shippingOptions?.length ? 12 : 6,
+              }}
+            >
+              {(Array.isArray(description) ? description : [description]).map(
+                (line, idx) => (
+                  <Text
+                    key={idx}
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 19,
+                      color: AppColors.secondary,
+                      fontFamily: Fonts.text,
+                    }}
+                  >
+                    {line}
+                  </Text>
+                )
+              )}
+            </View>
+          )}
 
-          <View className="gap-3">
+          <View style={{ gap: 10 }}>
             {shippingOptions?.map((option, index) => (
               <View
                 key={index}
-                className={`flex-row justify-between items-center bg-white p-4 rounded-lg border border-[#e0e0e0] ${
-                  index !== shippingOptions.length - 1 ? "mb-3" : ""
-                }`}
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  backgroundColor: AppColors.white,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
+                }}
               >
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-[#333] mb-1">
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontFamily: Fonts.titleBold,
+                      color: AppColors.text,
+                      marginBottom: 2,
+                    }}
+                  >
                     {option.type}
                   </Text>
-                  <Text className="text-sm text-[#666]">
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: Fonts.text,
+                      color: AppColors.secondary,
+                    }}
+                  >
                     {option.deliveryTime}
                   </Text>
                 </View>
 
-                <Text className="text-base font-semibold text-[#333] ml-3">
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontFamily: Fonts.titleBold,
+                    color: AppColors.text,
+                    marginLeft: 10,
+                  }}
+                >
                   {option.price}
                 </Text>
               </View>

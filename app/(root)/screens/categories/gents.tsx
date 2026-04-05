@@ -159,7 +159,7 @@ const GentsScreen = () => {
           </View>
 
           {/* POPULAR NEW HEADER */}
-          <View className="flex-row justify-between mx-6 mt-8">
+          <View className="flex-row justify-between mx-6 mt-16">
             <Text className="text-lg font-montserrat-semiBold">
               Popular New
             </Text>
