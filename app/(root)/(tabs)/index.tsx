@@ -13,7 +13,7 @@ import {
   recommendations,
   Stores,
 } from "@/constants/Data";
-import { rS, useResponsive } from "@/styles/responsive";
+import { rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -174,6 +174,7 @@ const HomeScreen = () => {
                   justifyContent: "space-between",
                   paddingHorizontal: horizontalPadding,
                   marginTop: sectionSpacing,
+                  marginBottom: rV(10),
                 }}
               >
                 <Text className="text-xl font-montserrat-extraBold text-gray-800">
@@ -244,7 +245,9 @@ const HomeScreen = () => {
                 <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Popular products
                 </Text>
-                <TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push("../screens/popular")}
+                >
                   <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>
@@ -277,7 +280,7 @@ const HomeScreen = () => {
                 <Text className="text-xl font-montserrat-extraBold text-gray-800">
                   Market
                 </Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push("../screens/market")}>
                   <Text className="text-base font-montserrat-extraBold text-gray-800">
                     See All
                   </Text>

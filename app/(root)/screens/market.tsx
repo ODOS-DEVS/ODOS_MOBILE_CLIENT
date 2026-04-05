@@ -1,12 +1,12 @@
 import StoreCard from "@/components/cards/StoreCard";
-import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
-import { Stores } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
+import { markets, Stores } from "@/constants/Data";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   FlatList,
   ScrollView,
@@ -16,76 +16,84 @@ import {
   View,
 } from "react-native";
 
-const normalizeStoreCategory = (value?: string) => {
-  const v = (value ?? "").toLowerCase();
-  if (v.includes("lady") || v.includes("women") || v.includes("female"))
-    return "Ladies";
-  if (v.includes("gent") || v.includes("men") || v.includes("male"))
-    return "Gents";
-  if (v.includes("grocery") || v.includes("grocer")) return "Groceries";
-  return "Others";
-};
-
-const categoryOptions = [
-  "All",
-  "Ladies",
-  "Gents",
-  "Groceries",
-  "kids",
-  "Automobile",
-  "Beauty",
-  "Others",
-] as const;
-
-const StoreScreen = () => {
+const MarketScreen = () => {
+  const { activeMarket: initialMarketParam } = useLocalSearchParams();
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
-  const [activeCategory, setActiveCategory] = useState("All");
+  const initialMarket =
+    typeof initialMarketParam === "string" && initialMarketParam.length
+      ? initialMarketParam
+      : "All";
+  const [activeMarket, setActiveMarket] = useState<string>(initialMarket);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState(Stores);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
 
-  const categories = useMemo(() => [...categoryOptions], []);
+  const marketNames = useMemo(
+    () => ["All", ...Array.from(new Set(markets.map((m) => m.title)))],
+    []
+  );
 
-  const filteredByCategory = useMemo(() => {
-    if (activeCategory === "All") return Stores;
+  const filterStores = (marketName: string) => {
+    if (marketName === "All") return Stores;
     return Stores.filter(
-      (store) => normalizeStoreCategory(store.category) === activeCategory,
+      (store) => (store as any).market?.toLowerCase() === marketName.toLowerCase()
     );
-  }, [activeCategory]);
+  };
 
-  const displayedStores = isSearching ? searchResults : filteredByCategory;
+  const filteredStores = useMemo(
+    () => (isSearching ? searchResults : filterStores(activeMarket)),
+    [activeMarket, isSearching, searchResults]
+  );
 
-  const handleCategoryPress = (category: string) => {
-    setActiveCategory(category);
+
+  useEffect(() => {
+    // Update if navigated with a new param
+    if (
+      typeof initialMarketParam === "string" &&
+      initialMarketParam.length &&
+      initialMarketParam !== activeMarket
+    ) {
+      handleMarketChange(initialMarketParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMarketParam]);
+
+  const handleMarketChange = (marketName: string) => {
+    setActiveMarket(marketName);
     setIsSearching(false);
+    setSearchResults(filterStores(marketName));
     setSearchSessionKey((prev) => prev + 1);
-    setSearchResults([]);
+  };
+
+  const handleReset = () => {
+    setActiveMarket("All");
+    setIsSearching(false);
+    setSearchResults(Stores);
+    setSearchSessionKey((prev) => prev + 1);
   };
 
   return (
     <View style={styles.container}>
-      <ProfileHeader
-        title="Stores"
-      />
+      <ProfileHeader title="Markets" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: horizontalPadding,
           paddingBottom: sectionSpacing,
-          paddingTop: rV(12),
+          paddingTop: rV(8),
         }}
       >
         <SearchBar
-          key={`${activeCategory}-${searchSessionKey}`}
-          data={filteredByCategory}
+          key={`${activeMarket}-${searchSessionKey}`}
+          data={filterStores(activeMarket)}
           onStartSearch={() => setIsSearching(true)}
           onResults={(results) => {
             setIsSearching(true);
             setSearchResults(results);
           }}
-          placeholder="Search stores, designers, categories"
-          containerStyle={{ marginTop: rV(14) }}
+          placeholder="Search stores by name, category or market..."
+          containerStyle={{ marginTop: rV(12) }}
         />
 
         <ScrollView
@@ -94,47 +102,47 @@ const StoreScreen = () => {
           contentContainerStyle={styles.chipRow}
           style={{ marginTop: rV(12) }}
         >
-          {categories.map((category) => {
-            const isActive = category === activeCategory;
+          {marketNames.map((marketName) => {
+            const isActive = marketName === activeMarket;
             return (
               <TouchableOpacity
-                key={category}
-                onPress={() => handleCategoryPress(category)}
-                activeOpacity={0.8}
+                key={marketName}
+                onPress={() => handleMarketChange(marketName)}
+                activeOpacity={0.85}
                 style={[styles.chip, isActive && styles.chipActive]}
               >
-                <Text
-                  style={[styles.chipLabel, isActive && styles.chipLabelActive]}
-                >
-                  {category}
+                <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
+                  {marketName}
                 </Text>
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity
+            onPress={handleReset}
+            activeOpacity={0.8}
+            style={styles.resetChip}
+          >
+            <Text style={styles.resetChipLabel}>Reset</Text>
+          </TouchableOpacity>
         </ScrollView>
 
         <View style={{ marginTop: sectionSpacing }}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse stores</Text>
+            <Text style={styles.sectionTitle}>
+              {activeMarket === "All" ? "Stores" : `Stores in ${activeMarket}`}
+            </Text>
           </View>
 
-          {displayedStores.length === 0 ? (
+          {filteredStores.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons
-                name="search-outline"
-                size={rMS(22)}
-                color={AppColors.subtext[100]}
-              />
-              <Text style={styles.emptyTitle}>
-                No stores match your filters
-              </Text>
+              <Text style={styles.emptyTitle}>No stores here yet</Text>
               <Text style={styles.emptySubtitle}>
-                Try another category or clear the search to see more options.
+                Try another market or reset to see all stores.
               </Text>
             </View>
           ) : (
             <FlatList
-              data={displayedStores}
+              data={filteredStores}
               keyExtractor={(item) => item.id}
               numColumns={2}
               scrollEnabled={false}
@@ -142,9 +150,9 @@ const StoreScreen = () => {
               renderItem={({ item }) => (
                 <StoreCard
                   {...item}
-                  category={normalizeStoreCategory(item.category)}
                   cardWidth={gridCardWidth(2, rS(12))}
                   horizontalSpacing={0}
+                  category={(item as any).market ?? item.category}
                 />
               )}
               contentContainerStyle={{ paddingTop: rV(12) }}
@@ -156,20 +164,12 @@ const StoreScreen = () => {
   );
 };
 
-export default StoreScreen;
+export default MarketScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
-  },
-  mapButton: {
-    width: rMS(36),
-    height: rMS(36),
-    borderRadius: rMS(12),
-    backgroundColor: "#EFF3F7",
-    alignItems: "center",
-    justifyContent: "center",
   },
   heroCard: {
     backgroundColor: AppColors.white,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#E6EAF0",
     shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
@@ -208,32 +208,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: rV(12),
   },
-  primaryBtn: {
+  heroStat: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    borderRadius: rMS(10),
-    marginRight: rS(8),
   },
-  primaryBtnText: {
+  heroStatValue: {
     marginLeft: rS(6),
-    fontSize: rMS(12),
+    fontSize: rMS(12.5),
     fontFamily: Fonts.titleBold,
-    color: AppColors.white,
+    color: AppColors.text,
   },
-  secondaryBtn: {
+  heroDivider: {
+    width: 1,
+    height: rV(16),
+    backgroundColor: "#E2E8F0",
+    marginHorizontal: rS(10),
+  },
+  mapPill: {
+    marginLeft: "auto",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    borderRadius: rMS(10),
-    backgroundColor: "transparent",
+    paddingVertical: rV(8),
+    borderRadius: rMS(18),
+    backgroundColor: "#EEF2F5",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D8DEE6",
+    borderColor: "#E2E8F0",
   },
-  secondaryBtnText: {
+  mapPillText: {
     marginLeft: rS(6),
     fontSize: rMS(12),
     fontFamily: Fonts.title,
@@ -242,14 +244,13 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingRight: rS(2),
   },
   chip: {
-    paddingHorizontal: rS(12),
+    paddingHorizontal: rS(14),
     paddingVertical: rV(8),
-    borderRadius: rMS(80),
+    borderRadius: rMS(18),
     backgroundColor: "#EEF2F5",
-    marginRight: rS(10),
+    marginRight: rS(8),
     borderWidth: 1,
     borderColor: "transparent",
   },
@@ -265,42 +266,17 @@ const styles = StyleSheet.create({
   chipLabelActive: {
     color: AppColors.white,
   },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: AppColors.white,
+  resetChip: {
     paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-    borderRadius: rMS(12),
+    paddingVertical: rV(8),
+    borderRadius: rMS(18),
+    backgroundColor: "transparent",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E1E6ED",
+    borderColor: "#CBD5E1",
   },
-  statIconWrap: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(8),
-    backgroundColor: "#EEF2F5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(10),
-  },
-  statTextWrap: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  statLabel: {
-    marginTop: rV(2),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
+  resetChipLabel: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.title,
     color: AppColors.secondary,
   },
   sectionHeader: {
@@ -309,11 +285,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   sectionTitle: {
-    fontSize: rMS(16),
+    fontSize: rMS(15),
     fontFamily: Fonts.titleBold,
     color: AppColors.text,
   },
-  sectionAction: {
+  sectionCount: {
     fontSize: rMS(12),
     fontFamily: Fonts.title,
     color: AppColors.secondary,
@@ -321,15 +297,14 @@ const styles = StyleSheet.create({
   emptyState: {
     marginTop: rV(16),
     backgroundColor: AppColors.white,
-    borderRadius: rMS(12),
-    paddingVertical: rV(24),
+    borderRadius: rMS(14),
+    paddingVertical: rV(20),
     paddingHorizontal: rS(14),
-    alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#E6EAF0",
+    alignItems: "center",
   },
   emptyTitle: {
-    marginTop: rV(10),
     fontSize: rMS(14),
     fontFamily: Fonts.titleBold,
     color: AppColors.text,

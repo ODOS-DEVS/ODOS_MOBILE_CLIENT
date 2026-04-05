@@ -28,7 +28,7 @@ const MyCart = () => {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <View className="flex-1 px-4 pt-8">
+      <View className="flex-1 px-4 pt-8 pb-32">
         {/* Header */}
         <View className="items-center pt-16 mb-6">
           <Text className="text-xl font-montserrat-extraBold">My Cart</Text>
@@ -73,7 +73,7 @@ const MyCart = () => {
                   onRemove={() => removeItem(item.id)}
                 />
               )}
-              contentContainerStyle={{ paddingBottom: 10 }}
+              contentContainerStyle={{ paddingBottom: 20 }}
             />
 
             {/* CART SUMMARY */}

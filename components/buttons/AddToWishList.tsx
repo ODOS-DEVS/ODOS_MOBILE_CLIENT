@@ -48,7 +48,7 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
       activeOpacity={0.7}
       style={[
         {
-          backgroundColor: "#fff",
+          backgroundColor: "#F1F3F5",
           padding: rS(10),
           borderRadius: rS(50),
           justifyContent: "center",
