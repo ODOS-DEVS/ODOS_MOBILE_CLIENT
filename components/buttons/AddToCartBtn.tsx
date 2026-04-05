@@ -14,7 +14,6 @@ interface AddToCartBtnProps {
     image?: any;
   };
 
-  /** 👇 NEW */
   containerStyle?: StyleProp<ViewStyle>;
   iconSize?: number;
   iconColor?: string;
@@ -33,7 +32,7 @@ const AddToCartBtn = ({
     <View
       style={[
         {
-          backgroundColor: "#fff",
+          backgroundColor: "#F1F3F5",
           padding: rS(10),
           borderRadius: rS(50),
         },
