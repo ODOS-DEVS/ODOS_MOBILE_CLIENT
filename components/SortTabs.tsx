@@ -35,7 +35,9 @@ const SortTabs: React.FC<SortTabsProps> = ({
               onPress={() => handlePress(item)}
               activeOpacity={0.8}
               className={`px-5 py-2 mr-3 rounded-full border ${
-                isActive ? "bg-black border-black" : "border-gray-300 bg-white"
+                isActive
+                  ? "bg-black border-black"
+                  : "border-transparent border-[1px] bg-[#EEF2F5]"
               }`}
             >
               <Text

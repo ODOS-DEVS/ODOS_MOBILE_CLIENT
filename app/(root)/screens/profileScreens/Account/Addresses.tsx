@@ -103,7 +103,7 @@ export default function AddressScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100 pt-6">
+    <View className="flex-1 bg-gray-100">
       <ProfileHeader title={fromCheckout ? "Choose Address" : "My Addresses"} />
 
       {/* Empty State */}

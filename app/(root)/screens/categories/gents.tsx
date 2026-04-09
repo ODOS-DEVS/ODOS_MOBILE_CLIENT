@@ -1,10 +1,12 @@
 import BannerCard from "@/components/cards/BannerCard";
 import ProductCard from "@/components/cards/ProductCard";
+// ProfileHeader removed to use store-style header
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { gentsData } from "@/constants/Data";
+import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -16,6 +18,10 @@ import {
 } from "react-native";
 
 const GentsScreen = () => {
+  const { gridCardWidth } = useResponsive();
+  const gridGap = rS(6);
+  const gridPadding = rS(17);
+
   // Sorting
   const [selectedSort, setSelectedSort] = useState("All");
   const [filteredData, setFilteredData] = useState(gentsData);
@@ -35,19 +41,20 @@ const GentsScreen = () => {
       setFilteredData(gentsData);
     } else {
       const filtered = gentsData.filter(
-        (item) => item.category.toLowerCase() === selectedSort.toLowerCase()
+        (item) => item.category.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
   }, [selectedSort]);
 
   return (
-    <View className="flex-1 bg-white pt-10">
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
 
+      <ProfileHeader title="Gents" />
       {/* ---------------- SEARCH RESULTS MODE ---------------- */}
       {isSearching ? (
-        <ScrollView>
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
           <View className="px-4 mt-4 pb-10">
             {/* BACK BUTTON */}
             <View className="flex-row items-center mb-4">
@@ -96,23 +103,9 @@ const GentsScreen = () => {
         // ---------------- NORMAL GENTS SCREEN ----------------
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}
           className="flex-1 bg-white"
         >
-          {/* HEADER */}
-          <View className="flex-row items-center justify-center mb-3 mt-12 px-4">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="absolute left-6"
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={24} color="#000" />
-            </TouchableOpacity>
-
-            <Text className="text-lg font-montserrat-extraBold text-center">
-              Gents
-            </Text>
-          </View>
-
           {/* SEARCH BAR */}
           <SearchBar
             data={gentsData}
@@ -121,7 +114,7 @@ const GentsScreen = () => {
           />
 
           {/* SORT TABS */}
-          <View className="pt-4">
+          <View className="pt-4 bg-white">
             <SortTabs
               options={[
                 "All",
@@ -137,17 +130,26 @@ const GentsScreen = () => {
           </View>
 
           {/* PRODUCT GRID */}
-          <FlatList
-            data={filteredData}
-            numColumns={2}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ProductCard {...item} />}
-            contentContainerStyle={{
-              paddingHorizontal: 8,
-              paddingTop: 16,
-            }}
-          />
+          <View>
+            <FlatList
+              data={filteredData}
+              numColumns={2}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.id}
+              columnWrapperStyle={{ columnGap: gridGap }}
+              renderItem={({ item }) => (
+                <ProductCard
+                  {...item}
+                  cardWidth={gridCardWidth(2, gridGap)}
+                  horizontalSpacing={7}
+                />
+              )}
+              contentContainerStyle={{
+                paddingHorizontal: gridPadding,
+                paddingTop: 16,
+              }}
+            />
+          </View>
 
           {/* BANNER */}
           <View className="px-4 pt-2">
