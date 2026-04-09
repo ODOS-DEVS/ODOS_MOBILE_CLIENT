@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -74,12 +75,18 @@ export default function ProductDetailScreen() {
       <View className="px-6 py-6 bg-white mt-2">
         {/* Rating */}
         <View className="flex-row items-center mb-3">
-          <Text className="text-yellow-500 font-montserrat-bold mr-2">★★★★★</Text>
-          <Text className="text-sm text-gray-500 font-montserrat-semiBold">(248 reviews)</Text>
+          <Text className="text-yellow-500 font-montserrat-bold mr-2">
+            ★★★★★
+          </Text>
+          <Text className="text-sm text-gray-500 font-montserrat-semiBold">
+            (248 reviews)
+          </Text>
         </View>
 
         {/* Title */}
-        <Text className="text-3xl font-montserrat-extraBold mb-2">Relax Dry Stretch</Text>
+        <Text className="text-3xl font-montserrat-extraBold mb-2">
+          Relax Dry Stretch
+        </Text>
         <Text className="text-gray-600 text-base font-montserrat-text leading-6 mb-6">
           Breathable everyday shorts designed for comfort and style. Perfect for
           active lifestyles.
@@ -253,6 +260,19 @@ export default function ProductDetailScreen() {
           <TouchableOpacity className="border-2 border-black rounded-full py-4">
             <Text className="text-black text-center font-semibold text-lg">
               Visit Store
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: "/screens/productDetails/chat/[vendorId]",
+                params: { vendorId: "vendor-123", vendorName: "Store Owner" },
+              })
+            }
+            className="bg-white rounded-full py-4 border border-gray-200"
+          >
+            <Text className="text-black text-center font-semibold text-lg">
+              Message Vendor
             </Text>
           </TouchableOpacity>
         </View>

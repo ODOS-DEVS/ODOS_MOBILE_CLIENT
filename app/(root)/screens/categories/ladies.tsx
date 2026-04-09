@@ -1,10 +1,11 @@
 import BannerCard from "@/components/cards/BannerCard";
 import ProductCard from "@/components/cards/ProductCard";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { ladiesData } from "@/constants/Data";
+import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -17,6 +18,9 @@ import {
 const LadiesCategory = () => {
   const [selectedSort, setSelectedSort] = useState("All");
   const [filteredData, setFilteredData] = useState(ladiesData);
+  const { gridCardWidth } = useResponsive();
+  const gridGap = rS(6);
+  const gridPadding = rS(17);
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -31,17 +35,21 @@ const LadiesCategory = () => {
       setFilteredData(ladiesData);
     } else {
       const filtered = ladiesData.filter(
-        (item) => item.category.toLowerCase() === selectedSort.toLowerCase()
+        (item) => item.category.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
   }, [selectedSort]);
 
   return (
-    <View className="flex-1 bg-white pt-10">
+    <View className="flex-1 bg-white">
+      <ProfileHeader title="Ladies" />
       {/* SEARCH MODE */}
       {isSearching ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
           <View className="px-4 mt-4 pb-10">
             {/* BACK BUTTON + TITLE */}
             <View className="flex-row items-center mt-6 mb-4">
@@ -85,29 +93,16 @@ const LadiesCategory = () => {
                     <ProductCard {...item} />
                   </View>
                 )}
-                
               />
             )}
           </View>
         </ScrollView>
       ) : (
         // NORMAL LADIES SCREEN
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* HEADER */}
-          <View className="flex-row items-center justify-center mb-3 mt-4 px-4">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="absolute left-6"
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={24} color="#000" />
-            </TouchableOpacity>
-
-            <Text className="text-lg font-montserrat-extraBold text-center">
-              Ladies Dorm
-            </Text>
-          </View>
-
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        >
           {/* SEARCH BAR */}
           <SearchBar
             data={ladiesData}
@@ -137,9 +132,16 @@ const LadiesCategory = () => {
             numColumns={2}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
-            renderItem={({ item }) => <ProductCard {...item} />}
+            columnWrapperStyle={{ columnGap: gridGap }}
+            renderItem={({ item }) => (
+              <ProductCard
+                {...item}
+                cardWidth={gridCardWidth(2, gridGap)}
+                horizontalSpacing={7}
+              />
+            )}
             contentContainerStyle={{
-              paddingHorizontal: 8,
+              paddingHorizontal: gridPadding,
               paddingTop: 16,
             }}
           />
