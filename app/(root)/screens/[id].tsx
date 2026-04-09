@@ -50,11 +50,14 @@ export default function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState(productSizeOptions[2]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const activeColor =
-    productColorOptions.find((item) => item.id === selectedColor) ?? productColorOptions[0];
+    productColorOptions.find((item) => item.id === selectedColor) ??
+    productColorOptions[0];
   const productImages = useMemo(() => {
-    const fallbackImages = [...flashSales, ...recommendations, ...PopularProducts].map(
-      (item) => item.image
-    );
+    const fallbackImages = [
+      ...flashSales,
+      ...recommendations,
+      ...PopularProducts,
+    ].map((item) => item.image);
     const merged = [image, ...fallbackImages].filter(Boolean);
     const unique = Array.from(new Set(merged));
     if (unique.length === 1) return [unique[0], unique[0], unique[0]];
@@ -338,7 +341,16 @@ export default function ProductDetail() {
           >
             <Text style={styles.buyNowText}>Buy Now</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.chatBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.chatBtn}
+            activeOpacity={0.85}
+            onPress={() =>
+              router.push({
+                pathname: "/screens/productDetails/chat/[vendorId]",
+                params: { vendorId: id, vendorName: String(title ?? "Vendor") },
+              } as any)
+            }
+          >
             <Ionicons
               name="chatbubble-outline"
               size={20}
