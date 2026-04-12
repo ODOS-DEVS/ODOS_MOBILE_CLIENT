@@ -126,7 +126,7 @@ export default function VouchersScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.summaryCard}>
+        <View style={styles.summaryCard} className="shadow-sm">
           <Text style={styles.summaryTitle}>Wallet Benefits</Text>
           <Text style={styles.summarySub}>
             Use active vouchers at checkout to unlock instant savings.
@@ -177,7 +177,7 @@ export default function VouchersScreen() {
         </ScrollView>
 
         {filteredVouchers.length === 0 ? (
-          <View style={styles.emptyWrap}>
+          <View style={styles.emptyWrap} className="shadow-sm">
             <Ionicons
               name="ticket-outline"
               size={rMS(34)}
@@ -194,7 +194,7 @@ export default function VouchersScreen() {
             const isActive = voucher.status === "active";
 
             return (
-              <View key={voucher.id} style={styles.voucherCard}>
+              <View key={voucher.id} style={styles.voucherCard} className="shadow-sm">
                 <View style={styles.cardTop}>
                   <View style={styles.storeBadge}>
                     <Ionicons
@@ -334,8 +334,6 @@ const styles = StyleSheet.create({
     borderRadius: rMS(16),
     padding: rS(14),
     marginBottom: rV(12),
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
   cardTop: {
     flexDirection: "row",
@@ -449,8 +447,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: rV(38),
     paddingHorizontal: rS(18),
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
   },
   emptyTitle: {
     marginTop: rV(8),

@@ -68,7 +68,7 @@ export default function DeliveredTab() {
           <Text style={styles.backLinkText}>Back to Delivered Orders</Text>
         </TouchableOpacity>
 
-        <View style={styles.card}>
+        <View style={styles.card} className="shadow-sm">
           <View style={styles.orderTop}>
             <View style={styles.imageWrap}>
               <Image source={selectedOrder.image} style={styles.image} resizeMode="contain" />
@@ -132,6 +132,7 @@ export default function DeliveredTab() {
         <TouchableOpacity
           key={item.id}
           style={styles.card}
+          className="shadow-sm"
           onPress={() => setSelectedOrder(item)}
           activeOpacity={0.82}
         >
@@ -172,8 +173,6 @@ const styles = StyleSheet.create({
     borderRadius: rMS(16),
     padding: rS(14),
     marginBottom: rV(10),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   orderTop: {
     flexDirection: "row",

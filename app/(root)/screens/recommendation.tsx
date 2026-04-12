@@ -68,11 +68,7 @@ export default function RecommendationScreen() {
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               ItemSeparatorComponent={() => <View style={{ height: rV(10) }} />}
-              renderItem={({ item }) => (
-                <View style={styles.cardWrapper}>
-                  <RecommendationCard {...item} />
-                </View>
-              )}
+              renderItem={({ item }) => <RecommendationCard {...item} />}
               contentContainerStyle={{ paddingTop: rV(10), paddingBottom: rV(8) }}
             />
           )}
@@ -155,20 +151,6 @@ const styles = StyleSheet.create({
     fontSize: rMS(12),
     fontFamily: Fonts.title,
     color: AppColors.secondary,
-  },
-  cardWrapper: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 1,
-    justifyContent: "center",
   },
   emptyState: {
     marginTop: rV(16),

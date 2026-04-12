@@ -23,37 +23,42 @@ export default function NotificationScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <NotificationItem
-            label="Allow Notifications"
-            value={allowNotifications}
-            onValueChange={setAllowNotifications}
-          />
-          <NotificationItem
-            label="Discount Notifications"
-            value={discounts}
-            onValueChange={setDiscounts}
-          />
-          <NotificationItem
-            label="Store Notifications"
-            value={store}
-            onValueChange={setStore}
-          />
-          <NotificationItem
-            label="System Notifications"
-            value={system}
-            onValueChange={setSystem}
-          />
-          <NotificationItem
-            label="Location Notifications"
-            value={location}
-            onValueChange={setLocation}
-          />
-          <NotificationItem
-            label="Location Updates"
-            value={locationUpdates}
-            onValueChange={setLocationUpdates}
-          />
+        <View
+          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
+          className="shadow-sm"
+        >
+          <View style={styles.card}>
+            <NotificationItem
+              label="Allow Notifications"
+              value={allowNotifications}
+              onValueChange={setAllowNotifications}
+            />
+            <NotificationItem
+              label="Discount Notifications"
+              value={discounts}
+              onValueChange={setDiscounts}
+            />
+            <NotificationItem
+              label="Store Notifications"
+              value={store}
+              onValueChange={setStore}
+            />
+            <NotificationItem
+              label="System Notifications"
+              value={system}
+              onValueChange={setSystem}
+            />
+            <NotificationItem
+              label="Location Notifications"
+              value={location}
+              onValueChange={setLocation}
+            />
+            <NotificationItem
+              label="Location Updates"
+              value={locationUpdates}
+              onValueChange={setLocationUpdates}
+            />
+          </View>
         </View>
 
         <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
@@ -81,11 +86,9 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   actionBtn: {
-    marginTop: rV(160),
+    marginTop: rV(22),
     borderRadius: rMS(50),
     backgroundColor: AppColors.primary,
     paddingVertical: rV(14),

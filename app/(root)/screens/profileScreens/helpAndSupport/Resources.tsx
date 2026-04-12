@@ -39,7 +39,7 @@ export default function ResourcesScreen() {
       <ProfileHeader title="Resources" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.heroCard}>
+        <View style={styles.heroCard} className="shadow-sm">
           <Ionicons name="library-outline" size={rMS(26)} color={AppColors.white} />
           <Text style={styles.heroTitle}>Knowledge Center</Text>
           <Text style={styles.heroSub}>
@@ -48,7 +48,12 @@ export default function ResourcesScreen() {
         </View>
 
         {resources.map((item) => (
-          <TouchableOpacity key={item.id} style={styles.resourceCard} activeOpacity={0.85}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.resourceCard}
+            className="shadow-sm"
+            activeOpacity={0.85}
+          >
             <View style={styles.iconWrap}>
               <Ionicons name={item.icon} size={rMS(20)} color={AppColors.secondary} />
             </View>
@@ -60,7 +65,7 @@ export default function ResourcesScreen() {
           </TouchableOpacity>
         ))}
 
-        <View style={styles.contactCard}>
+        <View style={styles.contactCard} className="shadow-sm">
           <Text style={styles.contactTitle}>Still need help?</Text>
           <Text style={styles.contactSub}>
             Our support team can guide you through account, payment, and order concerns.
@@ -109,8 +114,6 @@ const styles = StyleSheet.create({
   resourceCard: {
     backgroundColor: AppColors.white,
     borderRadius: rMS(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingHorizontal: rS(12),
     paddingVertical: rV(12),
     flexDirection: "row",
@@ -146,8 +149,6 @@ const styles = StyleSheet.create({
     marginTop: rV(4),
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingHorizontal: rS(14),
     paddingVertical: rV(16),
     alignItems: "center",

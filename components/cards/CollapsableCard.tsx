@@ -49,15 +49,18 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
 
   return (
     <View
-      style={{
-        backgroundColor: "#F8FAFC",
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: "#E5E7EB",
-        overflow: "hidden",
-        marginBottom: 12,
-      }}
+      className="shadow-sm"
+      style={{ borderRadius: 16, marginBottom: 12 }}
     >
+      <View
+        style={{
+          backgroundColor: "#F8FAFC",
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          overflow: "hidden",
+        }}
+      >
       {/* HEADER */}
       <TouchableOpacity
         style={{
@@ -65,7 +68,7 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           justifyContent: "space-between",
           alignItems: "center",
           paddingHorizontal: 14,
-          paddingVertical: 12,
+          paddingVertical: 18,
           backgroundColor: "#F8FAFC",
         }}
         onPress={toggleExpand}
@@ -173,6 +176,7 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           </View>
         </View>
       )}
+      </View>
     </View>
   );
 };

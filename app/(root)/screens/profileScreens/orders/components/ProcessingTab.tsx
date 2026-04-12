@@ -28,7 +28,7 @@ export default function ProcessingTab() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
       {processingOrders.map((item) => (
-        <View key={item.id} style={styles.card}>
+        <View key={item.id} style={styles.card} className="shadow-sm">
           <View style={styles.topRow}>
             <View style={styles.imageWrap}>
               <Image source={item.image} style={styles.image} resizeMode="contain" />
@@ -75,8 +75,6 @@ const styles = StyleSheet.create({
     borderRadius: rMS(16),
     padding: rS(14),
     marginBottom: rV(10),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   topRow: {
     flexDirection: "row",

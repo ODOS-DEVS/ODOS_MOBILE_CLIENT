@@ -194,6 +194,8 @@ const HomeScreen = () => {
                   data={recommendations}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => <RecommendationCard {...item} />}
+                  ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
+                  scrollEnabled={false}
                   contentContainerStyle={{
                     paddingHorizontal: horizontalPadding * 0.5,
                   }}
