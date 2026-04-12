@@ -15,28 +15,30 @@ const BannerCard: React.FC<BannerCardProps> = ({
   onPress,
 }) => {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      className="relative w-full rounded-3xl overflow-hidden mb-5"
-    >
-      {/* Card Background */}
-      <View
-        className="w-full h-[180px] rounded-3xl justify-center px-6"
-        style={{ backgroundColor }}
+    <View className="w-full rounded-3xl mb-5 shadow-sm">
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.9}
+        className="relative w-full rounded-3xl overflow-hidden"
       >
-        <Text className="text-3xl font-montserrat-extraBold text-primary drop-shadow-lg">
-          {title}
-        </Text>
-      </View>
+        {/* Card Background */}
+        <View
+          className="w-full h-[180px] rounded-3xl justify-center px-6"
+          style={{ backgroundColor }}
+        >
+          <Text className="text-3xl font-montserrat-extraBold text-primary drop-shadow-lg">
+            {title}
+          </Text>
+        </View>
 
-      {/* Image stacked (absolute positioned) */}
-      <Image
-        source={image}
-        resizeMode="cover"
-        className="absolute right-0 bottom-0 w-[250px] h-[190px]"
-      />
-    </TouchableOpacity>
+        {/* Image stacked (absolute positioned) */}
+        <Image
+          source={image}
+          resizeMode="cover"
+          className="absolute right-0 bottom-0 w-[250px] h-[190px]"
+        />
+      </TouchableOpacity>
+    </View>
   );
 };
 

@@ -1,13 +1,15 @@
 import Colors from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { type ChatMessage, useChat } from "@/context/ChatContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,126 +17,168 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Message = {
-  id: string;
-  text: string;
-  sender: "user" | "vendor";
-  time: string;
+const getParam = (p: string | string[] | undefined) =>
+  Array.isArray(p) ? p[0] : p;
+
+const isSameDay = (a: number, b: number) => {
+  const da = new Date(a);
+  const db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+};
+
+const formatMessageTime = (time: number) =>
+  new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+const formatDayLabel = (time: number) => {
+  const d = new Date(time);
+  const now = new Date();
+  if (isSameDay(d.getTime(), now.getTime())) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameDay(d.getTime(), yesterday.getTime())) return "Yesterday";
+  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 };
 
 export default function VendorChatScreen() {
-  const { vendorId, vendorName } = useLocalSearchParams() as any;
+  const params = useLocalSearchParams();
+  const vendorId = getParam(params.vendorId) ?? "";
+  const vendorName = getParam(params.vendorName) ?? "Vendor";
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>(() => {
-    
-    return [
-      {
-        id: "m1",
-        text: "Hi! How can I help you with this product?",
-        sender: "vendor",
-        time: new Date().toISOString(),
-      },
-      {
-        id: "m2",
-        text: "Hi, is this available in green?",
-        sender: "user",
-        time: new Date().toISOString(),
-      },
-    ];
-  });
+  const { ensureThread, messagesByVendor, sendMessage } = useChat();
+  const messages = vendorId ? (messagesByVendor[vendorId] ?? []) : [];
 
   const listRef = useRef<FlatList>(null);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    const newMsg: Message = {
-      id: String(Date.now()),
-      text: input.trim(),
-      sender: "user",
-      time: new Date().toISOString(),
-    };
-    setMessages((p) => [...p, newMsg]);
+  useEffect(() => {
+    if (!vendorId) return;
+    ensureThread({ vendorId, vendorName });
+  }, [ensureThread, vendorId, vendorName]);
+
+  useEffect(() => {
+    if (!messages.length) return;
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+  }, [messages.length]);
+
+  const onSend = () => {
+    if (!vendorId || !input.trim()) return;
+    sendMessage(vendorId, input.trim(), "user");
     setInput("");
-    setTimeout(() => {
-      listRef.current?.scrollToEnd({ animated: true });
-    }, 50);
   };
 
-  const renderItem = ({ item }: { item: Message }) => {
+  const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isUser = item.sender === "user";
+    const prev = messages[index - 1];
+    const next = messages[index + 1];
+
+    const showDay =
+      !prev || !isSameDay(prev.time, item.time);
+
+    const nextSameSender = next?.sender === item.sender;
+    const nextCloseInTime = next ? Math.abs(next.time - item.time) < 6 * 60 * 1000 : false;
+    const showMeta = !nextSameSender || !nextCloseInTime;
+
     return (
-      <View
-        className={`flex-row ${isUser ? "justify-end" : "justify-start"} px-4 py-2`}
-      >
+      <>
+        {showDay && (
+          <View className="items-center py-3">
+            <View className="bg-black/5 px-3 py-1 rounded-full">
+              <Text style={{ fontFamily: Fonts.text }} className="text-xs text-gray-700">
+                {formatDayLabel(item.time)}
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View
-          style={{
-            maxWidth: "80%",
-            backgroundColor: isUser ? Colors.primary : Colors.white,
-            borderRadius: 16,
-            paddingVertical: 10,
-            paddingHorizontal: 12,
-            shadowColor: "#000",
-            shadowOpacity: 0.03,
-            shadowRadius: 6,
-            elevation: 1,
-          }}
+          className={`flex-row ${isUser ? "justify-end" : "justify-start"} px-4 py-1.5`}
         >
-          <Text
+          <View
+            className={`${isUser ? "" : "border border-gray-200"} ${
+              isUser ? "shadow-sm" : ""
+            }`}
             style={{
-              color: isUser ? Colors.white : Colors.primary,
-              fontFamily: Fonts.text,
-              lineHeight: 20,
+              maxWidth: "82%",
+              backgroundColor: isUser ? Colors.primary : "#FFFFFF",
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              borderBottomLeftRadius: isUser ? 18 : 6,
+              borderBottomRightRadius: isUser ? 6 : 18,
             }}
           >
-            {item.text}
-          </Text>
-          <Text
-            style={{
-              marginTop: 6,
-              fontSize: 11,
-              color: isUser ? Colors.white : "#9ca3af",
-              textAlign: "right",
-              fontFamily: Fonts.textLight,
-            }}
-          >
-            {new Date(item.time).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+            <Text
+              style={{
+                color: isUser ? "#FFFFFF" : "#111827",
+                fontFamily: Fonts.text,
+                lineHeight: 20,
+              }}
+            >
+              {item.text}
+            </Text>
+
+            {showMeta && (
+              <Text
+                style={{
+                  marginTop: 6,
+                  fontSize: 11,
+                  color: isUser ? "rgba(255,255,255,0.85)" : "#9CA3AF",
+                  textAlign: "right",
+                  fontFamily: Fonts.textLight,
+                }}
+              >
+                {formatMessageTime(item.time)}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
+      </>
     );
   };
 
-  const keyExtractor = (m: Message) => m.id;
+  const keyExtractor = (m: ChatMessage) => m.id;
 
   const header = useMemo(() => {
     return (
       <View
-        className="flex-row items-center px-4"
+        className="bg-white border-b border-gray-200"
         style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
       >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 bg-black/10 rounded-full items-center justify-center mr-3"
-        >
-          <Ionicons name="chevron-back" size={20} color="#111827" />
-        </TouchableOpacity>
+        <View className="flex-row items-center px-4">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 bg-black/10 rounded-full items-center justify-center mr-3"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#111827" />
+          </TouchableOpacity>
 
-        <Image
-          source={require("../../../../../assets/images/dress.png")}
-          className="w-10 h-10 rounded-full mr-3"
-        />
+          <View className="w-10 h-10 rounded-full mr-3 bg-black/10 items-center justify-center">
+            <Ionicons name="person-outline" size={20} color="#111827" />
+          </View>
 
-        <View>
-          <Text className="text-lg font-montserrat-semiBold text-gray-900">
-            {vendorName ?? "Vendor"}
-          </Text>
-          <Text className="text-xs text-gray-500">
-            Typically replies within an hour
-          </Text>
+          <View className="flex-1">
+            <Text className="text-lg font-montserrat-semiBold text-gray-900">
+              {vendorName ?? "Vendor"}
+            </Text>
+            <View className="flex-row items-center">
+              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+              <Text className="text-xs text-gray-500">Online</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => {}}
+            className="w-10 h-10 bg-black/5 rounded-full items-center justify-center"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color="#111827" />
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -143,10 +187,21 @@ export default function VendorChatScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white"
-      style={{ paddingBottom: insets.bottom }}
+      className="flex-1 bg-[#F5F7FA]"
     >
+      <StatusBar barStyle="dark-content" />
       {header}
+
+      {!vendorId ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="text-lg font-semibold text-gray-900 mb-2">
+            Missing vendor
+          </Text>
+          <Text className="text-gray-500 text-center">
+            Go back and open chat from a product page.
+          </Text>
+        </View>
+      ) : null}
 
       <FlatList
         ref={listRef}
@@ -155,31 +210,38 @@ export default function VendorChatScreen() {
         keyExtractor={keyExtractor}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       />
 
-      <View className="px-4 py-3 mb-6 pb-4 border-t border-gray-200 bg-white">
-        <View className="flex-row items-center gap-3">
-          <TextInput
-            placeholder="Write a message to the vendor..."
-            value={input}
-            onChangeText={setInput}
-            style={{
-              flex: 1,
-              backgroundColor: "#F2F3f6",
-              borderRadius: 999,
-              paddingHorizontal: 16,
-              paddingVertical: Platform.OS === "ios" ? 12 : 8,
-              fontFamily: Fonts.text,
-            }}
-            multiline
-          />
+      <View
+        className="px-4 pt-3 border-t border-gray-200 bg-white"
+        style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+      >
+        <View className="flex-row items-end gap-3">
+          <View className="flex-1 bg-gray-100 rounded-3xl px-4 py-2 border border-gray-200">
+            <TextInput
+              placeholder="Message vendor..."
+              value={input}
+              onChangeText={setInput}
+              style={{
+                maxHeight: 120,
+                padding: 0,
+                fontFamily: Fonts.text,
+                color: "#111827",
+              }}
+              multiline
+            />
+          </View>
 
-          <TouchableOpacity
-            onPress={sendMessage}
-            className="w-12 h-12 bg-black rounded-full items-center justify-center"
+          <Pressable
+            onPress={onSend}
+            disabled={!input.trim() || !vendorId}
+            className={`w-12 h-12 rounded-full items-center justify-center ${
+              input.trim() && vendorId ? "bg-black" : "bg-black/20"
+            }`}
           >
             <Ionicons name="send" size={18} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </KeyboardAvoidingView>

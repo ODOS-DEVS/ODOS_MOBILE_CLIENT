@@ -37,7 +37,7 @@ const VoucherCard: React.FC<VoucherCardProps> = ({
         })
       }
     >
-      <View className="w-[250px] rounded-2xl mr-3 mb-4 mt-4">
+      <View className="w-[250px] rounded-2xl mr-3 mb-4 mt-4 bg-white shadow-sm">
         {/* ---------- IMAGE SECTION ---------- */}
         <View className="relative h-[160px] bg-gray-100 rounded-t-2xl rounded-b-2xl overflow-hidden ">
           <Image
