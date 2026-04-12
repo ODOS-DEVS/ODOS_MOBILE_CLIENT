@@ -35,15 +35,20 @@ export default function LanguageScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          {languages.map((lang) => (
-            <LanguageItem
-              key={lang}
-              label={lang}
-              selected={selectedLanguage === lang}
-              onPress={() => setSelectedLanguage(lang)}
-            />
-          ))}
+        <View
+          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
+          className="shadow-sm"
+        >
+          <View style={styles.card}>
+            {languages.map((lang) => (
+              <LanguageItem
+                key={lang}
+                label={lang}
+                selected={selectedLanguage === lang}
+                onPress={() => setSelectedLanguage(lang)}
+              />
+            ))}
+          </View>
         </View>
 
         <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
@@ -71,8 +76,6 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   languageItem: {
     flexDirection: "row",
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.primary,
   },
   actionBtn: {
-    marginTop: rV(190),
+    marginTop: rV(22),
     borderRadius: rMS(50),
     backgroundColor: AppColors.primary,
     paddingVertical: rV(14),

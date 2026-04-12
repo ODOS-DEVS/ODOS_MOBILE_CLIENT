@@ -47,11 +47,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
       }
     >
       <View
+        className="bg-white shadow-sm"
         style={{
           flexDirection: "row",
           alignItems: "center",
           borderRadius: rS(16),
-          paddingTop: rV(5),
+          padding: rS(12),
         }}
       >
         <Image

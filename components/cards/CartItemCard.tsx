@@ -26,7 +26,7 @@ const CartItemCard = ({
   onRemove,
 }: CartItemProps) => {
   return (
-    <View className="flex-row items-center rounded-2xl  mb-2 pt-6 ">
+    <View className="flex-row items-center bg-white rounded-2xl mb-3 pt-6 pb-4 px-4 shadow-sm">
       {/* Product Image */}
       <Image
         source={image}

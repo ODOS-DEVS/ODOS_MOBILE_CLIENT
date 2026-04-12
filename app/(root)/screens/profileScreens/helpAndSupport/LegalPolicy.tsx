@@ -53,7 +53,7 @@ export default function LegalPoliciesScreen() {
       <ProfileHeader title="Legal & Policies" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.heroCard}>
+        <View style={styles.heroCard} className="shadow-sm">
           <Ionicons name="shield-checkmark-outline" size={rMS(26)} color={AppColors.white} />
           <Text style={styles.heroTitle}>Policy Center</Text>
           <Text style={styles.heroSub}>
@@ -79,7 +79,7 @@ export default function LegalPoliciesScreen() {
           })}
         </View>
 
-        <View style={styles.sectionCard}>
+        <View style={styles.sectionCard} className="shadow-sm">
           <Text style={styles.sectionTitle}>{activeContent.title}</Text>
           <Text style={styles.sectionSub}>{activeContent.subtitle}</Text>
 
@@ -93,7 +93,7 @@ export default function LegalPoliciesScreen() {
           ))}
         </View>
 
-        <View style={styles.footerCard}>
+        <View style={styles.footerCard} className="shadow-sm">
           <Text style={styles.footerMeta}>Last updated: February 16, 2026</Text>
           <Text style={styles.footerText}>
             For legal enquiries, contact our support/legal team.
@@ -169,8 +169,6 @@ const styles = StyleSheet.create({
     marginTop: rV(12),
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingHorizontal: rS(14),
     paddingVertical: rV(14),
   },
@@ -214,8 +212,6 @@ const styles = StyleSheet.create({
     marginTop: rV(12),
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingVertical: rV(16),
     paddingHorizontal: rS(14),
     alignItems: "center",

@@ -1,6 +1,6 @@
 // src/components/Carousel.tsx
 import { Slide } from "@/constants/CorouselData";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -32,24 +32,23 @@ const Carousel: React.FC<CarouselProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
- 
-  useEffect(() => {
-    if (autoPlay) startAutoPlay();
-    return stopAutoPlay;
-  }, [currentIndex]);
-
-  const startAutoPlay = () => {
-    stopAutoPlay();
+  const startAutoPlay = useCallback(() => {
+    if (timer.current) clearInterval(timer.current);
     timer.current = setInterval(() => {
       const nextIndex = (currentIndex + 1) % slides.length;
       flatRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setCurrentIndex(nextIndex);
     }, autoPlayInterval);
-  };
+  }, [currentIndex, slides.length, autoPlayInterval]);
 
-  const stopAutoPlay = () => {
+  const stopAutoPlay = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (autoPlay) startAutoPlay();
+    return stopAutoPlay;
+  }, [autoPlay, startAutoPlay, stopAutoPlay]);
 
   const onScrollEnd = (e: any) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -85,10 +84,9 @@ const Carousel: React.FC<CarouselProps> = ({
         onMomentumScrollEnd={onScrollEnd}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
+          { useNativeDriver: false },
         )}
       />
-
 
       <View style={styles.dotsContainer}>
         {slides.map((_, i) => {
@@ -110,7 +108,7 @@ const styles = StyleSheet.create({
   slide: {
     borderRadius: 20,
     overflow: "hidden",
-    padding: 5, 
+    padding: 5,
   },
   image: {
     resizeMode: "cover",

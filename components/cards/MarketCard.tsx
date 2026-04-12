@@ -39,6 +39,7 @@ const MarketCard: React.FC<MarketCardProps> = ({
       }
     >
       <View
+        className="bg-white shadow-sm"
         style={{
           width,
           borderRadius: rS(16),

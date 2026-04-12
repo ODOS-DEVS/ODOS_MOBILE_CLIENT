@@ -16,14 +16,21 @@ import {
 
 export default function ProfileScreen() {
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 90 }}
+    >
       {/* Header */}
       <TouchableOpacity
         onPress={() => {
           router.push("../screens/profileScreens/CustomerProfile");
         }}
       >
-        <View style={styles.header}>
+        <View
+          className="bg-white rounded-3xl mb-5 shadow-sm"
+          style={styles.header}
+        >
           <View style={styles.subHeader}>
             <Image
               source={{
@@ -42,7 +49,7 @@ export default function ProfileScreen() {
 
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
-      <View style={styles.card}>
+      <View className="bg-white rounded-3xl mb-5 shadow-sm">
         <MenuItem
           icon="receipt-outline"
           label="Orders"
@@ -58,10 +65,20 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/Account/Addresses");
           }}
         />
-        <MenuItem icon="chatbubble-outline" label="Chats" />
-        <MenuItem icon="card-outline" label="Payment Method" onPress={() => {
+        <MenuItem
+          icon="chatbubble-outline"
+          label="Chats"
+          onPress={() => {
+            router.push("../screens/profileScreens/Account/Chats");
+          }}
+        />
+        <MenuItem
+          icon="card-outline"
+          label="Payment Method"
+          onPress={() => {
             router.push("../screens/profileScreens/Account/Wallet");
-          }} />
+          }}
+        />
         <MenuItem
           icon="star-outline"
           label="Reviews"
@@ -76,12 +93,18 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/Account/Vouchers");
           }}
         />
-        <MenuItem icon="briefcase-outline" label="Request to be a vendor" />
+        <MenuItem
+          icon="briefcase-outline"
+          label="Request to be a vendor"
+          onPress={() => {
+            router.push("../screens/profileScreens/Account/VendorRequest");
+          }}
+        />
       </View>
 
       {/* Personalization */}
       <Text style={styles.sectionTitle}>Personalization</Text>
-      <View style={styles.card}>
+      <View className="bg-white rounded-3xl mb-5 shadow-sm">
         <MenuItem
           icon="notifications-outline"
           label="Notification"
@@ -111,7 +134,7 @@ export default function ProfileScreen() {
 
       {/* Help & Support */}
       <Text style={styles.sectionTitle}>Help & Support</Text>
-      <View style={styles.card}>
+      <View className="bg-white rounded-3xl mb-5 shadow-sm">
         <MenuItem
           icon="help-circle-outline"
           label="Get Help"
@@ -142,11 +165,9 @@ export default function ProfileScreen() {
         />
       </View>
 
-      {/* Logout */}
-      <TouchableOpacity style={styles.logout}>
-        <Ionicons name="log-out-outline" size={20} color="#E53935" />
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
+      <View className="bg-white rounded-3xl mb-5 shadow-sm">
+        <MenuItem icon="log-out-outline" label="Log out" textColor="#E53935" />
+      </View>
     </ScrollView>
   );
 }
@@ -164,12 +185,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: rMS(16),
-    borderRadius: rMS(16),
     marginTop: rV(20),
-    marginBottom: rV(20),
-    backgroundColor: AppColors.white,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   subHeader: {
     flexDirection: "row",
@@ -205,29 +221,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-  },
-
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    marginBottom: rMS(20),
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-  },
-
-  logout: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(14),
-    marginBottom: rMS(180),
-  },
-
-  logoutText: {
-    color: "#E53935",
-    fontSize: rMS(15),
-    marginLeft: rMS(8),
-    fontWeight: "500",
   },
 });

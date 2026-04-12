@@ -32,14 +32,19 @@ export default function GetHelp() {
 
         <View style={styles.channelGrid}>
           {channels.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.channelCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.channelCard}
+              className="shadow-sm"
+              activeOpacity={0.8}
+            >
               {item.icon}
               <Text style={styles.channelLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.infoCard}>
+        <View style={styles.infoCard} className="shadow-sm">
           <Ionicons name="time-outline" size={rMS(16)} color={AppColors.secondary} />
           <Text style={styles.infoText}>Support hours: Mon - Sat, 8:00 AM - 8:00 PM</Text>
         </View>
@@ -102,8 +107,6 @@ const styles = StyleSheet.create({
     width: "48%",
     backgroundColor: AppColors.white,
     borderRadius: rMS(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     paddingVertical: rV(16),
     alignItems: "center",
     justifyContent: "center",
@@ -123,8 +126,6 @@ const styles = StyleSheet.create({
     paddingVertical: rV(12),
     borderRadius: rMS(12),
     backgroundColor: AppColors.white,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     gap: rS(8),
   },
   infoText: {

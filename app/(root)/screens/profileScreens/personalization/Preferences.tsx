@@ -21,34 +21,39 @@ export default function PreferenceScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <PreferenceItem
-            title="Analytics"
-            description="Analytics helps us improve app performance and reliability."
-            value={analytics}
-            onValueChange={setAnalytics}
-          />
+        <View
+          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
+          className="shadow-sm"
+        >
+          <View style={styles.card}>
+            <PreferenceItem
+              title="Analytics"
+              description="Analytics helps us improve app performance and reliability."
+              value={analytics}
+              onValueChange={setAnalytics}
+            />
 
-          <PreferenceItem
-            title="Personalization"
-            description="Customize recommendations and content based on your activity."
-            value={personalization}
-            onValueChange={setPersonalization}
-          />
+            <PreferenceItem
+              title="Personalization"
+              description="Customize recommendations and content based on your activity."
+              value={personalization}
+              onValueChange={setPersonalization}
+            />
 
-          <PreferenceItem
-            title="Social Media Cookies"
-            description="Allow social features for sharing products with your network."
-            value={socialMedia}
-            onValueChange={setSocialMedia}
-          />
+            <PreferenceItem
+              title="Social Media Cookies"
+              description="Allow social features for sharing products with your network."
+              value={socialMedia}
+              onValueChange={setSocialMedia}
+            />
 
-          <PreferenceItem
-            title="Dark Mode"
-            description="Switch between light and dark interface themes."
-            value={darkMode}
-            onValueChange={setDarkMode}
-          />
+            <PreferenceItem
+              title="Dark Mode"
+              description="Switch between light and dark interface themes."
+              value={darkMode}
+              onValueChange={setDarkMode}
+            />
+          </View>
         </View>
 
         <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
@@ -76,11 +81,9 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
   },
   actionBtn: {
-    marginTop: rV(130),
+    marginTop: rV(22),
     borderRadius: rMS(50),
     backgroundColor: AppColors.primary,
     paddingVertical: rV(14),

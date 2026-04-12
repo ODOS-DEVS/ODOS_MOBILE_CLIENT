@@ -7,6 +7,7 @@ const PromoBanner = () => {
 
   return (
     <View
+      className="shadow-sm"
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
@@ -17,11 +18,6 @@ const PromoBanner = () => {
         marginTop: rV(8),
         paddingHorizontal: rS(12),
         paddingVertical: rV(10),
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
       }}
     >
       <View style={{ flex: 1, paddingRight: rS(12) }}>

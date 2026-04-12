@@ -83,7 +83,7 @@ export default function ReviewsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.summaryCard}>
+        <View style={styles.summaryCard} className="shadow-sm">
           <View style={styles.metricBlock}>
             <Text style={styles.metricValue}>{avgRating.toFixed(1)}</Text>
             <Text style={styles.metricLabel}>Average Rating</Text>
@@ -121,7 +121,7 @@ export default function ReviewsScreen() {
         {filteredData.map((item) => {
           const isPending = item.status === "pending";
           return (
-            <View key={item.id} style={styles.card}>
+            <View key={item.id} style={styles.card} className="shadow-sm">
               <View style={styles.topRow}>
                 <View style={styles.imageWrap}>
                   <Image source={item.image} style={styles.image} resizeMode="contain" />
@@ -248,8 +248,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: AppColors.white,
     borderRadius: rMS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
     padding: rS(14),
     marginBottom: rV(10),
   },

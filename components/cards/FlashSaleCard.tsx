@@ -57,13 +57,9 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
       }}
     >
       <View
+        className="bg-white shadow-sm"
         style={{
           borderRadius: rS(16),
-          backgroundColor: "transparent",
-          overflow: "hidden",
-          shadowColor: "#000",
-          shadowOpacity: 0.1,
-          shadowRadius: rS(8),
         }}
       >
         {/* ---------- IMAGE ---------- */}
