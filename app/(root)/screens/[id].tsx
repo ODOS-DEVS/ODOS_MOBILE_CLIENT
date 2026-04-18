@@ -3,7 +3,12 @@ import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { AppColors } from "@/constants/Colors";
-import { flashSales, PopularProducts, recommendations } from "@/constants/Data";
+import {
+  flashSales,
+  PopularProducts,
+  recommendations,
+  Stores,
+} from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -63,6 +68,22 @@ export default function ProductDetail() {
     if (unique.length === 1) return [unique[0], unique[0], unique[0]];
     return unique.slice(0, 6);
   }, [image]);
+
+  const store = useMemo(() => {
+    const productTitle = String(title ?? "").toLowerCase();
+    const productCategory = String(category ?? "").toLowerCase();
+
+    const match = Stores.find((storeItem) => {
+      const storeCategory = String(storeItem.category ?? "").toLowerCase();
+      const storeName = String(storeItem.title ?? "").toLowerCase();
+      return (
+        productTitle.includes(storeName.split(" ")[0]) ||
+        productCategory.includes(storeCategory)
+      );
+    });
+
+    return match ?? Stores[0];
+  }, [category, title]);
 
   const handleBuyNow = () => {
     router.push({
@@ -254,6 +275,7 @@ export default function ProductDetail() {
             ]}
             defaultExpanded={false}
           />
+
           {!isVoucher && (
             <CollapsibleShippingCard
               title="Shipping"
@@ -303,6 +325,57 @@ export default function ProductDetail() {
               "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwear, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
             ]}
           />
+          <CollapsibleShippingCard
+            title="Review"
+            icon={
+              <Ionicons name="star" size={22} color={AppColors.subtext[100]} />
+            }
+            description={[
+              "⭐ 4.4 27/06/2022",
+              "Lorem ipsum dolor sit amet, adipiscing elit. Sed at gravida nulla tempor, neque. Duis quam ut netus donec enim vitae ac diam.",
+              "Talan Geidt",
+              "",
+              "⭐ 4.4 27/06/2022",
+              "Lorem ipsum dolor sit amet, adipiscing elit. Sed at gravida nulla tempor, neque. Duis quam ut netus donec enim vitae ac diam.",
+              "Talan Geidt",
+            ]}
+            defaultExpanded={false}
+          />
+          <View
+            className="shadow-sm"
+            style={{ borderRadius: 16, marginBottom: 12 }}
+          >
+            <TouchableOpacity
+              style={styles.visitStoreCardContainer}
+              activeOpacity={0.7}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/stores/[id]" as any,
+                  params: {
+                    id: store.id,
+                    title: store.title,
+                    image: store.image,
+                  },
+                })
+              }
+            >
+              <View style={styles.visitStoreCardHeader}>
+                <View style={styles.visitStoreCardIconTitle}>
+                  <Ionicons
+                    name="storefront"
+                    size={22}
+                    color={AppColors.subtext[100]}
+                  />
+                  <Text style={styles.visitStoreCardTitle}>Visit Store</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={22}
+                  color={AppColors.subtext[100]}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* You may also like */}
@@ -365,6 +438,23 @@ export default function ProductDetail() {
             iconColor="#fff"
           />
         </View>
+
+        {/* <TouchableOpacity
+          style={styles.visitStoreBtn}
+          activeOpacity={0.85}
+          onPress={() =>
+            router.push({
+              pathname: "/screens/stores/[id]" as any,
+              params: {
+                id: store.id,
+                title: store.title,
+                image: store.image,
+              },
+            })
+          }
+        >
+          <Text style={styles.visitStoreText}>Visit Store</Text>
+        </TouchableOpacity> */}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -653,7 +743,49 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     color: AppColors.white,
   },
+  visitStoreBtn: {
+    marginTop: rV(16),
+    marginHorizontal: rS(16),
+    paddingVertical: rV(14),
+    borderRadius: rMS(24),
+    borderWidth: 1,
+    borderColor: AppColors.secondary,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: AppColors.white,
+  },
+  visitStoreText: {
+    fontSize: rMS(16),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+  },
   bottomSpacer: {
     height: rV(1),
+  },
+  visitStoreCardContainer: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  visitStoreCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 18,
+    backgroundColor: "#F8FAFC",
+  },
+  visitStoreCardIconTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8,
+  },
+  visitStoreCardTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.titleBold,
+    color: AppColors.text,
   },
 });

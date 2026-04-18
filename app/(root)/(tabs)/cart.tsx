@@ -128,7 +128,9 @@ const MyCart = () => {
             </View>
 
             {/* CHECKOUT BUTTON */}
-            <PrimaryButton title="Checkout" onPress={() => {}} />
+            <PrimaryButton title="Checkout" onPress={() => {
+              router.push("/screens/Checkout");
+            }} />
           </>
         )}
       </View>
