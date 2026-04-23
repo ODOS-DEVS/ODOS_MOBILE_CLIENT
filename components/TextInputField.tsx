@@ -20,6 +20,9 @@ interface TextInputFieldProps {
   onChangeText?: (text: string) => void;
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
+  errorMessage?: string;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCorrect?: boolean;
 }
 
 const TextInputField: React.FC<TextInputFieldProps> = ({
@@ -30,6 +33,9 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   onChangeText,
   keyboardType,
   secureTextEntry = false,
+  errorMessage,
+  autoCapitalize = "sentences",
+  autoCorrect = true,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -37,7 +43,12 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
 
-      <View style={styles.inputWrapper}>
+      <View
+        style={[
+          styles.inputWrapper,
+          errorMessage ? styles.inputWrapperError : null,
+        ]}
+      >
         {icon && (
           <Ionicons
             name={icon}
@@ -55,6 +66,8 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           style={styles.input}
           secureTextEntry={secureTextEntry && !isVisible}
           keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
         />
 
         {secureTextEntry && (
@@ -67,6 +80,8 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           </TouchableOpacity>
         )}
       </View>
+
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
   );
 };
@@ -97,6 +112,10 @@ const styles = StyleSheet.create({
     paddingVertical: rV(14),
   },
 
+  inputWrapperError: {
+    borderColor: "#D64545",
+  },
+
   icon: {
     marginRight: rS(8),
   },
@@ -108,5 +127,13 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     margin: 0,
     padding: 0
+  },
+
+  errorText: {
+    marginTop: rV(6),
+    paddingLeft: rS(8),
+    color: "#D64545",
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
   },
 });

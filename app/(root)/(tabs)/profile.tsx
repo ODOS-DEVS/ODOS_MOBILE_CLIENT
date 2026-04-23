@@ -1,11 +1,13 @@
 import { MenuItem } from "@/components/MenuItem";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useAuth } from "@/context/AuthContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,25 @@ import {
 } from "react-native";
 
 export default function ProfileScreen() {
+  const { isSigningOut, signOut, user } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/(root)/(auth)/onboarding");
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -39,8 +60,10 @@ export default function ProfileScreen() {
               style={styles.avatar}
             />
             <View>
-              <Text style={styles.name}>Domenic Aura</Text>
-              <Text style={styles.email}>esaomens@gmail.com</Text>
+              <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
+              <Text style={styles.email}>
+                {user?.email || "Sign in to view account details"}
+              </Text>
             </View>
           </View>
           <Ionicons name="arrow-forward-circle" size={28} color="#111" />
@@ -166,7 +189,12 @@ export default function ProfileScreen() {
       </View>
 
       <View className="bg-white rounded-3xl mb-5 shadow-sm">
-        <MenuItem icon="log-out-outline" label="Log out" textColor="#E53935" />
+        <MenuItem
+          icon="log-out-outline"
+          label={isSigningOut ? "Logging out..." : "Log out"}
+          onPress={handleLogout}
+          textColor="#E53935"
+        />
       </View>
     </ScrollView>
   );
