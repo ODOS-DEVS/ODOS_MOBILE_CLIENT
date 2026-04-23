@@ -1,16 +1,23 @@
 import Colors from "@/constants/Colors";
+import { useAuth } from "@/context/AuthContext";
 import { rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import { ActivityIndicator, Image, View } from "react-native";
 
 export default function SplashScreen() {
+  const { isHydrating, user } = useAuth();
+
   useEffect(() => {
+    if (isHydrating) {
+      return;
+    }
+
     const timer = setTimeout(() => {
-      router.replace("./(auth)/onboarding");
-    }, 2000);
+      router.replace(user ? "./(tabs)" : "./(auth)/onboarding");
+    }, 1200);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isHydrating, user]);
 
   return (
     <View
