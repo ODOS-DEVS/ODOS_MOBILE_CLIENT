@@ -1,9 +1,13 @@
 import CategoryCard from "@/components/cards/CategoryCard";
+import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
 import { categories } from "@/constants/Data";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
 import React from "react";
-import { FlatList, StatusBar, Text, View } from "react-native";
+import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const CategoryScreen = () => {
   const handlePress = (id: string) => {
@@ -22,20 +26,20 @@ const CategoryScreen = () => {
   };
 
   return (
-    <View className="mb-24">
+    <View style={styles.container}>
       <StatusBar barStyle={"dark-content"} />
+      <ProfileHeader title="Explore" showBackButton={false} />
+
       <FlatList
         data={[]}
         keyExtractor={() => "dummy"}
         renderItem={() => null}
         ListHeaderComponent={
-          <View className="pt-8">
-            <Text className="font-montserrat-extraBold text-xl pt-16 text-center">
-              Explore
-            </Text>
+          <View style={styles.content}>
             <SearchBar />
 
-            <View className="mt-8">
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Browse Categories</Text>
               <FlatList
                 data={categories}
                 keyExtractor={(item) => item.id}
@@ -45,7 +49,7 @@ const CategoryScreen = () => {
                     onPress={() => handlePress(item.id)}
                   />
                 )}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
+                contentContainerStyle={styles.categoryList}
               />
             </View>
           </View>
@@ -56,3 +60,28 @@ const CategoryScreen = () => {
 };
 
 export default CategoryScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+    marginBottom: rV(24),
+  },
+  content: {
+    paddingTop: rV(18),
+    paddingHorizontal: rS(16),
+    paddingBottom: rV(120),
+  },
+  section: {
+    marginTop: rV(24),
+  },
+  sectionTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(18),
+    color: AppColors.text,
+    marginBottom: rV(14),
+  },
+  categoryList: {
+    paddingBottom: rV(12),
+  },
+});

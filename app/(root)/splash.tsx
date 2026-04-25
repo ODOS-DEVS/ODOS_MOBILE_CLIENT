@@ -6,7 +6,7 @@ import React, { useEffect } from "react";
 import { ActivityIndicator, Image, View } from "react-native";
 
 export default function SplashScreen() {
-  const { isHydrating, user } = useAuth();
+  const { isHydrating } = useAuth();
 
   useEffect(() => {
     if (isHydrating) {
@@ -14,10 +14,10 @@ export default function SplashScreen() {
     }
 
     const timer = setTimeout(() => {
-      router.replace(user ? "./(tabs)" : "./(auth)/onboarding");
+      router.replace("./(tabs)");
     }, 1200);
     return () => clearTimeout(timer);
-  }, [isHydrating, user]);
+  }, [isHydrating]);
 
   return (
     <View
