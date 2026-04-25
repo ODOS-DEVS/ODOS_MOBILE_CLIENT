@@ -6,10 +6,11 @@ import {
 } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
 import { useProfile } from "@/context/ProfileContext";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageSourcePropType,
@@ -30,6 +31,7 @@ function findProductImage(id: string): ImageSourcePropType | null {
 }
 
 export default function CheckoutScreen() {
+  const { requireAuth } = useRequireAuth();
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
   const title = String(getParam(params.title) ?? "Product");
@@ -53,6 +55,19 @@ export default function CheckoutScreen() {
   const total = subtotal + shipping;
 
   const canPlaceOrder = !!selectedAddress && !!selectedPayment;
+
+  useEffect(() => {
+    if (
+      requireAuth({
+        title: "Sign in to continue",
+        message:
+          "Checkout is available once you’re signed in, so we can save your address, payment method, and order history.",
+        onCancel: () => router.replace("/(root)/(tabs)"),
+      })
+    ) {
+      return;
+    }
+  }, [requireAuth]);
 
   const openAddressScreen = () => {
     router.push({

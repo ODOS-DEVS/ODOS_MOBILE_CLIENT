@@ -23,6 +23,9 @@ interface TextInputFieldProps {
   errorMessage?: string;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   autoCorrect?: boolean;
+  editable?: boolean;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 const TextInputField: React.FC<TextInputFieldProps> = ({
@@ -36,6 +39,9 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   errorMessage,
   autoCapitalize = "sentences",
   autoCorrect = true,
+  editable = true,
+  multiline = false,
+  numberOfLines = 1,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -63,15 +69,22 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           placeholderTextColor={AppColors.secondary}
           value={value}
           onChangeText={onChangeText}
-          style={styles.input}
+          style={[styles.input, multiline ? styles.inputMultiline : null]}
           secureTextEntry={secureTextEntry && !isVisible}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? "top" : "center"}
         />
 
         {secureTextEntry && (
-          <TouchableOpacity onPress={() => setIsVisible(!isVisible)}>
+          <TouchableOpacity
+            onPress={() => setIsVisible(!isVisible)}
+            disabled={!editable}
+          >
             <Ionicons
               name={isVisible ? "eye" : "eye-off"}
               size={20}
@@ -127,6 +140,11 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     margin: 0,
     padding: 0
+  },
+
+  inputMultiline: {
+    minHeight: rV(90),
+    paddingTop: rV(2),
   },
 
   errorText: {

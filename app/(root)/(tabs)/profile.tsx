@@ -2,6 +2,7 @@ import { MenuItem } from "@/components/MenuItem";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -18,6 +19,20 @@ import {
 
 export default function ProfileScreen() {
   const { isSigningOut, signOut, user } = useAuth();
+  const { requireAuth } = useRequireAuth();
+  const avatarUri = user?.avatar_url || "https://i.pravatar.cc/502?img=12";
+
+  const openProtectedRoute = (
+    pathname: string,
+    title = "Sign in to continue",
+    message = "Log in or create an account to access your account features.",
+  ) => {
+    if (!requireAuth({ title, message })) {
+      return;
+    }
+
+    router.push(pathname as any);
+  };
 
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
@@ -30,7 +45,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace("/(root)/(auth)/onboarding");
+          router.replace("/(root)/(tabs)");
         },
       },
     ]);
@@ -45,7 +60,11 @@ export default function ProfileScreen() {
       {/* Header */}
       <TouchableOpacity
         onPress={() => {
-          router.push("../screens/profileScreens/CustomerProfile");
+          openProtectedRoute(
+            "../screens/profileScreens/CustomerProfile",
+            "Sign in to manage your profile",
+            "Create an account or log in to update your personal details and preferences.",
+          );
         }}
       >
         <View
@@ -55,7 +74,7 @@ export default function ProfileScreen() {
           <View style={styles.subHeader}>
             <Image
               source={{
-                uri: "https://i.pravatar.cc/502",
+                uri: avatarUri,
               }}
               style={styles.avatar}
             />
@@ -77,7 +96,7 @@ export default function ProfileScreen() {
           icon="receipt-outline"
           label="Orders"
           onPress={() => {
-            router.push("../screens/profileScreens/orders/[orderId]");
+            openProtectedRoute("../screens/profileScreens/orders/[orderId]");
           }}
         />
         <MenuItem icon="return-up-back-outline" label="Returns" />
@@ -85,42 +104,42 @@ export default function ProfileScreen() {
           icon="location-outline"
           label="Addresses"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Addresses");
+            openProtectedRoute("../screens/profileScreens/Account/Addresses");
           }}
         />
         <MenuItem
           icon="chatbubble-outline"
           label="Chats"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Chats");
+            openProtectedRoute("../screens/profileScreens/Account/Chats");
           }}
         />
         <MenuItem
           icon="card-outline"
           label="Payment Method"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Wallet");
+            openProtectedRoute("../screens/profileScreens/Account/Wallet");
           }}
         />
         <MenuItem
           icon="star-outline"
           label="Reviews"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Reviews");
+            openProtectedRoute("../screens/profileScreens/Account/Reviews");
           }}
         />
         <MenuItem
           icon="ticket-outline"
           label="Vouchers"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Vouchers");
+            openProtectedRoute("../screens/profileScreens/Account/Vouchers");
           }}
         />
         <MenuItem
           icon="briefcase-outline"
           label="Request to be a vendor"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/VendorRequest");
+            openProtectedRoute("../screens/profileScreens/Account/VendorRequest");
           }}
         />
       </View>
@@ -132,8 +151,10 @@ export default function ProfileScreen() {
           icon="notifications-outline"
           label="Notification"
           onPress={() => {
-            router.push(
+            openProtectedRoute(
               "../screens/profileScreens/personalization/Notification",
+              "Sign in to manage notifications",
+              "Log in or create an account to save notification preferences.",
             );
           }}
         />
@@ -141,8 +162,10 @@ export default function ProfileScreen() {
           icon="options-outline"
           label="Preferences"
           onPress={() => {
-            router.push(
+            openProtectedRoute(
               "../screens/profileScreens/personalization/Preferences",
+              "Sign in to manage preferences",
+              "Log in or create an account to save your shopping preferences.",
             );
           }}
         />
@@ -150,7 +173,11 @@ export default function ProfileScreen() {
           icon="language-outline"
           label="Language"
           onPress={() => {
-            router.push("../screens/profileScreens/personalization/Language");
+            openProtectedRoute(
+              "../screens/profileScreens/personalization/Language",
+              "Sign in to manage language settings",
+              "Log in or create an account to keep your language settings synced.",
+            );
           }}
         />
       </View>
@@ -188,14 +215,16 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <View className="bg-white rounded-3xl mb-5 shadow-sm">
-        <MenuItem
-          icon="log-out-outline"
-          label={isSigningOut ? "Logging out..." : "Log out"}
-          onPress={handleLogout}
-          textColor="#E53935"
-        />
-      </View>
+      {user ? (
+        <View className="bg-white rounded-3xl mb-5 shadow-sm">
+          <MenuItem
+            icon="log-out-outline"
+            label={isSigningOut ? "Logging out..." : "Log out"}
+            onPress={handleLogout}
+            textColor="#E53935"
+          />
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
