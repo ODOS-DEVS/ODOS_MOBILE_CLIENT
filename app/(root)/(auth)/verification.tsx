@@ -1,7 +1,8 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { useAuth } from "@/context/AuthContext";
 import { rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   StatusBar,
@@ -15,6 +16,10 @@ export default function OTPScreen() {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputs = useRef<(TextInput | null)[]>([]);
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string | string[] }>();
+  const { user } = useAuth();
+  const routeEmail = Array.isArray(params.email) ? params.email[0] : params.email;
+  const displayEmail = routeEmail || user?.email || "your email address";
 
   const handleChange = (text: string, index: number) => {
     const newOtp = [...otp];
@@ -59,7 +64,7 @@ export default function OTPScreen() {
         style={{ marginBottom: rV(16) }}
       >
         We have sent a 4-digit code to your email{" "}
-        <Text className="font-extrabold text-primary">example@gmail.com</Text>
+        <Text className="font-extrabold text-primary">{displayEmail}</Text>
       </Text>
 
       <View

@@ -1,11 +1,15 @@
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { useWishlist } from "@/context/WishlistContext";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
-  FlatList,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -17,46 +21,39 @@ const WishlistScreen = () => {
   const isWishlistEmpty = wishlist.length === 0;
 
   return (
-    <ScrollView>
-      <View className="flex-1 px-4 pt-8">
-        {/* Title */}
-        <View className="items-center pt-16 mb-6">
-          <Text className="text-xl font-montserrat-extraBold text-black text-center">
-            Wishlist
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <ProfileHeader title="Wishlist" showBackButton={false} />
 
-        {/* Empty State */}
+      <ScrollView contentContainerStyle={styles.content}>
         {isWishlistEmpty ? (
-          <View className="flex-1 items-center mt-20">
-            <Ionicons name="heart-outline" size={50} color="#000" />
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons
+                name="heart-outline"
+                size={32}
+                color={AppColors.text}
+              />
+            </View>
 
-            <Text className="text-lg font-montserrat-bold text-gray-700 mt-4 mb-2">
-              Your Wishlist is Empty
-            </Text>
+            <Text style={styles.emptyTitle}>Your Wishlist is Empty</Text>
 
-            <Text className="text-gray-500 mb-6 text-center w-3/4">
+            <Text style={styles.emptyDescription}>
               Browse products and tap the heart icon to save your favorites.
             </Text>
 
             <TouchableOpacity
               onPress={() => router.push("/")}
-              className="bg-black px-6 py-3 rounded-xl"
               activeOpacity={0.8}
+              style={styles.emptyButton}
             >
-              <Text className="text-white font-montserrat-bold">Shop now</Text>
+              <Text style={styles.emptyButtonText}>Shop now</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          /* Wishlist Items */
-          <FlatList
-            data={wishlist}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 120, gap: 12 }}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
+          <View style={styles.listWrap}>
+            {wishlist.map((item) => (
               <RecommendationCard
+                key={item.id}
                 id={item.id}
                 image={item.image}
                 title={item.title}
@@ -66,12 +63,69 @@ const WishlistScreen = () => {
                 rating={item.rating}
                 reviews={item.reviews}
               />
-            )}
-          />
+            ))}
+          </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 export default WishlistScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
+  content: {
+    paddingHorizontal: rS(16),
+    paddingTop: rV(18),
+    paddingBottom: rV(120),
+  },
+  listWrap: {
+    gap: rV(12),
+  },
+  emptyState: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(24),
+    paddingHorizontal: rS(24),
+    paddingVertical: rV(34),
+    alignItems: "center",
+    marginTop: rV(36),
+  },
+  emptyIconWrap: {
+    width: rMS(72),
+    height: rMS(72),
+    borderRadius: rMS(36),
+    backgroundColor: "#EEF2F4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: rV(16),
+  },
+  emptyTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(20),
+    color: AppColors.text,
+    marginBottom: rV(8),
+  },
+  emptyDescription: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    lineHeight: rMS(20),
+    color: AppColors.subtext[100],
+    textAlign: "center",
+    marginBottom: rV(22),
+  },
+  emptyButton: {
+    backgroundColor: AppColors.text,
+    borderRadius: rMS(18),
+    paddingHorizontal: rS(24),
+    paddingVertical: rV(14),
+  },
+  emptyButtonText: {
+    color: AppColors.white,
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(14),
+  },
+});

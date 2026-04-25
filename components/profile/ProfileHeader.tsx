@@ -16,12 +16,14 @@ interface ProfileHeaderProps {
   title: string;
   onBack?: () => void;
   rightNode?: React.ReactNode;
+  showBackButton?: boolean;
 }
 
 export default function ProfileHeader({
   title,
   onBack,
   rightNode,
+  showBackButton = true,
 }: ProfileHeaderProps) {
   const { width } = useWindowDimensions();
 
@@ -78,13 +80,17 @@ export default function ProfileHeader({
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={onBack ?? (() => router.back())}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={AppColors.text} />
-        </TouchableOpacity>
+        {showBackButton ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onBack ?? (() => router.back())}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={AppColors.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.leftSlot} />
+        )}
 
         <Text numberOfLines={1} style={styles.headerTitle}>
           {title}
@@ -116,6 +122,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F3F5",
     alignItems: "center",
     justifyContent: "center",
+  },
+  leftSlot: {
+    width: rMS(38),
+    height: rMS(38),
   },
   headerTitle: {
     flex: 1,

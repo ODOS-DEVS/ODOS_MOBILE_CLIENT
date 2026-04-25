@@ -19,6 +19,9 @@ export type AuthUser = {
   phone_number: string | null;
   avatar_url: string | null;
   date_of_birth: string | null;
+  gender: string | null;
+  city: string | null;
+  region: string | null;
   role: string;
   is_active: boolean;
   is_verified: boolean;
@@ -45,10 +48,25 @@ type SignupPayload = {
   password: string;
 };
 
+type ProfileUpdatePayload = {
+  fullName?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  region?: string | null;
+  avatarUrl?: string | null;
+};
+
 type AuthFieldErrors = {
   fullName?: string;
   email?: string;
   password?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  city?: string;
+  region?: string;
   general?: string;
 };
 
@@ -65,8 +83,10 @@ type AuthContextType = {
   isSigningIn: boolean;
   isSigningUp: boolean;
   isSigningOut: boolean;
+  isUpdatingProfile: boolean;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
+  updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
 
@@ -115,6 +135,16 @@ function mapValidationErrors(detail: unknown): AuthFieldErrors {
       errors.email = message;
     } else if (field === "password") {
       errors.password = message;
+    } else if (field === "phone_number") {
+      errors.phoneNumber = message;
+    } else if (field === "date_of_birth") {
+      errors.dateOfBirth = message;
+    } else if (field === "gender") {
+      errors.gender = message;
+    } else if (field === "city") {
+      errors.city = message;
+    } else if (field === "region") {
+      errors.region = message;
     } else {
       errors.general = message;
     }
@@ -186,6 +216,42 @@ function buildSignUpError(detail: unknown, status: number): AuthResult {
   };
 }
 
+function buildProfileError(detail: unknown, status: number): AuthResult {
+  const message = normalizeMessage(detail);
+
+  if (status === 409 && /phone/i.test(message)) {
+    return {
+      success: false,
+      fieldErrors: {
+        phoneNumber: "This phone number is already in use.",
+      },
+    };
+  }
+
+  if (status === 422) {
+    const mapped = mapValidationErrors(detail);
+    return {
+      success: false,
+      fieldErrors: {
+        fullName: mapped.fullName,
+        phoneNumber: mapped.phoneNumber,
+        dateOfBirth: mapped.dateOfBirth,
+        gender: mapped.gender,
+        city: mapped.city,
+        region: mapped.region,
+        general: mapped.general,
+      },
+    };
+  }
+
+  return {
+    success: false,
+    fieldErrors: {
+      general: message,
+    },
+  };
+}
+
 async function fetchCurrentUser(token: string) {
   const response = await fetch(`${API_BASE_URL}/auth/me`, {
     headers: {
@@ -237,6 +303,32 @@ async function signupRequest(payload: SignupPayload) {
   }
 }
 
+async function updateProfileRequest(token: string, payload: ProfileUpdatePayload) {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      full_name: payload.fullName,
+      phone_number: payload.phoneNumber,
+      date_of_birth: payload.dateOfBirth,
+      gender: payload.gender,
+      city: payload.city,
+      region: payload.region,
+      avatar_url: payload.avatarUrl,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as AuthUser;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -244,6 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   useEffect(() => {
     const hydrateAuth = async () => {
@@ -389,6 +482,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const updateProfile = useCallback(
+    async ({
+      fullName,
+      phoneNumber,
+      dateOfBirth,
+      gender,
+      city,
+      region,
+      avatarUrl,
+    }: ProfileUpdatePayload) => {
+      if (!accessToken) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: "You need to sign in again before updating your profile.",
+          },
+        };
+      }
+
+      setIsUpdatingProfile(true);
+
+      try {
+        const updatedUser = await updateProfileRequest(accessToken, {
+          fullName: fullName?.trim(),
+          phoneNumber: phoneNumber?.trim() || undefined,
+          dateOfBirth,
+          gender: gender?.trim() || null,
+          city: city?.trim() || null,
+          region: region?.trim() || null,
+          avatarUrl,
+        });
+
+        setUser(updatedUser);
+        return { success: true };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return buildProfileError(
+            (error as { detail: unknown }).detail,
+            Number((error as { status: unknown }).status),
+          );
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't save your profile right now. Please try again.",
+          },
+        };
+      } finally {
+        setIsUpdatingProfile(false);
+      }
+    },
+    [accessToken],
+  );
+
   const value = useMemo<AuthContextType>(
     () => ({
       accessToken,
@@ -397,8 +551,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isSigningIn,
       isSigningUp,
       isSigningOut,
+      isUpdatingProfile,
       signIn,
       signUp,
+      updateProfile,
       signOut,
     }),
     [
@@ -407,9 +563,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isSigningIn,
       isSigningOut,
       isSigningUp,
+      isUpdatingProfile,
       signIn,
       signOut,
       signUp,
+      updateProfile,
       user,
     ],
   );

@@ -10,6 +10,7 @@ import {
   Stores,
 } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -36,6 +37,7 @@ const productSizeOptions = ["XS", "S", "M", "L", "XL"];
 const screenWidth = Dimensions.get("window").width;
 
 export default function ProductDetail() {
+  const { requireAuth } = useRequireAuth();
   const getParam = (param: string | string[] | undefined) =>
     Array.isArray(param) ? param[0] : param;
 
@@ -86,6 +88,16 @@ export default function ProductDetail() {
   }, [category, title]);
 
   const handleBuyNow = () => {
+    if (
+      !requireAuth({
+        title: "Sign in to buy now",
+        message:
+          "Log in or create an account to continue straight to checkout.",
+      })
+    ) {
+      return;
+    }
+
     router.push({
       pathname: "/screens/Checkout" as any,
       params: {
