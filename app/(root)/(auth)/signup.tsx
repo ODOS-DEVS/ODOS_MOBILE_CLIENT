@@ -25,7 +25,7 @@ const SignUpScreen = () => {
   const [generalError, setGeneralError] = useState("");
 
   useEffect(() => {
-    if (user) {
+    if (user?.is_verified) {
       router.replace("../(tabs)");
     }
   }, [router, user]);
@@ -75,7 +75,14 @@ const SignUpScreen = () => {
     });
 
     if (result.success) {
-      router.replace("../(tabs)");
+      if (result.requiresVerification) {
+        router.replace({
+          pathname: "/verification",
+          params: { email: email.trim().toLowerCase() },
+        });
+      } else {
+        router.replace("../(tabs)");
+      }
       return;
     }
 

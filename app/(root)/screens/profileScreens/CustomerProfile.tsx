@@ -1,3 +1,4 @@
+import UserAvatar from "@/components/UserAvatar";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import TextInputField from "@/components/TextInputField";
@@ -8,10 +9,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -104,13 +104,6 @@ const CustomerProfile = () => {
     setRegion(user.region || "");
     setAvatarUri(user.avatar_url || null);
   }, [user]);
-
-  const avatarSource = useMemo(
-    () => ({
-      uri: avatarUri || "https://i.pravatar.cc/300?img=12",
-    }),
-    [avatarUri],
-  );
 
   const handleSave = async () => {
     let hasError = false;
@@ -263,7 +256,7 @@ const CustomerProfile = () => {
         automaticallyAdjustKeyboardInsets
       >
         <View style={styles.avatarContainer}>
-          <Image source={avatarSource} style={styles.avatar} />
+          <UserAvatar avatarUrl={avatarUri} size={rS(96)} imageStyle={styles.avatar} />
           <TouchableOpacity
             style={styles.editAvatar}
             activeOpacity={0.8}

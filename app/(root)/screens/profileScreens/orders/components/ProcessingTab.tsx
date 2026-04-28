@@ -20,7 +20,7 @@ const processingOrders = [
     category: "Accessories",
     eta: "Arriving in 2 days",
     progress: 0.4,
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
 ];
 
