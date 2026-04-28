@@ -74,6 +74,9 @@ type AuthResult = {
   success: boolean;
   fieldErrors?: AuthFieldErrors;
   message?: string;
+  requiresVerification?: boolean;
+  user?: AuthUser | null;
+  resetToken?: string;
 };
 
 type AuthContextType = {
@@ -84,9 +87,23 @@ type AuthContextType = {
   isSigningUp: boolean;
   isSigningOut: boolean;
   isUpdatingProfile: boolean;
+  isVerifyingEmail: boolean;
+  isResendingVerificationCode: boolean;
+  isRequestingPasswordReset: boolean;
+  isVerifyingResetCode: boolean;
+  isResettingPassword: boolean;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
+  verifyEmail: (code: string) => Promise<AuthResult>;
+  resendVerificationCode: () => Promise<AuthResult>;
+  requestPasswordResetCode: (email: string) => Promise<AuthResult>;
+  verifyPasswordResetCode: (email: string, code: string) => Promise<AuthResult>;
+  resetPassword: (
+    email: string,
+    resetToken: string,
+    newPassword: string,
+  ) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
 
@@ -329,6 +346,99 @@ async function updateProfileRequest(token: string, payload: ProfileUpdatePayload
   return (await response.json()) as AuthUser;
 }
 
+async function verifyEmailRequest(token: string, code: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as AuthUser;
+}
+
+async function resendVerificationCodeRequest(token: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/resend-verification-code`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as { message: string };
+}
+
+async function requestPasswordResetCodeRequest(email: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as { message: string };
+}
+
+async function verifyPasswordResetCodeRequest(email: string, code: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/verify-reset-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, code }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as { message: string; reset_token: string };
+}
+
+async function resetPasswordRequest(
+  email: string,
+  resetToken: string,
+  newPassword: string,
+) {
+  const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      reset_token: resetToken,
+      new_password: newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as { message: string };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -337,6 +447,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isResendingVerificationCode, setIsResendingVerificationCode] =
+    useState(false);
+  const [isRequestingPasswordReset, setIsRequestingPasswordReset] =
+    useState(false);
+  const [isVerifyingResetCode, setIsVerifyingResetCode] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   useEffect(() => {
     const hydrateAuth = async () => {
@@ -380,7 +497,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setAccessToken(payload.access_token);
         setUser(payload.user);
-        return { success: true };
+        return {
+          success: true,
+          requiresVerification: !payload.user.is_verified,
+          user: payload.user,
+        };
       } catch (error) {
         if (
           error &&
@@ -433,7 +554,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setAccessToken(payload.access_token);
         setUser(payload.user);
-        return { success: true };
+        return {
+          success: true,
+          requiresVerification: !payload.user.is_verified,
+          user: payload.user,
+        };
       } catch (error) {
         if (
           error &&
@@ -543,6 +668,224 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [accessToken],
   );
 
+  const verifyEmail = useCallback(
+    async (code: string) => {
+      if (!accessToken) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: "Sign in again to verify your email address.",
+          },
+        };
+      }
+
+      setIsVerifyingEmail(true);
+
+      try {
+        const updatedUser = await verifyEmailRequest(accessToken, code);
+        setUser(updatedUser);
+        return {
+          success: true,
+          user: updatedUser,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              general: normalizeMessage((error as { detail: unknown }).detail),
+            },
+          };
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't verify that code right now. Check your connection and try again.",
+          },
+        };
+      } finally {
+        setIsVerifyingEmail(false);
+      }
+    },
+    [accessToken],
+  );
+
+  const resendVerificationCode = useCallback(async () => {
+    if (!accessToken) {
+      return {
+        success: false,
+        fieldErrors: {
+          general: "Sign in again to request a new verification code.",
+        },
+      };
+    }
+
+    setIsResendingVerificationCode(true);
+
+    try {
+      const payload = await resendVerificationCodeRequest(accessToken);
+      return {
+        success: true,
+        message: payload.message,
+      };
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        "detail" in error
+      ) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: normalizeMessage((error as { detail: unknown }).detail),
+          },
+        };
+      }
+
+      return {
+        success: false,
+        fieldErrors: {
+          general:
+            "We couldn't send a new code right now. Check your connection and try again.",
+        },
+      };
+    } finally {
+      setIsResendingVerificationCode(false);
+    }
+  }, [accessToken]);
+
+  const requestPasswordResetCode = useCallback(async (email: string) => {
+    setIsRequestingPasswordReset(true);
+
+    try {
+      const payload = await requestPasswordResetCodeRequest(
+        email.trim().toLowerCase(),
+      );
+      return {
+        success: true,
+        message: payload.message,
+      };
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        "detail" in error
+      ) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: normalizeMessage((error as { detail: unknown }).detail),
+          },
+        };
+      }
+
+      return {
+        success: false,
+        fieldErrors: {
+          general:
+            "We couldn't send a reset code right now. Check your connection and try again.",
+        },
+      };
+    } finally {
+      setIsRequestingPasswordReset(false);
+    }
+  }, []);
+
+  const verifyPasswordResetCode = useCallback(
+    async (email: string, code: string) => {
+      setIsVerifyingResetCode(true);
+
+      try {
+        const payload = await verifyPasswordResetCodeRequest(
+          email.trim().toLowerCase(),
+          code,
+        );
+        return {
+          success: true,
+          message: payload.message,
+          resetToken: payload.reset_token,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              general: normalizeMessage((error as { detail: unknown }).detail),
+            },
+          };
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't verify that reset code right now. Check your connection and try again.",
+          },
+        };
+      } finally {
+        setIsVerifyingResetCode(false);
+      }
+    },
+    [],
+  );
+
+  const resetPassword = useCallback(
+    async (email: string, resetToken: string, newPassword: string) => {
+      setIsResettingPassword(true);
+
+      try {
+        const payload = await resetPasswordRequest(
+          email.trim().toLowerCase(),
+          resetToken,
+          newPassword,
+        );
+        return {
+          success: true,
+          message: payload.message,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              general: normalizeMessage((error as { detail: unknown }).detail),
+            },
+          };
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't reset the password right now. Check your connection and try again.",
+          },
+        };
+      } finally {
+        setIsResettingPassword(false);
+      }
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextType>(
     () => ({
       accessToken,
@@ -552,9 +895,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isSigningUp,
       isSigningOut,
       isUpdatingProfile,
+      isVerifyingEmail,
+      isResendingVerificationCode,
+      isRequestingPasswordReset,
+      isVerifyingResetCode,
+      isResettingPassword,
       signIn,
       signUp,
       updateProfile,
+      verifyEmail,
+      resendVerificationCode,
+      requestPasswordResetCode,
+      verifyPasswordResetCode,
+      resetPassword,
       signOut,
     }),
     [
@@ -564,10 +917,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isSigningOut,
       isSigningUp,
       isUpdatingProfile,
+      isVerifyingEmail,
+      isResendingVerificationCode,
+      isRequestingPasswordReset,
+      isVerifyingResetCode,
+      isResettingPassword,
+      resendVerificationCode,
+      requestPasswordResetCode,
+      verifyPasswordResetCode,
+      resetPassword,
       signIn,
       signOut,
       signUp,
       updateProfile,
+      verifyEmail,
       user,
     ],
   );

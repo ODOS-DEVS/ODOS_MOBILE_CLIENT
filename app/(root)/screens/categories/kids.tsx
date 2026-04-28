@@ -152,7 +152,7 @@ const KidsScreen = () => {
           <View className="px-4 pt-2">
             <BannerCard
               title="Stores"
-              image={require("@/assets/images/kids.png")}
+              image={require("@/assets/images/sports.png")}
               onPress={() => console.log("Stores pressed")}
             />
           </View>

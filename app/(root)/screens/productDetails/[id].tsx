@@ -53,7 +53,7 @@ export default function ProductDetailScreen() {
             </Text>
           </View>
           <Image
-            source={require("../../../../assets/images/wallet1.png")}
+            source={require("../../../../assets/images/bag.png")}
             className="w-64 h-64"
             resizeMode="contain"
           />
