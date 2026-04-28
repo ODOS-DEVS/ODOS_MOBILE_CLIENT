@@ -7,7 +7,7 @@ export const flashSales = [
     oldPrice: 69,
     rating: 4.4,
     reviews: "320k",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "flash-2",
@@ -18,7 +18,7 @@ export const flashSales = [
     oldPrice: 69,
     rating: 4.3,
     reviews: "320k",
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
   {
     id: "flash-3",
@@ -131,7 +131,7 @@ export const Stores = [
     category: "kids",
     market: "Campus",
     rating: 4.4,
-    image: require("@/assets/images/kids.png"),
+    image: require("@/assets/images/sports.png"),
     favorite: true,
   },
   {
@@ -158,7 +158,7 @@ export const Stores = [
     category: "Others",
     market: "Campus",
     rating: 4.4,
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
     favorite: true,
   },
 ];
@@ -190,7 +190,7 @@ export const PopularProducts = [
     price: 59,
     oldPrice: 69,
     rating: 4.4,
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
   {
     id: "pop-4",
@@ -216,12 +216,12 @@ export const markets = [
   {
     id: "mar-3",
     title: "Kanta",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "mar-4",
     title: "Campus",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "mar-5",
@@ -241,13 +241,13 @@ export const categories = [
     id: "2",
     title: "Ladies",
     subtitle: "Ladies dorm",
-    image: require("@/assets/images/ladies.png"),
+    image: require("@/assets/images/ladiesstore.png"),
   },
   {
     id: "3",
     title: "Kids",
     subtitle: "Kids zone",
-    image: require("@/assets/images/kids.png"),
+    image: require("@/assets/images/sports.png"),
   },
   {
     id: "4",
@@ -284,7 +284,7 @@ export const gentsData = [
     oldPrice: 150,
     rating: 4.8,
     reviews: "1.2k",
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
   {
     id: "2",
@@ -295,7 +295,7 @@ export const gentsData = [
     discount: "20% off",
     rating: 4.6,
     reviews: "980",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "3",
@@ -305,7 +305,7 @@ export const gentsData = [
     oldPrice: 110,
     rating: 4.4,
     reviews: "540",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "4",
@@ -336,7 +336,7 @@ export const gentsData = [
     oldPrice: 360,
     rating: 4.9,
     reviews: "1.5k",
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
   {
     id: "7",
@@ -381,7 +381,7 @@ export const ladiesData = [
     discount: "20% off",
     rating: 4.9,
     reviews: "650",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "3",
@@ -488,7 +488,7 @@ export const kidsData = [
     discount: "22% off",
     rating: 4.8,
     reviews: "390",
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
   {
     id: "5",
@@ -508,7 +508,7 @@ export const kidsData = [
     oldPrice: 140,
     rating: 4.3,
     reviews: "320",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "7",
@@ -529,7 +529,7 @@ export const kidsData = [
     oldPrice: 60,
     rating: 4.7,
     reviews: "430",
-    image: require("@/assets/images/wallet1.png"),
+    image: require("@/assets/images/bag.png"),
   },
 ];
 

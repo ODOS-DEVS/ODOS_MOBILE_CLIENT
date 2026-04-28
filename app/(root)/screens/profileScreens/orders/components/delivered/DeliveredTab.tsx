@@ -40,7 +40,7 @@ const deliveredOrders: DeliveredOrder[] = [
     total: 129,
     qty: 1,
     deliveredOn: "Delivered on Feb 02, 2026",
-    image: require("@/assets/images/watch1.png"),
+    image: require("@/assets/images/headset.png"),
   },
   {
     id: "ORD-10244",

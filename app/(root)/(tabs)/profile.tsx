@@ -1,4 +1,5 @@
 import { MenuItem } from "@/components/MenuItem";
+import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
@@ -7,21 +8,11 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import {
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProfileScreen() {
   const { isSigningOut, signOut, user } = useAuth();
   const { requireAuth } = useRequireAuth();
-  const avatarUri = user?.avatar_url || "https://i.pravatar.cc/502?img=12";
-
   const openProtectedRoute = (
     pathname: string,
     title = "Sign in to continue",
@@ -72,12 +63,7 @@ export default function ProfileScreen() {
           style={styles.header}
         >
           <View style={styles.subHeader}>
-            <Image
-              source={{
-                uri: avatarUri,
-              }}
-              style={styles.avatar}
-            />
+            <UserAvatar avatarUrl={user?.avatar_url} size={rS(50)} style={styles.avatar} />
             <View>
               <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
               <Text style={styles.email}>
@@ -252,7 +238,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: rS(50),
     height: rV(50),
-    borderRadius: rMS(28),
+    borderRadius: rMS(30),
     marginRight: rS(12),
   },
 

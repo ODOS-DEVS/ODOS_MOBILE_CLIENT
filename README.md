@@ -1,26 +1,50 @@
 # ODOS Mobile Client
 
-ODOS Mobile Client is an Expo React Native marketplace app for browsing products, stores, local markets, and account flows from a mobile device. The current project includes a connected authentication flow for email/password login and signup, plus in-app state for cart, wishlist, profile, checkout, and vendor chat experiences.
+ODOS Mobile Client is the Expo React Native frontend for ODOS, a marketplace app for browsing products, stores, and local markets from a phone.
 
-This repository is the frontend/mobile client. The FastAPI backend lives in a separate project folder and exposes the auth endpoints this app currently uses.
+This app currently supports real backend-connected auth for:
+
+- sign up
+- sign in
+- email verification
+- forgot password
+- reset password
+- session restore
+- logout
+- profile editing
+
+The backend lives in a separate project folder:
+
+`/Users/paul/Desktop/DeV/odos-workspace/ODOS_MOBILE_BACKEND`
 
 ## Current Status
 
-The app is working as an Expo Go-friendly mobile client with:
+The mobile app is currently in a good Expo Go development state.
 
-- onboarding, sign in, sign up, and logout
-- session restore using a stored bearer token
-- cart, wishlist, profile, address, wallet, and checkout state
-- local marketplace/catalog mock data
-- profile navigation, help screens, vouchers, reviews, and vendor request flows
+What is already connected:
+
+- email/password auth
+- email verification flow
+- password reset flow
+- bearer-token session restore with Expo SecureStore
+- profile loading and profile updates
+- guest browsing with auth-gated protected actions
+
+What is still mostly local or mocked:
+
+- product data
+- categories
+- stores
+- cart persistence
+- wishlist persistence
+- order placement
+- full checkout backend flow
 
 Important current realities:
 
-- email/password auth is connected to the backend
-- Google auth is not active in Expo Go right now
-- most catalog and shopping content still comes from local mock data
-- cart, wishlist, chat, and profile utility state is mostly local to the app
-- order placement is still not connected to a full backend checkout flow
+- the app is designed to work well in Expo Go for normal development
+- Google auth is not active in the current Expo Go flow
+- most shopping content is still driven by local mock data
 
 ## Tech Stack
 
@@ -32,15 +56,16 @@ Important current realities:
 - NativeWind
 - React Context
 - Expo Secure Store
+- Expo Image Picker
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
-- Expo Go on your phone, or simulator/emulator if preferred
-- The ODOS backend running locally if you want auth to work
+- Expo Go on your phone, or simulator/emulator
+- the ODOS backend running locally if you want auth to work
 
-## Frontend Setup
+## Setup
 
 Install dependencies:
 
@@ -48,7 +73,7 @@ Install dependencies:
 npm install
 ```
 
-Create or update your frontend env file:
+Create a frontend `.env` file in the project root:
 
 ```env
 EXPO_PUBLIC_API_URL=http://YOUR-MAC-LAN-IP:8000/api
@@ -60,19 +85,17 @@ Example:
 EXPO_PUBLIC_API_URL=http://10.11.24.79:8000/api
 ```
 
-If you are using Expo Go on a real phone, your phone and Mac need to be on the same Wi‑Fi network.
+If you are running on a real phone with Expo Go, your phone and Mac must be on the same Wi‑Fi network.
 
 ## Run The App
 
-Start the Expo server:
+Start Expo:
 
 ```bash
 npx expo start -c
 ```
 
-Then scan the QR code using Expo Go.
-
-If Expo opens in a mode other than Expo Go, switch from the terminal UI.
+Then scan the QR code with Expo Go.
 
 ## Available Scripts
 
@@ -87,19 +110,24 @@ npm run lint
 Notes:
 
 - `npm start` runs `expo start`
-- `npm run ios` and `npm run android` are for native runs, not required for normal Expo Go usage
-- `npm run web` exists, but this project is primarily being developed as a mobile app
+- `npm run ios` and `npm run android` are optional native runs
+- `npm run web` exists, but the project is being developed as a mobile app first
 
-## Required Backend
+## Required Backend Endpoints
 
-This frontend expects the backend to expose:
+The frontend currently expects these backend routes:
 
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
+- `POST /api/auth/verify-email`
+- `POST /api/auth/resend-verification-code`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/verify-reset-code`
+- `POST /api/auth/reset-password`
 - `GET /api/auth/me`
+- `PATCH /api/auth/me`
 - `POST /api/auth/logout`
-
-If the backend is not running or the API URL is wrong, login/signup will fail and the app will show connection-related auth errors.
+- `GET /api/health`
 
 ## Typical Local Workflow
 
@@ -124,25 +152,78 @@ Before opening the app, you can confirm the backend is reachable from your phone
 http://YOUR-MAC-LAN-IP:8000/api/health
 ```
 
-## Auth Flow
+## Auth Flows
 
-Current production-like auth flow in the app:
+### Sign Up And Verification
 
-1. user signs up with name, email, and password
-2. frontend calls backend signup
-3. frontend logs the user in immediately after successful signup
-4. backend returns a bearer token
-5. frontend stores the token in Expo Secure Store
-6. app restores the user session on launch using `/api/auth/me`
-7. logout clears the local token and resets the user session
+1. user signs up with full name, email, and password
+2. backend creates the account
+3. backend sends a 6-digit verification code by email
+4. frontend logs the user in and routes them to the verification screen
+5. user enters the code
+6. backend marks `is_verified = true`
+7. backend sends a verification success email
+
+### Sign In
+
+1. user signs in with email and password
+2. backend returns a bearer token and the current user
+3. frontend stores the token in Expo SecureStore
+4. if the user is already verified, they continue into the app
+5. if not verified, they are routed to the verification screen
+
+### Forgot Password
+
+1. user enters their email on the forgot password screen
+2. backend sends a 6-digit reset code
+3. user enters the code on the verification screen
+4. backend returns a short-lived reset token
+5. user creates a new password
+6. backend updates the password
+7. backend sends a password-changed confirmation email
+
+### Session Restore
+
+On launch, the app checks SecureStore for a saved bearer token and calls:
+
+- `GET /api/auth/me`
+
+If the token is valid, the user session is restored automatically.
+
+## Profile Behavior
+
+The app supports:
+
+- viewing the real signed-in user
+- editing profile fields
+- saving profile fields to the backend
+- updating avatar
+
+Default avatar behavior:
+
+- if `avatar_url` exists, it is shown
+- if not, the app renders a consistent built-in fallback avatar across the main profile surfaces
+
+## Guest Browsing Behavior
+
+Fresh app launches are guest-friendly.
+
+Users can browse the app without signing in, but protected flows prompt them to authenticate before doing important actions such as:
+
+- managing profile data
+- checkout
+- other account-protected flows
 
 ## Google Auth Note
 
-Google auth exists conceptually in the backend, but it is not enabled in the current Expo Go mobile flow.
+Google auth is intentionally not active in the current Expo Go flow.
 
-The Google buttons are still shown in the UI for continuity, but they currently display a message instead of completing authentication.
+The backend still has Google auth support, but the mobile client is currently stabilized around:
 
-This is intentional for now because the app has been stabilized around Expo Go and normal auth.
+- Expo Go
+- normal email/password auth
+- email verification
+- password reset
 
 ## Project Structure
 
@@ -160,6 +241,7 @@ components/
   cards/
   home/
   profile/
+  UserAvatar.tsx
 
 constants/
   auth.ts
@@ -175,6 +257,9 @@ context/
   ToastContext.tsx
   WishlistContext.tsx
 
+hooks/
+  useRequireAuth.ts
+
 styles/
   responsive.ts
 
@@ -187,25 +272,31 @@ assets/
 
 Connected:
 
-- sign in
 - sign up
+- sign in
+- email verification
+- resend verification code
+- forgot password
+- verify reset code
+- reset password
 - session restore
 - logout
+- profile update
 
 Still local/mock:
 
 - marketplace data
 - product data
 - stores and categories
-- chat threads
+- much of cart/wishlist persistence
 - much of checkout/order flow
 
 ## Development Notes
 
-- `app.json` includes the app scheme required by Expo Router linking
-- auth state is managed in `context/AuthContext.tsx`
-- form validation and backend error mapping are handled in the auth screens plus auth context
-- sensitive session data is stored with Expo Secure Store
+- `app.json` includes the app scheme needed by Expo Router
+- auth state lives in `context/AuthContext.tsx`
+- auth recovery and verification UI currently flows through `verification.tsx`
+- sensitive session data is stored in Expo SecureStore
 
 ## Troubleshooting
 
@@ -216,6 +307,15 @@ Check:
 - backend is running with `--host 0.0.0.0`
 - your phone and Mac are on the same Wi‑Fi
 - `EXPO_PUBLIC_API_URL` matches your current Mac LAN IP
+
+### Emails are not arriving
+
+Check:
+
+- backend Brevo settings are correct
+- verified sender email is configured in the backend `.env`
+- backend has been restarted after env changes
+- email was not blocked or deferred in Brevo transactional logs
 
 ### Auth keeps failing
 
@@ -244,8 +344,8 @@ Then update `.env` if needed.
 
 ## Recommended Next Steps
 
-1. connect catalog/product/store data to the backend
-2. connect profile editing to backend user endpoints
-3. connect checkout/order creation to backend order endpoints
-4. add password reset flow
-5. reintroduce Google auth later with a mobile strategy outside plain Expo Go
+1. connect product, store, and category data to the backend
+2. add real cart and wishlist persistence
+3. add order creation and checkout endpoints
+4. reintroduce Google auth later with a mobile strategy outside plain Expo Go
+5. add automated tests for critical auth flows

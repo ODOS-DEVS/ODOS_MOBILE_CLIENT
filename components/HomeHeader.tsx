@@ -1,10 +1,11 @@
+import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const HomeHeader = () => {
@@ -15,8 +16,6 @@ export const HomeHeader = () => {
 
   const displayName = user?.full_name?.trim() || "Guest";
   const greeting = user ? "Welcome back" : "Hi! Good morning!";
-  const avatarUri = user?.avatar_url || "https://i.pravatar.cc/50?img=12";
-
   const handleProfilePress = () => {
     if (
       !requireAuth({
@@ -47,14 +46,10 @@ export const HomeHeader = () => {
         activeOpacity={0.8}
         style={{ flexDirection: "row", alignItems: "center" }}
       >
-        <Image
-          source={{ uri: avatarUri }}
-          style={{
-            width: rS(40),
-            height: rS(40),
-            borderRadius: rS(20),
-            marginRight: rS(10),
-          }}
+        <UserAvatar
+          avatarUrl={user?.avatar_url}
+          size={rS(40)}
+          style={{ marginRight: rS(10) }}
         />
         <View>
           <Text
