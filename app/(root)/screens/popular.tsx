@@ -1,9 +1,11 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
 import { PopularProducts } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
 import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -11,11 +13,15 @@ import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
 export default function PopularProductsScreen() {
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(PopularProducts);
+  const { products: catalogProducts, isLoading } = useCatalogProducts({
+    section: "popular",
+    fallback: PopularProducts,
+  });
+  const [searchResults, setSearchResults] = useState(catalogProducts);
 
   const displayed = useMemo(
-    () => (isSearching ? searchResults : PopularProducts),
-    [isSearching, searchResults],
+    () => (isSearching ? searchResults : catalogProducts),
+    [catalogProducts, isSearching, searchResults],
   );
 
   return (
@@ -31,7 +37,7 @@ export default function PopularProductsScreen() {
         }}
       >
         <SearchBar
-          data={PopularProducts}
+          data={catalogProducts}
           onStartSearch={() => setIsSearching(true)}
           onResults={(results) => {
             setIsSearching(true);
@@ -46,7 +52,9 @@ export default function PopularProductsScreen() {
             <Text style={styles.sectionTitle}>All popular products</Text>
           </View>
 
-          {displayed.length === 0 ? (
+          {isLoading ? (
+            <ScreenLoader label="Loading popular products..." />
+          ) : displayed.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No products found</Text>
               <Text style={styles.emptySubtitle}>
@@ -60,7 +68,12 @@ export default function PopularProductsScreen() {
               scrollEnabled={false}
               ItemSeparatorComponent={() => <View style={{ height: rV(10) }} />}
               renderItem={({ item }) => (
-                <RecommendationCard {...item} reviews={Number(item.reviews)} />
+                <RecommendationCard
+                  {...item}
+                  reviews={
+                    item.reviews !== undefined ? Number(item.reviews) : undefined
+                  }
+                />
               )}
               contentContainerStyle={{
                 paddingTop: rV(10),

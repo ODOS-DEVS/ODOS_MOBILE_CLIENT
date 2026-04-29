@@ -11,7 +11,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const StoreMapScreen = () => {
-  const { title } = useLocalSearchParams();
+  const { title, address, phone, email, city, distanceKm, travelMinutes } =
+    useLocalSearchParams();
   const insets = useSafeAreaInsets();
 
   return (
@@ -66,14 +67,14 @@ const StoreMapScreen = () => {
             }}
           >
             <Text className="text-base font-montserrat-extraBold text-gray-900 mb-3">
-              Zara Store
+              {title || "Store"}
             </Text>
             <View className="flex-row items-center">
               <View className="w-12 h-12 rounded-full bg-gray-200 mr-3" />
               <View className="flex-1">
                 <View className="flex-row items-center">
                   <Text className="font-montserrat-extraBold text-gray-900">
-                    Zara Store
+                    {title || "Store"}
                   </Text>
                   <Ionicons
                     name="person-circle-outline"
@@ -85,7 +86,7 @@ const StoreMapScreen = () => {
                 <View className="flex-row items-center mt-1">
                   <Ionicons name="location-outline" size={14} color="#6b7280" />
                   <Text className="ml-1 text-xs font-montserrat-medium text-gray-600">
-                    9 km
+                    {distanceKm || "9 km"}
                   </Text>
                   <Ionicons
                     name="time-outline"
@@ -94,11 +95,11 @@ const StoreMapScreen = () => {
                     style={{ marginLeft: 10 }}
                   />
                   <Text className="ml-1 text-xs font-montserrat-medium text-gray-600">
-                    40 minutes
+                    {travelMinutes || "40 minutes"}
                   </Text>
                 </View>
                 <Text className="text-sm text-gray-700 font-montserrat-medium mt-2">
-                  Dew Street 9, Kokoroko rd, GS-000-0000
+                  {address || "Dew Street 9, Kokoroko rd, GS-000-0000"}
                 </Text>
               </View>
             </View>
@@ -121,19 +122,19 @@ const StoreMapScreen = () => {
             <View className="flex-row items-center mb-2">
               <Ionicons name="call-outline" size={16} color="#6b7280" />
               <Text className="ml-2 text-sm font-montserrat-medium text-gray-700">
-                (+233) 54 187 4005
+                {phone || "(+233) 54 187 4005"}
               </Text>
             </View>
             <View className="flex-row items-center mb-2">
               <Ionicons name="mail-outline" size={16} color="#6b7280" />
               <Text className="ml-2 text-sm font-montserrat-medium text-gray-700">
-                admin@gmail.com
+                {email || "admin@gmail.com"}
               </Text>
             </View>
             <View className="flex-row items-center mb-4">
               <Ionicons name="pin-outline" size={16} color="#6b7280" />
               <Text className="ml-2 text-sm font-montserrat-medium text-gray-700">
-                Dansoman, Accra
+                {city || "Dansoman, Accra"}
               </Text>
             </View>
 

@@ -7,18 +7,21 @@ export interface NotificationItemProps {
   label: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  disabled?: boolean;
 }
 export const NotificationItem = ({
   label,
   value,
   onValueChange,
+  disabled = false,
 }: NotificationItemProps) => {
   return (
-    <View style={styles.item}>
-      <Text style={styles.itemText}>{label}</Text>
+    <View style={[styles.item, disabled && styles.itemDisabled]}>
+      <Text style={[styles.itemText, disabled && styles.itemTextDisabled]}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
         trackColor={{
           false: "#E5E5E9",
           true: "#111",
@@ -44,5 +47,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.title,
     fontSize: rMS(14),
     color: "#222",
+  },
+  itemDisabled: {
+    opacity: 0.55,
+  },
+  itemTextDisabled: {
+    color: "#80848A",
   },
 });

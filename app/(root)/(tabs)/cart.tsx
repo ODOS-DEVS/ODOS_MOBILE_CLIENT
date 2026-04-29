@@ -50,7 +50,10 @@ const MyCart = () => {
       return;
     }
 
-    router.push("/screens/Checkout");
+    router.push({
+      pathname: "/screens/Checkout" as any,
+      params: { mode: "cart" },
+    });
   };
 
   return (
