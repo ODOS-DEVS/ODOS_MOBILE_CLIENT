@@ -22,6 +22,12 @@ export type AuthUser = {
   gender: string | null;
   city: string | null;
   region: string | null;
+  allow_notifications: boolean;
+  discount_notifications: boolean;
+  store_notifications: boolean;
+  system_notifications: boolean;
+  location_notifications: boolean;
+  location_updates: boolean;
   role: string;
   is_active: boolean;
   is_verified: boolean;
@@ -56,6 +62,12 @@ type ProfileUpdatePayload = {
   city?: string | null;
   region?: string | null;
   avatarUrl?: string | null;
+  allowNotifications?: boolean;
+  discountNotifications?: boolean;
+  storeNotifications?: boolean;
+  systemNotifications?: boolean;
+  locationNotifications?: boolean;
+  locationUpdates?: boolean;
 };
 
 type AuthFieldErrors = {
@@ -335,6 +347,12 @@ async function updateProfileRequest(token: string, payload: ProfileUpdatePayload
       city: payload.city,
       region: payload.region,
       avatar_url: payload.avatarUrl,
+      allow_notifications: payload.allowNotifications,
+      discount_notifications: payload.discountNotifications,
+      store_notifications: payload.storeNotifications,
+      system_notifications: payload.systemNotifications,
+      location_notifications: payload.locationNotifications,
+      location_updates: payload.locationUpdates,
     }),
   });
 

@@ -1,9 +1,11 @@
 import BannerCard from "@/components/cards/BannerCard";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProductCard from "@/components/cards/ProductCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { ladiesData } from "@/constants/Data";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
@@ -17,7 +19,12 @@ import {
 
 const LadiesCategory = () => {
   const [selectedSort, setSelectedSort] = useState("All");
-  const [filteredData, setFilteredData] = useState(ladiesData);
+  const {
+    products: catalogProducts,
+    sortOptions,
+    isLoading,
+  } = useCatalogProducts({ audience: "ladies", fallback: ladiesData });
+  const [filteredData, setFilteredData] = useState(catalogProducts);
   const { gridCardWidth } = useResponsive();
   const gridGap = rS(6);
   const gridPadding = rS(17);
@@ -32,14 +39,14 @@ const LadiesCategory = () => {
   // Apply sorting
   useEffect(() => {
     if (selectedSort === "All") {
-      setFilteredData(ladiesData);
+      setFilteredData(catalogProducts);
     } else {
-      const filtered = ladiesData.filter(
-        (item) => item.category.toLowerCase() === selectedSort.toLowerCase(),
+      const filtered = catalogProducts.filter(
+        (item) => item.category?.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
-  }, [selectedSort]);
+  }, [catalogProducts, selectedSort]);
 
   return (
     <View className="flex-1 bg-white">
@@ -71,7 +78,7 @@ const LadiesCategory = () => {
             {/* SEARCH BAR */}
             <View className="relative bottom-8">
               <SearchBar
-                data={ladiesData}
+                data={catalogProducts}
                 onStartSearch={() => setIsSearching(true)}
                 onResults={setSearchResults}
               />
@@ -105,7 +112,7 @@ const LadiesCategory = () => {
         >
           {/* SEARCH BAR */}
           <SearchBar
-            data={ladiesData}
+            data={catalogProducts}
             onStartSearch={() => setIsSearching(true)}
             onResults={setSearchResults}
           />
@@ -113,38 +120,35 @@ const LadiesCategory = () => {
           {/* SORT TABS */}
           <View className="pt-4">
             <SortTabs
-              options={[
-                "All",
-                "Clothing",
-                "Shoes",
-                "Accessories",
-                "Watches",
-                "Bags",
-              ]}
+              options={sortOptions}
               onChange={handleSortChange}
               defaultOption="All"
             />
           </View>
 
           {/* PRODUCT GRID */}
-          <FlatList
-            data={filteredData}
-            numColumns={2}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            columnWrapperStyle={{ columnGap: gridGap }}
-            renderItem={({ item }) => (
-              <ProductCard
-                {...item}
-                cardWidth={gridCardWidth(2, gridGap)}
-                horizontalSpacing={7}
-              />
-            )}
-            contentContainerStyle={{
-              paddingHorizontal: gridPadding,
-              paddingTop: 16,
-            }}
-          />
+          {isLoading ? (
+            <ScreenLoader label="Loading products..." />
+          ) : (
+            <FlatList
+              data={filteredData}
+              numColumns={2}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              columnWrapperStyle={{ columnGap: gridGap }}
+              renderItem={({ item }) => (
+                <ProductCard
+                  {...item}
+                  cardWidth={gridCardWidth(2, gridGap)}
+                  horizontalSpacing={7}
+                />
+              )}
+              contentContainerStyle={{
+                paddingHorizontal: gridPadding,
+                paddingTop: 16,
+              }}
+            />
+          )}
 
           {/* BANNER */}
           <View className="px-4 pt-2">
@@ -169,7 +173,7 @@ const LadiesCategory = () => {
 
           {/* POPULAR LIST */}
           <FlatList
-            data={ladiesData.slice(0, 5)}
+            data={catalogProducts.slice(0, 5)}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}

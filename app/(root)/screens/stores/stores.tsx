@@ -1,8 +1,10 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import StoreCard from "@/components/cards/StoreCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
 import { Stores } from "@/constants/Data";
+import { useStores } from "@/hooks/useCommerce";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -41,17 +43,31 @@ const StoreScreen = () => {
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
   const [activeCategory, setActiveCategory] = useState("All");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(Stores);
+  const fallbackStores = useMemo(
+    () =>
+      Stores.map((item) => ({
+        id: item.id,
+        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
+        title: item.title,
+        category: item.category,
+        image: item.image,
+        rating: item.rating,
+        marketSlug: item.market?.toLowerCase(),
+      })),
+    [],
+  );
+  const { stores: storeItems, isLoading } = useStores({ fallback: fallbackStores });
+  const [searchResults, setSearchResults] = useState(storeItems);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
 
   const categories = useMemo(() => [...categoryOptions], []);
 
   const filteredByCategory = useMemo(() => {
-    if (activeCategory === "All") return Stores;
-    return Stores.filter(
+    if (activeCategory === "All") return storeItems;
+    return storeItems.filter(
       (store) => normalizeStoreCategory(store.category) === activeCategory,
     );
-  }, [activeCategory]);
+  }, [activeCategory, storeItems]);
 
   const displayedStores = isSearching ? searchResults : filteredByCategory;
 
@@ -118,7 +134,9 @@ const StoreScreen = () => {
             <Text style={styles.sectionTitle}>Browse stores</Text>
           </View>
 
-          {displayedStores.length === 0 ? (
+          {isLoading ? (
+            <ScreenLoader label="Loading stores..." />
+          ) : displayedStores.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
                 name="search-outline"

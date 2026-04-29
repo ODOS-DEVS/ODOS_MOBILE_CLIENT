@@ -1,25 +1,39 @@
 import CategoryCard from "@/components/cards/CategoryCard";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { categories } from "@/constants/Data";
+import { CatalogCategoryItem, useCatalogCategories } from "@/hooks/useCatalog";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const CategoryScreen = () => {
-  const handlePress = (id: string) => {
-    switch (id) {
-      case "1":
+  const fallbackCategories = useMemo<CatalogCategoryItem[]>(
+    () =>
+      categories.map((item) => ({
+        ...item,
+        slug: item.title.toLowerCase(),
+      })),
+    [],
+  );
+  const { categories: catalogCategories, isLoading } =
+    useCatalogCategories(fallbackCategories);
+
+  const handlePress = (slug: string) => {
+    switch (slug) {
+      case "gents":
         router.push("/(root)/screens/categories/gents");
         break;
-      case "2":
+      case "ladies":
         router.push("/(root)/screens/categories/ladies");
         break;
-      case "3":
+      case "kids":
         router.push("/(root)/screens/categories/kids");
+        break;
       default:
         break;
     }
@@ -40,17 +54,21 @@ const CategoryScreen = () => {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Browse Categories</Text>
-              <FlatList
-                data={categories}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <CategoryCard
-                    {...item}
-                    onPress={() => handlePress(item.id)}
-                  />
-                )}
-                contentContainerStyle={styles.categoryList}
-              />
+              {isLoading ? (
+                <ScreenLoader label="Loading categories..." />
+              ) : (
+                <FlatList
+                  data={catalogCategories}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <CategoryCard
+                      {...item}
+                      onPress={() => handlePress(item.slug)}
+                    />
+                  )}
+                  contentContainerStyle={styles.categoryList}
+                />
+              )}
             </View>
           </View>
         }

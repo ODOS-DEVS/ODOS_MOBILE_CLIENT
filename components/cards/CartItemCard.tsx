@@ -35,7 +35,17 @@ const CartItemCard = ({
     <View style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.imageWrap}>
-          <Image source={image} style={styles.image} resizeMode="cover" />
+          {image ? (
+            <Image source={image} style={styles.image} resizeMode="cover" />
+          ) : (
+            <View style={styles.imageFallback}>
+              <Ionicons
+                name="bag-handle-outline"
+                size={rS(26)}
+                color={AppColors.secondary}
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.meta}>
@@ -129,6 +139,12 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  imageFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EEF2F4",
   },
   meta: {
     flex: 1,

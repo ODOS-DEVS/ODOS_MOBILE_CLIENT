@@ -11,11 +11,15 @@ type RequireAuthOptions = {
 };
 
 export function useRequireAuth() {
-  const { user } = useAuth();
+  const { user, isHydrating } = useAuth();
   const router = useRouter();
 
   const requireAuth = useCallback(
     (options?: RequireAuthOptions) => {
+      if (isHydrating) {
+        return true;
+      }
+
       if (user) {
         return true;
       }
@@ -43,8 +47,8 @@ export function useRequireAuth() {
 
       return false;
     },
-    [router, user],
+    [isHydrating, router, user],
   );
 
-  return { requireAuth, user };
+  return { requireAuth, user, isHydrating };
 }

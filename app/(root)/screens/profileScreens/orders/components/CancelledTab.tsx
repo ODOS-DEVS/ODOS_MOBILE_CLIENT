@@ -1,68 +1,107 @@
 import { AppColors } from "@/constants/Colors";
+import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
+import { Order } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const cancelledOrders = [
-  {
-    id: "ORD-10440",
-    title: "Silk Summer Dress",
-    category: "Clothing",
-    amount: 180,
-    cancelledOn: "Cancelled on Feb 01, 2026",
-    reason: "Payment timeout",
-    image: require("@/assets/images/dress.png"),
-  },
-  {
-    id: "ORD-10390",
-    title: "Women Tote Bag",
-    category: "Bags",
-    amount: 140,
-    cancelledOn: "Cancelled on Jan 27, 2026",
-    reason: "Out of stock",
-    image: require("@/assets/images/handbag.png"),
-  },
-];
+function getPrimaryItem(order: Order) {
+  return order.items[0];
+}
 
-export default function CancelledTab() {
+function getImageSource(order: Order) {
+  const primaryItem = getPrimaryItem(order);
+  if (primaryItem?.image_key) {
+    return resolveCatalogImage(primaryItem.image_key);
+  }
+  if (primaryItem?.image_url) {
+    return { uri: primaryItem.image_url };
+  }
+  return null;
+}
+
+function formatCancelledDate(order: Order) {
+  const value = order.cancelled_at ?? order.updated_at;
+  return `Cancelled on ${new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+}
+
+export default function CancelledTab({
+  orders,
+}: {
+  orders: Order[];
+}) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {cancelledOrders.map((item) => (
-        <View key={item.id} style={styles.card} className="shadow-sm">
-          <View style={styles.topRow}>
-            <View style={styles.imageWrap}>
-              <Image source={item.image} style={styles.image} resizeMode="contain" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.orderId}>#{item.id}</Text>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.sub}>{item.category}</Text>
-              <Text style={styles.dateText}>{item.cancelledOn}</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Cancelled</Text>
-            </View>
-          </View>
-
-          <View style={styles.reasonRow}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={rMS(14)}
-              color={AppColors.subtext[100]}
-            />
-            <Text style={styles.reasonText}>Reason: {item.reason}</Text>
-          </View>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.amountText}>₵{item.amount.toFixed(2)}</Text>
-            <TouchableOpacity style={styles.retryBtn} activeOpacity={0.85}>
-              <Text style={styles.retryBtnText}>Order Again</Text>
-            </TouchableOpacity>
-          </View>
+      {orders.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No cancelled orders</Text>
+          <Text style={styles.emptyText}>
+            If an order is ever cancelled, the reason and total will appear here.
+          </Text>
         </View>
-      ))}
+      ) : (
+        orders.map((item) => {
+          const primaryItem = getPrimaryItem(item);
+          const imageSource = getImageSource(item);
+
+          return (
+            <View key={item.id} style={styles.card} className="shadow-sm">
+              <View style={styles.topRow}>
+                <View style={styles.imageWrap}>
+                  {imageSource ? (
+                    <Image source={imageSource} style={styles.image} resizeMode="contain" />
+                  ) : (
+                    <Ionicons name="image-outline" size={rMS(28)} color={AppColors.subtext[100]} />
+                  )}
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.orderId}>#{item.order_number}</Text>
+                  <Text style={styles.title}>{primaryItem?.title ?? "Order item"}</Text>
+                  <Text style={styles.sub}>{primaryItem?.category ?? "Product"}</Text>
+                  <Text style={styles.dateText}>{formatCancelledDate(item)}</Text>
+                </View>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>Cancelled</Text>
+                </View>
+              </View>
+
+              <View style={styles.reasonRow}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={rMS(14)}
+                  color={AppColors.subtext[100]}
+                />
+                <Text style={styles.reasonText}>
+                  Reason: {item.cancellation_reason || "Cancelled by the store"}
+                </Text>
+              </View>
+
+              <View style={styles.footerRow}>
+                <Text style={styles.amountText}>₵{item.total_amount.toFixed(2)}</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
+                      params: { orderId: item.id },
+                    })
+                  }
+                >
+                  <Text style={styles.retryBtnText}>View Details</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })
+      )}
     </ScrollView>
   );
 }
@@ -70,6 +109,23 @@ export default function CancelledTab() {
 const styles = StyleSheet.create({
   container: {
     paddingBottom: rV(16),
+  },
+  emptyState: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(16),
+    padding: rS(18),
+  },
+  emptyTitle: {
+    fontSize: rMS(15),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+    marginBottom: rV(6),
+  },
+  emptyText: {
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+    lineHeight: rMS(18),
   },
   card: {
     backgroundColor: AppColors.white,

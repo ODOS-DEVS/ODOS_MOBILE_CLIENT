@@ -82,7 +82,7 @@ export default function ProfileScreen() {
           icon="receipt-outline"
           label="Orders"
           onPress={() => {
-            openProtectedRoute("../screens/profileScreens/orders/[orderId]");
+            openProtectedRoute("../screens/profileScreens/orders");
           }}
         />
         <MenuItem icon="return-up-back-outline" label="Returns" />
@@ -135,7 +135,18 @@ export default function ProfileScreen() {
       <View className="bg-white rounded-3xl mb-5 shadow-sm">
         <MenuItem
           icon="notifications-outline"
-          label="Notification"
+          label="Activity"
+          onPress={() => {
+            openProtectedRoute(
+              "../screens/Notification",
+              "Sign in to view activity",
+              "Log in or create an account to see order updates, milestones, and account activity.",
+            );
+          }}
+        />
+        <MenuItem
+          icon="options-outline"
+          label="Notification Settings"
           onPress={() => {
             openProtectedRoute(
               "../screens/profileScreens/personalization/Notification",
@@ -145,7 +156,7 @@ export default function ProfileScreen() {
           }}
         />
         <MenuItem
-          icon="options-outline"
+          icon="sparkles-outline"
           label="Preferences"
           onPress={() => {
             openProtectedRoute(

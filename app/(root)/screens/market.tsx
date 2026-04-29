@@ -1,9 +1,11 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import StoreCard from "@/components/cards/StoreCard";
 import { SearchBar } from "@/components/SearchBar";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { markets, Stores } from "@/constants/Data";
+import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState, useEffect } from "react";
@@ -25,24 +27,48 @@ const MarketScreen = () => {
       : "All";
   const [activeMarket, setActiveMarket] = useState<string>(initialMarket);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(Stores);
+  const fallbackMarkets = useMemo(
+    () =>
+      markets.map((item) => ({
+        id: item.id,
+        slug: item.title.toLowerCase(),
+        title: item.title,
+        image: item.image,
+      })),
+    [],
+  );
+  const fallbackStores = useMemo(
+    () =>
+      Stores.map((item) => ({
+        id: item.id,
+        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
+        title: item.title,
+        category: item.category,
+        image: item.image,
+        rating: item.rating,
+        marketSlug: item.market?.toLowerCase(),
+      })),
+    [],
+  );
+  const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets(fallbackMarkets);
+  const marketLookup = useMarketLookup(marketItems);
+  const activeMarketSlug =
+    activeMarket === "All" ? undefined : marketLookup.get(activeMarket.toLowerCase());
+  const { stores: fetchedStores, isLoading: isLoadingStores } = useStores({
+    marketSlug: activeMarketSlug,
+    fallback: fallbackStores,
+  });
+  const [searchResults, setSearchResults] = useState(fetchedStores);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
 
   const marketNames = useMemo(
-    () => ["All", ...Array.from(new Set(markets.map((m) => m.title)))],
-    []
+    () => ["All", ...Array.from(new Set(marketItems.map((m) => m.title)))],
+    [marketItems]
   );
 
-  const filterStores = (marketName: string) => {
-    if (marketName === "All") return Stores;
-    return Stores.filter(
-      (store) => (store as any).market?.toLowerCase() === marketName.toLowerCase()
-    );
-  };
-
   const filteredStores = useMemo(
-    () => (isSearching ? searchResults : filterStores(activeMarket)),
-    [activeMarket, isSearching, searchResults]
+    () => (isSearching ? searchResults : fetchedStores),
+    [fetchedStores, isSearching, searchResults]
   );
 
 
@@ -61,14 +87,14 @@ const MarketScreen = () => {
   const handleMarketChange = (marketName: string) => {
     setActiveMarket(marketName);
     setIsSearching(false);
-    setSearchResults(filterStores(marketName));
+    setSearchResults([]);
     setSearchSessionKey((prev) => prev + 1);
   };
 
   const handleReset = () => {
     setActiveMarket("All");
     setIsSearching(false);
-    setSearchResults(Stores);
+    setSearchResults([]);
     setSearchSessionKey((prev) => prev + 1);
   };
 
@@ -86,7 +112,7 @@ const MarketScreen = () => {
       >
         <SearchBar
           key={`${activeMarket}-${searchSessionKey}`}
-          data={filterStores(activeMarket)}
+          data={fetchedStores}
           onStartSearch={() => setIsSearching(true)}
           onResults={(results) => {
             setIsSearching(true);
@@ -133,7 +159,9 @@ const MarketScreen = () => {
             </Text>
           </View>
 
-          {filteredStores.length === 0 ? (
+          {isLoadingMarkets || isLoadingStores ? (
+            <ScreenLoader label="Loading stores..." />
+          ) : filteredStores.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No stores here yet</Text>
               <Text style={styles.emptySubtitle}>
