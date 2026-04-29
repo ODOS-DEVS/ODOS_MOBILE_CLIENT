@@ -1,6 +1,7 @@
 import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProductCard from "@/components/cards/ProductCard";
 import { AppColors } from "@/constants/Colors";
 import {
@@ -10,6 +11,8 @@ import {
   Stores,
 } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
+import { resolveCatalogImage } from "@/constants/catalogImages";
+import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -44,18 +47,64 @@ export default function ProductDetail() {
   const params = useLocalSearchParams();
 
   const id = String(getParam(params.id) ?? "");
-  const title = getParam(params.title) ?? "";
-  const category = getParam(params.category);
-  const image = getParam(params.image);
-  const price = Number(getParam(params.price) ?? 0);
-  const oldPrice = Number(getParam(params.oldPrice) ?? 0);
-  const rating = Number(getParam(params.rating) ?? 0);
-  const reviews = getParam(params.reviews);
-  const discount = getParam(params.discount);
+  const paramTitle = getParam(params.title) ?? "";
+  const paramCategory = getParam(params.category);
+  const paramImage = getParam(params.image);
+  const paramPrice = Number(getParam(params.price) ?? 0);
+  const paramOldPrice = Number(getParam(params.oldPrice) ?? 0);
+  const paramRating = Number(getParam(params.rating) ?? 0);
+  const paramReviews = getParam(params.reviews);
+  const paramDiscount = getParam(params.discount);
   const isVoucher = getParam(params.isVoucher) === "true";
   const [selectedColor, setSelectedColor] = useState(productColorOptions[0].id);
   const [selectedSize, setSelectedSize] = useState(productSizeOptions[2]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const productFallback = useMemo(
+    () => ({
+      id,
+      title: paramTitle,
+      category: paramCategory ?? undefined,
+      price: paramPrice,
+      oldPrice: paramOldPrice > 0 ? paramOldPrice : undefined,
+      rating: paramRating > 0 ? paramRating : undefined,
+      reviews: paramReviews ?? undefined,
+      discount: paramDiscount ?? undefined,
+      image:
+        paramImage && typeof paramImage === "object"
+          ? paramImage
+          : typeof paramImage === "string"
+            ? resolveCatalogImage(paramImage)
+            : undefined,
+      imageKey: typeof paramImage === "string" ? paramImage : undefined,
+    }),
+    [
+      id,
+      paramCategory,
+      paramDiscount,
+      paramImage,
+      paramOldPrice,
+      paramPrice,
+      paramRating,
+      paramReviews,
+      paramTitle,
+    ],
+  );
+  const { product, isLoading } = useCatalogProduct({
+    productId: id,
+    fallback: productFallback,
+  });
+  const { products: popularProducts } = useCatalogProducts({
+    section: "popular",
+    fallback: PopularProducts,
+  });
+  const title = product.title;
+  const category = product.category;
+  const image = product.image;
+  const price = product.price ?? 0;
+  const oldPrice = product.oldPrice ?? 0;
+  const rating = product.rating ?? 0;
+  const reviews = product.reviews;
+  const discount = product.discount;
   const activeColor =
     productColorOptions.find((item) => item.id === selectedColor) ??
     productColorOptions[0];
@@ -65,11 +114,15 @@ export default function ProductDetail() {
       ...recommendations,
       ...PopularProducts,
     ].map((item) => item.image);
-    const merged = [image, ...fallbackImages].filter(Boolean);
+    const primaryImage =
+      product.image ??
+      (typeof paramImage === "string" ? resolveCatalogImage(paramImage) : paramImage);
+    const merged = [primaryImage, ...fallbackImages].filter(Boolean);
     const unique = Array.from(new Set(merged));
     if (unique.length === 1) return [unique[0], unique[0], unique[0]];
     return unique.slice(0, 6);
-  }, [image]);
+  }, [paramImage, product.image]);
+  const shouldShowLoadingState = isLoading;
 
   const store = useMemo(() => {
     const productTitle = String(title ?? "").toLowerCase();
@@ -99,16 +152,17 @@ export default function ProductDetail() {
     }
 
     router.push({
-      pathname: "/screens/Checkout" as any,
-      params: {
-        id,
-        title,
-        price,
-        oldPrice,
-        category,
-        selectedColor: activeColor.label,
-        selectedSize,
-      },
+                pathname: "/screens/Checkout" as any,
+                params: {
+                  id,
+                  title,
+                  price,
+                  oldPrice,
+                  category,
+                  imageKey: product.imageKey,
+                  selectedColor: activeColor.label,
+                  selectedSize,
+                },
     });
   };
 
@@ -129,6 +183,9 @@ export default function ProductDetail() {
         </TouchableOpacity>
       </View>
 
+      {shouldShowLoadingState ? (
+        <ScreenLoader label="Loading product..." />
+      ) : (
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -392,8 +449,8 @@ export default function ProductDetail() {
 
         {/* You may also like */}
         <Text style={styles.sectionHeading}>You may also like</Text>
-        <FlatList
-          data={PopularProducts}
+          <FlatList
+          data={popularProducts}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
@@ -444,7 +501,7 @@ export default function ProductDetail() {
             <Text style={styles.chatBtnText}>Chat</Text>
           </TouchableOpacity>
           <AddToCartBtn
-            item={{ id, title, category, price, image }}
+            item={{ id, title, category, price, image, imageKey: product.imageKey }}
             iconSize={22}
             containerStyle={styles.iconBtn}
             iconColor="#fff"
@@ -470,6 +527,7 @@ export default function ProductDetail() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+      )}
     </View>
   );
 }

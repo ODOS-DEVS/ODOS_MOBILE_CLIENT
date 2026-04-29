@@ -1,6 +1,7 @@
 import { CartProvider } from "@/context/CartContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { PushNotificationsProvider } from "@/context/PushNotificationsProvider";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
@@ -32,19 +33,21 @@ export default function RootLayout() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <ChatProvider>
-          <ProfileProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                  }}
-                />
-              </WishlistProvider>
-            </CartProvider>
-          </ProfileProvider>
-        </ChatProvider>
+        <PushNotificationsProvider>
+          <ChatProvider>
+            <ProfileProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                    }}
+                  />
+                </WishlistProvider>
+              </CartProvider>
+            </ProfileProvider>
+          </ChatProvider>
+        </PushNotificationsProvider>
       </AuthProvider>
     </ToastProvider>
   );

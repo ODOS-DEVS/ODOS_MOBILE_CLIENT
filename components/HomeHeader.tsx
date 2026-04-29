@@ -1,5 +1,6 @@
 import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,6 +13,7 @@ export const HomeHeader = () => {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useResponsive();
   const { user } = useAuth();
+  const { unreadCount } = useActivityFeed();
   const { requireAuth } = useRequireAuth();
 
   const displayName = user?.full_name?.trim() || "Guest";
@@ -66,11 +68,48 @@ export const HomeHeader = () => {
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => {
+          if (
+            !requireAuth({
+              title: "Sign in to view activity",
+              message:
+                "Log in or create an account to see order updates, milestones, and account activity.",
+            })
+          ) {
+            return;
+          }
+
           router.push("/(root)/screens/Notification");
         }}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        style={{ position: "relative" }}
       >
         <Ionicons name="notifications-outline" size={rS(22)} color="#000" />
+        {user && unreadCount > 0 ? (
+          <View
+            style={{
+              position: "absolute",
+              top: -2,
+              right: -2,
+              minWidth: rS(16),
+              height: rS(16),
+              borderRadius: rS(8),
+              backgroundColor: "#E53935",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: rS(3),
+            }}
+          >
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: rS(9),
+                fontFamily: "Montserrat-SemiBold",
+              }}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
     </View>
   );

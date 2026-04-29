@@ -24,10 +24,42 @@ import {
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
+type AddressFieldErrors = Partial<
+  Record<"label" | "fullName" | "phone" | "street" | "city" | "region", string>
+>;
+
+function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
+  const errors: AddressFieldErrors = {};
+  const phoneDigits = form.phone.replace(/\D/g, "");
+
+  if (form.label && form.label.trim().length < 2) {
+    errors.label = "Nickname should be at least 2 characters.";
+  }
+  if (!form.fullName.trim() || form.fullName.trim().length < 2) {
+    errors.fullName = "Enter the full recipient name.";
+  }
+  if (phoneDigits.length < 10) {
+    errors.phone = "Enter a valid phone number.";
+  }
+  if (!form.street.trim() || form.street.trim().length < 3) {
+    errors.street = "Enter a delivery street address.";
+  }
+  if (!form.city.trim() || form.city.trim().length < 2) {
+    errors.city = "Enter the city or town.";
+  }
+  if (!form.region.trim() || form.region.trim().length < 2) {
+    errors.region = "Enter the region or state.";
+  }
+
+  return errors;
+}
+
 export default function AddressScreen() {
   const {
     addresses,
     addAddress,
+    isSyncingProfileData,
+    refreshProfileData,
     updateAddress,
     removeAddress,
     setDefaultAddress,
@@ -39,7 +71,10 @@ export default function AddressScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<AddressFieldErrors>({});
   const [form, setForm] = useState<Omit<Address, "id">>({
+    label: "",
     fullName: "",
     phone: "",
     street: "",
@@ -50,6 +85,7 @@ export default function AddressScreen() {
 
   const resetForm = () => {
     setForm({
+      label: "",
       fullName: "",
       phone: "",
       street: "",
@@ -58,32 +94,51 @@ export default function AddressScreen() {
       isDefault: false,
     });
     setEditingId(null);
+    setFieldErrors({});
   };
 
-  const handleSave = () => {
-    if (!form.fullName || !form.phone || !form.street) {
-      Alert.alert("Missing fields", "Please fill all required fields.");
+  React.useEffect(() => {
+    void refreshProfileData();
+  }, [refreshProfileData]);
+
+  const handleSave = async () => {
+    const validationErrors = validateAddressForm(form);
+    setFieldErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
-    if (editingId) {
-      updateAddress(editingId, form);
-    } else {
-      const newId = addAddress(form);
-      if (fromCheckout && newId) {
-        setCheckoutAddressId(newId);
-      }
-    }
-    if (fromCheckout) {
+
+    setIsSaving(true);
+    try {
       if (editingId) {
-        setCheckoutAddressId(editingId);
+        await updateAddress(editingId, form);
+      } else {
+        const newId = await addAddress(form);
+        if (fromCheckout && newId) {
+          setCheckoutAddressId(newId);
+        }
       }
+
+      if (fromCheckout) {
+        if (editingId) {
+          setCheckoutAddressId(editingId);
+        }
+        resetForm();
+        setShowModal(false);
+        router.back();
+        return;
+      }
+
       resetForm();
       setShowModal(false);
-      router.back();
-      return;
+    } catch (error) {
+      Alert.alert(
+        "Couldn't save address",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSaving(false);
     }
-    resetForm();
-    setShowModal(false);
   };
 
   const handleDelete = (id: string) => {
@@ -107,7 +162,7 @@ export default function AddressScreen() {
       <ProfileHeader title={fromCheckout ? "Choose Address" : "My Addresses"} />
 
       {/* Empty State */}
-      {addresses.length === 0 && (
+      {!isSyncingProfileData && addresses.length === 0 && (
         <View className="flex-1 items-center justify-center px-8">
           <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
             <MapPin size={40} color="#6B7280" />
@@ -124,7 +179,14 @@ export default function AddressScreen() {
         {addresses.map((a) => (
           <View key={a.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm">
             <View className="flex-row justify-between items-start">
-              <Text className="font-semibold text-base">{a.fullName}</Text>
+              <View className="flex-1 pr-3">
+                {a.label ? (
+                  <View className="self-start bg-gray-100 px-3 py-1 rounded-full mb-2">
+                    <Text className="text-xs font-semibold text-gray-700">{a.label}</Text>
+                  </View>
+                ) : null}
+                <Text className="font-semibold text-base">{a.fullName}</Text>
+              </View>
               {a.isDefault && (
                 <View className="bg-black px-3 py-1 rounded-full">
                   <Text className="text-white text-xs font-medium">Default</Text>
@@ -218,22 +280,54 @@ export default function AddressScreen() {
             </Text>
           </View>
 
-          {["fullName", "phone", "street", "city", "region"].map((key) => (
-            <TextInput
-              key={key}
-              placeholder={key.replace(/^\w/, (c) => c.toUpperCase())}
-              value={form[key as keyof typeof form] as string}
-              onChangeText={(t) => setForm({ ...form, [key]: t })}
-              className="bg-gray-100 rounded-xl px-4 py-4 mb-4 text-base"
-            />
+          <Text className="text-gray-500 mb-4">
+            Save a nickname like Home or Office so checkout feels quicker next time.
+          </Text>
+
+          {[
+            ["label", "Address Nickname (optional)"],
+            ["fullName", "Full Name"],
+            ["phone", "Phone Number"],
+            ["street", "Street Address"],
+            ["city", "City / Town"],
+            ["region", "Region / State"],
+          ].map(([key, placeholder]) => (
+            <View key={key}>
+              <TextInput
+                placeholder={placeholder}
+                value={form[key as keyof typeof form] as string}
+                onChangeText={(t) => {
+                  setForm({ ...form, [key]: t });
+                  setFieldErrors((current) => ({ ...current, [key]: undefined }));
+                }}
+                keyboardType={key === "phone" ? "phone-pad" : "default"}
+                autoCapitalize={key === "phone" ? "none" : "words"}
+                className="bg-gray-100 rounded-xl px-4 py-4 mb-2 text-base"
+              />
+              {fieldErrors[key as keyof AddressFieldErrors] ? (
+                <Text className="text-red-500 text-xs mb-3">
+                  {fieldErrors[key as keyof AddressFieldErrors]}
+                </Text>
+              ) : (
+                <View className="mb-2" />
+              )}
+            </View>
           ))}
 
           <TouchableOpacity
             onPress={handleSave}
             className="bg-black py-4 rounded-full mt-4"
+            disabled={isSaving}
+            style={{ opacity: isSaving ? 0.7 : 1 }}
           >
             <Text className="text-white text-center font-semibold text-base">
-              {editingId ? "Update Address" : "Save Address"}
+              {isSaving
+                ? editingId
+                  ? "Updating..."
+                  : "Saving..."
+                : editingId
+                  ? "Update Address"
+                  : "Save Address"}
             </Text>
           </TouchableOpacity>
         </View>
