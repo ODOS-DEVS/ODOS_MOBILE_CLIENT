@@ -20,6 +20,12 @@ interface TextInputFieldProps {
   onChangeText?: (text: string) => void;
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
+  errorMessage?: string;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCorrect?: boolean;
+  editable?: boolean;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 const TextInputField: React.FC<TextInputFieldProps> = ({
@@ -30,6 +36,12 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   onChangeText,
   keyboardType,
   secureTextEntry = false,
+  errorMessage,
+  autoCapitalize = "sentences",
+  autoCorrect = true,
+  editable = true,
+  multiline = false,
+  numberOfLines = 1,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -37,7 +49,12 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
 
-      <View style={styles.inputWrapper}>
+      <View
+        style={[
+          styles.inputWrapper,
+          errorMessage ? styles.inputWrapperError : null,
+        ]}
+      >
         {icon && (
           <Ionicons
             name={icon}
@@ -52,13 +69,22 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           placeholderTextColor={AppColors.secondary}
           value={value}
           onChangeText={onChangeText}
-          style={styles.input}
+          style={[styles.input, multiline ? styles.inputMultiline : null]}
           secureTextEntry={secureTextEntry && !isVisible}
           keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          textAlignVertical={multiline ? "top" : "center"}
         />
 
         {secureTextEntry && (
-          <TouchableOpacity onPress={() => setIsVisible(!isVisible)}>
+          <TouchableOpacity
+            onPress={() => setIsVisible(!isVisible)}
+            disabled={!editable}
+          >
             <Ionicons
               name={isVisible ? "eye" : "eye-off"}
               size={20}
@@ -67,6 +93,8 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           </TouchableOpacity>
         )}
       </View>
+
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
   );
 };
@@ -97,6 +125,10 @@ const styles = StyleSheet.create({
     paddingVertical: rV(14),
   },
 
+  inputWrapperError: {
+    borderColor: "#D64545",
+  },
+
   icon: {
     marginRight: rS(8),
   },
@@ -108,5 +140,18 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     margin: 0,
     padding: 0
+  },
+
+  inputMultiline: {
+    minHeight: rV(90),
+    paddingTop: rV(2),
+  },
+
+  errorText: {
+    marginTop: rV(6),
+    paddingLeft: rS(8),
+    color: "#D64545",
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
   },
 });

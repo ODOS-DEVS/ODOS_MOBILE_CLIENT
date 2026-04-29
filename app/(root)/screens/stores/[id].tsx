@@ -2,11 +2,15 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import VoucherCard from "@/components/cards/VoucherCard";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { flashSales, gentsData, vouchers } from "@/constants/Data";
+import { resolveCatalogImage } from "@/constants/catalogImages";
+import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useStore } from "@/hooks/useCommerce";
 import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -19,7 +23,42 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
-  const { title, image } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const storeId =
+    typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+  const paramTitle =
+    typeof params.title === "string"
+      ? params.title
+      : Array.isArray(params.title)
+        ? params.title[0]
+        : "Store";
+  const fallbackStore = useMemo(
+    () => ({
+      id: storeId,
+      slug: paramTitle.toLowerCase().replace(/\s+/g, "-"),
+      title: paramTitle,
+      image:
+        typeof params.image === "string"
+          ? resolveCatalogImage(params.image)
+          : params.image,
+    }),
+    [paramTitle, params.image, storeId],
+  );
+  const { store, isLoading } = useStore({
+    storeId,
+    fallback: fallbackStore,
+  });
+  const productAudience = useMemo(() => {
+    const category = (store.category ?? "").toLowerCase();
+    if (category.includes("lady")) return "ladies";
+    if (category.includes("gent")) return "gents";
+    if (category.includes("kid")) return "kids";
+    return undefined;
+  }, [store.category]);
+  const { products: storeProducts } = useCatalogProducts({
+    audience: productAudience,
+    fallback: gentsData,
+  });
   const insets = useSafeAreaInsets();
   const { gridCardWidth } = useResponsive();
   const gridGap = rS(6);
@@ -50,6 +89,11 @@ const StoreDetailScreen = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  if (isLoading) {
+    return <ScreenLoader label="Loading store..." />;
+  }
+
   return (
     <ScrollView
       className="flex-1 bg-white"
@@ -74,7 +118,7 @@ const StoreDetailScreen = () => {
           className="flex-1 text-2xl font-montserrat-extraBold text-gray-900"
           numberOfLines={1}
         >
-          {title}
+          {store.title}
         </Text>
       </View>
 
@@ -82,7 +126,7 @@ const StoreDetailScreen = () => {
       <View className="px-4">
         <View className="w-full h-[200px] relative rounded-3xl overflow-hidden">
           <Image
-            source={image as any}
+            source={store.imageBanner ?? store.image}
             className="w-full h-full"
             resizeMode="cover"
           />
@@ -120,7 +164,7 @@ const StoreDetailScreen = () => {
 
         <View>
           <FlatList
-            data={gentsData}
+            data={storeProducts}
             numColumns={2}
             scrollEnabled={false}
             keyExtractor={(item) => item.id}
@@ -162,7 +206,15 @@ const StoreDetailScreen = () => {
             onPress={() =>
               router.push({
                 pathname: "/screens/stores/map",
-                params: { title: String(title ?? "Store") },
+                params: {
+                  title: String(store.title ?? "Store"),
+                  address: store.address,
+                  phone: store.phone,
+                  email: store.email,
+                  city: store.city,
+                  distanceKm: store.distanceKm,
+                  travelMinutes: store.travelMinutes,
+                },
               })
             }
           />

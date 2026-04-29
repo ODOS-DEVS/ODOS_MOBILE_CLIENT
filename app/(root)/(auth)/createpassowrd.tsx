@@ -1,11 +1,72 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import { rMS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useState } from "react";
 import { StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 const CreatePasswordScreen = () => {
+  const params = useLocalSearchParams<{
+    email?: string | string[];
+    resetToken?: string | string[];
+  }>();
+  const { resetPassword, isResettingPassword } = useAuth();
+  const { showToast } = useToast();
+  const routeEmail = Array.isArray(params.email) ? params.email[0] : params.email;
+  const resetToken = Array.isArray(params.resetToken)
+    ? params.resetToken[0]
+    : params.resetToken;
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
+
+  const handleSubmit = async () => {
+    setPasswordError("");
+    setConfirmPasswordError("");
+    setGeneralError("");
+
+    if (!routeEmail || !resetToken) {
+      setGeneralError("This password reset session is missing some details. Start again.");
+      return;
+    }
+
+    if (!password) {
+      setPasswordError("Enter your new password.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (!confirmPassword) {
+      setConfirmPasswordError("Confirm your new password.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match.");
+      return;
+    }
+
+    const result = await resetPassword(routeEmail, resetToken, password);
+    if (!result.success) {
+      setGeneralError(
+        result.fieldErrors?.general || "We couldn't update your password right now.",
+      );
+      return;
+    }
+
+    showToast(result.message || "Password updated successfully.");
+    router.replace("/signin");
+  };
+
   return (
     <View className="flex-1 bg-white px-6 pt-24">
       <StatusBar barStyle={"dark-content"} />
@@ -29,19 +90,58 @@ const CreatePasswordScreen = () => {
           label="New Password"
           placeholder="Enter your new password"
           secureTextEntry
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (passwordError) {
+              setPasswordError("");
+            }
+            if (generalError) {
+              setGeneralError("");
+            }
+          }}
+          errorMessage={passwordError}
         />
         <TextInputField
           label="Confirm Password"
           placeholder="Confirm your new password"
           secureTextEntry
+          value={confirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (confirmPasswordError) {
+              setConfirmPasswordError("");
+            }
+            if (generalError) {
+              setGeneralError("");
+            }
+          }}
+          errorMessage={confirmPasswordError}
         />
       </View>
+      {generalError ? (
+        <View
+          style={{
+            backgroundColor: "#FDF1F1",
+            borderColor: "#F2C7C7",
+            borderWidth: 1,
+            borderRadius: rV(16),
+            paddingHorizontal: rV(14),
+            paddingVertical: rV(12),
+            marginHorizontal: 16,
+            marginBottom: rV(12),
+          }}
+        >
+          <Text style={{ color: "#B93838", fontSize: rMS(13) }}>
+            {generalError}
+          </Text>
+        </View>
+      ) : null}
       <View className="px-4">
         <PrimaryButton
-          title="Create new password"
-          onPress={() => {
-            alert("You have created your new password");
-          }}
+          title={isResettingPassword ? "Updating password..." : "Create new password"}
+          onPress={handleSubmit}
+          disabled={isResettingPassword || !password || !confirmPassword}
         />
       </View>
     </View>

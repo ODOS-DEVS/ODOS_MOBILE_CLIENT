@@ -1,8 +1,15 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import { Image, ImageSourcePropType, Text, View } from "react-native";
+import { Image, ImageSourcePropType, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 
 const TabsLayout = () => {
+  const insets = useSafeAreaInsets();
+
   type TabIconProps = {
     focused: boolean;
     source: ImageSourcePropType;
@@ -11,24 +18,24 @@ const TabsLayout = () => {
 
   const TabIcon = ({ focused, source, title }: TabIconProps) => {
     return (
-      <View className="items-center justify-center mt-10 mb-2">
+      <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
         <Image
           source={source}
           style={{
-            width: focused ? 28 : 24,
-            height: focused ? 28 : 24,
-            tintColor: focused ? "#111827" : "#9CA3AF",
-            transform: [{ scale: focused ? 1.05 : 1 }],
+            width: focused ? rMS(23) : rMS(21),
+            height: focused ? rMS(23) : rMS(21),
+            tintColor: focused ? AppColors.text : AppColors.subtext[100],
+            transform: [{ scale: focused ? 1.02 : 1 }],
           }}
           resizeMode="contain"
         />
 
         <Text
-          className={`text-[10px] mt-2 w-20 text-center ${
-            focused
-              ? "text-text font-montserrat-extraBold"
-              : "text-subtext-200 font-montserrat-semiBold"
-          }`}
+          style={[
+            styles.label,
+            focused ? styles.labelFocused : styles.labelDefault,
+          ]}
+          numberOfLines={1}
         >
           {title}
         </Text>
@@ -41,21 +48,30 @@ const TabsLayout = () => {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarItemStyle: {
+          justifyContent: "center",
+          alignItems: "center",
+          paddingTop: rV(4),
+        },
         tabBarStyle: {
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 20,
-          height: 83,
-          paddingBottom: 80,
-          paddingHorizontal: 10,
-          borderRadius: 30,
-          backgroundColor: "#D9D9D9",
-          shadowColor: "#000",
-          shadowOpacity: 0.6,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 6,
+          left: rS(14),
+          right: rS(14),
+          bottom: Math.max(insets.bottom * 0.00, rV(0)),
+          height: rV(74) + insets.bottom * 0.18,
+          paddingTop: rV(10),
+          paddingBottom: Math.max(insets.bottom * 0.05, rV(6)),
+          paddingHorizontal: rS(10),
+          borderTopWidth: 0,
+          borderRadius: rMS(24),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "#E5E7EB",
+          backgroundColor: AppColors.white,
+          shadowColor: "#0F172A",
+          shadowOpacity: 0.08,
+          shadowRadius: 22,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 14,
         },
       }}
     >
@@ -129,3 +145,34 @@ const TabsLayout = () => {
 };
 
 export default TabsLayout;
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: rS(58),
+    minHeight: rV(46),
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(6),
+    marginTop: rV(3),
+    borderRadius: rMS(18),
+  },
+  iconWrapFocused: {
+    backgroundColor: "#F3F4F6",
+  },
+  label: {
+    marginTop: rV(4),
+    width: rS(58),
+    textAlign: "center",
+    fontSize: rMS(9.5),
+    letterSpacing: 0,
+  },
+  labelFocused: {
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+  },
+  labelDefault: {
+    color: AppColors.subtext[100],
+    fontFamily: Fonts.title,
+  },
+});

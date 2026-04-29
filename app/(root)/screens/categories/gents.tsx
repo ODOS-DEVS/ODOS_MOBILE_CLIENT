@@ -1,10 +1,11 @@
 import BannerCard from "@/components/cards/BannerCard";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProductCard from "@/components/cards/ProductCard";
-// ProfileHeader removed to use store-style header
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
 import { gentsData } from "@/constants/Data";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
@@ -21,10 +22,15 @@ const GentsScreen = () => {
   const { gridCardWidth } = useResponsive();
   const gridGap = rS(6);
   const gridPadding = rS(17);
+  const {
+    products: catalogProducts,
+    sortOptions,
+    isLoading,
+  } = useCatalogProducts({ audience: "gents", fallback: gentsData });
 
   // Sorting
   const [selectedSort, setSelectedSort] = useState("All");
-  const [filteredData, setFilteredData] = useState(gentsData);
+  const [filteredData, setFilteredData] = useState(catalogProducts);
 
   // Search
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -38,14 +44,14 @@ const GentsScreen = () => {
   // Apply sorting
   useEffect(() => {
     if (selectedSort === "All") {
-      setFilteredData(gentsData);
+      setFilteredData(catalogProducts);
     } else {
-      const filtered = gentsData.filter(
-        (item) => item.category.toLowerCase() === selectedSort.toLowerCase(),
+      const filtered = catalogProducts.filter(
+        (item) => item.category?.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
-  }, [selectedSort]);
+  }, [catalogProducts, selectedSort]);
 
   return (
     <View className="flex-1 bg-white">
@@ -76,7 +82,7 @@ const GentsScreen = () => {
             {/* SEARCH BAR */}
             <View className="relative bottom-8">
               <SearchBar
-                data={gentsData}
+                data={catalogProducts}
                 onStartSearch={() => setIsSearching(true)}
                 onResults={setSearchResults}
               />
@@ -108,7 +114,7 @@ const GentsScreen = () => {
         >
           {/* SEARCH BAR */}
           <SearchBar
-            data={gentsData}
+            data={catalogProducts}
             onStartSearch={() => setIsSearching(true)}
             onResults={setSearchResults}
           />
@@ -116,14 +122,7 @@ const GentsScreen = () => {
           {/* SORT TABS */}
           <View className="pt-4 bg-white">
             <SortTabs
-              options={[
-                "All",
-                "Clothing",
-                "Shoes",
-                "Accessories",
-                "Watches",
-                "Bags",
-              ]}
+              options={sortOptions}
               onChange={handleSortChange}
               defaultOption="All"
             />
@@ -131,24 +130,28 @@ const GentsScreen = () => {
 
           {/* PRODUCT GRID */}
           <View>
-            <FlatList
-              data={filteredData}
-              numColumns={2}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.id}
-              columnWrapperStyle={{ columnGap: gridGap }}
-              renderItem={({ item }) => (
-                <ProductCard
-                  {...item}
-                  cardWidth={gridCardWidth(2, gridGap)}
-                  horizontalSpacing={7}
-                />
-              )}
-              contentContainerStyle={{
-                paddingHorizontal: gridPadding,
-                paddingTop: 16,
-              }}
-            />
+            {isLoading ? (
+              <ScreenLoader label="Loading products..." />
+            ) : (
+              <FlatList
+                data={filteredData}
+                numColumns={2}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.id}
+                columnWrapperStyle={{ columnGap: gridGap }}
+                renderItem={({ item }) => (
+                  <ProductCard
+                    {...item}
+                    cardWidth={gridCardWidth(2, gridGap)}
+                    horizontalSpacing={7}
+                  />
+                )}
+                contentContainerStyle={{
+                  paddingHorizontal: gridPadding,
+                  paddingTop: 16,
+                }}
+              />
+            )}
           </View>
 
           {/* BANNER */}
@@ -174,7 +177,7 @@ const GentsScreen = () => {
 
           {/* POPULAR LIST */}
           <FlatList
-            data={gentsData.slice(0, 5)}
+            data={catalogProducts.slice(0, 5)}
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEnabled={true}
