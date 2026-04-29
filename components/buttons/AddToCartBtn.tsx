@@ -12,6 +12,7 @@ interface AddToCartBtnProps {
     category?: string;
     price: number;
     image?: any;
+    imageKey?: string;
   };
 
   containerStyle?: StyleProp<ViewStyle>;

@@ -1,21 +1,50 @@
 # ODOS Mobile Client
 
-ODOS Mobile Client is an Expo React Native marketplace app for browsing products, stores, and local markets from a mobile device. The current app is a client-side prototype with shopping, checkout, profile, wishlist, and vendor chat flows built around local mock data.
+ODOS Mobile Client is the Expo React Native frontend for ODOS, a marketplace app for browsing products, stores, and local markets from a phone.
 
-The experience is shaped like a local commerce app: users can explore flash sales, recommendations, product categories, stores, markets, carts, payment methods, delivery addresses, orders, vouchers, and support screens.
+This app currently supports real backend-connected auth for:
 
-## What The App Does
+- sign up
+- sign in
+- email verification
+- forgot password
+- reset password
+- session restore
+- logout
+- profile editing
 
-- Browse a marketplace home feed with flash sales, recommendations, stores, popular products, and markets.
-- Search products from the home screen.
-- Explore product categories such as Gents, Ladies, Kids, Sports, Electronics, Beauty, Groceries, Automobile, and Others.
-- View product details with image carousel, pricing, ratings, variants, shipping options, return policy, reviews, related products, and store navigation.
-- Add products to the cart or wishlist.
-- Buy now from a product detail page and continue into checkout.
-- Manage checkout details through saved delivery addresses and payment methods.
-- Chat with vendors from product pages.
-- View profile sections for orders, returns, addresses, chats, payment methods, reviews, vouchers, vendor requests, personalization, help, legal resources, and FAQ.
-- Run onboarding and authentication screens for sign in, sign up, verification, password reset, and password creation.
+The backend lives in a separate project folder:
+
+`/Users/paul/Desktop/DeV/odos-workspace/ODOS_MOBILE_BACKEND`
+
+## Current Status
+
+The mobile app is currently in a good Expo Go development state.
+
+What is already connected:
+
+- email/password auth
+- email verification flow
+- password reset flow
+- bearer-token session restore with Expo SecureStore
+- profile loading and profile updates
+- guest browsing with auth-gated protected actions
+
+What is still mostly local or mocked:
+
+- product data
+- categories
+- stores
+- cart persistence
+- wishlist persistence
+- order placement
+- full checkout backend flow
+
+Important current realities:
+
+- the app is designed to work well in Expo Go for normal development
+- Google auth is not active in the current Expo Go flow
+- most shopping content is still driven by local mock data
 
 ## Tech Stack
 
@@ -23,198 +52,300 @@ The experience is shaped like a local commerce app: users can explore flash sale
 - React Native 0.81
 - React 19
 - TypeScript
-- Expo Router for file-based routing
-- NativeWind and Tailwind CSS configuration for utility styling
-- React Context for local app state
-- Expo Font with Montserrat font assets
-- Expo Image, Linear Gradient, Haptics, Web Browser, Status Bar, and related Expo modules
-- Lucide React Native and Expo vector icons
+- Expo Router
+- NativeWind
+- React Context
+- Expo Secure Store
+- Expo Image Picker
 
-## Project Status
+## Prerequisites
 
-This repository currently behaves like a front-end/mobile client prototype. It does not appear to be connected to a backend API yet.
-
-Important current characteristics:
-
-- Product, store, market, category, and promotional data is mostly defined in `constants/Data.ts`.
-- Cart, wishlist, profile, checkout selections, toast, and chat state are stored in React Context.
-- Most state is in memory and will reset when the app reloads.
-- Authentication screens exist, but there is no visible real authentication service integration.
-- Checkout can collect/select address and payment state locally, but order submission is still marked as a TODO.
-- Some product and policy copy is placeholder text and should be replaced before production use.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js
+- Node.js 18+
 - npm
-- Expo CLI through `npx expo`
-- iOS Simulator, Android Emulator, Expo Go, or a development build environment
+- Expo Go on your phone, or simulator/emulator
+- the ODOS backend running locally if you want auth to work
 
-### Install Dependencies
+## Setup
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-### Start The App
+Create a frontend `.env` file in the project root:
 
-```bash
-npm start
+```env
+EXPO_PUBLIC_API_URL=http://YOUR-MAC-LAN-IP:8000/api
 ```
 
-This runs `expo start`. From the Expo terminal UI, you can open the app in Expo Go, an iOS Simulator, an Android Emulator, or a development build.
+Example:
 
-### Platform Commands
-
-```bash
-npm run ios
-npm run android
-npm run web
+```env
+EXPO_PUBLIC_API_URL=http://10.11.24.79:8000/api
 ```
 
-### Lint
+If you are running on a real phone with Expo Go, your phone and Mac must be on the same Wi‑Fi network.
+
+## Run The App
+
+Start Expo:
 
 ```bash
-npm run lint
+npx expo start -c
 ```
+
+Then scan the QR code with Expo Go.
 
 ## Available Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `npm start` | Starts the Expo development server. |
-| `npm run ios` | Runs the native iOS app through Expo. |
-| `npm run android` | Runs the native Android app through Expo. |
-| `npm run web` | Starts the Expo web build. |
-| `npm run lint` | Runs Expo linting. |
+```bash
+npm start
+npm run ios
+npm run android
+npm run web
+npm run lint
+```
 
-Note: `package.json` also contains a `reset-project` script that points to `scripts/reset-project.js`, but this repository does not currently include that `scripts` directory.
+Notes:
 
-## App Structure
+- `npm start` runs `expo start`
+- `npm run ios` and `npm run android` are optional native runs
+- `npm run web` exists, but the project is being developed as a mobile app first
+
+## Required Backend Endpoints
+
+The frontend currently expects these backend routes:
+
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `POST /api/auth/verify-email`
+- `POST /api/auth/resend-verification-code`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/verify-reset-code`
+- `POST /api/auth/reset-password`
+- `GET /api/auth/me`
+- `PATCH /api/auth/me`
+- `POST /api/auth/logout`
+- `GET /api/health`
+
+## Typical Local Workflow
+
+Start the backend:
+
+```bash
+cd /Users/paul/Desktop/DeV/odos-workspace/ODOS_MOBILE_BACKEND
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Start the frontend:
+
+```bash
+cd /Users/paul/Desktop/DeV/odos-workspace/odos-mobile-expo
+npx expo start -c
+```
+
+Before opening the app, you can confirm the backend is reachable from your phone by opening:
+
+```text
+http://YOUR-MAC-LAN-IP:8000/api/health
+```
+
+## Auth Flows
+
+### Sign Up And Verification
+
+1. user signs up with full name, email, and password
+2. backend creates the account
+3. backend sends a 6-digit verification code by email
+4. frontend logs the user in and routes them to the verification screen
+5. user enters the code
+6. backend marks `is_verified = true`
+7. backend sends a verification success email
+
+### Sign In
+
+1. user signs in with email and password
+2. backend returns a bearer token and the current user
+3. frontend stores the token in Expo SecureStore
+4. if the user is already verified, they continue into the app
+5. if not verified, they are routed to the verification screen
+
+### Forgot Password
+
+1. user enters their email on the forgot password screen
+2. backend sends a 6-digit reset code
+3. user enters the code on the verification screen
+4. backend returns a short-lived reset token
+5. user creates a new password
+6. backend updates the password
+7. backend sends a password-changed confirmation email
+
+### Session Restore
+
+On launch, the app checks SecureStore for a saved bearer token and calls:
+
+- `GET /api/auth/me`
+
+If the token is valid, the user session is restored automatically.
+
+## Profile Behavior
+
+The app supports:
+
+- viewing the real signed-in user
+- editing profile fields
+- saving profile fields to the backend
+- updating avatar
+
+Default avatar behavior:
+
+- if `avatar_url` exists, it is shown
+- if not, the app renders a consistent built-in fallback avatar across the main profile surfaces
+
+## Guest Browsing Behavior
+
+Fresh app launches are guest-friendly.
+
+Users can browse the app without signing in, but protected flows prompt them to authenticate before doing important actions such as:
+
+- managing profile data
+- checkout
+- other account-protected flows
+
+## Google Auth Note
+
+Google auth is intentionally not active in the current Expo Go flow.
+
+The backend still has Google auth support, but the mobile client is currently stabilized around:
+
+- Expo Go
+- normal email/password auth
+- email verification
+- password reset
+
+## Project Structure
 
 ```text
 app/
-  _layout.tsx                         Root providers, fonts, and navigation stack
+  _layout.tsx
   (root)/
-    splash.tsx                        Splash screen route
-    index.tsx                         Entry route that redirects/exports splash
-    (auth)/                           Onboarding and authentication screens
-    (tabs)/                           Main tab navigation
-      index.tsx                       Home marketplace feed
-      category.tsx                    Category browsing
-      cart.tsx                        Cart screen
-      wishlist.tsx                    Wishlist screen
-      profile.tsx                     Profile menu
-    screens/                          Product, checkout, stores, markets, and profile sub-screens
+    splash.tsx
+    (auth)/
+    (tabs)/
+    screens/
 
 components/
-  buttons/                            Reusable button components
-  cards/                              Product, store, market, cart, banner, and voucher cards
-  home/                               Home-specific UI
-  profile/                            Profile-specific UI
+  buttons/
+  cards/
+  home/
+  profile/
+  UserAvatar.tsx
 
 constants/
-  Data.ts                             Mock marketplace data
-  Colors.ts                           Color tokens
-  Fonts.ts                            Font names
-  icons.ts                            Icon references
+  auth.ts
+  Colors.ts
+  Data.ts
+  Fonts.ts
 
 context/
-  CartContext.tsx                     Cart state and quantity actions
-  WishlistContext.tsx                 Wishlist state
-  ChatContext.tsx                     Vendor chat threads and messages
-  ProfileContext.tsx                  Addresses, payment methods, and checkout selections
-  ToastContext.tsx                    Toast state
+  AuthContext.tsx
+  CartContext.tsx
+  ChatContext.tsx
+  ProfileContext.tsx
+  ToastContext.tsx
+  WishlistContext.tsx
+
+hooks/
+  useRequireAuth.ts
 
 styles/
-  responsive.ts                       Responsive sizing helpers
+  responsive.ts
 
 assets/
-  fonts/                              Montserrat font files
-  images/                             Product, category, auth, splash, and UI images
-  icons/                              Additional icon assets
+  fonts/
+  images/
 ```
 
-## Navigation Overview
+## What Is Connected vs Mocked
 
-The app uses Expo Router, so route files map directly to screens.
+Connected:
 
-Main tabs:
+- sign up
+- sign in
+- email verification
+- resend verification code
+- forgot password
+- verify reset code
+- reset password
+- session restore
+- logout
+- profile update
 
-- `app/(root)/(tabs)/index.tsx` - Home
-- `app/(root)/(tabs)/category.tsx` - Explore categories
-- `app/(root)/(tabs)/cart.tsx` - Cart
-- `app/(root)/(tabs)/wishlist.tsx` - Wishlist
-- `app/(root)/(tabs)/profile.tsx` - Profile
+Still local/mock:
 
-Important screens:
-
-- `app/(root)/screens/[id].tsx` - Product detail screen
-- `app/(root)/screens/Checkout.tsx` - Checkout
-- `app/(root)/screens/market.tsx` - Markets list
-- `app/(root)/screens/popular.tsx` - Popular products
-- `app/(root)/screens/recommendation.tsx` - Recommendations
-- `app/(root)/screens/stores/stores.tsx` - Stores list
-- `app/(root)/screens/stores/[id].tsx` - Store detail
-- `app/(root)/screens/productDetails/chat/[vendorId].tsx` - Vendor chat
-
-Authentication and onboarding routes live in `app/(root)/(auth)/`.
-
-## State Management
-
-The app currently uses lightweight React Context providers mounted in `app/_layout.tsx`:
-
-- `CartProvider` stores cart items and exposes add, remove, increase, decrease, and clear actions.
-- `WishlistProvider` stores favorited products.
-- `ChatProvider` stores vendor chat threads and in-memory messages.
-- `ProfileProvider` stores addresses, payment methods, defaults, and checkout selections.
-- `ToastProvider` stores transient toast notifications.
-
-Because this data is not persisted yet, app reloads will clear most user state.
-
-## Data Model
-
-Most marketplace content is local mock data in `constants/Data.ts`, including:
-
-- `flashSales`
-- `recommendations`
-- `PopularProducts`
-- `Stores`
-- `markets`
-- `categories`
-
-The product detail screen receives product information through route params and falls back to mock data for related images and store matching.
-
-## Styling
-
-The project mixes React Native `StyleSheet` styles with NativeWind utility classes.
-
-Shared styling resources:
-
-- `constants/Colors.ts`
-- `constants/Fonts.ts`
-- `styles/responsive.ts`
-- `tailwind.config.js`
-- `app/global.css`
-
-Montserrat fonts are loaded in the root layout before the app renders.
+- marketplace data
+- product data
+- stores and categories
+- much of cart/wishlist persistence
+- much of checkout/order flow
 
 ## Development Notes
 
-- Keep route paths aligned with Expo Router file names.
-- Prefer updating shared cards and buttons in `components/` instead of duplicating UI in screens.
-- Keep mock marketplace data in `constants/Data.ts` until a backend/API layer is introduced.
-- If persistence is added, the cart, wishlist, profile, and chat contexts are the first places to integrate storage.
-- Before production, replace placeholder copy, connect authentication, persist user data, implement order submission, and validate checkout/payment flows.
+- `app.json` includes the app scheme needed by Expo Router
+- auth state lives in `context/AuthContext.tsx`
+- auth recovery and verification UI currently flows through `verification.tsx`
+- sensitive session data is stored in Expo SecureStore
+
+## Troubleshooting
+
+### Expo Go scans but app cannot reach backend
+
+Check:
+
+- backend is running with `--host 0.0.0.0`
+- your phone and Mac are on the same Wi‑Fi
+- `EXPO_PUBLIC_API_URL` matches your current Mac LAN IP
+
+### Emails are not arriving
+
+Check:
+
+- backend Brevo settings are correct
+- verified sender email is configured in the backend `.env`
+- backend has been restarted after env changes
+- email was not blocked or deferred in Brevo transactional logs
+
+### Auth keeps failing
+
+Check:
+
+- backend is running
+- frontend `.env` has the right API URL
+- backend database is up
+- your test account exists if you are signing in instead of signing up
+
+### Mac LAN IP changed
+
+Re-check with:
+
+```bash
+ipconfig getifaddr en0
+```
+
+If that returns nothing:
+
+```bash
+ipconfig getifaddr en1
+```
+
+Then update `.env` if needed.
 
 ## Recommended Next Steps
 
-1. Add backend/API integration for products, stores, users, carts, and orders.
-2. Persist cart, wishlist, addresses, payment methods, and chat state with secure/local storage where appropriate.
-3. Replace placeholder product descriptions, reviews, return policy copy, and sample user data.
-4. Implement real authentication and session handling.
-5. Complete order placement and confirmation flow.
-6. Add automated tests for cart, wishlist, checkout, and profile state behavior.
-7. Review mobile responsiveness across small Android devices, modern iPhones, tablets, and web.
+1. connect product, store, and category data to the backend
+2. add real cart and wishlist persistence
+3. add order creation and checkout endpoints
+4. reintroduce Google auth later with a mobile strategy outside plain Expo Go
+5. add automated tests for critical auth flows

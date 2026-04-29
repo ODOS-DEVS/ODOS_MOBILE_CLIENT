@@ -1,204 +1,238 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import UserAvatar from "@/components/UserAvatar";
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
+import { useAuth } from "@/context/AuthContext";
+import { ActivityItem, useActivityFeed } from "@/hooks/useActivityFeed";
+import { rMS, rS, rV } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  SectionList,
   Image,
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  SafeAreaView,
-  ImageSourcePropType,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import Fonts from "@/constants/Fonts";
-import { AppColors } from "@/constants/Colors";
-import { rMS, rS, rV } from "@/styles/responsive";
 
-// Types
-interface NotificationItem {
-  id: string;
-  title: string;
-  time: string;
-  avatar?: ImageSourcePropType;
-  statusDot?: boolean;
-  actionLabel?: string;
-  productImage?: ImageSourcePropType;
-}
+function NotificationRowItem({
+  item,
+  onOpen,
+}: {
+  item: ActivityItem;
+  onOpen: (item: ActivityItem) => void;
+}) {
+  const openItem = () => {
+    onOpen(item);
+  };
 
-interface Section {
-  title: string;
-  data: NotificationItem[];
-}
-
-const todayData: NotificationItem[] = [
-  {
-    id: "1",
-    title: "Hi, we have sent your product",
-    time: "2 hours ago",
-    statusDot: true,
-  },
-  {
-    id: "2",
-    title: "Your payment has been successful, thank you",
-    time: "2 hours ago",
-    actionLabel: "See Detail",
-  },
-  {
-    id: "3",
-    title: "We have added a new product",
-    time: "2 hours ago",
-    statusDot: true,
-    productImage: require("../../../assets/images/backpack1.png"),
-  },
-];
-
-const yesterdayData: NotificationItem[] = [
-  {
-    id: "4",
-    title: "Hi, we have sent your product",
-    time: "2 hours ago",
-    statusDot: true,
-  },
-  {
-    id: "5",
-    title: "Your payment has been successful, thank you",
-    time: "2 hours ago",
-    actionLabel: "See Detail",
-  },
-  {
-    id: "6",
-    title: "We have added a new product",
-    time: "2 hours ago",
-    actionLabel: "See Product",
-  },
-];
-
-const sections: Section[] = [
-  { title: "Today", data: todayData },
-  { title: "Yesterday", data: yesterdayData },
-];
-
-const NotificationScreen: React.FC = () => {
-  const router = useRouter();
+  const accentColor =
+    item.accent === "success"
+      ? "#15803D"
+      : item.accent === "warning"
+        ? "#B45309"
+        : AppColors.primary;
+  const iconBg =
+    item.accent === "success"
+      ? "#ECFDF3"
+      : item.accent === "warning"
+        ? "#FFF7ED"
+        : "#F2F4F7";
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notification</Text>
-        <View style={styles.headerRightSpacer} />
-      </View>
-
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-        )}
-        renderItem={({ item }) => <NotificationRow item={item} />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-    </SafeAreaView>
-  );
-};
-
-export default NotificationScreen;
-
-const NotificationRow = ({ item }: { item: NotificationItem }) => {
-  return (
-    <View style={styles.itemRow}>
-      {/* Left */}
-      <View style={styles.left}>
-        {item.avatar ? (
-          <View style={styles.avatarWrapper}>
-            <Image source={item.avatar} style={styles.avatar} />
-            {item.statusDot && <View style={styles.statusDot} />}
-          </View>
+    <TouchableOpacity style={styles.itemRow} activeOpacity={0.86} onPress={openItem}>
+      {!item.isRead ? <View style={styles.unreadDot} /> : null}
+      <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
+        {item.productImage ? (
+          <Image source={item.productImage} style={styles.productImage} resizeMode="cover" />
         ) : (
-          <View style={styles.iconCircle}>
-            <Ionicons
-              name={item.statusDot ? "notifications" : "notifications-outline"}
-              size={18}
-              color={AppColors.text}
-            />
-          </View>
+          <Ionicons name={item.icon} size={18} color={accentColor} />
         )}
       </View>
 
-      {/* Middle */}
       <View style={styles.middle}>
-        <Text style={styles.itemTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.time}>{item.time}</Text>
+        <Text style={styles.itemTitle}>{item.title}</Text>
+        <Text style={styles.itemBody}>{item.body}</Text>
+        <Text style={styles.time}>{item.relativeTime}</Text>
       </View>
 
-      {/* Right */}
-      <View style={styles.right}>
-        {item.productImage && (
-          <Image source={item.productImage} style={styles.productImage} />
-        )}
-        {item.actionLabel && (
+      {item.actionLabel ? (
+        <View style={styles.actionPill}>
+          <Text style={styles.actionText}>{item.actionLabel}</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+export default function NotificationScreen() {
+  const { user } = useAuth();
+  const {
+    sections,
+    unreadCount,
+    isLoadingActivity,
+    markAsRead,
+    refreshActivity,
+  } = useActivityFeed();
+
+  const openItem = async (item: ActivityItem) => {
+    if (!item.isRead) {
+      await markAsRead([item.id]);
+    }
+
+    if (!item.route) {
+      return;
+    }
+
+    if (item.route.type === "order") {
+      router.push({
+        pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
+        params: { orderId: item.route.orderId },
+      });
+      return;
+    }
+
+    if (item.route.type === "profile") {
+      router.push("/(root)/screens/profileScreens/CustomerProfile" as any);
+      return;
+    }
+
+    router.push("/(root)/screens/profileScreens/orders" as any);
+  };
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <ProfileHeader title="Activity" />
+        <View style={styles.emptyState}>
+          <UserAvatar size={rS(56)} />
+          <Text style={styles.emptyTitle}>Your activity will show up here</Text>
+          <Text style={styles.emptyText}>
+            Sign in to keep track of orders, account updates, and important shopping moments.
+          </Text>
           <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => {}}
-            activeOpacity={0.8}
+            style={styles.primaryButton}
+            activeOpacity={0.88}
+            onPress={() => router.replace("/(root)/(auth)/onboarding" as any)}
           >
-            <Text style={styles.actionText}>{item.actionLabel}</Text>
+            <Text style={styles.primaryButtonText}>Create Account or Log In</Text>
           </TouchableOpacity>
-        )}
+        </View>
       </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ProfileHeader title="Activity" />
+
+      <View style={styles.topBanner}>
+        <Text style={styles.bannerTitle}>Recent activity</Text>
+        <Text style={styles.bannerText}>
+          {unreadCount > 0
+            ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"} across your account and orders.`
+            : "Your latest account and order updates will appear here. Pull down to refresh any time."}
+        </Text>
+        {unreadCount > 0 ? (
+          <TouchableOpacity
+            style={styles.markAllButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              void markAsRead(sections.flatMap((section) => section.data.map((item) => item.id)));
+            }}
+          >
+            <Text style={styles.markAllButtonText}>Mark all as read</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {isLoadingActivity ? (
+        <ScreenLoader label="Loading your activity..." />
+      ) : sections.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="notifications-outline" size={rMS(30)} color={AppColors.secondary} />
+          <Text style={styles.emptyTitle}>Nothing to show just yet</Text>
+          <Text style={styles.emptyText}>
+            Once you place orders or update your account, the important moments will show up here.
+          </Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => <NotificationRowItem item={item} onOpen={openItem} />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoadingActivity}
+              onRefresh={() => {
+                void refreshActivity();
+              }}
+              tintColor={AppColors.primary}
+            />
+          }
+        />
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.white,
+    backgroundColor: "#F5F7FA",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
+  topBanner: {
+    marginHorizontal: rS(16),
+    marginTop: rV(14),
+    marginBottom: rV(6),
+    backgroundColor: "#EEF4FF",
+    borderRadius: rMS(18),
     paddingHorizontal: rS(16),
-    paddingTop: rV(12),
-    paddingBottom: rV(12),
+    paddingVertical: rV(14),
   },
-  backButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F2F2F2",
-    alignItems: "center",
-    justifyContent: "center",
+  markAllButton: {
+    alignSelf: "flex-start",
+    marginTop: rV(10),
+    borderRadius: rMS(999),
+    backgroundColor: AppColors.white,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(7),
   },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: rMS(18),
+  markAllButtonText: {
+    fontSize: rMS(11),
     fontFamily: Fonts.textBold,
+    color: AppColors.primary,
+  },
+  bannerTitle: {
+    fontSize: rMS(15),
+    fontFamily: Fonts.titleBold,
     color: AppColors.text,
   },
-  headerRightSpacer: {
-    width: rMS(40),
+  bannerText: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
   },
   listContent: {
     paddingHorizontal: rS(16),
-    paddingBottom: rV(24),
+    paddingBottom: rV(28),
   },
   sectionTitle: {
     marginTop: rV(16),
     marginBottom: rV(10),
-    fontSize: rMS(13),
+    fontSize: rMS(12),
     fontFamily: Fonts.textBold,
     color: AppColors.subtext[100],
     textTransform: "uppercase",
@@ -206,73 +240,98 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: rV(12),
-    borderBottomWidth: rMS(0.5),
-    borderBottomColor: "#EEE",
+    gap: rS(12),
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(18),
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
+    marginBottom: rV(10),
   },
-  left: {
-    marginRight: rS(12),
-  },
-  avatarWrapper: {
-    position: "relative",
-  },
-  avatar: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-  },
-  statusDot: {
+  unreadDot: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: rMS(10),
-    height: rMS(10),
-    borderRadius: rMS(5),
-    backgroundColor: "#2ecc71",
-    borderWidth: rMS(2),
-    borderColor: AppColors.white,
+    top: rV(18),
+    left: rS(10),
+    width: rMS(8),
+    height: rMS(8),
+    borderRadius: rMS(4),
+    backgroundColor: "#2563EB",
   },
   iconCircle: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F2F2F2",
+    width: rMS(46),
+    height: rMS(46),
+    borderRadius: rMS(23),
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  productImage: {
+    width: "100%",
+    height: "100%",
   },
   middle: {
     flex: 1,
   },
   itemTitle: {
     fontSize: rMS(14),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  time: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    marginTop: rV(4),
-  },
-  right: {
-    alignItems: "flex-end",
-  },
-  actionBtn: {
-    borderWidth: rMS(1),
-    borderColor: AppColors.tertiary,
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(6),
-  },
-  actionText: {
-    fontSize: rMS(12),
     fontFamily: Fonts.textBold,
     color: AppColors.text,
   },
-  productImage: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(8),
-    marginBottom: rV(8),
+  itemBody: {
+    marginTop: rV(3),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  time: {
+    marginTop: rV(6),
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: AppColors.subtext[100],
+  },
+  actionPill: {
+    borderRadius: rMS(999),
+    backgroundColor: "#F2F4F7",
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(6),
+  },
+  actionText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: rS(28),
+    gap: rV(10),
+  },
+  emptyTitle: {
+    fontSize: rMS(17),
+    fontFamily: Fonts.titleBold,
+    color: AppColors.text,
+    textAlign: "center",
+  },
+  emptyText: {
+    fontSize: rMS(13),
+    lineHeight: rMS(20),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+    textAlign: "center",
+  },
+  primaryButton: {
+    marginTop: rV(8),
+    minHeight: rV(48),
+    borderRadius: rMS(16),
+    paddingHorizontal: rS(18),
+    backgroundColor: AppColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: {
+    fontSize: rMS(14),
+    fontFamily: Fonts.textBold,
+    color: AppColors.white,
   },
 });

@@ -1,20 +1,47 @@
 import { MenuItem } from "@/components/MenuItem";
+import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useAuth } from "@/context/AuthContext";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProfileScreen() {
+  const { isSigningOut, signOut, user } = useAuth();
+  const { requireAuth } = useRequireAuth();
+  const openProtectedRoute = (
+    pathname: string,
+    title = "Sign in to continue",
+    message = "Log in or create an account to access your account features.",
+  ) => {
+    if (!requireAuth({ title, message })) {
+      return;
+    }
+
+    router.push(pathname as any);
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/(root)/(tabs)");
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -24,7 +51,11 @@ export default function ProfileScreen() {
       {/* Header */}
       <TouchableOpacity
         onPress={() => {
-          router.push("../screens/profileScreens/CustomerProfile");
+          openProtectedRoute(
+            "../screens/profileScreens/CustomerProfile",
+            "Sign in to manage your profile",
+            "Create an account or log in to update your personal details and preferences.",
+          );
         }}
       >
         <View
@@ -32,15 +63,12 @@ export default function ProfileScreen() {
           style={styles.header}
         >
           <View style={styles.subHeader}>
-            <Image
-              source={{
-                uri: "https://i.pravatar.cc/502",
-              }}
-              style={styles.avatar}
-            />
+            <UserAvatar avatarUrl={user?.avatar_url} size={rS(50)} style={styles.avatar} />
             <View>
-              <Text style={styles.name}>Domenic Aura</Text>
-              <Text style={styles.email}>esaomens@gmail.com</Text>
+              <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
+              <Text style={styles.email}>
+                {user?.email || "Sign in to view account details"}
+              </Text>
             </View>
           </View>
           <Ionicons name="arrow-forward-circle" size={28} color="#111" />
@@ -54,7 +82,7 @@ export default function ProfileScreen() {
           icon="receipt-outline"
           label="Orders"
           onPress={() => {
-            router.push("../screens/profileScreens/orders/[orderId]");
+            openProtectedRoute("../screens/profileScreens/orders");
           }}
         />
         <MenuItem icon="return-up-back-outline" label="Returns" />
@@ -62,42 +90,42 @@ export default function ProfileScreen() {
           icon="location-outline"
           label="Addresses"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Addresses");
+            openProtectedRoute("../screens/profileScreens/Account/Addresses");
           }}
         />
         <MenuItem
           icon="chatbubble-outline"
           label="Chats"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Chats");
+            openProtectedRoute("../screens/profileScreens/Account/Chats");
           }}
         />
         <MenuItem
           icon="card-outline"
           label="Payment Method"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Wallet");
+            openProtectedRoute("../screens/profileScreens/Account/Wallet");
           }}
         />
         <MenuItem
           icon="star-outline"
           label="Reviews"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Reviews");
+            openProtectedRoute("../screens/profileScreens/Account/Reviews");
           }}
         />
         <MenuItem
           icon="ticket-outline"
           label="Vouchers"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/Vouchers");
+            openProtectedRoute("../screens/profileScreens/Account/Vouchers");
           }}
         />
         <MenuItem
           icon="briefcase-outline"
           label="Request to be a vendor"
           onPress={() => {
-            router.push("../screens/profileScreens/Account/VendorRequest");
+            openProtectedRoute("../screens/profileScreens/Account/VendorRequest");
           }}
         />
       </View>
@@ -107,19 +135,34 @@ export default function ProfileScreen() {
       <View className="bg-white rounded-3xl mb-5 shadow-sm">
         <MenuItem
           icon="notifications-outline"
-          label="Notification"
+          label="Activity"
           onPress={() => {
-            router.push(
-              "../screens/profileScreens/personalization/Notification",
+            openProtectedRoute(
+              "../screens/Notification",
+              "Sign in to view activity",
+              "Log in or create an account to see order updates, milestones, and account activity.",
             );
           }}
         />
         <MenuItem
           icon="options-outline"
+          label="Notification Settings"
+          onPress={() => {
+            openProtectedRoute(
+              "../screens/profileScreens/personalization/Notification",
+              "Sign in to manage notifications",
+              "Log in or create an account to save notification preferences.",
+            );
+          }}
+        />
+        <MenuItem
+          icon="sparkles-outline"
           label="Preferences"
           onPress={() => {
-            router.push(
+            openProtectedRoute(
               "../screens/profileScreens/personalization/Preferences",
+              "Sign in to manage preferences",
+              "Log in or create an account to save your shopping preferences.",
             );
           }}
         />
@@ -127,7 +170,11 @@ export default function ProfileScreen() {
           icon="language-outline"
           label="Language"
           onPress={() => {
-            router.push("../screens/profileScreens/personalization/Language");
+            openProtectedRoute(
+              "../screens/profileScreens/personalization/Language",
+              "Sign in to manage language settings",
+              "Log in or create an account to keep your language settings synced.",
+            );
           }}
         />
       </View>
@@ -165,9 +212,16 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <View className="bg-white rounded-3xl mb-5 shadow-sm">
-        <MenuItem icon="log-out-outline" label="Log out" textColor="#E53935" />
-      </View>
+      {user ? (
+        <View className="bg-white rounded-3xl mb-5 shadow-sm">
+          <MenuItem
+            icon="log-out-outline"
+            label={isSigningOut ? "Logging out..." : "Log out"}
+            onPress={handleLogout}
+            textColor="#E53935"
+          />
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -195,7 +249,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: rS(50),
     height: rV(50),
-    borderRadius: rMS(28),
+    borderRadius: rMS(30),
     marginRight: rS(12),
   },
 

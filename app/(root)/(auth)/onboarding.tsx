@@ -1,4 +1,5 @@
 import Colors from "@/constants/Colors";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -38,12 +39,24 @@ export default function Onboarding() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
+  const { requireAuth, user } = useRequireAuth();
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
     } else {
-      router.replace("./signin");
+      if (user) {
+        router.replace("/(root)/(tabs)");
+        return;
+      }
+
+      requireAuth({
+        title: "Ready to keep going?",
+        message:
+          "Create an account or log in when you’re ready to save favorites, manage orders, and check out.",
+        cancelLabel: "Keep browsing",
+        onCancel: () => router.replace("/(root)/(tabs)"),
+      });
     }
   };
 
@@ -159,7 +172,7 @@ export default function Onboarding() {
                     fontSize: rMS(14),
                   }}
                 >
-                  {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
+                  {currentIndex === slides.length - 1 ? "On my way!" : "Next"}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -34,11 +34,11 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
   const normalizedId = String(product.id);
   const liked = wishlist.some((item) => item.id === normalizedId);
 
-  const toggleWishlist = () => {
+  const toggleWishlist = async () => {
     if (liked) {
-      removeFromWishlist(normalizedId);
+      await removeFromWishlist(normalizedId);
     } else {
-      addToWishlist({ ...product, id: normalizedId });
+      await addToWishlist({ ...product, id: normalizedId });
     }
   };
 

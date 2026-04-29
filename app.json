@@ -4,34 +4,29 @@
     "slug": "odos-mobile-expo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "",
     "scheme": "odosmobileexpo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.odos-mobile-expo"
+      "bundleIdentifier": "com.paul.odos",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "",
-        "backgroundImage": "",
-        "monochromeImage": ""
-      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
-      "favicon": ""
+      "output": "static"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -40,7 +35,9 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-secure-store",
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,9 +1,11 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { SearchBar } from "@/components/SearchBar";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { recommendations } from "@/constants/Data";
+import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
 import {
@@ -17,11 +19,15 @@ import {
 export default function RecommendationScreen() {
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(recommendations);
+  const { products: catalogProducts, isLoading } = useCatalogProducts({
+    section: "recommendations",
+    fallback: recommendations,
+  });
+  const [searchResults, setSearchResults] = useState(catalogProducts);
 
   const displayed = useMemo(
-    () => (isSearching ? searchResults : recommendations),
-    [isSearching, searchResults]
+    () => (isSearching ? searchResults : catalogProducts),
+    [catalogProducts, isSearching, searchResults]
   );
 
 
@@ -40,7 +46,7 @@ export default function RecommendationScreen() {
         
 
         <SearchBar
-          data={recommendations}
+          data={catalogProducts}
           onStartSearch={() => setIsSearching(true)}
           onResults={(results) => {
             setIsSearching(true);
@@ -55,7 +61,9 @@ export default function RecommendationScreen() {
             <Text style={styles.sectionTitle}>All recommendations</Text>
           </View>
 
-          {displayed.length === 0 ? (
+          {isLoading ? (
+            <ScreenLoader label="Loading recommendations..." />
+          ) : displayed.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No recommendations right now</Text>
               <Text style={styles.emptySubtitle}>

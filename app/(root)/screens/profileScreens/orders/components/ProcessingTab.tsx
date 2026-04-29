@@ -1,67 +1,133 @@
 import { AppColors } from "@/constants/Colors";
+import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
+import { Order } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const processingOrders = [
-  {
-    id: "ORD-10519",
-    title: "Elegant Handbag",
-    category: "Bags",
-    eta: "Arriving Tomorrow",
-    progress: 0.72,
-    image: require("@/assets/images/handbag.png"),
-  },
-  {
-    id: "ORD-10503",
-    title: "Men's Analog Watch",
-    category: "Accessories",
-    eta: "Arriving in 2 days",
-    progress: 0.4,
-    image: require("@/assets/images/watch1.png"),
-  },
-];
+function getPrimaryItem(order: Order) {
+  return order.items[0];
+}
 
-export default function ProcessingTab() {
+function getImageSource(order: Order) {
+  const primaryItem = getPrimaryItem(order);
+  if (primaryItem?.image_key) {
+    return resolveCatalogImage(primaryItem.image_key);
+  }
+  if (primaryItem?.image_url) {
+    return { uri: primaryItem.image_url };
+  }
+  return null;
+}
+
+function formatPlacedDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export default function ProcessingTab({
+  orders,
+  onCancelOrder,
+  isMutatingOrder,
+}: {
+  orders: Order[];
+  onCancelOrder: (orderId: string) => Promise<unknown>;
+  isMutatingOrder: boolean;
+}) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {processingOrders.map((item) => (
-        <View key={item.id} style={styles.card} className="shadow-sm">
-          <View style={styles.topRow}>
-            <View style={styles.imageWrap}>
-              <Image source={item.image} style={styles.image} resizeMode="contain" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.orderId}>#{item.id}</Text>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.sub}>{item.category}</Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>In Transit</Text>
-            </View>
-          </View>
-
-          <View style={styles.progressMetaRow}>
-            <Text style={styles.etaText}>{item.eta}</Text>
-            <Text style={styles.percentText}>{Math.round(item.progress * 100)}%</Text>
-          </View>
-          <View style={styles.trackBar}>
-            <View style={[styles.trackFill, { width: `${Math.round(item.progress * 100)}%` }]} />
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.85}>
-              <Ionicons name="location-outline" size={rMS(14)} color={AppColors.text} />
-              <Text style={styles.outlineBtnText}>Track Package</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.solidBtn} activeOpacity={0.85}>
-              <Text style={styles.solidBtnText}>View Details</Text>
-            </TouchableOpacity>
-          </View>
+      {orders.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No active orders yet</Text>
+          <Text style={styles.emptyText}>
+            Orders you place will show up here while they’re being prepared and delivered.
+          </Text>
         </View>
-      ))}
+      ) : (
+        orders.map((order) => {
+          const item = getPrimaryItem(order);
+          const imageSource = getImageSource(order);
+          const progress = Math.round((order.progress ?? 0.18) * 100);
+
+          return (
+            <View key={order.id} style={styles.card} className="shadow-sm">
+              <View style={styles.topRow}>
+                <View style={styles.imageWrap}>
+                  {imageSource ? (
+                    <Image source={imageSource} style={styles.image} resizeMode="contain" />
+                  ) : (
+                    <Ionicons name="image-outline" size={rMS(28)} color={AppColors.subtext[100]} />
+                  )}
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.orderId}>#{order.order_number}</Text>
+                  <Text style={styles.title}>{item?.title ?? "Order item"}</Text>
+                  <Text style={styles.sub}>
+                    {item?.category ?? "Product"} · Placed {formatPlacedDate(order.placed_at)}
+                  </Text>
+                </View>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>In Transit</Text>
+                </View>
+              </View>
+
+              <View style={styles.progressMetaRow}>
+                <Text style={styles.etaText}>{order.tracking_eta ?? "Preparing your delivery"}</Text>
+                <Text style={styles.percentText}>{progress}%</Text>
+              </View>
+              <View style={styles.trackBar}>
+                <View style={[styles.trackFill, { width: `${progress}%` }]} />
+              </View>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.outlineBtn}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    Alert.alert(
+                      "Cancel this order?",
+                      "We’ll move it to your cancelled orders list.",
+                      [
+                        { text: "Keep order", style: "cancel" },
+                        {
+                          text: "Cancel order",
+                          style: "destructive",
+                          onPress: () => {
+                            void onCancelOrder(order.id);
+                          },
+                        },
+                      ],
+                    )
+                  }
+                  disabled={isMutatingOrder}
+                >
+                  <Ionicons name="location-outline" size={rMS(14)} color={AppColors.text} />
+                  <Text style={styles.outlineBtnText}>
+                    {isMutatingOrder ? "Updating..." : "Cancel Order"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.solidBtn}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
+                      params: { orderId: order.id },
+                    })
+                  }
+                >
+                  <Text style={styles.solidBtnText}>View Details</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })
+      )}
     </ScrollView>
   );
 }
@@ -69,6 +135,23 @@ export default function ProcessingTab() {
 const styles = StyleSheet.create({
   container: {
     paddingBottom: rV(16),
+  },
+  emptyState: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(16),
+    padding: rS(18),
+  },
+  emptyTitle: {
+    fontSize: rMS(15),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+    marginBottom: rV(6),
+  },
+  emptyText: {
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+    lineHeight: rMS(18),
   },
   card: {
     backgroundColor: AppColors.white,
