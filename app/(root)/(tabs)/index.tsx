@@ -1,5 +1,4 @@
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
@@ -8,7 +7,6 @@ import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
 import { SearchBar } from "@/components/SearchBar";
 import {
-  flashSales,
   markets,
   PopularProducts,
   recommendations,
@@ -34,10 +32,33 @@ const HomeScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const fallbackMarkets = useMemo(
+    () =>
+      markets.map((item) => ({
+        id: item.id,
+        slug: item.title.toLowerCase(),
+        title: item.title,
+        image: item.image,
+      })),
+    [],
+  );
+  const fallbackStores = useMemo(
+    () =>
+      Stores.map((item) => ({
+        id: item.id,
+        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
+        title: item.title,
+        category: item.category,
+        image: item.image,
+        rating: item.rating,
+        marketSlug: item.market?.toLowerCase(),
+      })),
+    [],
+  );
   const { products: flashSaleProducts, isLoading: isLoadingFlashSales } =
     useCatalogProducts({
-    section: "flash_sales",
-    fallback: flashSales,
+      placement: "flash-sale",
+      fallback: [],
   });
   const {
     products: recommendationProducts,
@@ -51,24 +72,9 @@ const HomeScreen = () => {
       section: "popular",
       fallback: PopularProducts,
     });
-  const { markets: marketItems } = useMarkets(
-    markets.map((item) => ({
-      id: item.id,
-      slug: item.title.toLowerCase(),
-      title: item.title,
-      image: item.image,
-    })),
-  );
+  const { markets: marketItems } = useMarkets(fallbackMarkets);
   const { stores: storeItems } = useStores({
-    fallback: Stores.map((item) => ({
-      id: item.id,
-      slug: item.title.toLowerCase().replace(/\s+/g, "-"),
-      title: item.title,
-      category: item.category,
-      image: item.image,
-      rating: item.rating,
-      marketSlug: item.market?.toLowerCase(),
-    })),
+    fallback: fallbackStores,
   });
 
   // Combine all searchable items
@@ -76,9 +82,6 @@ const HomeScreen = () => {
     () => [...flashSaleProducts, ...recommendationProducts, ...popularProducts],
     [flashSaleProducts, popularProducts, recommendationProducts],
   );
-  const isCatalogLoading =
-    isLoadingFlashSales || isLoadingRecommendations || isLoadingPopular;
-
   // ---------------- TIMER (UNCHANGED) --------------------
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
@@ -173,45 +176,45 @@ const HomeScreen = () => {
               <HomeHeader />
 
               {/* Search Bar */}
-              {isCatalogLoading ? (
-                <ScreenLoader label="Loading products..." />
-              ) : (
-                <>
-                  <SearchBar
-                    data={allProducts}
-                    onResults={setSearchResults}
-                    onStartSearch={() => setIsSearching(true)}
-                  />
+              <>
+                <SearchBar
+                  data={allProducts}
+                  onResults={setSearchResults}
+                  onStartSearch={() => setIsSearching(true)}
+                />
 
-                  {/* Flash Sales Section */}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      marginTop: sectionSpacing,
-                      paddingHorizontal: horizontalPadding,
-                    }}
-                  >
-                    <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                      Flash Sales
-                    </Text>
-                    <Text className="font-montserrat-semiBold text-primary">
-                      {timeLeft}
-                    </Text>
-                  </View>
-
-                  <View style={{ marginLeft: -horizontalPadding }}>
-                    <FlatList
-                      data={flashSaleProducts}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      keyExtractor={(item) => item.id}
-                      renderItem={({ item }) => <FlashSalesCard {...item} />}
-                      contentContainerStyle={{
+                {flashSaleProducts.length > 0 ? (
+                  <>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginTop: sectionSpacing,
                         paddingHorizontal: horizontalPadding,
                       }}
-                    />
-                  </View>
+                    >
+                      <Text className="text-xl font-montserrat-extraBold text-gray-800">
+                        Flash Sales
+                      </Text>
+                      <Text className="font-montserrat-semiBold text-primary">
+                        {timeLeft}
+                      </Text>
+                    </View>
+
+                    <View style={{ marginLeft: -horizontalPadding }}>
+                      <FlatList
+                        data={flashSaleProducts}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => <FlashSalesCard {...item} />}
+                        contentContainerStyle={{
+                          paddingHorizontal: horizontalPadding,
+                        }}
+                      />
+                    </View>
+                  </>
+                ) : null}
 
                   <PromoBanner />
 
@@ -358,8 +361,7 @@ const HomeScreen = () => {
                       }}
                     />
                   </View>
-                </>
-              )}
+              </>
             </View>
           }
         />

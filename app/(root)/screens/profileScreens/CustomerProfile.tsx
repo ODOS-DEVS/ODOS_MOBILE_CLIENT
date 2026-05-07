@@ -1,6 +1,5 @@
 import UserAvatar from "@/components/UserAvatar";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
 import TextInputField from "@/components/TextInputField";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -8,6 +7,7 @@ import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { pickCroppedImage } from "@/utils/imagePicker";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
@@ -197,24 +197,15 @@ const CustomerProfile = () => {
     setIsPickingAvatar(true);
 
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
+      const result = await pickCroppedImage(undefined, 0.7);
+      if (!result.granted) {
         showToast("Allow photo access to update your profile picture.");
         return;
       }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
-
-      if (result.canceled || !result.assets.length) {
+      if (result.canceled || !result.uri) {
         return;
       }
-
-      const selectedUri = result.assets[0].uri;
+      const selectedUri = result.uri;
       setAvatarUri(selectedUri);
 
       const updateResult = await updateProfile({

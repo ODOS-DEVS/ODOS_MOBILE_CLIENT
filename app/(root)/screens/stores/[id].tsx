@@ -3,11 +3,11 @@ import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import VoucherCard from "@/components/cards/VoucherCard";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { flashSales, gentsData, vouchers } from "@/constants/Data";
-import { resolveCatalogImage } from "@/constants/catalogImages";
+import { gentsData, vouchers } from "@/constants/Data";
 import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useStore } from "@/hooks/useCommerce";
 import { rS, useResponsive } from "@/styles/responsive";
+import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -37,27 +37,37 @@ const StoreDetailScreen = () => {
       id: storeId,
       slug: paramTitle.toLowerCase().replace(/\s+/g, "-"),
       title: paramTitle,
-      image:
-        typeof params.image === "string"
-          ? resolveCatalogImage(params.image)
-          : params.image,
+      image: resolveImageSource(
+        typeof params.image === "string" ? params.image : undefined,
+        typeof params.imageKey === "string" ? params.imageKey : undefined,
+      ),
+      imageBanner: resolveImageSource(
+        typeof params.imageBanner === "string"
+          ? params.imageBanner
+          : typeof params.image === "string"
+            ? params.image
+            : undefined,
+        typeof params.imageBannerKey === "string"
+          ? params.imageBannerKey
+          : typeof params.imageKey === "string"
+            ? params.imageKey
+            : undefined,
+      ),
     }),
-    [paramTitle, params.image, storeId],
+    [paramTitle, params.image, params.imageBanner, params.imageBannerKey, params.imageKey, storeId],
   );
   const { store, isLoading } = useStore({
     storeId,
     fallback: fallbackStore,
   });
-  const productAudience = useMemo(() => {
-    const category = (store.category ?? "").toLowerCase();
-    if (category.includes("lady")) return "ladies";
-    if (category.includes("gent")) return "gents";
-    if (category.includes("kid")) return "kids";
-    return undefined;
-  }, [store.category]);
   const { products: storeProducts } = useCatalogProducts({
-    audience: productAudience,
+    storeId,
     fallback: gentsData,
+  });
+  const { products: flashSaleProducts } = useCatalogProducts({
+    storeId,
+    placement: "flash-sale",
+    fallback: [],
   });
   const insets = useSafeAreaInsets();
   const { gridCardWidth } = useResponsive();
@@ -135,26 +145,29 @@ const StoreDetailScreen = () => {
 
       {/* REST OF CONTENT */}
       <View>
-        {/* Flash Sales */}
-        <View className="flex-row justify-between mt-8 mx-8">
-          <Text className="text-xl font-montserrat-extraBold text-gray-800 mt-8">
-            Flash Sales
-          </Text>
-          <Text className="font-montserrat-semiBold text-primary mt-8">
-            {timeLeft}
-          </Text>
-        </View>
+        {flashSaleProducts.length > 0 ? (
+          <>
+            <View className="flex-row justify-between mt-8 mx-8">
+              <Text className="text-xl font-montserrat-extraBold text-gray-800 mt-8">
+                Flash Sales
+              </Text>
+              <Text className="font-montserrat-semiBold text-primary mt-8">
+                {timeLeft}
+              </Text>
+            </View>
 
-        <View className="ml-[-20]">
-          <FlatList
-            data={flashSales}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <FlashSalesCard {...item} />}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          />
-        </View>
+            <View className="ml-[-20]">
+              <FlatList
+                data={flashSaleProducts}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <FlashSalesCard {...item} />}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+              />
+            </View>
+          </>
+        ) : null}
 
         <View className="mx-6 mt-8">
           <Text className="text-xl font-montserrat-extraBold text-gray-800">
