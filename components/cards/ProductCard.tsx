@@ -5,9 +5,15 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
+function formatCurrency(value: number) {
+  return `₵${value.toFixed(2)}`;
+}
+
 interface ProductCardProps {
   id: string;
   image: any;
+  imageKey?: string;
+  imageUrl?: string;
   title: string;
   category?: string;
   price?: number;
@@ -26,6 +32,8 @@ export type { ProductCardProps };
 const ProductCard: React.FC<ProductCardProps> = ({
   id,
   image,
+  imageKey,
+  imageUrl,
   title,
   category,
   price,
@@ -37,6 +45,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   horizontalSpacing,
 }) => {
   const hasPrice = !!price || !!oldPrice;
+  const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
   const spacingRight = horizontalSpacing ?? rS(12);
@@ -48,7 +57,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
           pathname: "/screens/[id]" as any,
           params: {
             id,
-            image,
+            image: imageUrl ?? imageKey,
+            imageKey,
+            imageUrl,
             title,
             category,
             price,
@@ -166,7 +177,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               {title}
             </Text>
 
-            {rating && (
+            {hasRating ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -179,10 +190,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   className="ml-1 text-subtext-200 font-montserrat-extraBold"
                   style={{ fontSize: rS(12), marginLeft: rS(4) }}
                 >
-                  {rating.toFixed(1)}
+                  {rating!.toFixed(1)}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View className="flex-row justify-between">
@@ -221,7 +232,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     className="font-montserrat-extraBold text-subtext-200"
                     style={{ fontSize: rS(13), fontWeight: "700" }}
                   >
-                    ${price}
+                    {formatCurrency(price)}
                   </Text>
                 )}
                 {oldPrice && (
@@ -233,7 +244,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       textDecorationLine: "line-through",
                     }}
                   >
-                    ${oldPrice}
+                    {formatCurrency(oldPrice)}
                   </Text>
                 )}
               </>

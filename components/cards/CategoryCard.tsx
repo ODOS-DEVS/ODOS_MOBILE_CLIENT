@@ -1,10 +1,12 @@
+import { AppColors } from "@/constants/Colors";
 import React from "react";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface CategoryCardProps {
   title: string;
   subtitle: string;
   image: any;
+  subcategoryCount?: number;
   onPress?: () => void;
 }
 
@@ -12,30 +14,49 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
   title,
   subtitle,
   image,
+  subcategoryCount,
   onPress,
 }) => {
   return (
-    <View className="flex-row justify-between items-center bg-accent rounded-3xl mx-2 mb-4 px-5 py-8 shadow-sm">
-    
+    <View className="flex-row items-center justify-between bg-white rounded-3xl mb-4 px-5 py-5 shadow-sm border border-[#E7ECF2]">
       <View className="flex-1 pr-4">
-        <Text className="text-xl font-montserrat-extraBold text-text mx-4">{title}</Text>
-        <Text className="text-sm text-subtext-200 font-montserrat-semiBold mx-4 mt-1">{subtitle}</Text>
+        <Text
+          className="text-xl font-montserrat-extraBold text-text mx-1"
+          numberOfLines={2}
+        >
+          {title}
+        </Text>
+        <Text
+          className="text-sm text-subtext-200 font-montserrat-semiBold mx-1 mt-2 leading-6"
+          numberOfLines={3}
+        >
+          {subtitle}
+        </Text>
 
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.8}
-          className="mt-3 bg-secondary border border-secondary px-4 py-3 rounded-xl w-[110px] shadow-sm"
+          style={{
+            marginTop: 16,
+            alignSelf: "flex-start",
+            backgroundColor: AppColors.primary,
+            borderColor: AppColors.primary,
+            borderWidth: 1,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}
         >
           <Text className="text-white font-montserrat-semiBold text-sm text-center">
-            Shop Now
+            {subcategoryCount ? `${subcategoryCount} Subcategories` : "Shop Now"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View className="w-[150px] h-[150px] rounded-full overflow-hidden items-center justify-center">
+      <View className="w-[118px] h-[118px] rounded-[28px] overflow-hidden items-center justify-center bg-[#F4F7FB]">
         <Image
           source={image}
-          className="w-[150px] h-[150px]"
+          className="w-full h-full"
           resizeMode="cover"
         />
       </View>

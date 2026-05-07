@@ -4,26 +4,59 @@ import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useVendorSession } from "@/hooks/useVendorSession";
+import { useVendorStore } from "@/stores/vendorStore";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { normalizeVendorStatus } from "@/types/vendor";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProfileScreen() {
-  const { isSigningOut, signOut, user } = useAuth();
+  const {
+    isRefreshingSession,
+    isSigningOut,
+    refreshCurrentUser,
+    signOut,
+    user,
+  } = useAuth();
   const { requireAuth } = useRequireAuth();
-  const openProtectedRoute = (
-    pathname: string,
-    title = "Sign in to continue",
-    message = "Log in or create an account to access your account features.",
-  ) => {
-    if (!requireAuth({ title, message })) {
-      return;
-    }
+  const { session } = useVendorSession();
+  const { isLoading, refreshVendorState, vendorApplication, vendorStatus } =
+    useVendorStore();
+  const hasRefreshedThisFocusRef = useRef(false);
+  const authUserSnapshot = useMemo(
+    () =>
+      user
+        ? {
+            id: user.id,
+            fullName: user.full_name,
+            email: user.email,
+            phoneNumber: user.phone_number,
+            roles: user.roles,
+            rolesKey: user.roles.join(","),
+            vendorId: user.vendorId,
+            vendorStatus: user.vendorStatus,
+            vendorRejectionReason: user.vendorRejectionReason,
+          }
+        : null,
+    [user],
+  );
+  const openProtectedRoute = useCallback(
+    (
+      pathname: string,
+      title = "Sign in to continue",
+      message = "Log in or create an account to access your account features.",
+    ) => {
+      if (!requireAuth({ title, message })) {
+        return;
+      }
 
-    router.push(pathname as any);
-  };
+      router.push(pathname as any);
+    },
+    [requireAuth],
+  );
 
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
@@ -41,6 +74,165 @@ export default function ProfileScreen() {
       },
     ]);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      let isCancelled = false;
+      hasRefreshedThisFocusRef.current = false;
+
+      const syncVendorState = async () => {
+        if (!authUserSnapshot?.id || hasRefreshedThisFocusRef.current) {
+          return;
+        }
+
+        hasRefreshedThisFocusRef.current = true;
+        const shouldRefreshAuthUser =
+          authUserSnapshot.vendorStatus !== "approved" ||
+          !authUserSnapshot.roles.includes("vendor");
+
+        const refreshedUser = shouldRefreshAuthUser
+          ? await refreshCurrentUser()
+          : null;
+        if (isCancelled) {
+          return;
+        }
+
+        const nextUser =
+          refreshedUser ??
+          {
+            id: authUserSnapshot.id,
+            full_name: authUserSnapshot.fullName,
+            email: authUserSnapshot.email,
+            phone_number: authUserSnapshot.phoneNumber,
+            roles: authUserSnapshot.roles,
+            vendorId: authUserSnapshot.vendorId,
+            vendorStatus: authUserSnapshot.vendorStatus,
+            vendorRejectionReason: authUserSnapshot.vendorRejectionReason,
+          };
+        await refreshVendorState({
+          accessToken: session.accessToken,
+          userId: nextUser.id,
+          fullName: nextUser.full_name,
+          email: nextUser.email,
+          phoneNumber: nextUser.phone_number,
+          roles: nextUser.roles,
+          vendorId: nextUser.vendorId,
+          vendorStatus: nextUser.vendorStatus,
+          vendorRejectionReason: nextUser.vendorRejectionReason,
+        });
+      };
+
+      void syncVendorState();
+
+      return () => {
+        isCancelled = true;
+        hasRefreshedThisFocusRef.current = false;
+      };
+    }, [
+      authUserSnapshot,
+      refreshCurrentUser,
+      refreshVendorState,
+      session.accessToken,
+    ]),
+  );
+
+  const resolvedVendorStatus = useMemo(() => {
+    if (!user) {
+      return vendorStatus;
+    }
+
+    const authVendorStatus = normalizeVendorStatus(user.vendorStatus, user.roles);
+    return authVendorStatus !== "none" ? authVendorStatus : vendorStatus;
+  }, [user, vendorStatus]);
+
+  const vendorSection = useMemo(() => {
+    if (!user) {
+      return {
+        title: "Become a Vendor",
+        body: "Apply once and manage your store from the same ODOS account after approval.",
+        cta: "Apply to Become a Vendor",
+        onPress: () =>
+          openProtectedRoute(
+            "/vendor/apply" as any,
+            "Sign in to become a vendor",
+            "Create an account or log in before starting a vendor application.",
+          ),
+        secondaryAction: null as null | { label: string; onPress: () => void },
+      };
+    }
+
+    if (resolvedVendorStatus === "approved") {
+      return {
+        title: "Vendor Dashboard",
+        body:
+          vendorApplication?.storeName
+            ? `${vendorApplication.storeName} is ready for vendor management.`
+            : "Your vendor access is active and ready to manage products, orders, and store details.",
+        cta: "Open Vendor Dashboard",
+        onPress: () => router.push("/vendor/dashboard" as any),
+        secondaryAction: {
+          label: "Vendor Settings",
+          onPress: () => router.push("/vendor/settings" as any),
+        },
+      };
+    }
+
+    if (
+      resolvedVendorStatus === "pending" ||
+      resolvedVendorStatus === "under_review"
+    ) {
+      return {
+        title: "Vendor Application Pending",
+        body: "Your application is in review. You can track progress and next steps from the status screen.",
+        cta: "View Application Status",
+        onPress: () => router.push("/vendor/application-status" as any),
+        secondaryAction: null,
+      };
+    }
+
+    if (resolvedVendorStatus === "rejected") {
+      return {
+        title: "Vendor Application Needs Changes",
+        body:
+          vendorApplication?.rejectionReason ||
+          "ODOS needs a few updates before approval. Review the status details and apply again when ready.",
+        cta: "Apply Again",
+        onPress: () => router.push("/vendor/apply" as any),
+        secondaryAction: {
+          label: "View Review Notes",
+          onPress: () => router.push("/vendor/application-status" as any),
+        },
+      };
+    }
+
+    if (resolvedVendorStatus === "suspended") {
+      return {
+        title: "Vendor Access Suspended",
+        body: "Your vendor profile exists, but storefront actions are currently paused pending review.",
+        cta: "View Status Details",
+        onPress: () => router.push("/vendor/application-status" as any),
+        secondaryAction: null,
+      };
+    }
+
+    return {
+      title: "Become a Vendor",
+      body: "Apply once and manage your store from the same ODOS account after approval.",
+      cta: "Apply to Become a Vendor",
+      onPress: () => router.push("/vendor/apply" as any),
+      secondaryAction: null,
+    };
+  }, [
+    openProtectedRoute,
+    resolvedVendorStatus,
+    user,
+    vendorApplication?.rejectionReason,
+    vendorApplication?.storeName,
+  ]);
+
+  const isVendorSectionLoading = !user
+    ? false
+    : isRefreshingSession || (isLoading && resolvedVendorStatus === "none");
 
   return (
     <ScrollView
@@ -121,13 +313,42 @@ export default function ProfileScreen() {
             openProtectedRoute("../screens/profileScreens/Account/Vouchers");
           }}
         />
-        <MenuItem
-          icon="briefcase-outline"
-          label="Request to be a vendor"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/VendorRequest");
-          }}
-        />
+      </View>
+
+      <Text style={styles.sectionTitle}>Vendor</Text>
+      <View style={styles.vendorCard}>
+        <View style={styles.vendorCardHeader}>
+          <View style={styles.vendorIconWrap}>
+            <Ionicons name="briefcase-outline" size={rMS(18)} color={AppColors.text} />
+          </View>
+          <View style={styles.vendorTextWrap}>
+            <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
+            <Text style={styles.vendorBody}>{vendorSection.body}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.vendorButton}
+          onPress={vendorSection.onPress}
+          activeOpacity={0.85}
+          disabled={isVendorSectionLoading}
+        >
+          <Text style={styles.vendorButtonLabel}>
+            {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
+          </Text>
+        </TouchableOpacity>
+
+        {vendorSection.secondaryAction ? (
+          <TouchableOpacity
+            onPress={vendorSection.secondaryAction.onPress}
+            activeOpacity={0.75}
+            style={styles.vendorSecondaryButton}
+          >
+            <Text style={styles.vendorSecondaryButtonLabel}>
+              {vendorSection.secondaryAction.label}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Personalization */}
@@ -275,5 +496,63 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     textTransform: "uppercase",
     letterSpacing: 0.4,
+  },
+  vendorCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(24),
+    padding: rMS(16),
+    marginBottom: rV(18),
+  },
+  vendorCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  vendorIconWrap: {
+    width: rMS(40),
+    height: rMS(40),
+    borderRadius: rMS(20),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: rS(12),
+  },
+  vendorTextWrap: {
+    flex: 1,
+  },
+  vendorTitle: {
+    color: AppColors.text,
+    fontFamily: Fonts.title,
+    fontSize: rMS(15),
+  },
+  vendorBody: {
+    marginTop: rV(6),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+    fontSize: rMS(12.5),
+    lineHeight: rMS(18),
+  },
+  vendorButton: {
+    marginTop: rV(16),
+    backgroundColor: AppColors.primary,
+    borderRadius: rMS(999),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: rV(14),
+  },
+  vendorButtonLabel: {
+    color: AppColors.white,
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(13),
+  },
+  vendorSecondaryButton: {
+    marginTop: rV(12),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: rV(6),
+  },
+  vendorSecondaryButtonLabel: {
+    color: AppColors.primary,
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(12.5),
   },
 });

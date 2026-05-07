@@ -27,6 +27,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   reviews,
 }) => {
   const hasPrice = !!price || !!oldPrice;
+  const hasRating = typeof rating === "number" && Number.isFinite(rating);
 
   return (
     <TouchableOpacity
@@ -50,22 +51,31 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         className="bg-white shadow-sm"
         style={{
           flexDirection: "row",
-          alignItems: "center",
+          alignItems: "stretch",
           borderRadius: rS(16),
           padding: rS(12),
         }}
       >
-        <Image
-          source={image}
+        <View
           style={{
-            width: rS(90),
-            height: rS(80),
-            borderRadius: rS(12),
-            marginRight: rS(10),
+            width: rS(92),
+            height: rS(92),
+            borderRadius: rS(14),
+            marginRight: rS(12),
             backgroundColor: "#E5E7EB",
+            overflow: "hidden",
+            alignSelf: "center",
           }}
-          resizeMode="contain"
-        />
+        >
+          <Image
+            source={image}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+            resizeMode="cover"
+          />
+        </View>
 
         <View style={{ flex: 1 }}>
           <Text
@@ -122,7 +132,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               </View>
             )}
 
-            {rating && (
+            {hasRating ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -135,7 +145,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   className="font-montserrat-extraBold text-subtext-200"
                   style={{ fontSize: rS(11), marginLeft: rS(4) }}
                 >
-                  {rating.toFixed(1)}
+                  {rating!.toFixed(1)}
                 </Text>
                 {/* {reviews && (
                   <Text
@@ -146,7 +156,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   </Text>
                 )} */}
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 

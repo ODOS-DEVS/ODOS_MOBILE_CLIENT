@@ -6,6 +6,8 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 interface StoreCardProps {
   id: string;
   image: any;
+  imageKey?: string;
+  imageUrl?: string;
   title: string;
   category?: string;
   rating?: number;
@@ -19,6 +21,8 @@ interface StoreCardProps {
 const StoreCard: React.FC<StoreCardProps> = ({
   id,
   image,
+  imageKey,
+  imageUrl,
   title,
   category,
   rating,
@@ -29,6 +33,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
   const spacingRight = horizontalSpacing ?? rS(12);
+  const hasRating = typeof rating === "number" && Number.isFinite(rating);
 
   return (
     <TouchableOpacity
@@ -37,7 +42,9 @@ const StoreCard: React.FC<StoreCardProps> = ({
           pathname: "/screens/stores/[id]" as any,
           params: {
             id,
-            image,
+            image: imageUrl ?? imageKey,
+            imageKey,
+            imageUrl,
             title,
           },
         })
@@ -90,7 +97,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
               {title}
             </Text>
 
-            {rating && (
+            {hasRating ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -103,10 +110,10 @@ const StoreCard: React.FC<StoreCardProps> = ({
                   className="text-subtext-200 font-montserrat-extraBold"
                   style={{ fontSize: rS(11), marginLeft: rS(4) }}
                 >
-                  {rating.toFixed(1)}
+                  {rating!.toFixed(1)}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View style={{ flexDirection: "column", gap: 4, marginTop: rV(3), }}>

@@ -5,16 +5,14 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProductCard from "@/components/cards/ProductCard";
 import { AppColors } from "@/constants/Colors";
 import {
-  flashSales,
   PopularProducts,
-  recommendations,
   Stores,
 } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
-import { resolveCatalogImage } from "@/constants/catalogImages";
 import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -29,15 +27,58 @@ import {
   View,
 } from "react-native";
 
-const productColorOptions = [
-  { id: "charcoal", label: "Charcoal", hex: "#374151" },
-  { id: "sand", label: "Sand", hex: "#C8B08F" },
-  { id: "sage", label: "Sage", hex: "#7C8C74" },
-  { id: "ocean", label: "Ocean", hex: "#3E5F7D" },
-];
-
-const productSizeOptions = ["XS", "S", "M", "L", "XL"];
 const screenWidth = Dimensions.get("window").width;
+
+const namedColorMap: Record<string, string> = {
+  black: "#111827",
+  white: "#F9FAFB",
+  tan: "#C9A37E",
+  stone: "#D6D3D1",
+  brown: "#6B4F3F",
+  burgundy: "#7F1D1D",
+  red: "#DC2626",
+  blue: "#2563EB",
+  navy: "#1E3A8A",
+  green: "#15803D",
+  olive: "#556B2F",
+  pink: "#EC4899",
+  gold: "#CA8A04",
+  silver: "#94A3B8",
+  grey: "#6B7280",
+  gray: "#6B7280",
+  cream: "#F5F1E8",
+  beige: "#E5D3B3",
+};
+
+function formatPrice(value: number) {
+  return `₵${value.toFixed(2)}`;
+}
+
+function buildColorOptions(colors?: string[]) {
+  return (colors ?? []).map((color) => {
+    const key = color.trim().toLowerCase();
+    return {
+      id: key.replace(/\s+/g, "-"),
+      label: color.trim(),
+      hex: namedColorMap[key] ?? "#CBD5E1",
+    };
+  });
+}
+
+function buildDescriptionLines(value?: string) {
+  if (!value?.trim()) {
+    return [
+      "Product details will appear here once the catalog description is available.",
+    ];
+  }
+
+  const lines = value
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.length > 0 ? lines : [value.trim()];
+}
 
 export default function ProductDetail() {
   const { requireAuth } = useRequireAuth();
@@ -50,14 +91,14 @@ export default function ProductDetail() {
   const paramTitle = getParam(params.title) ?? "";
   const paramCategory = getParam(params.category);
   const paramImage = getParam(params.image);
+  const paramImageKey = getParam(params.imageKey);
+  const paramImageUrl = getParam(params.imageUrl);
   const paramPrice = Number(getParam(params.price) ?? 0);
   const paramOldPrice = Number(getParam(params.oldPrice) ?? 0);
   const paramRating = Number(getParam(params.rating) ?? 0);
   const paramReviews = getParam(params.reviews);
   const paramDiscount = getParam(params.discount);
   const isVoucher = getParam(params.isVoucher) === "true";
-  const [selectedColor, setSelectedColor] = useState(productColorOptions[0].id);
-  const [selectedSize, setSelectedSize] = useState(productSizeOptions[2]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const productFallback = useMemo(
     () => ({
@@ -72,16 +113,21 @@ export default function ProductDetail() {
       image:
         paramImage && typeof paramImage === "object"
           ? paramImage
-          : typeof paramImage === "string"
-            ? resolveCatalogImage(paramImage)
-            : undefined,
-      imageKey: typeof paramImage === "string" ? paramImage : undefined,
+          : resolveImageSource(paramImageUrl ?? paramImage, paramImageKey),
+      imageKey:
+        paramImageKey ??
+        (typeof paramImage === "string" && !resolveApiMediaUrl(paramImage)
+          ? paramImage
+          : undefined),
+      imageUrl: resolveApiMediaUrl(paramImageUrl ?? paramImage),
     }),
     [
       id,
       paramCategory,
       paramDiscount,
       paramImage,
+      paramImageKey,
+      paramImageUrl,
       paramOldPrice,
       paramPrice,
       paramRating,
@@ -105,24 +151,83 @@ export default function ProductDetail() {
   const rating = product.rating ?? 0;
   const reviews = product.reviews;
   const discount = product.discount;
-  const activeColor =
-    productColorOptions.find((item) => item.id === selectedColor) ??
-    productColorOptions[0];
+  const hasRatingsInfo = Boolean(
+    (!Number.isNaN(rating) && rating > 0) || reviews?.trim(),
+  );
+  const productColorOptions = useMemo(
+    () => buildColorOptions(product.colorOptions),
+    [product.colorOptions],
+  );
+  const productSizeOptions = useMemo(() => product.sizeOptions ?? [], [product.sizeOptions]);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const activeColor = useMemo(
+    () =>
+      productColorOptions.find((item) => item.id === selectedColor) ??
+      productColorOptions[0] ??
+      null,
+    [productColorOptions, selectedColor],
+  );
+  const activeSize = selectedSize ?? productSizeOptions[0] ?? null;
   const productImages = useMemo(() => {
-    const fallbackImages = [
-      ...flashSales,
-      ...recommendations,
-      ...PopularProducts,
-    ].map((item) => item.image);
+    const backendImages = (product.imageUrls ?? [])
+      .map((value) => resolveApiMediaUrl(value))
+      .filter((value): value is string => Boolean(value?.trim()));
+    const primaryImageUrl =
+      resolveApiMediaUrl(product.imageUrl) ??
+      resolveApiMediaUrl(typeof paramImage === "string" ? paramImage : undefined);
     const primaryImage =
-      product.image ??
-      (typeof paramImage === "string" ? resolveCatalogImage(paramImage) : paramImage);
-    const merged = [primaryImage, ...fallbackImages].filter(Boolean);
-    const unique = Array.from(new Set(merged));
-    if (unique.length === 1) return [unique[0], unique[0], unique[0]];
+      primaryImageUrl
+        ? { uri: primaryImageUrl }
+        : product.image ??
+          resolveImageSource(
+            product.imageUrl ?? (typeof paramImage === "string" ? paramImage : undefined),
+            product.imageKey ?? paramImageKey,
+          );
+
+    const remoteSources = backendImages.map((value) => ({ uri: value }));
+    const merged = [primaryImage, ...remoteSources].filter(Boolean);
+    const unique = merged.filter((item, index, array) => {
+      const key =
+        typeof item === "number"
+          ? `asset-${item}`
+          : typeof item === "object" && item && "uri" in item
+            ? item.uri
+            : JSON.stringify(item);
+      return (
+        array.findIndex((candidate) => {
+          const candidateKey =
+            typeof candidate === "number"
+              ? `asset-${candidate}`
+              : typeof candidate === "object" && candidate && "uri" in candidate
+                ? candidate.uri
+                : JSON.stringify(candidate);
+          return candidateKey === key;
+        }) === index
+      );
+    });
     return unique.slice(0, 6);
-  }, [paramImage, product.image]);
+  }, [
+    paramImage,
+    paramImageKey,
+    product.image,
+    product.imageKey,
+    product.imageUrl,
+    product.imageUrls,
+  ]);
   const shouldShowLoadingState = isLoading;
+
+  React.useEffect(() => {
+    if (!selectedColor && productColorOptions[0]) {
+      setSelectedColor(productColorOptions[0].id);
+    }
+  }, [productColorOptions, selectedColor]);
+
+  React.useEffect(() => {
+    if (!selectedSize && productSizeOptions[0]) {
+      setSelectedSize(productSizeOptions[0]);
+    }
+  }, [productSizeOptions, selectedSize]);
 
   const store = useMemo(() => {
     const productTitle = String(title ?? "").toLowerCase();
@@ -160,8 +265,8 @@ export default function ProductDetail() {
                   oldPrice,
                   category,
                   imageKey: product.imageKey,
-                  selectedColor: activeColor.label,
-                  selectedSize,
+                  selectedColor: activeColor?.label,
+                  selectedSize: activeSize ?? undefined,
                 },
     });
   };
@@ -236,9 +341,6 @@ export default function ProductDetail() {
             <Text style={styles.productTitle} numberOfLines={2}>
               {title}
             </Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>In Stock</Text>
-            </View>
             {!isVoucher && (
               <View style={styles.badges}>
                 <View style={styles.badge}>
@@ -253,77 +355,90 @@ export default function ProductDetail() {
             )}
           </View>
 
-          <View style={styles.metaRow}>
-            {category ? <Text style={styles.category}>{category}</Text> : null}
-            {!isVoucher && (
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={14} color="#facc15" />
-                <Text style={styles.ratingText}>{rating || "—"}</Text>
-                {reviews != null && (
-                  <Text style={styles.reviewsText}>({reviews} reviews)</Text>
-                )}
-              </View>
-            )}
-          </View>
+          {category || (!isVoucher && hasRatingsInfo) ? (
+            <View style={styles.metaRow}>
+              {category ? <Text style={styles.category}>{category}</Text> : null}
+              {!isVoucher && hasRatingsInfo ? (
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={14} color="#facc15" />
+                  {rating > 0 ? <Text style={styles.ratingText}>{rating}</Text> : null}
+                  {reviews?.trim() ? (
+                    <Text style={styles.reviewsText}>({reviews})</Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={styles.priceRow}>
-            <Text style={styles.price}>₵{price}</Text>
-            {oldPrice > 0 && <Text style={styles.oldPrice}>₵{oldPrice}</Text>}
+            <Text style={styles.price}>{formatPrice(price)}</Text>
+            {oldPrice > 0 && <Text style={styles.oldPrice}>{formatPrice(oldPrice)}</Text>}
           </View>
 
-          {!isVoucher && (
+          {!isVoucher && (productColorOptions.length > 0 || productSizeOptions.length > 0) && (
             <View style={styles.variantCard}>
-              <View style={styles.variantHeader}>
-                <Text style={styles.variantTitle}>Choose Color</Text>
-                <Text style={styles.variantValue}>{activeColor.label}</Text>
-              </View>
-              <View style={styles.colorRow}>
-                {productColorOptions.map((item) => {
-                  const isActive = selectedColor === item.id;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.colorBtn,
-                        isActive && styles.colorBtnActive,
-                      ]}
-                      activeOpacity={0.8}
-                      onPress={() => setSelectedColor(item.id)}
-                    >
-                      <View
-                        style={[styles.colorDot, { backgroundColor: item.hex }]}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              {productColorOptions.length > 0 ? (
+                <>
+                  <View style={styles.variantHeader}>
+                    <Text style={styles.variantTitle}>Choose Color</Text>
+                    <Text style={styles.variantValue}>{activeColor?.label ?? "Select"}</Text>
+                  </View>
+                  <View style={styles.colorRow}>
+                    {productColorOptions.map((item) => {
+                      const isActive = selectedColor === item.id;
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={[
+                            styles.colorBtn,
+                            isActive && styles.colorBtnActive,
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedColor(item.id)}
+                        >
+                          <View
+                            style={[styles.colorDot, { backgroundColor: item.hex }]}
+                          />
+                          <Text style={styles.colorLabel}>{item.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
 
-              <View style={styles.variantHeader}>
-                <Text style={styles.variantTitle}>Choose Size</Text>
-                <Text style={styles.variantValue}>Size {selectedSize}</Text>
-              </View>
-              <View style={styles.sizeRow}>
-                {productSizeOptions.map((item) => {
-                  const isActive = selectedSize === item;
-                  return (
-                    <TouchableOpacity
-                      key={item}
-                      style={[styles.sizeBtn, isActive && styles.sizeBtnActive]}
-                      activeOpacity={0.85}
-                      onPress={() => setSelectedSize(item)}
-                    >
-                      <Text
-                        style={[
-                          styles.sizeBtnText,
-                          isActive && styles.sizeBtnTextActive,
-                        ]}
-                      >
-                        {item}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              {productSizeOptions.length > 0 ? (
+                <>
+                  <View style={styles.variantHeader}>
+                    <Text style={styles.variantTitle}>Choose Size</Text>
+                    <Text style={styles.variantValue}>
+                      {activeSize ? `Size ${activeSize}` : "Select"}
+                    </Text>
+                  </View>
+                  <View style={styles.sizeRow}>
+                    {productSizeOptions.map((item) => {
+                      const isActive = selectedSize === item;
+                      return (
+                        <TouchableOpacity
+                          key={item}
+                          style={[styles.sizeBtn, isActive && styles.sizeBtnActive]}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedSize(item)}
+                        >
+                          <Text
+                            style={[
+                              styles.sizeBtnText,
+                              isActive && styles.sizeBtnTextActive,
+                            ]}
+                          >
+                            {item}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
             </View>
           )}
         </View>
@@ -339,9 +454,8 @@ export default function ProductDetail() {
                 color={AppColors.subtext[100]}
               />
             }
-            description={[
-              "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
-            ]}
+            description={buildDescriptionLines(product.description)}
+            specifications={product.specifications}
             defaultExpanded={false}
           />
 
@@ -394,22 +508,21 @@ export default function ProductDetail() {
               "5. The following products cannot be exchanged/refunded for hygiene reasons: Socks, innerwear, camisole, baby products, shoes, AIRism accessories (such as masks, bed sheets, pillowcases, etc.) and other accessories unless the product was originally purchased damaged or defective product.",
             ]}
           />
-          <CollapsibleShippingCard
-            title="Review"
-            icon={
-              <Ionicons name="star" size={22} color={AppColors.subtext[100]} />
-            }
-            description={[
-              "⭐ 4.4 27/06/2022",
-              "Lorem ipsum dolor sit amet, adipiscing elit. Sed at gravida nulla tempor, neque. Duis quam ut netus donec enim vitae ac diam.",
-              "Talan Geidt",
-              "",
-              "⭐ 4.4 27/06/2022",
-              "Lorem ipsum dolor sit amet, adipiscing elit. Sed at gravida nulla tempor, neque. Duis quam ut netus donec enim vitae ac diam.",
-              "Talan Geidt",
-            ]}
-            defaultExpanded={false}
-          />
+          {hasRatingsInfo ? (
+            <CollapsibleShippingCard
+              title="Review"
+              icon={
+                <Ionicons name="star" size={22} color={AppColors.subtext[100]} />
+              }
+              description={[
+                rating > 0 ? `Average rating: ${rating}/5` : "No star rating yet.",
+                reviews?.trim()
+                  ? `Customer review summary: ${reviews}`
+                  : "No written review summary yet.",
+              ]}
+              defaultExpanded={false}
+            />
+          ) : null}
           <View
             className="shadow-sm"
             style={{ borderRadius: 16, marginBottom: 12 }}
@@ -709,17 +822,22 @@ const styles = StyleSheet.create({
   },
   colorRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: rS(10),
   },
   colorBtn: {
-    width: rMS(34),
-    height: rMS(34),
-    borderRadius: rMS(17),
+    minWidth: rMS(56),
+    minHeight: rMS(40),
+    borderRadius: rMS(16),
     borderWidth: 1,
     borderColor: "#DBDBDB",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: AppColors.white,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(9),
+    gap: rS(8),
+    flexDirection: "row",
   },
   colorBtnActive: {
     borderColor: AppColors.secondary,
@@ -729,6 +847,11 @@ const styles = StyleSheet.create({
     width: rMS(22),
     height: rMS(22),
     borderRadius: rMS(11),
+  },
+  colorLabel: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
   },
   sizeRow: {
     flexDirection: "row",

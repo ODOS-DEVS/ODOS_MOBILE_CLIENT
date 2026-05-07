@@ -16,16 +16,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const KidsScreen = () => {
+  const insets = useSafeAreaInsets();
   const [selectedSort, setSelectedSort] = useState("All");
   const {
     products: catalogProducts,
     sortOptions,
     isLoading,
   } = useCatalogProducts({ audience: "kids", fallback: kidsData });
+  const { products: popularNewProducts } = useCatalogProducts({
+    audience: "kids",
+    placement: "popular-new",
+    fallback: catalogProducts.slice(0, 5),
+  });
   const [filteredData, setFilteredData] = useState(catalogProducts);
-  const { gridCardWidth } = useResponsive();
+  const { gridCardWidth, responsiveColumns } = useResponsive();
+  const numColumns = responsiveColumns;
   const gridGap = rS(6);
   const gridPadding = rS(17);
 
@@ -42,7 +50,9 @@ const KidsScreen = () => {
       setFilteredData(catalogProducts);
     } else {
       const filtered = catalogProducts.filter(
-        (item) => item.category?.toLowerCase() === selectedSort.toLowerCase(),
+        (item) =>
+          item.category?.toLowerCase() === selectedSort.toLowerCase() ||
+          item.subcategory?.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
@@ -55,7 +65,7 @@ const KidsScreen = () => {
       {isSearching ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
         >
           <View className="px-4 mt-4 pb-10">
             {/* BACK BUTTON + TITLE */}
@@ -92,13 +102,16 @@ const KidsScreen = () => {
             ) : (
               <FlatList
                 data={searchResults}
-                numColumns={2}
+                numColumns={numColumns}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
+                columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
                 renderItem={({ item }) => (
-                  <View className="px-1">
-                    <ProductCard {...item} />
-                  </View>
+                  <ProductCard
+                    {...item}
+                    cardWidth={gridCardWidth(numColumns, gridGap)}
+                    horizontalSpacing={0}
+                  />
                 )}
               />
             )}
@@ -108,7 +121,7 @@ const KidsScreen = () => {
         // ---------------- NORMAL KIDS SCREEN ----------------
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
           className="flex-1 bg-white"
         >
           {/* SEARCH BAR */}
@@ -133,16 +146,16 @@ const KidsScreen = () => {
           ) : (
             <FlatList
               data={filteredData}
-              numColumns={2}
+              numColumns={numColumns}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               showsVerticalScrollIndicator={false}
-              columnWrapperStyle={{ columnGap: gridGap }}
+              columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
               renderItem={({ item }) => (
                 <ProductCard
                   {...item}
-                  cardWidth={gridCardWidth(2, gridGap)}
-                  horizontalSpacing={7}
+                  cardWidth={gridCardWidth(numColumns, gridGap)}
+                  horizontalSpacing={0}
                 />
               )}
               contentContainerStyle={{
@@ -162,7 +175,7 @@ const KidsScreen = () => {
           </View>
 
           {/* POPULAR NEW */}
-          <View className="flex-row justify-between mx-6 mt-8">
+          <View className="flex-row justify-between mx-6 mt-4">
             <Text className="text-lg font-montserrat-semiBold">
               Popular New
             </Text>
@@ -175,7 +188,7 @@ const KidsScreen = () => {
 
           {/* POPULAR LIST */}
           <FlatList
-            data={catalogProducts.slice(0, 5)}
+            data={popularNewProducts}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
