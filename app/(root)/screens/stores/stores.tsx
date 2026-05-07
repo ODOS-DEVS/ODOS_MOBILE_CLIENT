@@ -28,6 +28,15 @@ const normalizeStoreCategory = (value?: string) => {
   return "Others";
 };
 
+const audienceCategoryMap: Record<string, string> = {
+  Ladies: "ladies",
+  Gents: "gents",
+  kids: "kids",
+  Groceries: "groceries",
+  Automobile: "automobile",
+  Beauty: "beauty",
+};
+
 const categoryOptions = [
   "All",
   "Ladies",
@@ -64,8 +73,11 @@ const StoreScreen = () => {
 
   const filteredByCategory = useMemo(() => {
     if (activeCategory === "All") return storeItems;
+    const audienceSlug = audienceCategoryMap[activeCategory];
     return storeItems.filter(
-      (store) => normalizeStoreCategory(store.category) === activeCategory,
+      (store) =>
+        (audienceSlug && store.audienceSlugs?.includes(audienceSlug)) ||
+        normalizeStoreCategory(store.category) === activeCategory,
     );
   }, [activeCategory, storeItems]);
 

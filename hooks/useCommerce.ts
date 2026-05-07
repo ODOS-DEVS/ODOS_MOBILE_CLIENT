@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/constants/auth";
-import { resolveCatalogImage } from "@/constants/catalogImages";
-import { useEffect, useMemo, useState } from "react";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type MarketItem = {
   id: string;
@@ -14,7 +15,12 @@ export type StoreItem = {
   slug: string;
   title: string;
   category?: string;
+  audienceSlugs?: string[];
   marketSlug?: string;
+  imageKey?: string;
+  imageUrl?: string;
+  imageBannerKey?: string;
+  imageBannerUrl?: string;
   image: any;
   imageBanner?: any;
   rating?: number;
@@ -32,6 +38,7 @@ type MarketApiItem = {
   slug: string;
   title: string;
   image_key: string;
+  image_url?: string | null;
 };
 
 type StoreApiItem = {
@@ -39,9 +46,12 @@ type StoreApiItem = {
   slug: string;
   title: string;
   category: string | null;
+  audience_slugs?: string[] | null;
   market_slug: string | null;
   image_key: string;
+  image_url?: string | null;
   image_banner_key: string | null;
+  image_banner_url?: string | null;
   rating: number | null;
   address: string | null;
   phone: string | null;
@@ -57,19 +67,29 @@ function mapMarket(item: MarketApiItem): MarketItem {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    image: resolveCatalogImage(item.image_key),
+    image: resolveImageSource(item.image_url, item.image_key),
   };
 }
 
 function mapStore(item: StoreApiItem): StoreItem {
+  const primaryStoreImageUrl = item.image_url ?? item.image_banner_url ?? null;
+  const primaryStoreImageKey = item.image_key || item.image_banner_key || "bag";
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
     category: item.category ?? undefined,
+    audienceSlugs: item.audience_slugs ?? undefined,
     marketSlug: item.market_slug ?? undefined,
-    image: resolveCatalogImage(item.image_key),
-    imageBanner: resolveCatalogImage(item.image_banner_key ?? item.image_key),
+    imageKey: primaryStoreImageKey,
+    imageUrl: resolveApiMediaUrl(primaryStoreImageUrl),
+    imageBannerKey: item.image_banner_key ?? undefined,
+    imageBannerUrl: resolveApiMediaUrl(item.image_banner_url),
+    image: resolveImageSource(primaryStoreImageUrl, primaryStoreImageKey),
+    imageBanner: resolveImageSource(
+      item.image_banner_url ?? item.image_url,
+      item.image_banner_key ?? item.image_key,
+    ),
     rating: item.rating ?? undefined,
     address: item.address ?? undefined,
     phone: item.phone ?? undefined,
@@ -81,63 +101,156 @@ function mapStore(item: StoreApiItem): StoreItem {
   };
 }
 
+function areStringArraysEqual(a: string[] = [], b: string[] = []) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function isSameMarket(a: MarketItem, b: MarketItem) {
+  return a.id === b.id && a.slug === b.slug && a.title === b.title;
+}
+
+function areMarketsEqual(current: MarketItem[], next: MarketItem[]) {
+  return (
+    current.length === next.length &&
+    current.every((item, index) => isSameMarket(item, next[index]))
+  );
+}
+
+function isSameStore(a: StoreItem, b: StoreItem) {
+  return (
+    a.id === b.id &&
+    a.slug === b.slug &&
+    a.title === b.title &&
+    a.category === b.category &&
+    areStringArraysEqual(a.audienceSlugs, b.audienceSlugs) &&
+    a.marketSlug === b.marketSlug &&
+    a.imageKey === b.imageKey &&
+    a.imageUrl === b.imageUrl &&
+    a.imageBannerKey === b.imageBannerKey &&
+    a.imageBannerUrl === b.imageBannerUrl &&
+    a.rating === b.rating &&
+    a.address === b.address &&
+    a.phone === b.phone &&
+    a.email === b.email &&
+    a.city === b.city &&
+    a.distanceKm === b.distanceKm &&
+    a.travelMinutes === b.travelMinutes &&
+    a.description === b.description
+  );
+}
+
+function areStoresEqual(current: StoreItem[], next: StoreItem[]) {
+  return (
+    current.length === next.length &&
+    current.every((item, index) => isSameStore(item, next[index]))
+  );
+}
+
 export function useMarkets(fallback: MarketItem[] = []) {
   const [markets, setMarkets] = useState<MarketItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const fallbackRef = useRef(fallback);
 
   useEffect(() => {
-    let isMounted = true;
+    fallbackRef.current = fallback;
+  }, [fallback]);
 
-    const loadMarkets = async () => {
-      setIsLoading(true);
+  const loadMarkets = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
+      if (!background) {
+        setIsLoading(true);
+      }
+
       try {
         const response = await fetch(`${API_BASE_URL}/catalog/markets`);
         if (!response.ok) {
           throw new Error("Failed to load markets.");
         }
         const payload = (await response.json()) as MarketApiItem[];
-        if (!isMounted) return;
-        setMarkets(payload.map(mapMarket));
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        const nextMarkets = payload.map(mapMarket);
+        setMarkets((current) =>
+          areMarketsEqual(current, nextMarkets) ? current : nextMarkets,
+        );
       } catch {
-        if (isMounted) {
-          setMarkets(fallback);
+        if (isMountedRef.current && !background) {
+          setMarkets((current) =>
+            areMarketsEqual(current, fallbackRef.current) ? current : fallbackRef.current,
+          );
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current && !background) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    };
+    },
+    [],
+  );
 
-    loadMarkets();
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadMarkets();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [fallback]);
+  }, [loadMarkets]);
+
+  useLiveRefresh(() => loadMarkets({ background: true }));
 
   return { markets, isLoading };
 }
 
 export function useStores({
   marketSlug,
+  audience,
   fallback = [],
 }: {
   marketSlug?: string;
+  audience?: string;
   fallback?: StoreItem[];
 }) {
   const [stores, setStores] = useState<StoreItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const fallbackRef = useRef(fallback);
 
   useEffect(() => {
-    let isMounted = true;
+    fallbackRef.current = fallback;
+  }, [fallback]);
 
-    const loadStores = async () => {
-      setIsLoading(true);
+  const loadStores = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
+      if (!background) {
+        setIsLoading(true);
+      }
+
       try {
         const query = new URLSearchParams();
         if (marketSlug) {
           query.set("market_slug", marketSlug);
+        }
+        if (audience) {
+          query.set("audience", audience);
         }
         const response = await fetch(
           `${API_BASE_URL}/catalog/stores${query.toString() ? `?${query.toString()}` : ""}`,
@@ -146,25 +259,40 @@ export function useStores({
           throw new Error("Failed to load stores.");
         }
         const payload = (await response.json()) as StoreApiItem[];
-        if (!isMounted) return;
-        setStores(payload.map(mapStore));
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        const nextStores = payload.map(mapStore);
+        setStores((current) =>
+          areStoresEqual(current, nextStores) ? current : nextStores,
+        );
       } catch {
-        if (isMounted) {
-          setStores(fallback);
+        if (isMountedRef.current && !background) {
+          setStores((current) =>
+            areStoresEqual(current, fallbackRef.current) ? current : fallbackRef.current,
+          );
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current && !background) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    };
+    },
+    [audience, marketSlug],
+  );
 
-    loadStores();
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadStores();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [fallback, marketSlug]);
+  }, [loadStores]);
+
+  useLiveRefresh(() => loadStores({ background: true }));
 
   return { stores, isLoading };
 }
@@ -178,20 +306,21 @@ export function useStore({
 }) {
   const [store, setStore] = useState<StoreItem>(fallback);
   const [isLoading, setIsLoading] = useState(Boolean(storeId));
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
-  useEffect(() => {
-    setStore(fallback);
-  }, [fallback]);
+  const loadStore = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!storeId || isFetchingRef.current) {
+        return;
+      }
 
-  useEffect(() => {
-    if (!storeId) {
-      return;
-    }
+      isFetchingRef.current = true;
 
-    let isMounted = true;
+      if (!background) {
+        setIsLoading(true);
+      }
 
-    const loadStore = async () => {
-      setIsLoading(true);
       try {
         const response = await fetch(
           `${API_BASE_URL}/catalog/stores/${encodeURIComponent(storeId)}`,
@@ -200,25 +329,51 @@ export function useStore({
           throw new Error("Failed to load store.");
         }
         const payload = (await response.json()) as StoreApiItem;
-        if (!isMounted) return;
-        setStore(mapStore(payload));
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        const nextStore = mapStore(payload);
+        setStore((current) =>
+          isSameStore(current, nextStore) ? current : nextStore,
+        );
       } catch {
-        if (isMounted) {
-          setStore(fallback);
+        if (isMountedRef.current && !background) {
+          setStore((current) =>
+            isSameStore(current, fallback) ? current : fallback,
+          );
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current && !background) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    };
+    },
+    [fallback, storeId],
+  );
 
-    loadStore();
+  useEffect(() => {
+    setStore(fallback);
+  }, [fallback]);
+
+  useEffect(() => {
+    if (!storeId) {
+      setIsLoading(false);
+      return;
+    }
+
+    isMountedRef.current = true;
+    void loadStore();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [fallback, storeId]);
+  }, [loadStore, storeId]);
+
+  useLiveRefresh(() => loadStore({ background: true }), {
+    enabled: Boolean(storeId),
+  });
 
   return { store, isLoading };
 }

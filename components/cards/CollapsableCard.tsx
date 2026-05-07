@@ -29,6 +29,7 @@ interface CollapsibleCardProps {
   title?: string;
   icon?: any;
   description?: string[];
+  specifications?: string[];
   shippingOptions?: ShippingOption[];
   defaultExpanded?: boolean;
 }
@@ -37,6 +38,7 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   title,
   icon,
   description,
+  specifications,
   shippingOptions,
   defaultExpanded = false,
 }) => {
@@ -102,7 +104,7 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
             <View
               style={{
                 gap: 8,
-                marginBottom: shippingOptions?.length ? 12 : 6,
+                marginBottom: shippingOptions?.length || specifications?.length ? 12 : 6,
               }}
             >
               {(Array.isArray(description) ? description : [description]).map(
@@ -122,6 +124,62 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
               )}
             </View>
           )}
+
+          {specifications?.length ? (
+            <View
+              style={{
+                gap: 10,
+                marginBottom: shippingOptions?.length ? 12 : 6,
+              }}
+            >
+              {specifications.map((line, idx) => {
+                const separatorIndex = line.indexOf(":");
+                const label =
+                  separatorIndex >= 0 ? line.slice(0, separatorIndex).trim() : null;
+                const value =
+                  separatorIndex >= 0
+                    ? line.slice(separatorIndex + 1).trim()
+                    : line.trim();
+
+                return (
+                  <View
+                    key={`${line}-${idx}`}
+                    style={{
+                      borderRadius: 12,
+                      backgroundColor: AppColors.white,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderWidth: 1,
+                      borderColor: "#E5E7EB",
+                    }}
+                  >
+                    {label ? (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontFamily: Fonts.textBold,
+                          color: AppColors.text,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {label}
+                      </Text>
+                    ) : null}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        lineHeight: 18,
+                        color: AppColors.secondary,
+                        fontFamily: Fonts.text,
+                      }}
+                    >
+                      {value}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
 
           <View style={{ gap: 10 }}>
             {shippingOptions?.map((option, index) => (

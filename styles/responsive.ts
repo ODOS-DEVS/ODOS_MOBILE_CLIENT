@@ -18,6 +18,14 @@ export const rMS = (size: number, factor?: number) => {
   return moderateScale(size, factor);
 };
 
+export const wp = (percent: number, width: number) => {
+  return (Math.max(0, Math.min(percent, 100)) / 100) * width;
+};
+
+export const hp = (percent: number, height: number) => {
+  return (Math.max(0, Math.min(percent, 100)) / 100) * height;
+};
+
 /** Horizontal padding for screen edges (scales with width, min for small devices) */
 export const horizontalPadding = (width: number) => {
   const ratio = width / BASE_WIDTH;
@@ -42,6 +50,29 @@ export const gridCardWidth = (
   return (screenWidth - padding - gap * (columns - 1)) / columns;
 };
 
+export const responsiveColumns = (screenWidth: number) => {
+  if (screenWidth >= 900) {
+    return 4;
+  }
+  if (screenWidth >= 640) {
+    return 3;
+  }
+  return 2;
+};
+
+export const contentMaxWidth = (screenWidth: number) => {
+  if (screenWidth >= 1200) {
+    return 1120;
+  }
+  if (screenWidth >= 900) {
+    return 980;
+  }
+  if (screenWidth >= 640) {
+    return 760;
+  }
+  return screenWidth;
+};
+
 export type DeviceSize = "small" | "medium" | "large";
 
 /** Hook: responsive values from window dimensions */
@@ -57,11 +88,16 @@ export function useResponsive() {
       isSmallDevice: width < 380,
       isMediumDevice: width >= 380 && width < 500,
       isLargeDevice: width >= 500,
+      isTablet: width >= 640,
       deviceSize: (width < 380
         ? "small"
         : width < 500
           ? "medium"
           : "large") as DeviceSize,
+      contentMaxWidth: contentMaxWidth(width),
+      responsiveColumns: responsiveColumns(width),
+      wp: (percent: number) => wp(percent, width),
+      hp: (percent: number) => hp(percent, height),
       gridCardWidth: (columns = 2, gap = 12) =>
         gridCardWidth(width, columns, gap),
     }),

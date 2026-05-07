@@ -1,20 +1,20 @@
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV } from "@/styles/responsive";
+import LoaderPanel from "@/components/loaders/LoaderPanel";
+import { rS, rV } from "@/styles/responsive";
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 type ScreenLoaderProps = {
   label?: string;
+  sublabel?: string;
 };
 
 export default function ScreenLoader({
   label = "Loading content...",
+  sublabel,
 }: ScreenLoaderProps) {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={AppColors.primary} />
-      <Text style={styles.label}>{label}</Text>
+      <LoaderPanel label={label} sublabel={sublabel} />
     </View>
   );
 }
@@ -25,13 +25,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: rS(24),
-    paddingVertical: rV(32),
-  },
-  label: {
-    marginTop: rV(14),
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
+    paddingVertical: rV(40),
+    minHeight: rV(280),
   },
 });
