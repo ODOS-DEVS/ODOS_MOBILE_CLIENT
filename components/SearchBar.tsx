@@ -9,6 +9,7 @@ interface SearchBarProps {
   data?: any[];
   onResults?: (results: any[]) => void;
   onStartSearch?: () => void;
+  onQueryChange?: (query: string) => void;
   placeholder?: string;
   searchKeys?: string[];
   containerStyle?: ViewStyle;
@@ -18,6 +19,7 @@ export const SearchBar = ({
   data = [],
   onResults,
   onStartSearch,
+  onQueryChange,
   placeholder = "Search products, stores...",
   searchKeys = ["title", "category", "subtitle", "name", "label", "store"],
   containerStyle,
@@ -55,6 +57,7 @@ export const SearchBar = ({
   const handleQueryChange = (value: string) => {
     setQuery(value);
     const normalized = value.trim().toLowerCase().replace(/\s+/g, " ");
+    onQueryChange?.(normalized);
     if (normalized.length > 0) {
       onStartSearch?.();
     }
