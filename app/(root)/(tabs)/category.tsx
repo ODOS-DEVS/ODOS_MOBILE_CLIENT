@@ -1,6 +1,6 @@
 import CategoryCard from "@/components/cards/CategoryCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { SearchBar } from "@/components/SearchBar";
+import SearchLauncher from "@/components/search/SearchLauncher";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { categories } from "@/constants/Data";
@@ -51,7 +51,7 @@ const CategoryScreen = () => {
         )}
         ListHeaderComponent={
           <View style={styles.content}>
-            <SearchBar />
+            <SearchLauncher />
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Browse Categories</Text>

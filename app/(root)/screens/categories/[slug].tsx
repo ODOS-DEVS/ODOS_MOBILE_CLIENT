@@ -76,10 +76,26 @@ const CategoryDetailScreen = () => {
     setSelectedSubcategory(DEFAULT_SUBCATEGORY);
   }, [slug]);
 
-  const tabOptions = useMemo(
-    () => [DEFAULT_SUBCATEGORY, ...parsedSubcategories],
-    [parsedSubcategories],
-  );
+  const tabOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    counts.set(DEFAULT_SUBCATEGORY, categoryProducts.length);
+
+    for (const subcategory of parsedSubcategories) {
+      const normalizedSubcategory = normalizeValue(subcategory);
+      const count = categoryProducts.filter((product) => {
+        const candidateValues = [product.subcategory, ...(product.subcategorySlugs ?? [])]
+          .map((value) => normalizeValue(value))
+          .filter(Boolean);
+        return candidateValues.includes(normalizedSubcategory);
+      }).length;
+      counts.set(subcategory, count);
+    }
+
+    return [DEFAULT_SUBCATEGORY, ...parsedSubcategories].map((value) => ({
+      value,
+      count: counts.get(value) ?? 0,
+    }));
+  }, [categoryProducts, parsedSubcategories]);
 
   const resolvedTitle = title ?? "Category";
   const resolvedSubtitle = subtitle ?? "Browse ODOS picks";
@@ -173,13 +189,13 @@ const CategoryDetailScreen = () => {
               data={tabOptions}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => item.value}
               contentContainerStyle={{ paddingHorizontal: rS(16), paddingTop: rS(18) }}
               renderItem={({ item }) => {
-                const active = item === selectedSubcategory;
+                const active = item.value === selectedSubcategory;
                 return (
                   <TouchableOpacity
-                    onPress={() => setSelectedSubcategory(item)}
+                    onPress={() => setSelectedSubcategory(item.value)}
                     activeOpacity={0.8}
                     style={{
                       marginRight: 12,
@@ -194,7 +210,9 @@ const CategoryDetailScreen = () => {
                         active ? "text-white" : "text-black"
                       }`}
                     >
-                      {item}
+                      {item.value === DEFAULT_SUBCATEGORY
+                        ? `All (${item.count})`
+                        : `${item.value} (${item.count})`}
                     </Text>
                   </TouchableOpacity>
                 );

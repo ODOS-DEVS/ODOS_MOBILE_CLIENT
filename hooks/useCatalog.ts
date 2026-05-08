@@ -28,6 +28,11 @@ export type CatalogProductItem = ProductCardProps & {
   colorOptions?: string[];
   sizeOptions?: string[];
   specifications?: string[];
+  storeId?: string;
+  stock?: number;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type CategoryApiItem = {
@@ -62,6 +67,11 @@ type ProductApiItem = {
   color_options?: string[] | null;
   size_options?: string[] | null;
   specifications?: string[] | null;
+  store_id?: string | null;
+  stock?: number;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
@@ -100,6 +110,11 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     colorOptions: item.color_options ?? undefined,
     sizeOptions: item.size_options ?? undefined,
     specifications: item.specifications ?? undefined,
+    storeId: item.store_id ?? undefined,
+    stock: item.stock ?? undefined,
+    status: item.status ?? undefined,
+    createdAt: item.created_at ?? undefined,
+    updatedAt: item.updated_at ?? undefined,
     image: resolveImageSource(item.image_url, item.image_key),
   };
 }
@@ -153,6 +168,11 @@ function buildFallbackProduct(product: Partial<CatalogProductItem> & { id: strin
     colorOptions: product.colorOptions ?? undefined,
     sizeOptions: product.sizeOptions ?? undefined,
     specifications: product.specifications ?? undefined,
+    storeId: product.storeId ?? undefined,
+    stock: product.stock ?? undefined,
+    status: product.status ?? undefined,
+    createdAt: product.createdAt ?? undefined,
+    updatedAt: product.updatedAt ?? undefined,
     image: product.image ?? resolveImageSource(product.imageUrl, product.imageKey),
   };
 }
@@ -179,7 +199,12 @@ function isSameProduct(a: CatalogProductItem, b: CatalogProductItem) {
     areStringArraysEqual(a.subcategorySlugs, b.subcategorySlugs) &&
     areStringArraysEqual(a.colorOptions, b.colorOptions) &&
     areStringArraysEqual(a.sizeOptions, b.sizeOptions) &&
-    areStringArraysEqual(a.specifications, b.specifications)
+    areStringArraysEqual(a.specifications, b.specifications) &&
+    a.storeId === b.storeId &&
+    a.stock === b.stock &&
+    a.status === b.status &&
+    a.createdAt === b.createdAt &&
+    a.updatedAt === b.updatedAt
   );
 }
 
@@ -188,6 +213,151 @@ function areProductsEqual(current: CatalogProductItem[], next: CatalogProductIte
     current.length === next.length &&
     current.every((item, index) => isSameProduct(item, next[index]))
   );
+}
+
+function parseReviewCount(reviews?: string | number) {
+  if (typeof reviews === "number" && Number.isFinite(reviews)) {
+    return reviews;
+  }
+
+  const parsed = Number(reviews);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getCatalogTimestamp(product: CatalogProductItem) {
+  const rawValue = product.updatedAt ?? product.createdAt;
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsed = new Date(rawValue).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mergeUniqueProducts(...sources: CatalogProductItem[][]) {
+  const seen = new Set<string>();
+  const merged: CatalogProductItem[] = [];
+
+  sources.forEach((items) => {
+    items.forEach((item) => {
+      if (!item?.id || seen.has(item.id)) {
+        return;
+      }
+
+      seen.add(item.id);
+      merged.push(item);
+    });
+  });
+
+  return merged;
+}
+
+function getRecommendationScore(
+  product: CatalogProductItem,
+  highlightedIds: Set<string>,
+  popularIds: Set<string>,
+  latestTimestamp: number,
+) {
+  const ratingScore = (product.rating ?? 0) * 16;
+  const reviewScore = Math.min(parseReviewCount(product.reviews), 200) * 0.18;
+  const hasDiscount =
+    Boolean(product.discount?.trim()) ||
+    (typeof product.oldPrice === "number" &&
+      typeof product.price === "number" &&
+      product.oldPrice > product.price);
+  const freshnessTimestamp = getCatalogTimestamp(product);
+  const freshnessWindow =
+    latestTimestamp > 0
+      ? Math.max(0, 1 - (latestTimestamp - freshnessTimestamp) / (1000 * 60 * 60 * 24 * 30))
+      : 0;
+
+  let score = 0;
+
+  if (highlightedIds.has(product.id)) {
+    score += 220;
+  }
+
+  if (popularIds.has(product.id)) {
+    score += 90;
+  }
+
+  if (product.section === "recommendations") {
+    score += 140;
+  }
+
+  if (product.section === "popular") {
+    score += 48;
+  }
+
+  if (product.placementTags?.some((tag) => tag.includes("recommend"))) {
+    score += 60;
+  }
+
+  if (hasDiscount) {
+    score += 35;
+  }
+
+  if ((product.stock ?? 1) > 0) {
+    score += 18;
+  }
+
+  score += ratingScore;
+  score += reviewScore;
+  score += freshnessWindow * 40;
+
+  return score;
+}
+
+function curateRecommendedProducts({
+  highlighted,
+  popular,
+  allProducts,
+  fallback,
+  limit,
+}: {
+  highlighted: CatalogProductItem[];
+  popular: CatalogProductItem[];
+  allProducts: CatalogProductItem[];
+  fallback: CatalogProductItem[];
+  limit: number;
+}) {
+  const pool = mergeUniqueProducts(highlighted, popular, allProducts, fallback).filter(
+    (product) => Boolean(product?.id && product?.title && product?.image),
+  );
+
+  if (pool.length === 0) {
+    return [];
+  }
+
+  const highlightedIds = new Set(highlighted.map((item) => item.id));
+  const popularIds = new Set(popular.map((item) => item.id));
+  const latestTimestamp = pool.reduce(
+    (current, item) => Math.max(current, getCatalogTimestamp(item)),
+    0,
+  );
+
+  return [...pool]
+    .sort((left, right) => {
+      const rightScore = getRecommendationScore(
+        right,
+        highlightedIds,
+        popularIds,
+        latestTimestamp,
+      );
+      const leftScore = getRecommendationScore(
+        left,
+        highlightedIds,
+        popularIds,
+        latestTimestamp,
+      );
+
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+
+      return getCatalogTimestamp(right) - getCatalogTimestamp(left);
+    })
+    .slice(0, Math.max(limit, 1));
 }
 
 export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
@@ -378,6 +548,55 @@ export function useCatalogProducts({
     products,
     isLoading,
     sortOptions,
+  };
+}
+
+export function useRecommendedProducts({
+  fallback = [],
+  limit = 8,
+}: {
+  fallback?: CatalogProductItem[];
+  limit?: number;
+}) {
+  const highlightedCatalog = useCatalogProducts({
+    section: "recommendations",
+    fallback,
+  });
+  const popularCatalog = useCatalogProducts({
+    section: "popular",
+    fallback: [],
+  });
+  const allCatalog = useCatalogProducts({
+    fallback: [],
+  });
+
+  const products = useMemo(
+    () =>
+      curateRecommendedProducts({
+        highlighted: highlightedCatalog.products,
+        popular: popularCatalog.products,
+        allProducts: allCatalog.products,
+        fallback,
+        limit,
+      }),
+    [
+      allCatalog.products,
+      fallback,
+      highlightedCatalog.products,
+      limit,
+      popularCatalog.products,
+    ],
+  );
+
+  const isLoading =
+    products.length === 0 &&
+    (highlightedCatalog.isLoading ||
+      popularCatalog.isLoading ||
+      allCatalog.isLoading);
+
+  return {
+    products,
+    isLoading,
   };
 }
 
