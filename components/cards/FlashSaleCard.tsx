@@ -30,6 +30,8 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   reviews,
 }) => {
   const hasPrice = !!price || !!oldPrice;
+  const hasRating = typeof rating === "number" && Number.isFinite(rating);
+  const formatCurrency = (value: number) => `₵${value.toFixed(2)}`;
 
   return (
     <TouchableOpacity
@@ -145,7 +147,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             </Text>
 
             {/* Rating */}
-            {rating && (
+            {hasRating ? (
               <View
                 style={{
                   marginLeft: rV(-24),
@@ -162,10 +164,10 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                     color: "#444",
                   }}
                 >
-                  {rating.toFixed(1)}
+                  {rating!.toFixed(1)}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View
@@ -212,7 +214,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                       color: "#222",
                     }}
                   >
-                    ${price}
+                    {formatCurrency(price)}
                   </Text>
                 )}
 
@@ -226,7 +228,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                       fontWeight: "700",
                     }}
                   >
-                    ${oldPrice}
+                    {formatCurrency(oldPrice)}
                   </Text>
                 )}
               </View>

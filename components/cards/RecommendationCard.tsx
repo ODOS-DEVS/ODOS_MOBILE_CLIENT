@@ -1,189 +1,376 @@
-import { rS, rV } from "@/styles/responsive";
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import React from "react";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
+function formatCurrency(value: number) {
+  return `₵${value.toFixed(2)}`;
+}
+
+function buildOfferLabel(
+  discount?: string,
+  oldPrice?: number,
+  price?: number,
+) {
+  if (discount?.trim()) {
+    return discount.trim();
+  }
+
+  if (
+    typeof oldPrice === "number" &&
+    typeof price === "number" &&
+    oldPrice > price &&
+    price > 0
+  ) {
+    const percent = Math.round(((oldPrice - price) / oldPrice) * 100);
+    return `${percent}% OFF`;
+  }
+
+  return null;
+}
+
 interface RecommendationCardProps {
-  id: any;
+  id: string;
   image: any;
+  imageKey?: string;
+  imageUrl?: string;
   title: string;
   category?: string;
+  subcategory?: string;
   oldPrice?: number;
   price?: number;
+  discount?: string;
   rating?: number;
-  reviews?: number;
+  reviews?: number | string;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   id,
   image,
+  imageKey,
+  imageUrl,
   title,
   category,
+  subcategory,
   oldPrice,
   price,
+  discount,
   rating,
   reviews,
 }) => {
-  const hasPrice = !!price || !!oldPrice;
+  const hasPrice = typeof price === "number" || typeof oldPrice === "number";
+  const hasRating = typeof rating === "number" && Number.isFinite(rating);
+  const offerLabel = buildOfferLabel(discount, oldPrice, price);
+  const reviewCount =
+    typeof reviews === "number"
+      ? reviews
+      : Number.isFinite(Number(reviews))
+        ? Number(reviews)
+        : undefined;
+  const metaLabel = subcategory ?? category;
 
   return (
     <TouchableOpacity
+      activeOpacity={0.92}
       onPress={() =>
         router.push({
           pathname: "/screens/[id]" as any,
           params: {
             id,
-            image,
+            image: imageUrl ?? imageKey ?? image,
+            imageKey,
+            imageUrl,
             title,
             category,
             oldPrice,
             price,
+            discount,
             rating,
             reviews,
           },
         })
       }
     >
-      <View
-        className="bg-white shadow-sm"
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          borderRadius: rS(16),
-          padding: rS(12),
-        }}
-      >
-        <Image
-          source={image}
-          style={{
-            width: rS(90),
-            height: rS(80),
-            borderRadius: rS(12),
-            marginRight: rS(10),
-            backgroundColor: "#E5E7EB",
-          }}
-          resizeMode="contain"
-        />
-
-        <View style={{ flex: 1 }}>
-          <Text
-            className="font-montserrat-semiBold text-subtext-200"
-            style={{ fontSize: rS(12) }}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {category && (
-            <Text
-              className="text-subtext-200"
-              style={{ fontSize: rS(8), marginTop: 2 }}
-              numberOfLines={1}
-            >
-              {category}
-            </Text>
-          )}
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginTop: rV(6),
-            }}
-          >
-            {hasPrice && (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {price && (
-                  <Text
-                    style={{
-                      fontSize: rS(12),
-                      fontWeight: "800",
-                      color: "#222",
-                    }}
-                  >
-                    ${price}
-                  </Text>
-                )}
-
-                {oldPrice && (
-                  <Text
-                    style={{
-                      fontSize: rS(12),
-                      marginLeft: rS(6),
-                      color: "red",
-                      textDecorationLine: "line-through",
-                      fontWeight: "700",
-                    }}
-                  >
-                    ${oldPrice}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {rating && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginLeft: rS(10),
-                }}
-              >
-                <Ionicons name="star" size={rS(14)} color="#facc15" />
-                <Text
-                  className="font-montserrat-extraBold text-subtext-200"
-                  style={{ fontSize: rS(11), marginLeft: rS(4) }}
-                >
-                  {rating.toFixed(1)}
-                </Text>
-                {/* {reviews && (
-                  <Text
-                    className="text-subtext-200"
-                    style={{ fontSize: rS(11), marginLeft: rS(4) }}
-                  >
-                    ({reviews} Review{reviews > 1 ? "s" : ""})
-                  </Text>
-                )} */}
-              </View>
-            )}
-          </View>
+      <View style={styles.card}>
+        <View style={styles.imageShell}>
+          <Image source={image} style={styles.image} resizeMode="cover" />
+          {offerLabel ? (
+            <View style={styles.offerBadge}>
+              <Text style={styles.offerBadgeText}>{offerLabel}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: rS(8),
-            marginBottom: rS(20),
-            marginRight: rS(-4),
-          }}
-        >
-          <AddToCartBtn
-            item={{
-              id,
-              title,
-              category,
-              price: price ?? 0,
-              image,
-            }}
-          />
-          <AddToWishList
-            product={{
-              id,
-              image,
-              title,
-              category,
-              oldPrice,
-              price,
-              rating,
-              reviews,
-            }}
-          />
+        <View style={styles.content}>
+          <View style={styles.topRow}>
+            <View style={styles.pill}>
+              <Ionicons name="sparkles-outline" size={rMS(12)} color="#8A6A2E" />
+              <Text style={styles.pillText}>ODOS Pick</Text>
+            </View>
+
+            {hasRating ? (
+              <View style={styles.ratingWrap}>
+                <Ionicons name="star" size={rMS(13)} color="#F4B740" />
+                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+
+          {metaLabel ? (
+            <Text style={styles.metaLabel} numberOfLines={1}>
+              {metaLabel}
+            </Text>
+          ) : null}
+
+          <View style={styles.subMetaRow}>
+            {category ? (
+              <View style={styles.microChip}>
+                <Text style={styles.microChipText} numberOfLines={1}>
+                  {category}
+                </Text>
+              </View>
+            ) : null}
+
+            {reviewCount ? (
+              <Text style={styles.reviewText}>
+                {reviewCount} review{reviewCount === 1 ? "" : "s"}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.bottomRow}>
+            <View style={styles.priceBlock}>
+              {hasPrice ? (
+                <>
+                  {typeof price === "number" ? (
+                    <Text style={styles.priceText}>{formatCurrency(price)}</Text>
+                  ) : null}
+
+                  {typeof oldPrice === "number" ? (
+                    <Text style={styles.oldPriceText}>
+                      {formatCurrency(oldPrice)}
+                    </Text>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={styles.noPriceText}>Check latest price</Text>
+              )}
+            </View>
+
+            <View style={styles.actionRow}>
+              <AddToWishList
+                size={rMS(15)}
+                iconColor={AppColors.secondary}
+                activeIconColor="#D64747"
+                containerStyle={styles.actionButton}
+                product={{
+                  id,
+                  image,
+                  title,
+                  category,
+                  oldPrice,
+                  price,
+                  rating,
+                  reviews,
+                }}
+              />
+              <AddToCartBtn
+                iconSize={rMS(15)}
+                iconColor={AppColors.primary}
+                containerStyle={styles.actionButton}
+                item={{
+                  id,
+                  title,
+                  category,
+                  price: price ?? 0,
+                  image,
+                  imageKey,
+                }}
+              />
+            </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: rS(22),
+    backgroundColor: AppColors.white,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E4E8EE",
+    padding: rS(12),
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  imageShell: {
+    width: rS(106),
+    height: rS(118),
+    borderRadius: rS(18),
+    overflow: "hidden",
+    backgroundColor: "#ECF0F4",
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  offerBadge: {
+    position: "absolute",
+    top: rV(8),
+    left: rS(8),
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(4),
+    borderRadius: rS(999),
+    backgroundColor: "rgba(17, 24, 39, 0.82)",
+  },
+  offerBadgeText: {
+    color: AppColors.white,
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(10),
+    letterSpacing: 0.25,
+  },
+  content: {
+    flex: 1,
+    marginLeft: rS(12),
+    justifyContent: "space-between",
+    minHeight: rS(118),
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(5),
+    borderRadius: rS(999),
+    paddingHorizontal: rS(9),
+    paddingVertical: rV(4),
+    backgroundColor: "#F6EFE1",
+  },
+  pillText: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(10),
+    color: "#8A6A2E",
+    letterSpacing: 0.3,
+  },
+  ratingWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(4),
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(4),
+    borderRadius: rS(999),
+    backgroundColor: "#F8FAFC",
+  },
+  ratingText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(11),
+    color: AppColors.text,
+  },
+  title: {
+    marginTop: rV(8),
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+    color: AppColors.text,
+    lineHeight: rMS(19),
+  },
+  metaLabel: {
+    marginTop: rV(4),
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    color: AppColors.secondary,
+  },
+  subMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+    marginTop: rV(8),
+    flexWrap: "wrap",
+  },
+  microChip: {
+    borderRadius: rS(999),
+    backgroundColor: "#F5F7FA",
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(4),
+    maxWidth: "72%",
+  },
+  microChipText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(10),
+    color: AppColors.secondary,
+  },
+  reviewText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(10),
+    color: "#7B8794",
+  },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: rS(10),
+    marginTop: rV(10),
+  },
+  priceBlock: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  priceText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(15),
+    color: AppColors.text,
+  },
+  oldPriceText: {
+    marginTop: rV(3),
+    fontFamily: Fonts.title,
+    fontSize: rMS(11),
+    color: "#C24141",
+    textDecorationLine: "line-through",
+  },
+  noPriceText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(11),
+    color: AppColors.secondary,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+    flexShrink: 0,
+  },
+  actionButton: {
+    backgroundColor: "#F2F5F8",
+    padding: rS(9),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#D7DDE5",
+    elevation: 0,
+  },
+});
 
 export default RecommendationCard;

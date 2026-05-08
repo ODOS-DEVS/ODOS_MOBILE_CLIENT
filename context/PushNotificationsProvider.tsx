@@ -1,19 +1,9 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef } from "react";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 async function getAccessToken(currentToken: string | null) {
   return currentToken || (await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY));
@@ -33,13 +23,35 @@ export function PushNotificationsProvider({
   children: React.ReactNode;
 }) {
   const { user, accessToken } = useAuth();
+  const isExpoGo = Constants.appOwnership === "expo";
   const registeredTokenRef = useRef<string | null>(null);
+  const expoGoWarningShownRef = useRef(false);
 
   useEffect(() => {
     const register = async () => {
+      if (isExpoGo) {
+        if (!expoGoWarningShownRef.current) {
+          console.warn(
+            "Push notifications disabled in Expo Go. Use a development build for real push notifications.",
+          );
+          expoGoWarningShownRef.current = true;
+        }
+        return;
+      }
+
       if (!user || !user.allow_notifications || !Device.isDevice) {
         return;
       }
+
+      const Notifications = await import("expo-notifications");
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
 
       const projectId = await getProjectId();
       if (!projectId) {
@@ -88,7 +100,7 @@ export function PushNotificationsProvider({
     };
 
     void register();
-  }, [accessToken, user]);
+  }, [accessToken, isExpoGo, user]);
 
-  return children;
+  return <>{children}</>;
 }

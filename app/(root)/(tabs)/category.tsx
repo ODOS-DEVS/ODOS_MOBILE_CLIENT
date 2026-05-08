@@ -1,7 +1,6 @@
 import CategoryCard from "@/components/cards/CategoryCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { SearchBar } from "@/components/SearchBar";
+import SearchLauncher from "@/components/search/SearchLauncher";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { categories } from "@/constants/Data";
@@ -16,27 +15,23 @@ const CategoryScreen = () => {
     () =>
       categories.map((item) => ({
         ...item,
-        slug: item.title.toLowerCase(),
+        slug: item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       })),
     [],
   );
-  const { categories: catalogCategories, isLoading } =
+  const { categories: catalogCategories } =
     useCatalogCategories(fallbackCategories);
 
-  const handlePress = (slug: string) => {
-    switch (slug) {
-      case "gents":
-        router.push("/(root)/screens/categories/gents");
-        break;
-      case "ladies":
-        router.push("/(root)/screens/categories/ladies");
-        break;
-      case "kids":
-        router.push("/(root)/screens/categories/kids");
-        break;
-      default:
-        break;
-    }
+  const handlePress = (category: CatalogCategoryItem) => {
+    router.push({
+      pathname: "/screens/categories/[slug]" as any,
+      params: {
+        slug: category.slug,
+        title: category.title,
+        subtitle: category.subtitle,
+        subcategories: JSON.stringify(category.subcategories ?? []),
+      },
+    });
   };
 
   return (
@@ -45,33 +40,29 @@ const CategoryScreen = () => {
       <ProfileHeader title="Explore" showBackButton={false} />
 
       <FlatList
-        data={[]}
-        keyExtractor={() => "dummy"}
-        renderItem={() => null}
+        data={catalogCategories}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <CategoryCard
+            {...item}
+            subcategoryCount={item.subcategories?.length}
+            onPress={() => handlePress(item)}
+          />
+        )}
         ListHeaderComponent={
           <View style={styles.content}>
-            <SearchBar />
+            <SearchLauncher />
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Browse Categories</Text>
-              {isLoading ? (
-                <ScreenLoader label="Loading categories..." />
-              ) : (
-                <FlatList
-                  data={catalogCategories}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <CategoryCard
-                      {...item}
-                      onPress={() => handlePress(item.slug)}
-                    />
-                  )}
-                  contentContainerStyle={styles.categoryList}
-                />
-              )}
+              <Text style={styles.sectionSubtitle}>
+                Find what you want faster across ODOS.
+              </Text>
             </View>
           </View>
         }
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
@@ -83,23 +74,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
-    marginBottom: rV(24),
   },
   content: {
     paddingTop: rV(18),
     paddingHorizontal: rS(16),
-    paddingBottom: rV(120),
   },
   section: {
     marginTop: rV(24),
+    marginBottom: rV(10),
   },
   sectionTitle: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(18),
     color: AppColors.text,
-    marginBottom: rV(14),
   },
-  categoryList: {
-    paddingBottom: rV(12),
+  sectionSubtitle: {
+    marginTop: rV(6),
+    fontFamily: Fonts.title,
+    fontSize: rMS(13),
+    color: "#6B7280",
+  },
+  listContent: {
+    paddingHorizontal: rS(16),
+    paddingBottom: rV(118),
   },
 });
