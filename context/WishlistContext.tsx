@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
+import { resolveApiMediaUrl } from "@/utils/media";
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
@@ -62,7 +63,9 @@ function parseOptionalNumber(value: string | null): number | undefined {
 function mapWishlistApiItem(item: WishlistApiItem): WishlistProduct {
   return {
     id: item.product_id,
-    image: item.image_url ? { uri: item.image_url } : undefined,
+    image: item.image_url
+      ? { uri: resolveApiMediaUrl(item.image_url) ?? item.image_url }
+      : undefined,
     title: item.title,
     category: item.category || undefined,
     price: parseOptionalNumber(item.price),

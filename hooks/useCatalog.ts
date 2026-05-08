@@ -1,7 +1,7 @@
 import type { ProductCardProps } from "@/components/cards/ProductCard";
 import { API_BASE_URL } from "@/constants/auth";
-import { resolveCatalogImage } from "@/constants/catalogImages";
-import { useEffect, useMemo, useState } from "react";
+import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CatalogCategoryItem = {
   id: string;
@@ -10,12 +10,29 @@ export type CatalogCategoryItem = {
   subtitle: string;
   image: any;
   imageKey?: string;
+  imageUrl?: string;
+  subcategories?: string[];
 };
 
 export type CatalogProductItem = ProductCardProps & {
+  description?: string;
   imageKey?: string;
+  imageUrl?: string;
+  imageUrls?: string[];
   audienceSlug?: string;
   section?: string;
+  placementTags?: string[];
+  subcategory?: string;
+  categorySlugs?: string[];
+  subcategorySlugs?: string[];
+  colorOptions?: string[];
+  sizeOptions?: string[];
+  specifications?: string[];
+  storeId?: string;
+  stock?: number;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type CategoryApiItem = {
@@ -24,20 +41,37 @@ type CategoryApiItem = {
   title: string;
   subtitle: string;
   image_key: string;
+  image_url?: string | null;
+  subcategories?: string[] | null;
 };
 
 type ProductApiItem = {
   id: string;
   audience_slug: string | null;
   section: string | null;
+  placement_tags?: string[] | null;
   title: string;
+  description?: string | null;
   category: string | null;
+  subcategory?: string | null;
+  category_slugs?: string[] | null;
+  subcategory_slugs?: string[] | null;
   price: number;
   old_price: number | null;
   discount: string | null;
   rating: number | null;
   reviews: string | null;
   image_key: string;
+  image_url?: string | null;
+  image_urls?: string[] | null;
+  color_options?: string[] | null;
+  size_options?: string[] | null;
+  specifications?: string[] | null;
+  store_id?: string | null;
+  stock?: number;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
@@ -47,7 +81,9 @@ function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
     title: item.title,
     subtitle: item.subtitle,
     imageKey: item.image_key,
-    image: resolveCatalogImage(item.image_key),
+    imageUrl: resolveApiMediaUrl(item.image_url),
+    subcategories: item.subcategories ?? undefined,
+    image: resolveImageSource(item.image_url, item.image_key),
   };
 }
 
@@ -55,6 +91,7 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
   return {
     id: item.id,
     title: item.title,
+    description: item.description ?? undefined,
     category: item.category ?? undefined,
     price: item.price,
     oldPrice: item.old_price ?? undefined,
@@ -62,16 +99,57 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     rating: item.rating ?? undefined,
     reviews: item.reviews ?? undefined,
     imageKey: item.image_key,
+    imageUrl: resolveApiMediaUrl(item.image_url),
+    imageUrls: item.image_urls?.map((value) => resolveApiMediaUrl(value) ?? value) ?? undefined,
     audienceSlug: item.audience_slug ?? undefined,
     section: item.section ?? undefined,
-    image: resolveCatalogImage(item.image_key),
+    placementTags: item.placement_tags ?? undefined,
+    subcategory: item.subcategory ?? undefined,
+    categorySlugs: item.category_slugs ?? undefined,
+    subcategorySlugs: item.subcategory_slugs ?? undefined,
+    colorOptions: item.color_options ?? undefined,
+    sizeOptions: item.size_options ?? undefined,
+    specifications: item.specifications ?? undefined,
+    storeId: item.store_id ?? undefined,
+    stock: item.stock ?? undefined,
+    status: item.status ?? undefined,
+    createdAt: item.created_at ?? undefined,
+    updatedAt: item.updated_at ?? undefined,
+    image: resolveImageSource(item.image_url, item.image_key),
   };
+}
+
+function isSameCategory(a: CatalogCategoryItem, b: CatalogCategoryItem) {
+  return (
+    a.id === b.id &&
+    a.slug === b.slug &&
+    a.title === b.title &&
+    a.subtitle === b.subtitle &&
+    a.imageKey === b.imageKey &&
+    a.imageUrl === b.imageUrl &&
+    areStringArraysEqual(a.subcategories, b.subcategories)
+  );
+}
+
+function areStringArraysEqual(a: string[] = [], b: string[] = []) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function areCategoriesEqual(
+  current: CatalogCategoryItem[],
+  next: CatalogCategoryItem[],
+) {
+  return (
+    current.length === next.length &&
+    current.every((item, index) => isSameCategory(item, next[index]))
+  );
 }
 
 function buildFallbackProduct(product: Partial<CatalogProductItem> & { id: string }): CatalogProductItem {
   return {
     id: product.id,
     title: product.title ?? "Product",
+    description: product.description ?? undefined,
     category: product.category ?? undefined,
     price: product.price ?? 0,
     oldPrice: product.oldPrice ?? undefined,
@@ -79,9 +157,23 @@ function buildFallbackProduct(product: Partial<CatalogProductItem> & { id: strin
     rating: product.rating ?? undefined,
     reviews: product.reviews ?? undefined,
     imageKey: product.imageKey ?? undefined,
+    imageUrl: product.imageUrl ?? undefined,
+    imageUrls: product.imageUrls ?? undefined,
     audienceSlug: product.audienceSlug ?? undefined,
     section: product.section ?? undefined,
-    image: product.image ?? resolveCatalogImage(product.imageKey),
+    placementTags: product.placementTags ?? undefined,
+    subcategory: product.subcategory ?? undefined,
+    categorySlugs: product.categorySlugs ?? undefined,
+    subcategorySlugs: product.subcategorySlugs ?? undefined,
+    colorOptions: product.colorOptions ?? undefined,
+    sizeOptions: product.sizeOptions ?? undefined,
+    specifications: product.specifications ?? undefined,
+    storeId: product.storeId ?? undefined,
+    stock: product.stock ?? undefined,
+    status: product.status ?? undefined,
+    createdAt: product.createdAt ?? undefined,
+    updatedAt: product.updatedAt ?? undefined,
+    image: product.image ?? resolveImageSource(product.imageUrl, product.imageKey),
   };
 }
 
@@ -89,6 +181,7 @@ function isSameProduct(a: CatalogProductItem, b: CatalogProductItem) {
   return (
     a.id === b.id &&
     a.title === b.title &&
+    a.description === b.description &&
     a.category === b.category &&
     a.price === b.price &&
     a.oldPrice === b.oldPrice &&
@@ -96,21 +189,199 @@ function isSameProduct(a: CatalogProductItem, b: CatalogProductItem) {
     a.rating === b.rating &&
     a.reviews === b.reviews &&
     a.imageKey === b.imageKey &&
+    a.imageUrl === b.imageUrl &&
+    areStringArraysEqual(a.imageUrls, b.imageUrls) &&
     a.audienceSlug === b.audienceSlug &&
     a.section === b.section &&
-    a.image === b.image
+    areStringArraysEqual(a.placementTags, b.placementTags) &&
+    a.subcategory === b.subcategory &&
+    areStringArraysEqual(a.categorySlugs, b.categorySlugs) &&
+    areStringArraysEqual(a.subcategorySlugs, b.subcategorySlugs) &&
+    areStringArraysEqual(a.colorOptions, b.colorOptions) &&
+    areStringArraysEqual(a.sizeOptions, b.sizeOptions) &&
+    areStringArraysEqual(a.specifications, b.specifications) &&
+    a.storeId === b.storeId &&
+    a.stock === b.stock &&
+    a.status === b.status &&
+    a.createdAt === b.createdAt &&
+    a.updatedAt === b.updatedAt
   );
+}
+
+function areProductsEqual(current: CatalogProductItem[], next: CatalogProductItem[]) {
+  return (
+    current.length === next.length &&
+    current.every((item, index) => isSameProduct(item, next[index]))
+  );
+}
+
+function parseReviewCount(reviews?: string | number) {
+  if (typeof reviews === "number" && Number.isFinite(reviews)) {
+    return reviews;
+  }
+
+  const parsed = Number(reviews);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getCatalogTimestamp(product: CatalogProductItem) {
+  const rawValue = product.updatedAt ?? product.createdAt;
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsed = new Date(rawValue).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mergeUniqueProducts(...sources: CatalogProductItem[][]) {
+  const seen = new Set<string>();
+  const merged: CatalogProductItem[] = [];
+
+  sources.forEach((items) => {
+    items.forEach((item) => {
+      if (!item?.id || seen.has(item.id)) {
+        return;
+      }
+
+      seen.add(item.id);
+      merged.push(item);
+    });
+  });
+
+  return merged;
+}
+
+function getRecommendationScore(
+  product: CatalogProductItem,
+  highlightedIds: Set<string>,
+  popularIds: Set<string>,
+  latestTimestamp: number,
+) {
+  const ratingScore = (product.rating ?? 0) * 16;
+  const reviewScore = Math.min(parseReviewCount(product.reviews), 200) * 0.18;
+  const hasDiscount =
+    Boolean(product.discount?.trim()) ||
+    (typeof product.oldPrice === "number" &&
+      typeof product.price === "number" &&
+      product.oldPrice > product.price);
+  const freshnessTimestamp = getCatalogTimestamp(product);
+  const freshnessWindow =
+    latestTimestamp > 0
+      ? Math.max(0, 1 - (latestTimestamp - freshnessTimestamp) / (1000 * 60 * 60 * 24 * 30))
+      : 0;
+
+  let score = 0;
+
+  if (highlightedIds.has(product.id)) {
+    score += 220;
+  }
+
+  if (popularIds.has(product.id)) {
+    score += 90;
+  }
+
+  if (product.section === "recommendations") {
+    score += 140;
+  }
+
+  if (product.section === "popular") {
+    score += 48;
+  }
+
+  if (product.placementTags?.some((tag) => tag.includes("recommend"))) {
+    score += 60;
+  }
+
+  if (hasDiscount) {
+    score += 35;
+  }
+
+  if ((product.stock ?? 1) > 0) {
+    score += 18;
+  }
+
+  score += ratingScore;
+  score += reviewScore;
+  score += freshnessWindow * 40;
+
+  return score;
+}
+
+function curateRecommendedProducts({
+  highlighted,
+  popular,
+  allProducts,
+  fallback,
+  limit,
+}: {
+  highlighted: CatalogProductItem[];
+  popular: CatalogProductItem[];
+  allProducts: CatalogProductItem[];
+  fallback: CatalogProductItem[];
+  limit: number;
+}) {
+  const pool = mergeUniqueProducts(highlighted, popular, allProducts, fallback).filter(
+    (product) => Boolean(product?.id && product?.title && product?.image),
+  );
+
+  if (pool.length === 0) {
+    return [];
+  }
+
+  const highlightedIds = new Set(highlighted.map((item) => item.id));
+  const popularIds = new Set(popular.map((item) => item.id));
+  const latestTimestamp = pool.reduce(
+    (current, item) => Math.max(current, getCatalogTimestamp(item)),
+    0,
+  );
+
+  return [...pool]
+    .sort((left, right) => {
+      const rightScore = getRecommendationScore(
+        right,
+        highlightedIds,
+        popularIds,
+        latestTimestamp,
+      );
+      const leftScore = getRecommendationScore(
+        left,
+        highlightedIds,
+        popularIds,
+        latestTimestamp,
+      );
+
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+
+      return getCatalogTimestamp(right) - getCatalogTimestamp(left);
+    })
+    .slice(0, Math.max(limit, 1));
 }
 
 export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
   const [categories, setCategories] = useState<CatalogCategoryItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const fallbackRef = useRef(fallback);
 
   useEffect(() => {
-    let isMounted = true;
+    fallbackRef.current = fallback;
+  }, [fallback]);
 
-    const loadCategories = async () => {
-      setIsLoading(true);
+  const loadCategories = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
+      if (!background) {
+        setIsLoading(true);
+      }
 
       try {
         const response = await fetch(`${API_BASE_URL}/catalog/categories`);
@@ -119,57 +390,100 @@ export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
         }
 
         const payload = (await response.json()) as CategoryApiItem[];
-        if (!isMounted || payload.length === 0) {
+        if (!isMountedRef.current) {
           return;
         }
 
-        setCategories(payload.map(mapCategory));
+        const nextCategories = payload.map(mapCategory);
+        setCategories((current) =>
+          areCategoriesEqual(current, nextCategories) ? current : nextCategories,
+        );
       } catch {
-        if (isMounted) {
-          setCategories(fallback);
+        if (isMountedRef.current && !background) {
+          setCategories((current) =>
+            areCategoriesEqual(current, fallbackRef.current) ? current : fallbackRef.current,
+          );
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current && !background) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    };
+    },
+    [],
+  );
 
-    loadCategories();
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadCategories();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [fallback]);
+  }, [loadCategories]);
 
   return { categories, isLoading };
 }
 
 export function useCatalogProducts({
   audience,
+  category,
   section,
+  placement,
+  subcategory,
+  storeId,
   fallback = [],
 }: {
   audience?: string;
+  category?: string;
   section?: string;
+  placement?: string;
+  subcategory?: string;
+  storeId?: string;
   fallback?: CatalogProductItem[];
 }) {
   const [products, setProducts] = useState<CatalogProductItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const fallbackRef = useRef(fallback);
 
   useEffect(() => {
-    let isMounted = true;
+    fallbackRef.current = fallback;
+  }, [fallback]);
 
-    const loadProducts = async () => {
-      setIsLoading(true);
+  const loadProducts = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
+      if (!background) {
+        setIsLoading(true);
+      }
 
       try {
         const query = new URLSearchParams();
         if (audience) {
           query.set("audience", audience);
         }
+        if (category) {
+          query.set("category", category);
+        }
         if (section) {
           query.set("section", section);
+        }
+        if (placement) {
+          query.set("placement", placement);
+        }
+        if (subcategory) {
+          query.set("subcategory", subcategory);
+        }
+        if (storeId) {
+          query.set("store_id", storeId);
         }
 
         const response = await fetch(
@@ -181,34 +495,48 @@ export function useCatalogProducts({
         }
 
         const payload = (await response.json()) as ProductApiItem[];
-        if (!isMounted || payload.length === 0) {
+        if (!isMountedRef.current) {
           return;
         }
 
-        setProducts(payload.map(mapProduct));
+        const nextProducts = payload.map(mapProduct);
+        setProducts((current) =>
+          areProductsEqual(current, nextProducts) ? current : nextProducts,
+        );
       } catch {
-        if (isMounted) {
-          setProducts(fallback);
+        if (isMountedRef.current && !background) {
+          setProducts((current) =>
+            areProductsEqual(current, fallbackRef.current) ? current : fallbackRef.current,
+          );
         }
       } finally {
-        if (isMounted) {
+        if (isMountedRef.current && !background) {
           setIsLoading(false);
         }
+        isFetchingRef.current = false;
       }
-    };
+    },
+    [audience, category, placement, section, storeId, subcategory],
+  );
 
-    loadProducts();
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadProducts();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [audience, fallback, section]);
+  }, [loadProducts]);
 
   const sortOptions = useMemo(() => {
     const uniqueCategories = Array.from(
       new Set(
         products
-          .map((item) => item.category)
+          .flatMap((item) =>
+            item.subcategorySlugs?.length
+              ? item.subcategorySlugs
+              : [item.subcategory],
+          )
           .filter((value): value is string => Boolean(value?.trim())),
       ),
     );
@@ -223,6 +551,55 @@ export function useCatalogProducts({
   };
 }
 
+export function useRecommendedProducts({
+  fallback = [],
+  limit = 8,
+}: {
+  fallback?: CatalogProductItem[];
+  limit?: number;
+}) {
+  const highlightedCatalog = useCatalogProducts({
+    section: "recommendations",
+    fallback,
+  });
+  const popularCatalog = useCatalogProducts({
+    section: "popular",
+    fallback: [],
+  });
+  const allCatalog = useCatalogProducts({
+    fallback: [],
+  });
+
+  const products = useMemo(
+    () =>
+      curateRecommendedProducts({
+        highlighted: highlightedCatalog.products,
+        popular: popularCatalog.products,
+        allProducts: allCatalog.products,
+        fallback,
+        limit,
+      }),
+    [
+      allCatalog.products,
+      fallback,
+      highlightedCatalog.products,
+      limit,
+      popularCatalog.products,
+    ],
+  );
+
+  const isLoading =
+    products.length === 0 &&
+    (highlightedCatalog.isLoading ||
+      popularCatalog.isLoading ||
+      allCatalog.isLoading);
+
+  return {
+    products,
+    isLoading,
+  };
+}
+
 export function useCatalogProduct({
   productId,
   fallback,
@@ -230,25 +607,56 @@ export function useCatalogProduct({
   productId?: string;
   fallback: Partial<CatalogProductItem> & { id: string };
 }) {
-  const fallbackProduct = useMemo(
-    () => buildFallbackProduct(fallback),
-    [
-      fallback.id,
-      fallback.title,
-      fallback.category,
-      fallback.price,
-      fallback.oldPrice,
-      fallback.discount,
-      fallback.rating,
-      fallback.reviews,
-      fallback.imageKey,
-      fallback.audienceSlug,
-      fallback.section,
-      fallback.image,
-    ],
-  );
+  const fallbackProduct = useMemo(() => buildFallbackProduct(fallback), [fallback]);
   const [product, setProduct] = useState<CatalogProductItem>(fallbackProduct);
   const [isLoading, setIsLoading] = useState(Boolean(productId));
+  const isMountedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+
+  const loadProduct = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (!productId || isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+
+      if (!background) {
+        setIsLoading(true);
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/catalog/products/${encodeURIComponent(productId)}`,
+        );
+        if (!response.ok) {
+          throw new Error("Failed to load product.");
+        }
+
+        const payload = (await response.json()) as ProductApiItem;
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        const nextProduct = mapProduct(payload);
+        setProduct((current) =>
+          isSameProduct(current, nextProduct) ? current : nextProduct,
+        );
+      } catch {
+        if (isMountedRef.current && !background) {
+          setProduct((current) =>
+            isSameProduct(current, fallbackProduct) ? current : fallbackProduct,
+          );
+        }
+      } finally {
+        if (isMountedRef.current && !background) {
+          setIsLoading(false);
+        }
+        isFetchingRef.current = false;
+      }
+    },
+    [fallbackProduct, productId],
+  );
 
   useEffect(() => {
     setProduct((previous) =>
@@ -262,42 +670,14 @@ export function useCatalogProduct({
       return;
     }
 
-    let isMounted = true;
+    isMountedRef.current = true;
 
-    const loadProduct = async () => {
-      setIsLoading(true);
-
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/catalog/products/${encodeURIComponent(productId)}`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to load product.");
-        }
-
-        const payload = (await response.json()) as ProductApiItem;
-        if (!isMounted) {
-          return;
-        }
-
-        setProduct(mapProduct(payload));
-      } catch {
-        if (isMounted) {
-          setProduct(fallbackProduct);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadProduct();
+    void loadProduct();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, [fallbackProduct, productId]);
+  }, [loadProduct, productId]);
 
   return { product, isLoading };
 }

@@ -17,9 +17,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const GentsScreen = () => {
-  const { gridCardWidth } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const { gridCardWidth, responsiveColumns } = useResponsive();
+  const numColumns = responsiveColumns;
   const gridGap = rS(6);
   const gridPadding = rS(17);
   const {
@@ -27,6 +30,11 @@ const GentsScreen = () => {
     sortOptions,
     isLoading,
   } = useCatalogProducts({ audience: "gents", fallback: gentsData });
+  const { products: popularNewProducts } = useCatalogProducts({
+    audience: "gents",
+    placement: "popular-new",
+    fallback: catalogProducts.slice(0, 5),
+  });
 
   // Sorting
   const [selectedSort, setSelectedSort] = useState("All");
@@ -47,7 +55,9 @@ const GentsScreen = () => {
       setFilteredData(catalogProducts);
     } else {
       const filtered = catalogProducts.filter(
-        (item) => item.category?.toLowerCase() === selectedSort.toLowerCase(),
+        (item) =>
+          item.category?.toLowerCase() === selectedSort.toLowerCase() ||
+          item.subcategory?.toLowerCase() === selectedSort.toLowerCase(),
       );
       setFilteredData(filtered);
     }
@@ -96,9 +106,16 @@ const GentsScreen = () => {
             ) : (
               <FlatList
                 data={searchResults}
-                numColumns={2}
+                numColumns={numColumns}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <ProductCard {...item} />}
+                columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
+                renderItem={({ item }) => (
+                  <ProductCard
+                    {...item}
+                    cardWidth={gridCardWidth(numColumns, gridGap)}
+                    horizontalSpacing={0}
+                  />
+                )}
                 contentContainerStyle={{ paddingTop: 16 }}
                 scrollEnabled={false}
               />
@@ -109,7 +126,7 @@ const GentsScreen = () => {
         // ---------------- NORMAL GENTS SCREEN ----------------
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
           className="flex-1 bg-white"
         >
           {/* SEARCH BAR */}
@@ -135,15 +152,15 @@ const GentsScreen = () => {
             ) : (
               <FlatList
                 data={filteredData}
-                numColumns={2}
+                numColumns={numColumns}
                 scrollEnabled={false}
                 keyExtractor={(item) => item.id}
-                columnWrapperStyle={{ columnGap: gridGap }}
+                columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
                 renderItem={({ item }) => (
                   <ProductCard
                     {...item}
-                    cardWidth={gridCardWidth(2, gridGap)}
-                    horizontalSpacing={7}
+                    cardWidth={gridCardWidth(numColumns, gridGap)}
+                    horizontalSpacing={0}
                   />
                 )}
                 contentContainerStyle={{
@@ -164,7 +181,7 @@ const GentsScreen = () => {
           </View>
 
           {/* POPULAR NEW HEADER */}
-          <View className="flex-row justify-between mx-6 mt-16">
+          <View className="flex-row justify-between mx-6 mt-4">
             <Text className="text-lg font-montserrat-semiBold">
               Popular New
             </Text>
@@ -177,7 +194,7 @@ const GentsScreen = () => {
 
           {/* POPULAR LIST */}
           <FlatList
-            data={catalogProducts.slice(0, 5)}
+            data={popularNewProducts}
             horizontal
             showsHorizontalScrollIndicator={false}
             scrollEnabled={true}
@@ -186,6 +203,7 @@ const GentsScreen = () => {
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingVertical: 12,
+              paddingRight: rS(8),
             }}
           />
         </ScrollView>

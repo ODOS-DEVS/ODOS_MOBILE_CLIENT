@@ -34,19 +34,23 @@ export default function CheckoutScreen() {
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
   const imageKey = getParam(params.imageKey);
+  const paramTitle = String(getParam(params.title) ?? "Product");
+  const paramCategory = getParam(params.category) ?? undefined;
+  const paramPrice = Number(getParam(params.price) ?? 0);
+  const paramOldPrice = Number(getParam(params.oldPrice) ?? 0) || undefined;
   const checkoutMode =
     getParam(params.mode) === "cart" || (!id && cart.length > 0) ? "cart" : "buy_now";
   const checkoutFallback = useMemo(
     () => ({
       id,
-      title: String(getParam(params.title) ?? "Product"),
-      category: getParam(params.category) ?? undefined,
-      price: Number(getParam(params.price) ?? 0),
-      oldPrice: Number(getParam(params.oldPrice) ?? 0) || undefined,
+      title: paramTitle,
+      category: paramCategory,
+      price: paramPrice,
+      oldPrice: paramOldPrice,
       image: imageKey ? resolveCatalogImage(imageKey) : undefined,
       imageKey: imageKey ?? undefined,
     }),
-    [id, imageKey, params],
+    [id, imageKey, paramCategory, paramOldPrice, paramPrice, paramTitle],
   );
 
   const { product, isLoading } = useCatalogProduct({

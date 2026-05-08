@@ -7,10 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const HomeHeader = () => {
-  const insets = useSafeAreaInsets();
   const { horizontalPadding } = useResponsive();
   const { user } = useAuth();
   const { unreadCount } = useActivityFeed();
@@ -39,8 +37,8 @@ export const HomeHeader = () => {
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: horizontalPadding,
-        paddingTop: Math.max(insets.top, rV(66)),
-        paddingBottom: rV(8),
+        paddingTop: rV(10),
+        paddingBottom: rV(10),
       }}
     >
       <TouchableOpacity
