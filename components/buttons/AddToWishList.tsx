@@ -1,4 +1,5 @@
 import { useWishlist } from "@/context/WishlistContext";
+import { useToast } from "@/context/ToastContext";
 import { rS } from "@/styles/responsive";
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
@@ -30,6 +31,7 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
   containerStyle,
 }) => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { showToast } = useToast();
 
   const normalizedId = String(product.id);
   const liked = wishlist.some((item) => item.id === normalizedId);
@@ -37,8 +39,10 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
   const toggleWishlist = async () => {
     if (liked) {
       await removeFromWishlist(normalizedId);
+      showToast("Removed from wishlist.");
     } else {
       await addToWishlist({ ...product, id: normalizedId });
+      showToast("Added to wishlist.");
     }
   };
 

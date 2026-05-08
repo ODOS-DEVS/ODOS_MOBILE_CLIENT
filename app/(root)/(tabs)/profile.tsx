@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const {
@@ -235,11 +236,16 @@ export default function ProfileScreen() {
     : isRefreshingSession || (isLoading && resolvedVendorStatus === "none");
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 90 }}
-    >
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{
+          paddingTop: rV(10),
+          paddingBottom: 90,
+        }}
+      >
       {/* Header */}
       <TouchableOpacity
         onPress={() => {
@@ -443,7 +449,8 @@ export default function ProfileScreen() {
           />
         </View>
       ) : null}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -452,7 +459,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F7FA",
     paddingHorizontal: rS(16),
-    paddingTop: rV(54),
+  },
+  scroll: {
+    flex: 1,
   },
 
   header: {
@@ -460,7 +469,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: rMS(16),
-    marginTop: rV(20),
+    marginTop: rV(8),
   },
   subHeader: {
     flexDirection: "row",
