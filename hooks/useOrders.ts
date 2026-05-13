@@ -20,7 +20,9 @@ export type OrderPayload = {
   items: OrderItemPayload[];
   subtotal_amount: number;
   shipping_amount: number;
+  discount_amount: number;
   total_amount: number;
+  voucher_code?: string | null;
   address_full_name: string;
   address_phone: string;
   address_street: string;
@@ -55,6 +57,7 @@ export type Order = {
   status: "processing" | "delivered" | "cancelled" | string;
   subtotal_amount: number;
   shipping_amount: number;
+  discount_amount: number;
   total_amount: number;
   progress: number | null;
   tracking_eta: string | null;
@@ -69,6 +72,8 @@ export type Order = {
   payment_network: string | null;
   payment_phone: string | null;
   payment_last4: string | null;
+  voucher_code: string | null;
+  voucher_title: string | null;
   placed_at: string;
   delivered_at: string | null;
   cancelled_at: string | null;

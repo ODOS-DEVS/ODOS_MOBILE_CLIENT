@@ -161,6 +161,12 @@ export default function VendorDashboardScreen() {
               subtitle="Update the store details customers see."
               onPress={() => router.push("/vendor/store" as any)}
             />
+            <QuickActionCard
+              icon="ticket-outline"
+              title="Promotions"
+              subtitle="Create store offers and gift vouchers to shoppers."
+              onPress={() => router.push("/vendor/vouchers" as any)}
+            />
           </View>
 
           <View style={styles.card}>

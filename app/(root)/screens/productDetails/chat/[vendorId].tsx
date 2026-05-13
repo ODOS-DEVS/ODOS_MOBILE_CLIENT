@@ -1,6 +1,7 @@
 import Colors from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { type ChatMessage, useChat } from "@/context/ChatContext";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -151,7 +152,11 @@ export default function VendorChatScreen() {
       >
         <View className="flex-row items-center px-4">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() =>
+              goBackOr(router, {
+                fallback: "/(root)/screens/profileScreens/Account/Chats" as any,
+              })
+            }
             className="w-10 h-10 bg-black/10 rounded-full items-center justify-center mr-3"
             activeOpacity={0.7}
           >

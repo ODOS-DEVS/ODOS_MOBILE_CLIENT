@@ -9,7 +9,9 @@ import { useToast } from "@/context/ToastContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
 import { createOrderRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -19,6 +21,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -26,11 +29,14 @@ import {
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
+const normalizeVoucherCode = (value: string) => value.trim().toUpperCase();
+
 export default function CheckoutScreen() {
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
   const { cart, clearCart } = useCart();
   const { showToast } = useToast();
+  const { previewVoucher } = useVouchers();
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
   const imageKey = getParam(params.imageKey);
@@ -62,12 +68,18 @@ export default function CheckoutScreen() {
   const {
     selectedAddress,
     selectedPayment,
+    checkoutVoucherCode,
+    setCheckoutVoucherCode,
     isSyncingProfileData,
     clearCheckoutSelection,
   } = useProfile();
 
   const [quantity, setQuantity] = useState(1);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [voucherCodeInput, setVoucherCodeInput] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<VoucherPreview | null>(null);
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
 
   const productImage = useMemo<ImageSourcePropType | null>(
     () => (product.image ? (product.image as ImageSourcePropType) : null),
@@ -132,7 +144,8 @@ export default function CheckoutScreen() {
     [checkoutItems],
   );
   const shipping: number = 0;
-  const total = subtotal + shipping;
+  const discountAmount = appliedVoucher?.discountAmount ?? 0;
+  const total = Math.max(0, subtotal + shipping - discountAmount);
 
   const canPlaceOrder =
     !!user &&
@@ -140,7 +153,8 @@ export default function CheckoutScreen() {
     !!selectedPayment &&
     !!accessToken &&
     checkoutItems.length > 0 &&
-    !isPlacingOrder;
+    !isPlacingOrder &&
+    !isApplyingVoucher;
 
   useEffect(() => {
     if (isHydrating) {
@@ -169,6 +183,90 @@ export default function CheckoutScreen() {
     });
   };
 
+  const openVoucherScreen = () => {
+    router.push({
+      pathname: "/(root)/screens/profileScreens/Account/Vouchers" as any,
+      params: { fromCheckout: "1" },
+    });
+  };
+
+  const applyVoucherCode = React.useCallback(
+    async (code: string, options?: { silent?: boolean }) => {
+      const normalizedCode = normalizeVoucherCode(code);
+      if (!normalizedCode) {
+        setVoucherError("Enter a voucher code first.");
+        setAppliedVoucher(null);
+        setCheckoutVoucherCode(null);
+        return null;
+      }
+
+      setIsApplyingVoucher(true);
+      try {
+        const preview = await previewVoucher({
+          voucherCode: normalizedCode,
+          items: checkoutItems,
+          shippingAmount: shipping,
+        });
+        setAppliedVoucher(preview);
+        setVoucherCodeInput(preview.code);
+        setCheckoutVoucherCode(preview.code);
+        setVoucherError("");
+        if (!options?.silent) {
+          showToast(`${preview.code} applied successfully.`);
+        }
+        return preview;
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "We couldn't apply that voucher right now.";
+        setAppliedVoucher(null);
+        setCheckoutVoucherCode(null);
+        setVoucherError(message);
+        if (!options?.silent) {
+          showToast(message);
+        }
+        return null;
+      } finally {
+        setIsApplyingVoucher(false);
+      }
+    },
+    [checkoutItems, previewVoucher, setCheckoutVoucherCode, shipping, showToast],
+  );
+
+  const handleApplyVoucher = async () => {
+    await applyVoucherCode(voucherCodeInput);
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError("");
+    setVoucherCodeInput("");
+    setCheckoutVoucherCode(null);
+  };
+
+  useEffect(() => {
+    const normalizedCode = normalizeVoucherCode(checkoutVoucherCode ?? "");
+    if (!normalizedCode) {
+      return;
+    }
+
+    setVoucherCodeInput((current) =>
+      normalizeVoucherCode(current) === normalizedCode ? current : normalizedCode,
+    );
+    if (appliedVoucher?.code !== normalizedCode) {
+      void applyVoucherCode(normalizedCode, { silent: true });
+    }
+  }, [applyVoucherCode, appliedVoucher?.code, checkoutVoucherCode]);
+
+  useEffect(() => {
+    if (!appliedVoucher?.code) {
+      return;
+    }
+
+    void applyVoucherCode(appliedVoucher.code, { silent: true });
+  }, [applyVoucherCode, appliedVoucher?.code, subtotal]);
+
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder || !selectedAddress || !selectedPayment || !accessToken) {
       return;
@@ -181,7 +279,9 @@ export default function CheckoutScreen() {
         items: checkoutItems,
         subtotal_amount: subtotal,
         shipping_amount: shipping,
+        discount_amount: discountAmount,
         total_amount: total,
+        voucher_code: appliedVoucher?.code ?? null,
         address_full_name: selectedAddress.fullName,
         address_phone: selectedAddress.phone,
         address_street: selectedAddress.street,
@@ -228,7 +328,14 @@ export default function CheckoutScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() =>
+            goBackOr(router, {
+              fallback:
+                checkoutMode === "cart"
+                  ? ("/(root)/(tabs)/cart" as any)
+                  : "/(root)/(tabs)",
+            })
+          }
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={AppColors.text} />
@@ -431,10 +538,101 @@ export default function CheckoutScreen() {
             </View>
 
             <View style={styles.card}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionLabel}>Voucher</Text>
+                <TouchableOpacity
+                  style={styles.voucherBrowseBtn}
+                  activeOpacity={0.82}
+                  onPress={openVoucherScreen}
+                >
+                  <Text style={styles.voucherBrowseText}>Browse Wallet</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.voucherEntryRow}>
+                <View style={styles.voucherInputWrap}>
+                  <Ionicons
+                    name="ticket-outline"
+                    size={rMS(18)}
+                    color={AppColors.subtext[100]}
+                  />
+                  <TextInput
+                    value={voucherCodeInput}
+                    onChangeText={(value) => {
+                      setVoucherCodeInput(value.toUpperCase());
+                      if (voucherError) {
+                        setVoucherError("");
+                      }
+                    }}
+                    autoCapitalize="characters"
+                    placeholder="Enter voucher code"
+                    placeholderTextColor="#94A3B8"
+                    style={styles.voucherInput}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.voucherApplyBtn,
+                    isApplyingVoucher && styles.voucherApplyBtnDisabled,
+                  ]}
+                  activeOpacity={0.85}
+                  disabled={isApplyingVoucher}
+                  onPress={() => void handleApplyVoucher()}
+                >
+                  <Text style={styles.voucherApplyText}>
+                    {isApplyingVoucher ? "Applying..." : "Apply"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {voucherError ? (
+                <Text style={styles.voucherErrorText}>{voucherError}</Text>
+              ) : null}
+              {appliedVoucher ? (
+                <View style={styles.appliedVoucherCard}>
+                  <View style={styles.appliedVoucherTopRow}>
+                    <View style={styles.appliedVoucherBadge}>
+                      <Ionicons name="pricetag-outline" size={rMS(14)} color="#166534" />
+                      <Text style={styles.appliedVoucherBadgeText}>
+                        {appliedVoucher.code}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      onPress={handleRemoveVoucher}
+                      style={styles.removeVoucherBtn}
+                    >
+                      <Text style={styles.removeVoucherText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.appliedVoucherTitle}>{appliedVoucher.title}</Text>
+                  <Text style={styles.appliedVoucherMeta}>
+                    {appliedVoucher.rewardText} · You save ₵
+                    {appliedVoucher.discountAmount.toFixed(2)}
+                  </Text>
+                  {appliedVoucher.scope === "store" ? (
+                    <Text style={styles.appliedVoucherScopeNote}>
+                      This promotion only applies to eligible items from{" "}
+                      {appliedVoucher.storeName ?? "that store"}.
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={styles.voucherHelpText}>
+                  Apply an ODOS promo here, or pick a claimed store offer from your wallet.
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.card}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
                 <Text style={styles.totalValue}>₵{subtotal.toFixed(2)}</Text>
               </View>
+              {discountAmount > 0 ? (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Voucher savings</Text>
+                  <Text style={styles.discountValue}>-₵{discountAmount.toFixed(2)}</Text>
+                </View>
+              ) : null}
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Shipping</Text>
                 <Text style={[styles.totalValue, styles.shippingFree]}>
@@ -536,6 +734,12 @@ const styles = StyleSheet.create({
     color: AppColors.subtext[100],
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: rV(12),
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: rV(12),
   },
   row: {
@@ -734,6 +938,127 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     color: AppColors.secondary,
   },
+  voucherBrowseBtn: {
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(6),
+    borderRadius: rMS(999),
+    backgroundColor: "#EEF2F6",
+  },
+  voucherBrowseText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+  },
+  voucherEntryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  voucherInputWrap: {
+    flex: 1,
+    minHeight: rV(48),
+    borderRadius: rMS(14),
+    borderWidth: 1,
+    borderColor: "#D8E0EA",
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: rS(12),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+  },
+  voucherInput: {
+    flex: 1,
+    fontSize: rMS(13),
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
+    letterSpacing: 0.4,
+  },
+  voucherApplyBtn: {
+    minHeight: rV(48),
+    paddingHorizontal: rS(18),
+    borderRadius: rMS(14),
+    backgroundColor: AppColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voucherApplyBtnDisabled: {
+    opacity: 0.7,
+  },
+  voucherApplyText: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: AppColors.white,
+  },
+  voucherHelpText: {
+    marginTop: rV(10),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  voucherErrorText: {
+    marginTop: rV(10),
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: "#B91C1C",
+  },
+  appliedVoucherCard: {
+    marginTop: rV(12),
+    borderRadius: rMS(14),
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    padding: rS(12),
+  },
+  appliedVoucherTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(12),
+  },
+  appliedVoucherBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(5),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(5),
+    borderRadius: rMS(999),
+    backgroundColor: "#DCFCE7",
+  },
+  appliedVoucherBadgeText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: "#166534",
+    letterSpacing: 0.4,
+  },
+  removeVoucherBtn: {
+    paddingVertical: rV(4),
+  },
+  removeVoucherText: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: "#B91C1C",
+  },
+  appliedVoucherTitle: {
+    marginTop: rV(10),
+    fontSize: rMS(14),
+    fontFamily: Fonts.title,
+    color: AppColors.text,
+  },
+  appliedVoucherMeta: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    fontFamily: Fonts.text,
+    color: "#166534",
+  },
+  appliedVoucherScopeNote: {
+    marginTop: rV(6),
+    fontSize: rMS(11.5),
+    lineHeight: rMS(17),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
   totalRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -765,6 +1090,11 @@ const styles = StyleSheet.create({
     fontSize: rMS(16),
     fontFamily: Fonts.titleBold,
     color: AppColors.text,
+  },
+  discountValue: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: "#166534",
   },
   shippingFree: {
     color: "#15803D",

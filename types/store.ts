@@ -1,10 +1,10 @@
 export type ManagedStoreStatus = "draft" | "active" | "inactive" | "suspended";
 
 export type VendorProductStatus =
-  | "draft"
+  | "pending"
   | "active"
-  | "archived"
-  | "out_of_stock";
+  | "hidden"
+  | "suspended";
 
 export type VendorOrderStatus =
   | "pending"
@@ -13,6 +13,8 @@ export type VendorOrderStatus =
   | "ready"
   | "delivered"
   | "cancelled";
+export type VendorVoucherAvailability = "auto" | "claim" | "assigned";
+export type VendorVoucherDiscountType = "percent" | "fixed";
 
 export type ManagedStoreProfile = {
   id: string;
@@ -90,4 +92,45 @@ export type VendorOrder = {
   status: VendorOrderStatus;
   createdAt: string;
   items: VendorOrderItem[];
+};
+
+export type VendorVoucher = {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  issuerName?: string | null;
+  availability: VendorVoucherAvailability;
+  rewardText: string;
+  discountType: "percent" | "fixed" | "free_shipping";
+  discountValue: number;
+  minSubtotal: number;
+  maxDiscount?: number | null;
+  usageLimit?: number | null;
+  perUserLimit?: number | null;
+  isActive: boolean;
+  status: string;
+  redemptionCount: number;
+  uniqueUserCount: number;
+  totalDiscountAmount: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  createdAt: string;
+};
+
+export type VendorVoucherInput = {
+  code: string;
+  title: string;
+  description?: string | null;
+  issuerName?: string | null;
+  availability: VendorVoucherAvailability;
+  discountType: VendorVoucherDiscountType;
+  discountValue: number;
+  minSubtotal: number;
+  maxDiscount?: number | null;
+  usageLimit?: number | null;
+  perUserLimit?: number | null;
+  isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
 };
