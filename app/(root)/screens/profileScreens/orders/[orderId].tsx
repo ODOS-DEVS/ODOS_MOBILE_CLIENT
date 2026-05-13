@@ -213,7 +213,7 @@ export default function OrderDetailScreen() {
         })),
       );
       showToast("Items added back to cart.");
-      router.push("/(root)/(tabs)/cart" as any);
+      router.replace("/(root)/(tabs)/cart" as any);
     } catch (error) {
       handleError(
         error instanceof Error
@@ -398,6 +398,12 @@ export default function OrderDetailScreen() {
               : order.payment_network || "Mobile Money"}
           </Text>
           {order.payment_phone ? <Text style={styles.detailText}>{order.payment_phone}</Text> : null}
+          {order.voucher_code ? (
+            <Text style={styles.detailText}>
+              Voucher: {order.voucher_code}
+              {order.voucher_title ? ` · ${order.voucher_title}` : ""}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -418,6 +424,16 @@ export default function OrderDetailScreen() {
               {order.shipping_amount === 0 ? "FREE" : `₵${order.shipping_amount.toFixed(2)}`}
             </Text>
           </View>
+          {order.discount_amount > 0 ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
+              </Text>
+              <Text style={[styles.summaryValue, styles.discountText]}>
+                -₵{order.discount_amount.toFixed(2)}
+              </Text>
+            </View>
+          ) : null}
           <View style={[styles.summaryRow, styles.summaryRowLast]}>
             <Text style={styles.summaryTotalLabel}>Total</Text>
             <Text style={styles.summaryTotalValue}>₵{order.total_amount.toFixed(2)}</Text>
@@ -759,6 +775,9 @@ const styles = StyleSheet.create({
     fontSize: rMS(12),
     fontFamily: Fonts.textBold,
     color: AppColors.text,
+  },
+  discountText: {
+    color: "#166534",
   },
   summaryTotalLabel: {
     fontSize: rMS(14),

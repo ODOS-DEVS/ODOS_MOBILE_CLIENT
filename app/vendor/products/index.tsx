@@ -96,14 +96,21 @@ export default function VendorProductsScreen() {
                   <Text numberOfLines={1} style={styles.productTitle}>
                     {item.name}
                   </Text>
-                  <View style={[styles.statusPill, item.status === "active" && styles.statusPillActive]}>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      item.status === "active" && styles.statusPillActive,
+                      item.status === "pending" && styles.statusPillPending,
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.statusPillLabel,
                         item.status === "active" && styles.statusPillLabelActive,
+                        item.status === "pending" && styles.statusPillLabelPending,
                       ]}
                     >
-                      {item.status.replace(/_/g, " ")}
+                      {item.status === "pending" ? "pending approval" : item.status.replace(/_/g, " ")}
                     </Text>
                   </View>
                 </View>
@@ -218,6 +225,9 @@ const styles = StyleSheet.create({
   statusPillActive: {
     backgroundColor: "#DCFCE7",
   },
+  statusPillPending: {
+    backgroundColor: "#FEF3C7",
+  },
   statusPillLabel: {
     color: AppColors.secondary,
     fontFamily: Fonts.textBold,
@@ -226,6 +236,9 @@ const styles = StyleSheet.create({
   },
   statusPillLabelActive: {
     color: "#166534",
+  },
+  statusPillLabelPending: {
+    color: "#92400E",
   },
   description: {
     marginTop: rV(8),

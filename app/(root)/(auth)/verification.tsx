@@ -1,8 +1,8 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -39,6 +39,7 @@ export default function VerificationScreen() {
   const routeEmail = Array.isArray(params.email) ? params.email[0] : params.email;
   const routeMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const isPasswordResetMode = routeMode === "password-reset";
+  useBlockBackNavigation(true);
   const displayEmail = routeEmail || user?.email || "your email address";
   const joinedCode = otp.join("");
 
@@ -178,9 +179,6 @@ export default function VerificationScreen() {
       style={{ paddingHorizontal: rS(20), paddingTop: rV(50) }}
     >
       <StatusBar barStyle="dark-content" />
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={20} />
-      </TouchableOpacity>
 
       <View style={{ marginTop: rV(18) }}>
         <Text
@@ -202,6 +200,13 @@ export default function VerificationScreen() {
           </Text>
         </Text>
       </View>
+
+      <Text
+        className="text-center text-secondary font-montserrat"
+        style={{ fontSize: rMS(13), lineHeight: rV(20), marginBottom: rV(16) }}
+      >
+        Stay on this screen until the code is confirmed so the verification flow is not interrupted.
+      </Text>
 
       <View
         className="flex-row justify-center"
@@ -308,6 +313,29 @@ export default function VerificationScreen() {
               : isResendingVerificationCode
                 ? "Sending new code..."
                 : "Resend Code"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View className="items-center" style={{ marginTop: rV(14) }}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isPasswordResetMode) {
+              router.replace({
+                pathname: "/forgotpassword",
+                params: routeEmail ? { email: routeEmail } : undefined,
+              });
+              return;
+            }
+
+            router.replace("/signin");
+          }}
+        >
+          <Text
+            className="text-primary font-montserrat-extraBold"
+            style={{ fontSize: rMS(13.5) }}
+          >
+            {isPasswordResetMode ? "Use another email" : "Use a different account"}
           </Text>
         </TouchableOpacity>
       </View>

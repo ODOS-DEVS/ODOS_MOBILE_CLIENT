@@ -21,6 +21,7 @@ interface TextInputFieldProps {
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
   errorMessage?: string;
+  helperText?: string;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   autoCorrect?: boolean;
   editable?: boolean;
@@ -37,6 +38,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   keyboardType,
   secureTextEntry = false,
   errorMessage,
+  helperText,
   autoCapitalize = "sentences",
   autoCorrect = true,
   editable = true,
@@ -95,6 +97,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
       </View>
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {!errorMessage && helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>
   );
 };
@@ -153,5 +156,14 @@ const styles = StyleSheet.create({
     color: "#D64545",
     fontFamily: Fonts.text,
     fontSize: rMS(12),
+  },
+
+  helperText: {
+    marginTop: rV(6),
+    paddingLeft: rS(8),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
   },
 });

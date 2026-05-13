@@ -3,6 +3,7 @@ import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rV } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -46,7 +47,7 @@ const ForgotPasswordScreen = () => {
     }
 
     showToast(result.message || "Reset code sent.");
-    router.push({
+    router.replace({
       pathname: "/verification",
       params: {
         email: trimmedEmail,
@@ -60,7 +61,7 @@ const ForgotPasswordScreen = () => {
       <StatusBar barStyle={"dark-content"} />
       <TouchableOpacity
         onPress={() => {
-          router.back();
+          goBackOr(router, { fallback: "/signin" });
         }}
       >
         <Ionicons name="arrow-back" size={20} className="" />

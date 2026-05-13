@@ -5,6 +5,7 @@ import {
   type PaymentType,
 } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
+import { goBackOr } from "@/utils/navigation";
 import { CreditCard, Phone, Plus, Star, Trash2, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -126,7 +127,7 @@ export default function WalletScreen() {
         setCheckoutPaymentId(savedPaymentId);
         resetForm();
         setShowModal(false);
-        router.back();
+        goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
         return;
       }
       resetForm();
@@ -154,12 +155,15 @@ export default function WalletScreen() {
 
   const handleUseForCheckout = (id: string) => {
     setCheckoutPaymentId(id);
-    router.back();
+    goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
   };
 
   return (
     <View className="flex-1 bg-gray-100">
-      <ProfileHeader title={fromCheckout ? "Choose Payment" : "Wallet"} />
+      <ProfileHeader
+        title={fromCheckout ? "Choose Payment" : "Wallet"}
+        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+      />
 
       {!isSyncingProfileData && paymentMethods.length === 0 && (
         <View className="flex-1 items-center justify-center px-8">

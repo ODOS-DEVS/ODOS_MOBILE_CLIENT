@@ -1,8 +1,9 @@
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { type Href, usePathname, useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import {
   StyleSheet,
@@ -17,6 +18,60 @@ interface ProfileHeaderProps {
   onBack?: () => void;
   rightNode?: React.ReactNode;
   showBackButton?: boolean;
+  fallbackHref?: Href;
+}
+
+function resolveHeaderFallback(pathname: string): Href {
+  if (pathname.includes("/vendor/dashboard")) {
+    return "/(root)/(tabs)/profile";
+  }
+
+  if (pathname.includes("/vendor/apply") || pathname.includes("/vendor/application-status")) {
+    return "/(root)/(tabs)/profile";
+  }
+
+  if (pathname.includes("/vendor")) {
+    return "/vendor/dashboard" as Href;
+  }
+
+  if (
+    pathname.endsWith("/screens/profileScreens/orders") ||
+    pathname.endsWith("/profileScreens/orders")
+  ) {
+    return "/(root)/(tabs)/profile";
+  }
+
+  if (pathname.includes("/screens/profileScreens/orders")) {
+    return "/(root)/screens/profileScreens/orders" as any;
+  }
+
+  if (pathname.includes("/screens/profileScreens")) {
+    return "/(root)/(tabs)/profile";
+  }
+
+  if (pathname.includes("/screens/categories")) {
+    return "/(root)/(tabs)/category";
+  }
+
+  if (pathname.includes("/screens/stores/stores")) {
+    return "/(root)/(tabs)";
+  }
+
+  if (pathname.includes("/screens/stores")) {
+    return "/(root)/screens/stores/stores" as any;
+  }
+
+  if (
+    pathname.includes("/screens/market") ||
+    pathname.includes("/screens/recommendation") ||
+    pathname.includes("/screens/popular") ||
+    pathname.includes("/screens/search") ||
+    pathname.includes("/screens/Notification")
+  ) {
+    return "/(root)/(tabs)";
+  }
+
+  return "/(root)/(tabs)";
 }
 
 export default function ProfileHeader({
@@ -24,8 +79,11 @@ export default function ProfileHeader({
   onBack,
   rightNode,
   showBackButton = true,
+  fallbackHref,
 }: ProfileHeaderProps) {
   const { width } = useWindowDimensions();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const headerSizing = useMemo(() => {
     if (width >= 1200) {
@@ -61,6 +119,11 @@ export default function ProfileHeader({
     };
   }, [width]);
 
+  const resolvedFallback = useMemo(
+    () => fallbackHref ?? resolveHeaderFallback(pathname),
+    [fallbackHref, pathname],
+  );
+
   return (
     <View
       style={[
@@ -83,7 +146,13 @@ export default function ProfileHeader({
         {showBackButton ? (
           <TouchableOpacity
             style={styles.backButton}
-            onPress={onBack ?? (() => router.back())}
+            onPress={
+              onBack ??
+              (() =>
+                goBackOr(router, {
+                  fallback: resolvedFallback,
+                }))
+            }
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color={AppColors.text} />
