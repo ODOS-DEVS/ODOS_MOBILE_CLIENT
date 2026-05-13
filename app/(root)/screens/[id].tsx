@@ -9,8 +9,11 @@ import Fonts from "@/constants/Fonts";
 import { useStore } from "@/hooks/useCommerce";
 import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useProductReviews } from "@/hooks/useReviews";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { getStarIconName } from "@/utils/ratings";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -108,6 +111,19 @@ function buildDescriptionLines(value?: string) {
     .filter(Boolean);
 
   return lines.length > 0 ? lines : [value.trim()];
+}
+
+function formatReviewCountLabel(value?: string | number | null) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${value} review${value === 1 ? "" : "s"}`;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const normalized = value.trim();
+    return /review/i.test(normalized) ? normalized : `${normalized} reviews`;
+  }
+
+  return "Customer reviews";
 }
 
 function buildFallbackStore() {
@@ -248,22 +264,34 @@ export default function ProductDetail() {
     storeId: product.storeId,
     fallback: fallbackStore,
   });
+  const { reviews: productReviews } = useProductReviews(id);
 
   const title = product.title;
   const category = product.category;
   const subcategory = product.subcategory;
   const price = product.price ?? 0;
   const oldPrice = product.oldPrice ?? 0;
-  const rating = product.rating ?? 0;
-  const reviews = product.reviews;
+  const baseRating = product.rating ?? 0;
+  const baseReviews = product.reviews;
   const discount = product.discount;
   const stock = product.stock ?? 0;
   const isLowStock = stock > 0 && stock <= 5;
-  const hasRatingsInfo = Boolean(
-    (!Number.isNaN(rating) && rating > 0) || reviews?.trim(),
-  );
   const hasDiscount = oldPrice > 0 && oldPrice > price;
   const savingsAmount = hasDiscount ? oldPrice - price : 0;
+  const localReviewCount = productReviews.length;
+  const localAverageRating =
+    localReviewCount > 0
+      ? productReviews.reduce((total, item) => total + item.rating, 0) / localReviewCount
+      : 0;
+  const rating = localReviewCount > 0 ? localAverageRating : baseRating;
+  const reviews = localReviewCount > 0 ? String(localReviewCount) : baseReviews;
+  const reviewsLabel =
+    localReviewCount > 0
+      ? formatReviewCountLabel(localReviewCount)
+      : formatReviewCountLabel(baseReviews);
+  const hasRatingsInfo = Boolean(
+    (!Number.isNaN(rating) && rating > 0) || reviewsLabel.trim(),
+  );
 
   const productColorOptions = useMemo(
     () => buildColorOptions(product.colorOptions),
@@ -446,7 +474,7 @@ export default function ProductDetail() {
       >
         <TouchableOpacity
           style={styles.headerButton}
-          onPress={() => router.back()}
+          onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={22} color={AppColors.text} />
@@ -564,18 +592,16 @@ export default function ProductDetail() {
 
                 <Text style={styles.productTitle}>{title}</Text>
 
-                <Text style={styles.productLead}>{shortDescription}</Text>
-
                 <View style={styles.metaRow}>
                   {hasRatingsInfo ? (
                     <ProductMetaChip
                       icon="star"
                       label={
-                        rating > 0 && reviews?.trim()
-                          ? `${rating.toFixed(1)} · ${reviews}`
+                        rating > 0 && reviewsLabel.trim()
+                          ? `${rating.toFixed(1)} · ${reviewsLabel}`
                           : rating > 0
                             ? `${rating.toFixed(1)} rated`
-                            : reviews?.trim() ?? "Customer reviews"
+                            : reviewsLabel
                       }
                     />
                   ) : null}
@@ -755,6 +781,87 @@ export default function ProductDetail() {
                     <Text style={styles.storeSecondaryActionText}>Chat Store</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+
+              <View style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewHeaderTextWrap}>
+                    <Text style={styles.reviewSectionTitle}>Customer reviews</Text>
+                    <Text style={styles.reviewSectionSubtitle}>
+                      {localReviewCount > 0
+                        ? "Latest feedback from delivered ODOS purchases."
+                        : "Delivered purchases can be reviewed from your account, and they will appear here."}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.reviewManageButton}
+                    activeOpacity={0.84}
+                    onPress={() =>
+                      router.push("/(root)/screens/profileScreens/Account/Reviews" as any)
+                    }
+                  >
+                    <Text style={styles.reviewManageButtonText}>My Reviews</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.reviewSummaryRow}>
+                  <View style={styles.reviewSummaryCard}>
+                    <Text style={styles.reviewSummaryValue}>
+                      {rating > 0 ? rating.toFixed(1) : "0.0"}
+                    </Text>
+                    <View style={styles.reviewSummaryStars}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={`product-review-summary-${star}`}
+                          name={getStarIconName(star, rating)}
+                          size={rMS(14)}
+                          color="#F59E0B"
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.reviewSummaryLabel}>{reviewsLabel}</Text>
+                  </View>
+
+                  <View style={styles.reviewSummaryHintCard}>
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={rMS(18)}
+                      color={AppColors.primary}
+                    />
+                    <Text style={styles.reviewSummaryHintText}>
+                      Review this item after a delivered order from your account history.
+                    </Text>
+                  </View>
+                </View>
+
+                {productReviews.length > 0 ? (
+                  <View style={styles.reviewPreviewStack}>
+                    {productReviews.slice(0, 2).map((item) => (
+                      <View key={item.id} style={styles.reviewPreviewCard}>
+                        <View style={styles.reviewPreviewTopRow}>
+                          <View style={styles.reviewPreviewStars}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Ionicons
+                                key={`${item.id}-star-${star}`}
+                                name={getStarIconName(star, item.rating)}
+                                size={rMS(13)}
+                                color="#F59E0B"
+                              />
+                            ))}
+                          </View>
+                          <Text style={styles.reviewPreviewDate}>
+                            {new Date(item.updatedAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </Text>
+                        </View>
+                        <Text style={styles.reviewPreviewComment}>{item.comment}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
 
               <View style={styles.sectionStack}>
@@ -1481,6 +1588,125 @@ const styles = StyleSheet.create({
     color: AppColors.white,
     fontSize: rMS(12),
     fontFamily: Fonts.title,
+  },
+  reviewCard: {
+    marginTop: rV(18),
+    borderRadius: rMS(24),
+    backgroundColor: AppColors.white,
+    padding: rS(18),
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: rS(10),
+  },
+  reviewHeaderTextWrap: {
+    flex: 1,
+  },
+  reviewSectionTitle: {
+    fontSize: rMS(16),
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+  },
+  reviewSectionSubtitle: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+  },
+  reviewManageButton: {
+    alignSelf: "flex-start",
+    borderRadius: rMS(12),
+    backgroundColor: "#EEF2F6",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(9),
+  },
+  reviewManageButtonText: {
+    fontSize: rMS(11.5),
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
+  },
+  reviewSummaryRow: {
+    flexDirection: "row",
+    gap: rS(10),
+    marginTop: rV(14),
+  },
+  reviewSummaryCard: {
+    flex: 0.95,
+    borderRadius: rMS(18),
+    backgroundColor: "#0F172A",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
+  },
+  reviewSummaryValue: {
+    fontSize: rMS(24),
+    color: AppColors.white,
+    fontFamily: Fonts.titleBold,
+  },
+  reviewSummaryStars: {
+    flexDirection: "row",
+    gap: rS(4),
+    marginTop: rV(8),
+  },
+  reviewSummaryLabel: {
+    marginTop: rV(8),
+    fontSize: rMS(11),
+    color: "#CBD5E1",
+    fontFamily: Fonts.text,
+  },
+  reviewSummaryHintCard: {
+    flex: 1,
+    borderRadius: rMS(18),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
+    justifyContent: "space-between",
+  },
+  reviewSummaryHintText: {
+    marginTop: rV(12),
+    fontSize: rMS(11.5),
+    lineHeight: rMS(17),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+  },
+  reviewPreviewStack: {
+    marginTop: rV(14),
+    gap: rS(10),
+  },
+  reviewPreviewCard: {
+    borderRadius: rMS(18),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(12),
+  },
+  reviewPreviewTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
+  reviewPreviewStars: {
+    flexDirection: "row",
+    gap: rS(3),
+  },
+  reviewPreviewDate: {
+    fontSize: rMS(10.5),
+    color: AppColors.subtext[100],
+    fontFamily: Fonts.text,
+  },
+  reviewPreviewComment: {
+    marginTop: rV(8),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    color: AppColors.text,
+    fontFamily: Fonts.text,
   },
   sectionStack: {
     marginTop: rV(18),

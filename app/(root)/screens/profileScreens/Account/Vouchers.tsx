@@ -1,8 +1,18 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/context/ToastContext";
+import {
+  type VoucherStatus,
+  type VoucherWalletItem,
+  useVouchers,
+} from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   ScrollView,
@@ -12,62 +22,8 @@ import {
   View,
 } from "react-native";
 
-type VoucherStatus = "active" | "used" | "expired";
 type VoucherFilter = "all" | VoucherStatus;
-
-interface Voucher {
-  id: string;
-  store: string;
-  title: string;
-  rewardText: string;
-  minSpend: string;
-  expiry: string;
-  code: string;
-  status: VoucherStatus;
-}
-
-const vouchers: Voucher[] = [
-  {
-    id: "v-1",
-    store: "Zara Store",
-    title: "Weekend Voucher",
-    rewardText: "GHC 100 OFF",
-    minSpend: "Min. spend GHC 450",
-    expiry: "Valid until Dec 31, 2026",
-    code: "ZAR-100-ODOS",
-    status: "active",
-  },
-  {
-    id: "v-2",
-    store: "Topman Store",
-    title: "Free Delivery Pass",
-    rewardText: "FREE DELIVERY",
-    minSpend: "No minimum spend",
-    expiry: "Valid until Nov 21, 2026",
-    code: "SHIP-FREE-21",
-    status: "active",
-  },
-  {
-    id: "v-3",
-    store: "Gucci Store",
-    title: "Member Cashback",
-    rewardText: "10% CASHBACK",
-    minSpend: "Min. spend GHC 700",
-    expiry: "Used on Oct 09, 2026",
-    code: "GC-CASH-10",
-    status: "used",
-  },
-  {
-    id: "v-4",
-    store: "Wheel Store",
-    title: "Holiday Voucher",
-    rewardText: "GHC 60 OFF",
-    minSpend: "Min. spend GHC 300",
-    expiry: "Expired on Jan 02, 2026",
-    code: "WHL-60-HLD",
-    status: "expired",
-  },
-];
+type WalletSection = "promotions" | "gift_cards";
 
 const filters: { key: VoucherFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -97,155 +53,283 @@ const statusMeta: Record<
   },
 };
 
+function formatExpiry(value?: string | null) {
+  if (!value) {
+    return "No expiry date";
+  }
+
+  return `Valid until ${new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+}
+
+function formatMinSpend(amount: number) {
+  if (amount <= 0) {
+    return "No minimum spend";
+  }
+
+  return `Min. spend GHS ${amount.toFixed(2)}`;
+}
+
 export default function VouchersScreen() {
+  const { showToast } = useToast();
+  const params = useLocalSearchParams();
+  const fromCheckout = params.fromCheckout === "1";
+  const { checkoutVoucherCode, setCheckoutVoucherCode } = useProfile();
+  const { vouchers, isLoadingVouchers } = useVouchers();
   const [activeFilter, setActiveFilter] = useState<VoucherFilter>("all");
+  const [activeSection, setActiveSection] = useState<WalletSection>("promotions");
 
   const filteredVouchers = useMemo(() => {
-    if (activeFilter === "all") return vouchers;
+    if (activeFilter === "all") {
+      return vouchers;
+    }
+
     return vouchers.filter((item) => item.status === activeFilter);
-  }, [activeFilter]);
+  }, [activeFilter, vouchers]);
 
   const activeCount = useMemo(
     () => vouchers.filter((item) => item.status === "active").length,
-    []
+    [vouchers],
   );
   const usedCount = useMemo(
     () => vouchers.filter((item) => item.status === "used").length,
-    []
+    [vouchers],
   );
   const expiredCount = useMemo(
     () => vouchers.filter((item) => item.status === "expired").length,
-    []
+    [vouchers],
   );
+
+  const handleUseVoucher = (voucher: VoucherWalletItem) => {
+    setCheckoutVoucherCode(voucher.code);
+    if (fromCheckout) {
+      goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+      return;
+    }
+
+    showToast(`${voucher.code} saved for your next checkout.`);
+  };
 
   return (
     <View style={styles.container}>
-      <ProfileHeader title="My Vouchers" />
+      <ProfileHeader
+        title="My Vouchers"
+        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+      />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
-        <View style={styles.summaryCard} className="shadow-sm">
-          <Text style={styles.summaryTitle}>Wallet Benefits</Text>
-          <Text style={styles.summarySub}>
-            Use active vouchers at checkout to unlock instant savings.
-          </Text>
-          <View style={styles.summaryStatsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{activeCount}</Text>
-              <Text style={styles.statLabel}>Active</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{usedCount}</Text>
-              <Text style={styles.statLabel}>Used</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{expiredCount}</Text>
-              <Text style={styles.statLabel}>Expired</Text>
-            </View>
-          </View>
-        </View>
-
+      {isLoadingVouchers ? (
+        <ScreenLoader label="Loading vouchers..." />
+      ) : (
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
         >
-          {filters.map((item) => {
-            const isActive = item.key === activeFilter;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-                onPress={() => setActiveFilter(item.key)}
-                activeOpacity={0.85}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    isActive && styles.filterTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {filteredVouchers.length === 0 ? (
-          <View style={styles.emptyWrap} className="shadow-sm">
-            <Ionicons
-              name="ticket-outline"
-              size={rMS(34)}
-              color={AppColors.subtext[100]}
-            />
-            <Text style={styles.emptyTitle}>No vouchers here yet</Text>
-            <Text style={styles.emptySub}>
-              New vouchers will appear when available for this category.
+          <View style={styles.summaryCard} className="shadow-sm">
+            <Text style={styles.summaryTitle}>Wallet Benefits</Text>
+            <Text style={styles.summarySub}>
+              Save ODOS promotions and store offers here. Gift cards stay separate so wallet value and discounts never get mixed up.
             </Text>
+            <View style={styles.summaryStatsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{activeCount}</Text>
+                <Text style={styles.statLabel}>Active</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{usedCount}</Text>
+                <Text style={styles.statLabel}>Used</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{expiredCount}</Text>
+                <Text style={styles.statLabel}>Expired</Text>
+              </View>
+            </View>
           </View>
-        ) : (
-          filteredVouchers.map((voucher) => {
-            const meta = statusMeta[voucher.status];
-            const isActive = voucher.status === "active";
 
-            return (
-              <View key={voucher.id} style={styles.voucherCard} className="shadow-sm">
-                <View style={styles.cardTop}>
-                  <View style={styles.storeBadge}>
-                    <Ionicons
-                      name="storefront-outline"
-                      size={rMS(14)}
-                      color={AppColors.secondary}
-                    />
-                    <Text style={styles.storeBadgeText}>{voucher.store}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: meta.badgeBg }]}>
-                    <Text style={[styles.statusText, { color: meta.badgeText }]}>
-                      {meta.label}
-                    </Text>
-                  </View>
-                </View>
+          <View style={styles.sectionSwitchRow}>
+            <TouchableOpacity
+              style={[
+                styles.sectionSwitchBtn,
+                activeSection === "promotions" && styles.sectionSwitchBtnActive,
+              ]}
+              activeOpacity={0.85}
+              onPress={() => setActiveSection("promotions")}
+            >
+              <Text
+                style={[
+                  styles.sectionSwitchText,
+                  activeSection === "promotions" && styles.sectionSwitchTextActive,
+                ]}
+              >
+                Promotions
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sectionSwitchBtn,
+                activeSection === "gift_cards" && styles.sectionSwitchBtnActive,
+              ]}
+              activeOpacity={0.85}
+              onPress={() => setActiveSection("gift_cards")}
+            >
+              <Text
+                style={[
+                  styles.sectionSwitchText,
+                  activeSection === "gift_cards" && styles.sectionSwitchTextActive,
+                ]}
+              >
+                Gift Cards
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-                <Text style={styles.voucherTitle}>{voucher.title}</Text>
-                <Text style={styles.rewardText}>{voucher.rewardText}</Text>
-                <Text style={styles.metaText}>{voucher.minSpend}</Text>
+          {activeSection === "promotions" ? (
+            <>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterRow}
+              >
+                {filters.map((item) => {
+                  const isActive = item.key === activeFilter;
+                  return (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={[styles.filterBtn, isActive && styles.filterBtnActive]}
+                      onPress={() => setActiveFilter(item.key)}
+                      activeOpacity={0.85}
+                    >
+                      <Text
+                        style={[
+                          styles.filterText,
+                          isActive && styles.filterTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
-                <View style={styles.separator} />
-
-                <View style={styles.metaRow}>
+              {filteredVouchers.length === 0 ? (
+                <View style={styles.emptyWrap} className="shadow-sm">
                   <Ionicons
-                    name="calendar-outline"
-                    size={rMS(14)}
+                    name="ticket-outline"
+                    size={rMS(34)}
                     color={AppColors.subtext[100]}
                   />
-                  <Text style={styles.metaText}>{voucher.expiry}</Text>
+                  <Text style={styles.emptyTitle}>No promotions here yet</Text>
+                  <Text style={styles.emptySub}>
+                    Claimed store offers and active ODOS promos will show up here.
+                  </Text>
                 </View>
+              ) : (
+                filteredVouchers.map((voucher) => {
+                  const meta = statusMeta[voucher.status];
+                  const isActive = voucher.status === "active";
+                  const isSelected = checkoutVoucherCode === voucher.code;
 
-                <View style={styles.codeRow}>
-                  <View style={styles.codeBox}>
-                    <Text style={styles.codeLabel}>Code</Text>
-                    <Text style={styles.codeText}>{voucher.code}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.copyBtn} activeOpacity={0.8}>
-                    <Ionicons name="copy-outline" size={rMS(16)} color={AppColors.text} />
-                  </TouchableOpacity>
-                </View>
+                  return (
+                    <View key={voucher.id} style={styles.voucherCard} className="shadow-sm">
+                      <View style={styles.cardTop}>
+                        <View style={styles.storeBadge}>
+                          <Ionicons
+                            name={voucher.scope === "store" ? "storefront-outline" : "sparkles-outline"}
+                            size={rMS(14)}
+                            color={AppColors.secondary}
+                          />
+                          <Text style={styles.storeBadgeText}>
+                            {voucher.scope === "store"
+                              ? voucher.storeName ?? voucher.issuerName ?? "Store offer"
+                              : voucher.issuerName ?? "ODOS"}
+                          </Text>
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: meta.badgeBg }]}>
+                          <Text style={[styles.statusText, { color: meta.badgeText }]}>
+                            {meta.label}
+                          </Text>
+                        </View>
+                      </View>
 
-                {isActive ? (
-                  <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
-                    <Text style={styles.actionBtnText}>Use Voucher</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
+                      <Text style={styles.voucherTitle}>{voucher.title}</Text>
+                      <Text style={styles.rewardText}>{voucher.rewardText}</Text>
+                      <Text style={styles.metaText}>{formatMinSpend(voucher.minSubtotal)}</Text>
+                      <Text style={styles.metaText}>
+                        {voucher.scope === "store" ? "Store promotion" : "ODOS promotion"} ·{" "}
+                        {voucher.availability === "assigned"
+                          ? "Gifted"
+                          : voucher.availability === "claim"
+                            ? "Claimed"
+                            : "Always available"}
+                      </Text>
+                      {voucher.description ? (
+                        <Text style={styles.descriptionText}>{voucher.description}</Text>
+                      ) : null}
+
+                      <View style={styles.separator} />
+
+                      <View style={styles.metaRow}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={rMS(14)}
+                          color={AppColors.subtext[100]}
+                        />
+                        <Text style={styles.metaText}>{formatExpiry(voucher.expiresAt)}</Text>
+                      </View>
+
+                      <View style={styles.codeRow}>
+                        <View style={styles.codeBox}>
+                          <Text style={styles.codeLabel}>Code</Text>
+                          <Text style={styles.codeText}>{voucher.code}</Text>
+                        </View>
+                        {isSelected ? (
+                          <View style={styles.selectedPill}>
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={rMS(16)}
+                              color="#166534"
+                            />
+                            <Text style={styles.selectedPillText}>Selected</Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {isActive ? (
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          activeOpacity={0.85}
+                          onPress={() => handleUseVoucher(voucher)}
+                        >
+                          <Text style={styles.actionBtnText}>
+                            {fromCheckout ? "Use Promotion" : "Save for Checkout"}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  );
+                })
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyWrap} className="shadow-sm">
+              <Ionicons
+                name="card-outline"
+                size={rMS(34)}
+                color={AppColors.subtext[100]}
+              />
+              <Text style={styles.emptyTitle}>Gift cards are next</Text>
+              <Text style={styles.emptySub}>
+                ODOS gift cards will live here as stored value, separate from discount promotions.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -308,6 +392,32 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: rS(8),
     paddingVertical: rV(14),
+  },
+  sectionSwitchRow: {
+    flexDirection: "row",
+    gap: rS(8),
+    marginTop: rV(14),
+  },
+  sectionSwitchBtn: {
+    flex: 1,
+    borderRadius: rMS(14),
+    borderWidth: 1,
+    borderColor: "#D7DDE5",
+    backgroundColor: AppColors.white,
+    paddingVertical: rV(12),
+    alignItems: "center",
+  },
+  sectionSwitchBtnActive: {
+    borderColor: AppColors.text,
+    backgroundColor: AppColors.text,
+  },
+  sectionSwitchText: {
+    fontSize: rMS(12.5),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  sectionSwitchTextActive: {
+    color: AppColors.white,
   },
   filterBtn: {
     paddingHorizontal: rS(14),
@@ -381,6 +491,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     color: AppColors.subtext[100],
   },
+  descriptionText: {
+    marginTop: rV(8),
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
   separator: {
     marginVertical: rV(12),
     borderBottomWidth: 1,
@@ -419,13 +536,19 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     letterSpacing: 0.6,
   },
-  copyBtn: {
-    width: rMS(38),
-    height: rMS(38),
-    borderRadius: rMS(10),
-    backgroundColor: "#F1F3F5",
+  selectedPill: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: rS(5),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(8),
+    borderRadius: rMS(10),
+    backgroundColor: "#DCFCE7",
+  },
+  selectedPillText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: "#166534",
   },
   actionBtn: {
     marginTop: rV(12),

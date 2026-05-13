@@ -1,12 +1,17 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
-import VoucherCard from "@/components/cards/VoucherCard";
+import StoreOfferCard from "@/components/cards/StoreOfferCard";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { gentsData, vouchers } from "@/constants/Data";
+import { gentsData } from "@/constants/Data";
+import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/context/ToastContext";
 import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useStore } from "@/hooks/useCommerce";
+import { type StoreVoucherOffer, useVouchers } from "@/hooks/useVouchers";
 import { rS, useResponsive } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,7 +28,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
+  const [storeOffers, setStoreOffers] = useState<StoreVoucherOffer[]>([]);
+  const [isClaimingOfferId, setIsClaimingOfferId] = useState<string | null>(null);
   const params = useLocalSearchParams();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { setCheckoutVoucherCode } = useProfile();
+  const { fetchStoreVouchers, claimVoucher } = useVouchers();
   const storeId =
     typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
   const paramTitle =
@@ -100,6 +111,63 @@ const StoreDetailScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!storeId) {
+      setStoreOffers([]);
+      return;
+    }
+
+    void fetchStoreVouchers(storeId)
+      .then((offers) => {
+        if (!isMounted) {
+          return;
+        }
+        setStoreOffers(offers);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStoreOffers([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchStoreVouchers, storeId]);
+
+  const handleClaimOffer = async (offer: StoreVoucherOffer) => {
+    if (!user) {
+      showToast("Sign in to save this store offer.");
+      return;
+    }
+
+    setIsClaimingOfferId(offer.id);
+    try {
+      const claimed = await claimVoucher(offer.id);
+      setStoreOffers((current) =>
+        current.map((item) =>
+          item.id === offer.id ? { ...item, claimed: true } : item,
+        ),
+      );
+      showToast(`${claimed.code} saved to your wallet.`);
+    } catch (error) {
+      showToast(
+        error instanceof Error && error.message
+          ? error.message
+          : "We couldn't save that offer right now.",
+      );
+    } finally {
+      setIsClaimingOfferId(null);
+    }
+  };
+
+  const handleUseOffer = (offer: StoreVoucherOffer) => {
+    setCheckoutVoucherCode(offer.code);
+    showToast(`${offer.code} saved for checkout.`);
+  };
+
   if (isLoading) {
     return <ScreenLoader label="Loading store..." />;
   }
@@ -113,7 +181,9 @@ const StoreDetailScreen = () => {
       {/* HEADER TITLE & BACK */}
       <View className="px-4 mb-3 flex-row items-center gap-3">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() =>
+            goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+          }
           className="w-10 h-10 bg-black/20 rounded-full justify-center items-center"
           style={{
             shadowColor: "#0f172a",
@@ -196,20 +266,36 @@ const StoreDetailScreen = () => {
           />
         </View>
 
-        <View className="mx-6 mt-8">
-          <Text className="text-xl font-montserrat-extraBold ">Vouchers</Text>
-        </View>
+        {storeOffers.length > 0 ? (
+          <>
+            <View className="mx-6 mt-8">
+              <Text className="text-xl font-montserrat-extraBold text-gray-800">
+                Store offers
+              </Text>
+              <Text className="mt-2 text-sm font-montserrat text-gray-500">
+                Save a store promotion now and use it when your basket qualifies.
+              </Text>
+            </View>
 
-        <View>
-          <FlatList
-            data={vouchers}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <VoucherCard {...item} />}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          />
-        </View>
+            <View>
+              <FlatList
+                data={storeOffers}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <StoreOfferCard
+                    offer={item}
+                    isBusy={isClaimingOfferId === item.id}
+                    onClaim={handleClaimOffer}
+                    onUse={handleUseOffer}
+                  />
+                )}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+              />
+            </View>
+          </>
+        ) : null}
 
         {/* Visit Store CTA */}
         <View className="px-12">

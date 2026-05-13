@@ -1,6 +1,7 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,6 +17,7 @@ function formatCurrency(value: number) {
 
 export default function OrderSuccessScreen() {
   const params = useLocalSearchParams();
+  useBlockBackNavigation(true);
   const orderNumber = getParam(params.orderNumber) ?? "ORD-000000";
   const orderId = getParam(params.orderId) ?? "";
   const total = Number(getParam(params.total) ?? 0);
