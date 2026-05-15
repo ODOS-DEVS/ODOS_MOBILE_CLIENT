@@ -139,8 +139,9 @@ const CreatePasswordScreen = () => {
       ) : null}
       <View className="px-4">
         <PrimaryButton
-          title={isResettingPassword ? "Updating password..." : "Create new password"}
+          title="Create new password"
           onPress={handleSubmit}
+          isLoading={isResettingPassword}
           disabled={isResettingPassword || !password || !confirmPassword}
         />
       </View>

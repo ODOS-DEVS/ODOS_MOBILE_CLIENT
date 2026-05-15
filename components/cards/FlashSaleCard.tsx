@@ -16,6 +16,9 @@ interface FlashSalesCardProps {
   discount?: string;
   rating?: number;
   reviews?: any;
+  cardWidth?: number;
+  cardSpacing?: number;
+  imageHeight?: number;
 }
 
 const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
@@ -28,10 +31,16 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   discount,
   rating,
   reviews,
+  cardWidth,
+  cardSpacing,
+  imageHeight,
 }) => {
   const hasPrice = !!price || !!oldPrice;
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const formatCurrency = (value: number) => `₵${value.toFixed(2)}`;
+  const width = cardWidth ?? rS(160);
+  const spacingRight = cardSpacing ?? rS(10);
+  const mediaHeight = imageHeight ?? rV(180);
 
   return (
     <TouchableOpacity
@@ -52,8 +61,8 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
         })
       }
       style={{
-        width: rS(160),
-        marginRight: rS(10),
+        width,
+        marginRight: spacingRight,
         marginBottom: rV(15),
         marginTop: rV(10),
       }}
@@ -67,7 +76,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
         {/* ---------- IMAGE ---------- */}
         <View
           style={{
-            height: rV(180),
+            height: mediaHeight,
             backgroundColor: "#f4f4f4",
             borderRadius: rS(16),
             overflow: "hidden",
@@ -130,17 +139,21 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
 
         {/* ---------- TEXT ---------- */}
         <View style={{ padding: rS(10) }}>
-          <View style={{
-            flexDirection: "row",
-            marginRight: rV(10)
-          }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: rS(6),
+            }}
+          >
             <Text
               numberOfLines={1}
               style={{
                 fontSize: rS(13),
                 fontWeight: "700",
                 color: "#222",
-                marginRight: rV(43),
+                flex: 1,
               }}
             >
               {title}
@@ -150,9 +163,9 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             {hasRating ? (
               <View
                 style={{
-                  marginLeft: rV(-24),
                   flexDirection: "row",
                   alignItems: "center",
+                  flexShrink: 0,
                 }}
               >
                 <Ionicons name="star" size={rS(14)} color="#facc15" />
@@ -175,11 +188,12 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               flexDirection: "row",
               justifyContent: "space-between",
               marginTop: rV(3),
+              gap: rS(6),
             }}
           >
             {category && (
               <Text
-                style={{ fontSize: rS(11), color: "#777" }}
+                style={{ fontSize: rS(11), color: "#777", flex: 1 }}
                 numberOfLines={1}
               >
                 {category}

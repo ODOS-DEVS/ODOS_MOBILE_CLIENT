@@ -1,8 +1,10 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -34,6 +36,8 @@ const resources = [
 ];
 
 export default function ResourcesScreen() {
+  const { requireAuth } = useRequireAuth();
+
   return (
     <View style={styles.container}>
       <ProfileHeader title="Resources" />
@@ -70,7 +74,29 @@ export default function ResourcesScreen() {
           <Text style={styles.contactSub}>
             Our support team can guide you through account, payment, and order concerns.
           </Text>
-          <TouchableOpacity style={styles.contactBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.contactBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              if (
+                !requireAuth({
+                  title: "Sign in to contact support",
+                  message:
+                    "Log in so your conversation with the admin team stays attached to your account.",
+                })
+              ) {
+                return;
+              }
+
+              router.push({
+                pathname: "/screens/support/chat",
+                params: {
+                  subject: "Guidance from the resource center",
+                  fallback: "/(root)/screens/profileScreens/helpAndSupport/Resources",
+                },
+              });
+            }}
+          >
             <Text style={styles.contactBtnText}>Contact Support</Text>
           </TouchableOpacity>
         </View>

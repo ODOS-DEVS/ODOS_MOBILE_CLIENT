@@ -180,8 +180,9 @@ const SignInScreen = () => {
         </View>
 
         <PrimaryButton
-          title={isSigningIn ? "Signing In..." : "Sign In"}
+          title="Sign In"
           onPress={handleSignIn}
+          isLoading={isSigningIn}
           disabled={isSigningIn || !email.trim() || !password}
         />
 
