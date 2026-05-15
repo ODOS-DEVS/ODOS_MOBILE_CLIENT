@@ -114,8 +114,9 @@ const ForgotPasswordScreen = () => {
       ) : null}
       <View className="px-4">
         <PrimaryButton
-          title={isRequestingPasswordReset ? "Sending code..." : "Next"}
+          title="Next"
           onPress={handleNext}
+          isLoading={isRequestingPasswordReset}
           disabled={isRequestingPasswordReset || !email.trim()}
         />
       </View>

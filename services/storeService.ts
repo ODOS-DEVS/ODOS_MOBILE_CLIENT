@@ -50,6 +50,7 @@ type VendorProductApi = {
   color_options?: string[] | null;
   size_options?: string[] | null;
   specifications?: string[] | null;
+  is_returnable?: boolean | null;
   status?: string;
   created_at?: string;
   updated_at?: string;
@@ -161,6 +162,7 @@ function mapProduct(payload: VendorProductApi): VendorProduct {
     colorOptions: payload.color_options ?? undefined,
     sizeOptions: payload.size_options ?? undefined,
     specifications: payload.specifications ?? undefined,
+    isReturnable: payload.is_returnable ?? true,
     image: primaryImageUrl
       ? { uri: primaryImageUrl }
       : resolveCatalogImage(payload.image_key),
@@ -300,6 +302,7 @@ export async function createVendorProduct(
       if (input.specifications?.length) {
         formData.append("specifications", input.specifications.join("\n"));
       }
+      formData.append("is_returnable", String(input.isReturnable ?? true));
       for (const [index, uri] of (input.imageUris ?? []).entries()) {
         appendImageToFormData(formData, "images", uri, `product-image-${index + 1}`);
       }
@@ -346,6 +349,7 @@ export async function updateVendorProduct(
   formData.append("color_options", input.colorOptions?.join(", ") ?? "");
   formData.append("size_options", input.sizeOptions?.join(", ") ?? "");
   formData.append("specifications", input.specifications?.join("\n") ?? "");
+  formData.append("is_returnable", String(input.isReturnable ?? true));
 
   const retainedRemoteUrls = (input.imageUris ?? []).filter(
     (value) => !value.startsWith("file://") && !value.startsWith("content://") && !value.startsWith("ph://"),

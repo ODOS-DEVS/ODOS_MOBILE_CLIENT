@@ -51,6 +51,8 @@ type StoreStoreState = {
     orderId: string,
     status: VendorOrderStatus,
   ) => Promise<VendorOrder>;
+  upsertRealtimeProduct: (product: VendorProduct) => void;
+  upsertRealtimeOrder: (order: VendorOrder) => void;
   clearStoreState: () => void;
 };
 
@@ -205,6 +207,32 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
       });
       throw error;
     }
+  },
+
+  upsertRealtimeProduct: (product) => {
+    set((state) => {
+      const existingIndex = state.products.findIndex((item) => item.id === product.id);
+      if (existingIndex < 0) {
+        return { products: [product, ...state.products] };
+      }
+
+      const next = [...state.products];
+      next[existingIndex] = product;
+      return { products: next };
+    });
+  },
+
+  upsertRealtimeOrder: (order) => {
+    set((state) => {
+      const existingIndex = state.orders.findIndex((item) => item.id === order.id);
+      if (existingIndex < 0) {
+        return { orders: [order, ...state.orders] };
+      }
+
+      const next = [...state.orders];
+      next[existingIndex] = order;
+      return { orders: next };
+    });
   },
 
   clearStoreState: () => {

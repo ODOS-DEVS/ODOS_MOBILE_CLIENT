@@ -773,6 +773,9 @@ export default function ProductDetail() {
                         params: {
                           vendorId: store.id,
                           vendorName: String(store.title ?? "Store"),
+                          productId: id,
+                          productTitle: title,
+                          productImageUrl: product.imageUrl ?? productImages[0]?.uri,
                         },
                       } as any)
                     }

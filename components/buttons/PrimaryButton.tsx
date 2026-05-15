@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, TouchableOpacity } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { rS } from "@/styles/responsive";
 
 interface PrimaryButtonProps {
   title: string;
@@ -7,6 +8,7 @@ interface PrimaryButtonProps {
   roundedFull?: boolean;
   className?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 const PrimaryButton: React.FC<PrimaryButtonProps> = ({
@@ -15,17 +17,39 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   roundedFull,
   className = "",
   disabled = false,
+  isLoading = false,
 }) => (
   <TouchableOpacity
     onPress={onPress}
-    disabled={disabled}
+    disabled={disabled || isLoading}
     className={`bg-primary ${roundedFull ? "rounded-full" : "rounded-[8px]"} py-6 items-center mt-8 ${className}`}
     style={{
-      opacity: disabled ? 0.65 : 1,
+      opacity: disabled || isLoading ? 0.7 : 1,
     }}
   >
-    <Text className="text-white text-lg font-bold">{title}</Text>
+    <View style={styles.content}>
+      {isLoading ? (
+        <ActivityIndicator
+          size="small"
+          color="#FFFFFF"
+          style={styles.spinner}
+        />
+      ) : null}
+      <Text className="text-white text-lg font-bold">{title}</Text>
+    </View>
   </TouchableOpacity>
 );
 
 export default PrimaryButton;
+
+const styles = StyleSheet.create({
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: rS(20),
+  },
+  spinner: {
+    marginRight: rS(10),
+  },
+});

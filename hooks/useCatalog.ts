@@ -1,5 +1,6 @@
 import type { ProductCardProps } from "@/components/cards/ProductCard";
 import { API_BASE_URL } from "@/constants/auth";
+import { useRealtime } from "@/context/RealtimeContext";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -72,6 +73,10 @@ type ProductApiItem = {
   status?: string;
   created_at?: string;
   updated_at?: string;
+};
+
+type CatalogProductChangedEvent = {
+  product_id?: string;
 };
 
 function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
@@ -445,6 +450,7 @@ export function useCatalogProducts({
 }) {
   const [products, setProducts] = useState<CatalogProductItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const fallbackRef = useRef(fallback);
@@ -528,6 +534,12 @@ export function useCatalogProducts({
     };
   }, [loadProducts]);
 
+  useEffect(() => {
+    return subscribe("catalog.product.changed", () => {
+      void loadProducts({ background: true });
+    });
+  }, [loadProducts, subscribe]);
+
   const sortOptions = useMemo(() => {
     const uniqueCategories = Array.from(
       new Set(
@@ -610,6 +622,7 @@ export function useCatalogProduct({
   const fallbackProduct = useMemo(() => buildFallbackProduct(fallback), [fallback]);
   const [product, setProduct] = useState<CatalogProductItem>(fallbackProduct);
   const [isLoading, setIsLoading] = useState(Boolean(productId));
+  const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
@@ -678,6 +691,21 @@ export function useCatalogProduct({
       isMountedRef.current = false;
     };
   }, [loadProduct, productId]);
+
+  useEffect(() => {
+    if (!productId) {
+      return;
+    }
+
+    return subscribe("catalog.product.changed", (event) => {
+      const payload = event.payload as CatalogProductChangedEvent | undefined;
+      if (!payload?.product_id || payload.product_id !== productId) {
+        return;
+      }
+
+      void loadProduct({ background: true });
+    });
+  }, [loadProduct, productId, subscribe]);
 
   return { product, isLoading };
 }
