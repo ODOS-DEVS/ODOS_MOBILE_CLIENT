@@ -1,6 +1,7 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import { useAuth } from "@/context/AuthContext";
+import { useRealtime } from "@/context/RealtimeContext";
 import * as SecureStore from "expo-secure-store";
 import { useFocusEffect } from "expo-router";
 import { AppState } from "react-native";
@@ -142,6 +143,7 @@ function mapNotification(
 
 export function useActivityFeed() {
   const { user, accessToken } = useAuth();
+  const { subscribe } = useRealtime();
   const [notifications, setNotifications] = useState<NotificationEventPayload[]>([]);
   const [readKeys, setReadKeys] = useState<string[]>([]);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
@@ -230,6 +232,26 @@ export function useActivityFeed() {
       subscription.remove();
     };
   }, [refreshActivity]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    return subscribe("notification.created", (event) => {
+      const payload = event.payload as NotificationEventPayload | undefined;
+      if (!payload?.id) {
+        return;
+      }
+
+      setNotifications((current) => {
+        if (current.some((item) => item.id === payload.id)) {
+          return current;
+        }
+        return [payload, ...current];
+      });
+    });
+  }, [subscribe, user]);
 
   const items = useMemo(() => {
     const readKeySet = new Set(readKeys);

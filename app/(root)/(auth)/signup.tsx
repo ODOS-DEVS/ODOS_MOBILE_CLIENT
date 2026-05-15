@@ -185,8 +185,9 @@ const SignUpScreen = () => {
         ) : null}
 
         <PrimaryButton
-          title={isSigningUp ? "Creating Account..." : "Create Account"}
+          title="Create Account"
           onPress={handleSignUp}
+          isLoading={isSigningUp}
           disabled={
             isSigningUp || !fullName.trim() || !email.trim() || !password
           }

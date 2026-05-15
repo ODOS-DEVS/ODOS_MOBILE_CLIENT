@@ -167,6 +167,7 @@ export default function NewVendorProductScreen() {
     placementTags: [],
     colorOptions: [],
     sizeOptions: [],
+    isReturnable: true,
   });
   const [fieldErrors, setFieldErrors] = useState<ProductErrors>({});
 
@@ -215,6 +216,7 @@ export default function NewVendorProductScreen() {
       colorOptions: selectedProduct.colorOptions ?? [],
       sizeOptions: selectedProduct.sizeOptions ?? [],
       specifications: selectedProduct.specifications ?? [],
+      isReturnable: selectedProduct.isReturnable ?? true,
     });
     setSpecificationsText((selectedProduct.specifications ?? []).join("\n"));
   }, [selectedProduct]);
@@ -652,6 +654,63 @@ export default function NewVendorProductScreen() {
                 </View>
               </View>
 
+              <Text style={styles.fieldLabel}>Return eligibility</Text>
+              <Text style={styles.helperText}>
+                Only products marked returnable can appear in the shopper returns hub after delivery.
+              </Text>
+              <View style={styles.policyRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.policyCard,
+                    form.isReturnable !== false && styles.policyCardActive,
+                  ]}
+                  activeOpacity={0.84}
+                  onPress={() => handleChange("isReturnable", true)}
+                >
+                  <Text
+                    style={[
+                      styles.policyTitle,
+                      form.isReturnable !== false && styles.policyTitleActive,
+                    ]}
+                  >
+                    Returnable
+                  </Text>
+                  <Text
+                    style={[
+                      styles.policyText,
+                      form.isReturnable !== false && styles.policyTextActive,
+                    ]}
+                  >
+                    Customers can request a return, refund, or exchange after delivery.
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.policyCard,
+                    form.isReturnable === false && styles.policyCardActive,
+                  ]}
+                  activeOpacity={0.84}
+                  onPress={() => handleChange("isReturnable", false)}
+                >
+                  <Text
+                    style={[
+                      styles.policyTitle,
+                      form.isReturnable === false && styles.policyTitleActive,
+                    ]}
+                  >
+                    Final sale
+                  </Text>
+                  <Text
+                    style={[
+                      styles.policyText,
+                      form.isReturnable === false && styles.policyTextActive,
+                    ]}
+                  >
+                    This item stays out of the returns hub and can’t be requested there.
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <Text style={styles.fieldLabel}>Colors</Text>
               <Text style={styles.helperText}>
                 Pick one or more common colors, then add a custom value if you need a
@@ -1011,6 +1070,40 @@ const styles = StyleSheet.create({
     fontSize: rMS(11.5),
     lineHeight: rMS(17),
     paddingLeft: rS(8),
+  },
+  policyRow: {
+    gap: rV(10),
+    marginBottom: rV(12),
+  },
+  policyCard: {
+    borderRadius: rMS(18),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#D9E0E8",
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
+  },
+  policyCardActive: {
+    borderColor: "#94B8FF",
+    backgroundColor: "#EEF4FF",
+  },
+  policyTitle: {
+    color: AppColors.text,
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(13),
+  },
+  policyTitleActive: {
+    color: AppColors.primary,
+  },
+  policyText: {
+    marginTop: rV(6),
+    color: AppColors.secondary,
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
+    lineHeight: rMS(17),
+  },
+  policyTextActive: {
+    color: "#45638F",
   },
   chipsRow: {
     flexDirection: "row",

@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
+import { useRealtime } from "@/context/RealtimeContext";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -45,9 +46,46 @@ export type OrderItem = {
   quantity: number;
   unit_price: number;
   line_total: number;
+  is_returnable: boolean;
   selected_color: string | null;
   selected_size: string | null;
   created_at: string;
+};
+
+export type ReturnRequest = {
+  id: string;
+  order_id: string;
+  order_item_id: string;
+  user_id: string;
+  request_type: "refund" | "exchange" | "return" | string;
+  status:
+    | "requested"
+    | "under_review"
+    | "approved"
+    | "rejected"
+    | "refunded"
+    | "exchanged"
+    | string;
+  quantity: number;
+  reason: string;
+  details: string | null;
+  evidence_image_urls: string[] | null;
+  admin_note: string | null;
+  refund_amount: number | null;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReturnRequestPayload = {
+  order_item_id: string;
+  request_type: "refund" | "exchange" | "return";
+  quantity: number;
+  reason: string;
+  details?: string | null;
+  evidence_images?: string[] | null;
 };
 
 export type Order = {
@@ -80,6 +118,7 @@ export type Order = {
   created_at: string;
   updated_at: string;
   items: OrderItem[];
+  return_requests: ReturnRequest[];
 };
 
 async function getStoredAccessToken() {
@@ -134,12 +173,55 @@ async function fetchOrderRequest(accessToken: string, orderId: string) {
   return (await response.json()) as Order;
 }
 
+async function createReturnRequestRequest(
+  accessToken: string,
+  orderId: string,
+  payload: ReturnRequestPayload,
+) {
+  const formData = new FormData();
+  formData.append("order_item_id", payload.order_item_id);
+  formData.append("request_type", payload.request_type);
+  formData.append("quantity", String(payload.quantity));
+  formData.append("reason", payload.reason);
+  if (payload.details?.trim()) {
+    formData.append("details", payload.details.trim());
+  }
+  for (const [index, imageUri] of (payload.evidence_images ?? []).entries()) {
+    if (!imageUri?.trim()) {
+      continue;
+    }
+
+    const normalized = imageUri.trim();
+    const extension = normalized.toLowerCase().endsWith(".png") ? "png" : "jpg";
+    formData.append("images", {
+      uri: normalized,
+      name: `return-evidence-${index + 1}.${extension}`,
+      type: extension === "png" ? "image/png" : "image/jpeg",
+    } as any);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/returns`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return (await response.json()) as ReturnRequest;
+}
+
 async function getAccessToken(currentToken: string | null) {
   return currentToken || (await getStoredAccessToken());
 }
 
 export function useOrders() {
   const { user, accessToken } = useAuth();
+  const { subscribe } = useRealtime();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isMutatingOrder, setIsMutatingOrder] = useState(false);
@@ -181,6 +263,34 @@ export function useOrders() {
   useEffect(() => {
     refreshOrders();
   }, [refreshOrders]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    return subscribe("order.updated", (event) => {
+      const payload = event.payload as Order | undefined;
+      if (!payload?.id) {
+        return;
+      }
+
+      setOrders((current) => {
+        const existingIndex = current.findIndex((order) => order.id === payload.id);
+        if (existingIndex < 0) {
+          return [payload, ...current].sort(
+            (left, right) =>
+              new Date(right.placed_at ?? right.created_at).getTime() -
+              new Date(left.placed_at ?? left.created_at).getTime(),
+          );
+        }
+
+        const next = [...current];
+        next[existingIndex] = payload;
+        return next;
+      });
+    });
+  }, [subscribe, user]);
 
   const cancelOrder = useCallback(
     async (orderId: string) => {
@@ -283,12 +393,30 @@ export function useOrders() {
     [accessToken],
   );
 
+  const createReturnRequest = useCallback(
+    async (orderId: string, payload: ReturnRequestPayload) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        throw new Error("Please sign in again to manage this order.");
+      }
+
+      setIsMutatingOrder(true);
+      try {
+        return await createReturnRequestRequest(token, orderId, payload);
+      } finally {
+        setIsMutatingOrder(false);
+      }
+    },
+    [accessToken],
+  );
+
   return {
     orders,
     isLoadingOrders,
     isMutatingOrder,
     cancelOrder,
     confirmDelivery,
+    createReturnRequest,
     removeOrder,
     refreshOrders,
   };
@@ -296,6 +424,7 @@ export function useOrders() {
 
 export function useOrder(orderId?: string) {
   const { accessToken, user } = useAuth();
+  const { subscribe } = useRealtime();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(Boolean(orderId));
   const isMountedRef = useRef(true);
@@ -353,6 +482,23 @@ export function useOrder(orderId?: string) {
 
     void loadOrder();
   }, [refreshOrder]);
+
+  useEffect(() => {
+    if (!user || !orderId) {
+      return;
+    }
+
+    return subscribe("order.updated", (event) => {
+      const payload = event.payload as Order | undefined;
+      if (!payload?.id || payload.id !== orderId) {
+        return;
+      }
+
+      if (isMountedRef.current) {
+        setOrder(payload);
+      }
+    });
+  }, [orderId, subscribe, user]);
 
   return { order, isLoadingOrder, refreshOrder };
 }

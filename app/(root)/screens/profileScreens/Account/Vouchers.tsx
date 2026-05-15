@@ -73,6 +73,16 @@ function formatMinSpend(amount: number) {
   return `Min. spend GHS ${amount.toFixed(2)}`;
 }
 
+function formatAvailabilityLabel(voucher: VoucherWalletItem) {
+  if (voucher.availability === "assigned") {
+    return "Gifted offer";
+  }
+  if (voucher.availability === "claim") {
+    return "Claimed";
+  }
+  return "Ready to use";
+}
+
 export default function VouchersScreen() {
   const { showToast } = useToast();
   const params = useLocalSearchParams();
@@ -256,60 +266,76 @@ export default function VouchersScreen() {
                         </View>
                       </View>
 
-                      <Text style={styles.voucherTitle}>{voucher.title}</Text>
-                      <Text style={styles.rewardText}>{voucher.rewardText}</Text>
-                      <Text style={styles.metaText}>{formatMinSpend(voucher.minSubtotal)}</Text>
-                      <Text style={styles.metaText}>
-                        {voucher.scope === "store" ? "Store promotion" : "ODOS promotion"} ·{" "}
-                        {voucher.availability === "assigned"
-                          ? "Gifted"
-                          : voucher.availability === "claim"
-                            ? "Claimed"
-                            : "Always available"}
-                      </Text>
-                      {voucher.description ? (
-                        <Text style={styles.descriptionText}>{voucher.description}</Text>
-                      ) : null}
-
-                      <View style={styles.separator} />
-
-                      <View style={styles.metaRow}>
-                        <Ionicons
-                          name="calendar-outline"
-                          size={rMS(14)}
-                          color={AppColors.subtext[100]}
-                        />
-                        <Text style={styles.metaText}>{formatExpiry(voucher.expiresAt)}</Text>
-                      </View>
-
-                      <View style={styles.codeRow}>
-                        <View style={styles.codeBox}>
-                          <Text style={styles.codeLabel}>Code</Text>
-                          <Text style={styles.codeText}>{voucher.code}</Text>
-                        </View>
-                        {isSelected ? (
-                          <View style={styles.selectedPill}>
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={rMS(16)}
-                              color="#166534"
-                            />
-                            <Text style={styles.selectedPillText}>Selected</Text>
-                          </View>
-                        ) : null}
-                      </View>
-
-                      {isActive ? (
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          activeOpacity={0.85}
-                          onPress={() => handleUseVoucher(voucher)}
-                        >
-                          <Text style={styles.actionBtnText}>
-                            {fromCheckout ? "Use Promotion" : "Save for Checkout"}
+                      <View style={styles.heroRow}>
+                        <View style={styles.heroTextBlock}>
+                          <Text style={styles.voucherTitle} numberOfLines={2}>
+                            {voucher.title}
                           </Text>
-                        </TouchableOpacity>
+                          <Text style={styles.rewardText}>{voucher.rewardText}</Text>
+                        </View>
+
+                        <View style={styles.codeBadge}>
+                          <Text style={styles.codeBadgeLabel}>Code</Text>
+                          <Text style={styles.codeBadgeText}>{voucher.code}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.infoChipsRow}>
+                        <View style={styles.infoChip}>
+                          <Text style={styles.infoChipText}>
+                            {formatMinSpend(voucher.minSubtotal)}
+                          </Text>
+                        </View>
+                        <View style={[styles.infoChip, styles.infoChipMuted]}>
+                          <Text style={[styles.infoChipText, styles.infoChipMutedText]}>
+                            {voucher.scope === "store" ? "Store promotion" : "ODOS promotion"} ·{" "}
+                            {formatAvailabilityLabel(voucher)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {voucher.description ? (
+                        <Text style={styles.descriptionText} numberOfLines={2}>
+                          {voucher.description}
+                        </Text>
                       ) : null}
+
+                      <View style={styles.footerRow}>
+                        <View style={styles.expiryStack}>
+                          <View style={styles.metaRow}>
+                            <Ionicons
+                              name="calendar-outline"
+                              size={rMS(13)}
+                              color={AppColors.subtext[100]}
+                            />
+                            <Text style={styles.metaText}>{formatExpiry(voucher.expiresAt)}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.footerActions}>
+                          {isSelected ? (
+                            <View style={styles.selectedPill}>
+                              <Ionicons
+                                name="checkmark-circle"
+                                size={rMS(15)}
+                                color="#166534"
+                              />
+                              <Text style={styles.selectedPillText}>Selected</Text>
+                            </View>
+                          ) : null}
+                          {isActive ? (
+                            <TouchableOpacity
+                              style={styles.actionBtn}
+                              activeOpacity={0.85}
+                              onPress={() => handleUseVoucher(voucher)}
+                            >
+                              <Text style={styles.actionBtnText}>
+                                {fromCheckout ? "Use" : "Save"}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      </View>
                     </View>
                   );
                 })
@@ -441,125 +467,165 @@ const styles = StyleSheet.create({
   },
   voucherCard: {
     backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    padding: rS(14),
+    borderRadius: rMS(18),
+    paddingHorizontal: rS(13),
+    paddingVertical: rV(13),
     marginBottom: rV(12),
+    borderWidth: 1,
+    borderColor: "#E8EDF3",
   },
   cardTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: rV(8),
+    marginBottom: rV(10),
   },
   storeBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(5),
-    backgroundColor: "#EEF2F5",
-    borderRadius: rMS(10),
-    paddingHorizontal: rS(8),
+    backgroundColor: "#F7F4ED",
+    borderRadius: rMS(999),
+    paddingHorizontal: rS(9),
     paddingVertical: rV(5),
   },
   storeBadgeText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
+    fontSize: rMS(10.5),
+    fontFamily: Fonts.title,
     color: AppColors.secondary,
   },
   statusBadge: {
     borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
+    paddingHorizontal: rS(9),
     paddingVertical: rV(4),
   },
   statusText: {
     fontSize: rMS(10),
     fontFamily: Fonts.textBold,
   },
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rS(10),
+  },
+  heroTextBlock: {
+    flex: 1,
+  },
   voucherTitle: {
-    fontSize: rMS(15),
+    fontSize: rMS(14.5),
     fontFamily: Fonts.title,
     color: AppColors.text,
   },
   rewardText: {
-    marginTop: rV(5),
-    fontSize: rMS(22),
+    marginTop: rV(4),
+    fontSize: rMS(19.5),
     fontFamily: Fonts.black,
     color: AppColors.text,
   },
+  codeBadge: {
+    minWidth: rS(84),
+    borderRadius: rMS(14),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(8),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E5EAF0",
+    alignItems: "flex-start",
+  },
+  codeBadgeLabel: {
+    fontSize: rMS(9.5),
+    fontFamily: Fonts.text,
+    color: AppColors.subtext[100],
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  codeBadgeText: {
+    marginTop: rV(2),
+    fontSize: rMS(11.5),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+    letterSpacing: 0.5,
+  },
+  infoChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(7),
+    marginTop: rV(8),
+  },
+  infoChip: {
+    borderRadius: rMS(999),
+    backgroundColor: "#F4F7FA",
+    paddingHorizontal: rS(9),
+    paddingVertical: rV(5),
+  },
+  infoChipMuted: {
+    backgroundColor: "#FCF7EE",
+  },
+  infoChipText: {
+    fontSize: rMS(10.5),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+  },
+  infoChipMutedText: {
+    color: "#8A6D3B",
+  },
   metaText: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
+    fontSize: rMS(11.25),
     fontFamily: Fonts.text,
     color: AppColors.subtext[100],
   },
   descriptionText: {
     marginTop: rV(8),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
+    fontSize: rMS(11.5),
+    lineHeight: rMS(17),
     fontFamily: Fonts.text,
     color: AppColors.secondary,
-  },
-  separator: {
-    marginVertical: rV(12),
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEF1F4",
-    borderStyle: "dashed",
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(6),
   },
-  codeRow: {
-    marginTop: rV(10),
+  footerRow: {
+    marginTop: rV(11),
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: rS(10),
   },
-  codeBox: {
+  expiryStack: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: rMS(10),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(9),
   },
-  codeLabel: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.text,
-    color: AppColors.subtext[100],
-  },
-  codeText: {
-    marginTop: rV(2),
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    letterSpacing: 0.6,
+  footerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: rS(8),
   },
   selectedPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(5),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(8),
-    borderRadius: rMS(10),
+    paddingHorizontal: rS(9),
+    paddingVertical: rV(7),
+    borderRadius: rMS(999),
     backgroundColor: "#DCFCE7",
   },
   selectedPillText: {
-    fontSize: rMS(11),
+    fontSize: rMS(10.5),
     fontFamily: Fonts.textBold,
     color: "#166534",
   },
   actionBtn: {
-    marginTop: rV(12),
-    borderRadius: rMS(12),
+    borderRadius: rMS(999),
     backgroundColor: AppColors.text,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: rV(12),
+    paddingHorizontal: rS(16),
+    paddingVertical: rV(9),
   },
   actionBtnText: {
-    fontSize: rMS(14),
+    fontSize: rMS(11.5),
     fontFamily: Fonts.textBold,
     color: AppColors.white,
   },

@@ -259,16 +259,9 @@ export default function VerificationScreen() {
       ) : null}
 
       <PrimaryButton
-        title={
-          isPasswordResetMode
-            ? isVerifyingResetCode
-              ? "Checking code..."
-              : "Continue"
-            : isVerifyingEmail
-              ? "Verifying..."
-              : "Verify Email"
-        }
+        title={isPasswordResetMode ? "Continue" : "Verify Email"}
         onPress={handleContinue}
+        isLoading={isPasswordResetMode ? isVerifyingResetCode : isVerifyingEmail}
         disabled={
           isVerifyingEmail || isVerifyingResetCode || joinedCode.length !== OTP_LENGTH
         }

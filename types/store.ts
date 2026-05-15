@@ -61,6 +61,7 @@ export type VendorProductInput = {
   colorOptions?: string[];
   sizeOptions?: string[];
   specifications?: string[];
+  isReturnable?: boolean;
 };
 
 export type VendorProduct = VendorProductInput & {

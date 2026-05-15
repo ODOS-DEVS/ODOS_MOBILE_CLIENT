@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/constants/auth";
+import { useRealtime } from "@/context/RealtimeContext";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,6 +15,7 @@ export type StoreItem = {
   id: string;
   slug: string;
   title: string;
+  status?: string;
   category?: string;
   audienceSlugs?: string[];
   marketSlug?: string;
@@ -45,6 +47,7 @@ type StoreApiItem = {
   id: string;
   slug: string;
   title: string;
+  status: string;
   category: string | null;
   audience_slugs?: string[] | null;
   market_slug: string | null;
@@ -60,6 +63,10 @@ type StoreApiItem = {
   distance_km: string | null;
   travel_minutes: string | null;
   description: string | null;
+};
+
+type CatalogStoreChangedEvent = {
+  store_id?: string;
 };
 
 function mapMarket(item: MarketApiItem): MarketItem {
@@ -78,6 +85,7 @@ function mapStore(item: StoreApiItem): StoreItem {
     id: item.id,
     slug: item.slug,
     title: item.title,
+    status: item.status,
     category: item.category ?? undefined,
     audienceSlugs: item.audience_slugs ?? undefined,
     marketSlug: item.market_slug ?? undefined,
@@ -121,6 +129,7 @@ function isSameStore(a: StoreItem, b: StoreItem) {
     a.id === b.id &&
     a.slug === b.slug &&
     a.title === b.title &&
+    a.status === b.status &&
     a.category === b.category &&
     areStringArraysEqual(a.audienceSlugs, b.audienceSlugs) &&
     a.marketSlug === b.marketSlug &&
@@ -224,6 +233,7 @@ export function useStores({
 }) {
   const [stores, setStores] = useState<StoreItem[]>(fallback);
   const [isLoading, setIsLoading] = useState(true);
+  const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const fallbackRef = useRef(fallback);
@@ -292,7 +302,11 @@ export function useStores({
     };
   }, [loadStores]);
 
-  useLiveRefresh(() => loadStores({ background: true }));
+  useEffect(() => {
+    return subscribe("catalog.store.changed", () => {
+      void loadStores({ background: true });
+    });
+  }, [loadStores, subscribe]);
 
   return { stores, isLoading };
 }
@@ -306,6 +320,7 @@ export function useStore({
 }) {
   const [store, setStore] = useState<StoreItem>(fallback);
   const [isLoading, setIsLoading] = useState(Boolean(storeId));
+  const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
@@ -371,9 +386,20 @@ export function useStore({
     };
   }, [loadStore, storeId]);
 
-  useLiveRefresh(() => loadStore({ background: true }), {
-    enabled: Boolean(storeId),
-  });
+  useEffect(() => {
+    if (!storeId) {
+      return;
+    }
+
+    return subscribe("catalog.store.changed", (event) => {
+      const payload = event.payload as CatalogStoreChangedEvent | undefined;
+      if (!payload?.store_id || payload.store_id !== storeId) {
+        return;
+      }
+
+      void loadStore({ background: true });
+    });
+  }, [loadStore, storeId, subscribe]);
 
   return { store, isLoading };
 }
