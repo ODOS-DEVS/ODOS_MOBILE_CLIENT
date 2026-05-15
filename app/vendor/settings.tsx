@@ -57,6 +57,18 @@ export default function VendorSettingsScreen() {
       subtitle: "Track fulfillment across vendor-only orders.",
       onPress: () => router.push("/vendor/orders" as any),
     },
+    {
+      label: "Admin Support",
+      subtitle: "Chat with ODOS admin about approvals, payouts, or account help.",
+      onPress: () =>
+        router.push({
+          pathname: "/screens/support/chat",
+          params: {
+            subject: "Vendor operations support",
+            fallback: "/vendor/settings",
+          },
+        }),
+    },
   ];
 
   return (

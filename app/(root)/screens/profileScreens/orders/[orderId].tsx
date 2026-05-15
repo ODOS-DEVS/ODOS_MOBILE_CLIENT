@@ -1,16 +1,26 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import TextInputField from "@/components/TextInputField";
 import { AppColors } from "@/constants/Colors";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
-import { Order, useOrder, useOrders } from "@/hooks/useOrders";
+import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -124,16 +134,113 @@ function getTimelineSteps(order: Order) {
   ];
 }
 
+const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
+
+function getReturnStatusMeta(status: ReturnRequest["status"]) {
+  switch (status) {
+    case "requested":
+      return {
+        label: "Requested",
+        backgroundColor: "#FEF3C7",
+        textColor: "#92400E",
+      };
+    case "under_review":
+      return {
+        label: "Under Review",
+        backgroundColor: "#DBEAFE",
+        textColor: "#1D4ED8",
+      };
+    case "approved":
+      return {
+        label: "Approved",
+        backgroundColor: "#DCFCE7",
+        textColor: "#166534",
+      };
+    case "rejected":
+      return {
+        label: "Declined",
+        backgroundColor: "#FEE2E2",
+        textColor: "#B91C1C",
+      };
+    case "refunded":
+      return {
+        label: "Refunded",
+        backgroundColor: "#DCFCE7",
+        textColor: "#166534",
+      };
+    case "exchanged":
+      return {
+        label: "Exchanged",
+        backgroundColor: "#EDE9FE",
+        textColor: "#6D28D9",
+      };
+    default:
+      return {
+        label: status.replace(/_/g, " "),
+        backgroundColor: "#EEF2F6",
+        textColor: AppColors.secondary,
+      };
+  }
+}
+
 export default function OrderDetailScreen() {
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder, refreshOrder } = useOrder(orderId);
-  const { cancelOrder, confirmDelivery, removeOrder, isMutatingOrder } = useOrders();
+  const { cancelOrder, confirmDelivery, createReturnRequest, removeOrder, isMutatingOrder } =
+    useOrders();
   const { addItemsToCart } = useCart();
   const { showToast } = useToast();
+  const [returnTargetItem, setReturnTargetItem] = React.useState<OrderItem | null>(null);
+  const [returnType, setReturnType] = React.useState<"refund" | "exchange" | "return">("refund");
+  const [returnQuantity, setReturnQuantity] = React.useState(1);
+  const [returnReason, setReturnReason] = React.useState("");
+  const [returnDetails, setReturnDetails] = React.useState("");
+  const [isSubmittingReturn, setIsSubmittingReturn] = React.useState(false);
+
+  const latestReturnRequestsByItem = React.useMemo(() => {
+    if (!order) {
+      return new Map<string, ReturnRequest>();
+    }
+
+    const grouped = new Map<string, ReturnRequest>();
+    for (const request of order.return_requests) {
+      const existing = grouped.get(request.order_item_id);
+      if (!existing) {
+        grouped.set(request.order_item_id, request);
+        continue;
+      }
+
+      if (new Date(request.created_at).getTime() > new Date(existing.created_at).getTime()) {
+        grouped.set(request.order_item_id, request);
+      }
+    }
+
+    return grouped;
+  }, [order]);
 
   const handleError = (message: string) => {
     Alert.alert("Something went wrong", message);
+  };
+
+  const closeReturnModal = (force = false) => {
+    if (isSubmittingReturn && !force) {
+      return;
+    }
+
+    setReturnTargetItem(null);
+    setReturnType("refund");
+    setReturnQuantity(1);
+    setReturnReason("");
+    setReturnDetails("");
+  };
+
+  const openReturnModal = (item: OrderItem) => {
+    setReturnTargetItem(item);
+    setReturnType("refund");
+    setReturnQuantity(1);
+    setReturnReason("");
+    setReturnDetails("");
   };
 
   const handleConfirmDelivery = async () => {
@@ -213,13 +320,48 @@ export default function OrderDetailScreen() {
         })),
       );
       showToast("Items added back to cart.");
-      router.push("/(root)/(tabs)/cart" as any);
+      router.replace("/(root)/(tabs)/cart" as any);
     } catch (error) {
       handleError(
         error instanceof Error
           ? error.message
           : "We couldn't add these items back to your cart right now.",
       );
+    }
+  };
+
+  const handleSubmitReturnRequest = async () => {
+    if (!order || !returnTargetItem) {
+      return;
+    }
+
+    const trimmedReason = returnReason.trim();
+    const trimmedDetails = returnDetails.trim();
+    if (trimmedReason.length < 2) {
+      handleError("Tell us the reason for this request before submitting it.");
+      return;
+    }
+
+    setIsSubmittingReturn(true);
+    try {
+      await createReturnRequest(order.id, {
+        order_item_id: returnTargetItem.id,
+        request_type: returnType,
+        quantity: returnQuantity,
+        reason: trimmedReason,
+        details: trimmedDetails || null,
+      });
+      await refreshOrder();
+      closeReturnModal(true);
+      showToast("Return request submitted.");
+    } catch (error) {
+      handleError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit that return request right now.",
+      );
+    } finally {
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -345,6 +487,11 @@ export default function OrderDetailScreen() {
           {order.items.map((item, index) => {
             const itemImage =
               item.image_key ? resolveCatalogImage(item.image_key) : item.image_url ? { uri: item.image_url } : null;
+            const latestRequest = latestReturnRequestsByItem.get(item.id);
+            const hasOpenRequest = latestRequest
+              ? OPEN_RETURN_STATUSES.has(latestRequest.status)
+              : false;
+            const latestRequestMeta = latestRequest ? getReturnStatusMeta(latestRequest.status) : null;
 
             return (
               <View
@@ -354,31 +501,153 @@ export default function OrderDetailScreen() {
                   index !== order.items.length - 1 && styles.itemRowBorder,
                 ]}
               >
-                <View style={styles.imageWrap}>
-                  {itemImage ? (
-                    <Image source={itemImage} style={styles.image} resizeMode="contain" />
-                  ) : (
-                    <Ionicons name="image-outline" size={rMS(24)} color={AppColors.subtext[100]} />
-                  )}
-                </View>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemMeta}>
-                    {item.category || "Product"} · Qty {item.quantity}
-                  </Text>
-                  {item.selected_color || item.selected_size ? (
-                    <Text style={styles.itemVariant}>
-                      {[item.selected_color && `Color: ${item.selected_color}`, item.selected_size && `Size: ${item.selected_size}`]
-                        .filter(Boolean)
-                        .join(" · ")}
+                <View style={styles.itemRowTop}>
+                  <View style={styles.imageWrap}>
+                    {itemImage ? (
+                      <Image source={itemImage} style={styles.image} resizeMode="contain" />
+                    ) : (
+                      <Ionicons name="image-outline" size={rMS(24)} color={AppColors.subtext[100]} />
+                    )}
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemMeta}>
+                      {item.category || "Product"} · Qty {item.quantity}
                     </Text>
-                  ) : null}
+                    {item.selected_color || item.selected_size ? (
+                      <Text style={styles.itemVariant}>
+                        {[item.selected_color && `Color: ${item.selected_color}`, item.selected_size && `Size: ${item.selected_size}`]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.itemAmount}>₵{item.line_total.toFixed(2)}</Text>
                 </View>
-                <Text style={styles.itemAmount}>₵{item.line_total.toFixed(2)}</Text>
+
+                {order.status === "delivered" ? (
+                  <View style={styles.itemActionRow}>
+                    {hasOpenRequest && latestRequest && latestRequestMeta ? (
+                      <View
+                        style={[
+                          styles.inlineStatusPill,
+                          { backgroundColor: latestRequestMeta.backgroundColor },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.inlineStatusPillText,
+                            { color: latestRequestMeta.textColor },
+                          ]}
+                        >
+                          {latestRequestMeta.label}
+                        </Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.inlineActionButton}
+                        activeOpacity={0.88}
+                        onPress={() => openReturnModal(item)}
+                      >
+                        <Ionicons name="refresh-outline" size={rMS(14)} color="#1D4ED8" />
+                        <Text style={styles.inlineActionButtonText}>Request return</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {latestRequest ? (
+                      <Text style={styles.inlineHelperText}>
+                        Last request: {latestRequest.request_type} · {latestRequest.reason}
+                      </Text>
+                    ) : (
+                      <Text style={styles.inlineHelperText}>
+                        Delivered items can be reviewed for refund, exchange, or return.
+                      </Text>
+                    )}
+                  </View>
+                ) : null}
               </View>
             );
           })}
         </View>
+
+        {order.status === "delivered" || order.return_requests.length > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Returns & Refunds</Text>
+            <Text style={styles.returnIntro}>
+              Start a request per delivered item, then track review, approval, refund, or exchange updates here.
+            </Text>
+
+            {order.return_requests.length === 0 ? (
+              <View style={styles.returnEmptyState}>
+                <Ionicons name="swap-horizontal-outline" size={rMS(18)} color={AppColors.secondary} />
+                <Text style={styles.returnEmptyText}>No return requests on this order yet.</Text>
+              </View>
+            ) : (
+              order.return_requests
+                .slice()
+                .sort(
+                  (left, right) =>
+                    new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+                )
+                .map((request) => {
+                  const statusMeta = getReturnStatusMeta(request.status);
+                  const item = order.items.find((candidate) => candidate.id === request.order_item_id);
+                  return (
+                    <View key={request.id} style={styles.returnRequestCard}>
+                      <View style={styles.returnRequestTopRow}>
+                        <View style={styles.returnRequestTitleWrap}>
+                          <Text style={styles.returnRequestTitle}>
+                            {item?.title || "Order item"}
+                          </Text>
+                          <Text style={styles.returnRequestMeta}>
+                            {request.request_type} · Qty {request.quantity}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.inlineStatusPill,
+                            { backgroundColor: statusMeta.backgroundColor },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.inlineStatusPillText,
+                              { color: statusMeta.textColor },
+                            ]}
+                          >
+                            {statusMeta.label}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.returnRequestReason}>{request.reason}</Text>
+                      {request.details ? (
+                        <Text style={styles.returnRequestDetails}>{request.details}</Text>
+                      ) : null}
+
+                      <View style={styles.returnRequestFooter}>
+                        <Text style={styles.returnRequestTimestamp}>
+                          Sent {formatTimelineDate(request.created_at) || "just now"}
+                        </Text>
+                        {request.refund_amount !== null && request.refund_amount !== undefined ? (
+                          <Text style={styles.returnRequestRefund}>
+                            Refund ₵{request.refund_amount.toFixed(2)}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      {request.admin_note ? (
+                        <View style={styles.returnAdminNote}>
+                          <Text style={styles.returnAdminNoteLabel}>Admin note</Text>
+                          <Text style={styles.returnAdminNoteText}>{request.admin_note}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })
+            )}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Delivery</Text>
@@ -398,6 +667,12 @@ export default function OrderDetailScreen() {
               : order.payment_network || "Mobile Money"}
           </Text>
           {order.payment_phone ? <Text style={styles.detailText}>{order.payment_phone}</Text> : null}
+          {order.voucher_code ? (
+            <Text style={styles.detailText}>
+              Voucher: {order.voucher_code}
+              {order.voucher_title ? ` · ${order.voucher_title}` : ""}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -418,6 +693,16 @@ export default function OrderDetailScreen() {
               {order.shipping_amount === 0 ? "FREE" : `₵${order.shipping_amount.toFixed(2)}`}
             </Text>
           </View>
+          {order.discount_amount > 0 ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
+              </Text>
+              <Text style={[styles.summaryValue, styles.discountText]}>
+                -₵{order.discount_amount.toFixed(2)}
+              </Text>
+            </View>
+          ) : null}
           <View style={[styles.summaryRow, styles.summaryRowLast]}>
             <Text style={styles.summaryTotalLabel}>Total</Text>
             <Text style={styles.summaryTotalValue}>₵{order.total_amount.toFixed(2)}</Text>
@@ -555,6 +840,137 @@ export default function OrderDetailScreen() {
           <Text style={styles.secondaryButtonText}>Back to My Orders</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={Boolean(returnTargetItem)}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => closeReturnModal()}
+      >
+        <View style={styles.modalScreen}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => closeReturnModal()}
+              disabled={isSubmittingReturn}
+            >
+              <Text style={styles.modalHeaderAction}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Request return</Text>
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => {
+                void handleSubmitReturnRequest();
+              }}
+              disabled={isSubmittingReturn}
+            >
+              <Text style={styles.modalHeaderAction}>
+                {isSubmittingReturn ? "Sending..." : "Submit"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalContent}
+          >
+            {returnTargetItem ? (
+              <>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalSectionTitle}>Selected item</Text>
+                  <Text style={styles.modalProductTitle}>{returnTargetItem.title}</Text>
+                  <Text style={styles.modalProductMeta}>
+                    Qty delivered {returnTargetItem.quantity} · ₵{returnTargetItem.line_total.toFixed(2)}
+                  </Text>
+                </View>
+
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalSectionTitle}>What do you need?</Text>
+                  <View style={styles.choiceRow}>
+                    {(["refund", "exchange", "return"] as const).map((option) => {
+                      const active = returnType === option;
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          style={[styles.choiceChip, active && styles.choiceChipActive]}
+                          activeOpacity={0.88}
+                          onPress={() => setReturnType(option)}
+                        >
+                          <Text
+                            style={[
+                              styles.choiceChipText,
+                              active && styles.choiceChipTextActive,
+                            ]}
+                          >
+                            {option === "refund"
+                              ? "Refund"
+                              : option === "exchange"
+                                ? "Exchange"
+                                : "Return"}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.quantityCard}>
+                    <View>
+                      <Text style={styles.quantityLabel}>Quantity</Text>
+                      <Text style={styles.quantityHint}>
+                        Choose how many units from this item should be reviewed.
+                      </Text>
+                    </View>
+                    <View style={styles.quantityStepper}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        activeOpacity={0.88}
+                        disabled={returnQuantity <= 1}
+                        onPress={() => setReturnQuantity((current) => Math.max(1, current - 1))}
+                      >
+                        <Ionicons name="remove" size={rMS(16)} color={AppColors.text} />
+                      </TouchableOpacity>
+                      <Text style={styles.quantityValue}>{returnQuantity}</Text>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        activeOpacity={0.88}
+                        disabled={returnQuantity >= returnTargetItem.quantity}
+                        onPress={() =>
+                          setReturnQuantity((current) =>
+                            Math.min(returnTargetItem.quantity, current + 1),
+                          )
+                        }
+                      >
+                        <Ionicons name="add" size={rMS(16)} color={AppColors.text} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.modalCard}>
+                  <TextInputField
+                    label="Reason"
+                    placeholder="What happened with this item?"
+                    value={returnReason}
+                    onChangeText={setReturnReason}
+                    autoCapitalize="sentences"
+                    helperText="Keep it clear so ODOS can review it quickly."
+                  />
+                  <TextInputField
+                    label="Extra details"
+                    placeholder="Add a little more context if needed"
+                    value={returnDetails}
+                    onChangeText={setReturnDetails}
+                    autoCapitalize="sentences"
+                    multiline
+                    numberOfLines={5}
+                    helperText="Optional, but helpful for support and refund decisions."
+                  />
+                </View>
+              </>
+            ) : null}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -677,10 +1093,13 @@ const styles = StyleSheet.create({
     marginBottom: rV(12),
   },
   itemRow: {
+    gap: rV(10),
+    paddingBottom: rV(12),
+  },
+  itemRowTop: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(12),
-    paddingBottom: rV(12),
   },
   itemRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -725,6 +1144,41 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     color: AppColors.text,
   },
+  itemActionRow: {
+    marginLeft: rMS(78),
+    gap: rV(6),
+  },
+  inlineActionButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(6),
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(8),
+    borderRadius: rMS(999),
+    backgroundColor: "#EAF2FF",
+  },
+  inlineActionButtonText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: "#1D4ED8",
+  },
+  inlineHelperText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+    lineHeight: rMS(16),
+  },
+  inlineStatusPill: {
+    alignSelf: "flex-start",
+    borderRadius: rMS(999),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(6),
+  },
+  inlineStatusPillText: {
+    fontSize: rMS(10),
+    fontFamily: Fonts.textBold,
+  },
   detailPrimary: {
     fontSize: rMS(14),
     fontFamily: Fonts.textBold,
@@ -760,6 +1214,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     color: AppColors.text,
   },
+  discountText: {
+    color: "#166534",
+  },
   summaryTotalLabel: {
     fontSize: rMS(14),
     fontFamily: Fonts.titleBold,
@@ -786,6 +1243,109 @@ const styles = StyleSheet.create({
     fontSize: rMS(13),
     fontFamily: Fonts.textBold,
     color: AppColors.primary,
+  },
+  returnIntro: {
+    marginTop: -rV(4),
+    marginBottom: rV(12),
+    fontSize: rMS(12),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+    lineHeight: rMS(18),
+  },
+  returnEmptyState: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+    borderRadius: rMS(14),
+    backgroundColor: "#F7F9FC",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(12),
+  },
+  returnEmptyText: {
+    flex: 1,
+    fontSize: rMS(12),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  returnRequestCard: {
+    borderRadius: rMS(16),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E7EBF0",
+    padding: rS(14),
+    marginBottom: rV(10),
+  },
+  returnRequestTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: rS(10),
+  },
+  returnRequestTitleWrap: {
+    flex: 1,
+  },
+  returnRequestTitle: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  returnRequestMeta: {
+    marginTop: rV(3),
+    fontSize: rMS(11),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  returnRequestReason: {
+    marginTop: rV(10),
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  returnRequestDetails: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+    lineHeight: rMS(18),
+  },
+  returnRequestFooter: {
+    marginTop: rV(10),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  returnRequestTimestamp: {
+    flex: 1,
+    fontSize: rMS(11),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  returnRequestRefund: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: "#166534",
+  },
+  returnAdminNote: {
+    marginTop: rV(10),
+    borderRadius: rMS(12),
+    backgroundColor: "#EEF4FF",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(10),
+  },
+  returnAdminNoteLabel: {
+    fontSize: rMS(10),
+    fontFamily: Fonts.textBold,
+    color: "#1D4ED8",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  returnAdminNoteText: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    fontFamily: Fonts.text,
+    color: AppColors.text,
+    lineHeight: rMS(18),
   },
   emptyState: {
     flex: 1,
@@ -882,5 +1442,129 @@ const styles = StyleSheet.create({
   destructiveButtonDisabled: {
     backgroundColor: "#F6DDE3",
     borderColor: "#F6DDE3",
+  },
+  modalScreen: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: rS(16),
+    paddingTop: rV(18),
+    paddingBottom: rV(14),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E7EBF0",
+    backgroundColor: AppColors.white,
+  },
+  modalHeaderAction: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: AppColors.primary,
+  },
+  modalTitle: {
+    fontSize: rMS(15),
+    fontFamily: Fonts.titleBold,
+    color: AppColors.text,
+  },
+  modalContent: {
+    paddingHorizontal: rS(16),
+    paddingTop: rV(16),
+    paddingBottom: rV(28),
+  },
+  modalCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(18),
+    padding: rS(16),
+    marginBottom: rV(12),
+  },
+  modalSectionTitle: {
+    fontSize: rMS(13),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+    marginBottom: rV(10),
+  },
+  modalProductTitle: {
+    fontSize: rMS(16),
+    fontFamily: Fonts.titleBold,
+    color: AppColors.text,
+  },
+  modalProductMeta: {
+    marginTop: rV(4),
+    fontSize: rMS(12),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+  },
+  choiceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+    marginBottom: rV(16),
+  },
+  choiceChip: {
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(9),
+    borderRadius: rMS(999),
+    borderWidth: 1,
+    borderColor: "#D8DEE6",
+    backgroundColor: "#F8FAFC",
+  },
+  choiceChipActive: {
+    borderColor: "#1D4ED8",
+    backgroundColor: "#EAF2FF",
+  },
+  choiceChipText: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+  },
+  choiceChipTextActive: {
+    color: "#1D4ED8",
+  },
+  quantityCard: {
+    borderRadius: rMS(16),
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: rS(12),
+  },
+  quantityLabel: {
+    fontSize: rMS(12),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+  },
+  quantityHint: {
+    marginTop: rV(4),
+    fontSize: rMS(11),
+    fontFamily: Fonts.text,
+    color: AppColors.secondary,
+    lineHeight: rMS(16),
+    maxWidth: "90%",
+  },
+  quantityStepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  quantityButton: {
+    width: rMS(32),
+    height: rMS(32),
+    borderRadius: rMS(16),
+    backgroundColor: AppColors.white,
+    borderWidth: 1,
+    borderColor: "#D8DEE6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityValue: {
+    minWidth: rS(24),
+    textAlign: "center",
+    fontSize: rMS(14),
+    fontFamily: Fonts.titleBold,
+    color: AppColors.text,
   },
 });

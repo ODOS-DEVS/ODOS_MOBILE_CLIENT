@@ -1,12 +1,17 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
-import VoucherCard from "@/components/cards/VoucherCard";
+import StoreOfferCard from "@/components/cards/StoreOfferCard";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { gentsData, vouchers } from "@/constants/Data";
+import { gentsData } from "@/constants/Data";
+import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/context/ToastContext";
 import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useStore } from "@/hooks/useCommerce";
-import { rS, useResponsive } from "@/styles/responsive";
+import { type StoreVoucherOffer, useVouchers } from "@/hooks/useVouchers";
+import { rS, rV, useResponsive } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -15,15 +20,25 @@ import {
   FlatList,
   Image,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const PRODUCT_PREVIEW_LIMIT = 6;
+
 const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
+  const [storeOffers, setStoreOffers] = useState<StoreVoucherOffer[]>([]);
+  const [isClaimingOfferId, setIsClaimingOfferId] = useState<string | null>(null);
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const params = useLocalSearchParams();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { setCheckoutVoucherCode } = useProfile();
+  const { fetchStoreVouchers, claimVoucher } = useVouchers();
   const storeId =
     typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
   const paramTitle =
@@ -37,6 +52,7 @@ const StoreDetailScreen = () => {
       id: storeId,
       slug: paramTitle.toLowerCase().replace(/\s+/g, "-"),
       title: paramTitle,
+      status: "active",
       image: resolveImageSource(
         typeof params.image === "string" ? params.image : undefined,
         typeof params.imageKey === "string" ? params.imageKey : undefined,
@@ -70,9 +86,21 @@ const StoreDetailScreen = () => {
     fallback: [],
   });
   const insets = useSafeAreaInsets();
-  const { gridCardWidth } = useResponsive();
+  const { gridCardWidth, horizontalPadding, width } = useResponsive();
   const gridGap = rS(6);
-  const gridPadding = rS(17);
+  const gridPadding = horizontalPadding;
+  const shellWidth = width;
+  const storeLocation = [store.address, store.city].filter(Boolean).join(", ");
+  const audienceLabel =
+    store.audienceSlugs && store.audienceSlugs.length > 0
+      ? store.audienceSlugs.join(", ")
+      : "All shoppers";
+  const isVerified = store.status === "active";
+  const canExpandProductLine = storeProducts.length > PRODUCT_PREVIEW_LIMIT;
+  const visibleStoreProducts = showAllProducts
+    ? storeProducts
+    : storeProducts.slice(0, PRODUCT_PREVIEW_LIMIT);
+  const singleFlashSaleCardWidth = Math.max(shellWidth - horizontalPadding * 2, rS(200));
 
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
@@ -100,84 +128,222 @@ const StoreDetailScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!storeId) {
+      setStoreOffers([]);
+      return;
+    }
+
+    void fetchStoreVouchers(storeId)
+      .then((offers) => {
+        if (!isMounted) {
+          return;
+        }
+        setStoreOffers(offers);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStoreOffers([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchStoreVouchers, storeId]);
+
+  useEffect(() => {
+    setShowAllProducts(false);
+  }, [storeId]);
+
+  const handleClaimOffer = async (offer: StoreVoucherOffer) => {
+    if (!user) {
+      showToast("Sign in to save this store offer.");
+      return;
+    }
+
+    setIsClaimingOfferId(offer.id);
+    try {
+      const claimed = await claimVoucher(offer.id);
+      setStoreOffers((current) =>
+        current.map((item) =>
+          item.id === offer.id ? { ...item, claimed: true } : item,
+        ),
+      );
+      showToast(`${claimed.code} saved to your wallet.`);
+    } catch (error) {
+      showToast(
+        error instanceof Error && error.message
+          ? error.message
+          : "We couldn't save that offer right now.",
+      );
+    } finally {
+      setIsClaimingOfferId(null);
+    }
+  };
+
+  const handleUseOffer = (offer: StoreVoucherOffer) => {
+    setCheckoutVoucherCode(offer.code);
+    showToast(`${offer.code} saved for checkout.`);
+  };
+
   if (isLoading) {
     return <ScreenLoader label="Loading store..." />;
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white"
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* HEADER TITLE & BACK */}
-      <View className="px-4 mb-3 flex-row items-center gap-3">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 bg-black/20 rounded-full justify-center items-center"
-          style={{
-            shadowColor: "#0f172a",
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 3,
-          }}
-        >
-          <Ionicons name="chevron-back" size={22} color="#111827" />
-        </TouchableOpacity>
-        <Text
-          className="flex-1 text-2xl font-montserrat-extraBold text-gray-900"
-          numberOfLines={1}
-        >
-          {store.title}
-        </Text>
-      </View>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.heroSection, { width: shellWidth, alignSelf: "center" }]}>
+        <View style={styles.coverWrap}>
+          <TouchableOpacity
+            onPress={() =>
+              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+            }
+            style={styles.backButton}
+          >
+            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-      {/* FULL IMAGE SECTION */}
-      <View className="px-4">
-        <View className="w-full h-[200px] relative rounded-3xl overflow-hidden">
           <Image
             source={store.imageBanner ?? store.image}
-            className="w-full h-full"
+            style={styles.coverImage}
             resizeMode="cover"
           />
+          <View style={styles.coverOverlay} />
         </View>
-      </View>
 
-      {/* REST OF CONTENT */}
-      <View>
+        <View style={styles.profileCard}>
+          <View style={styles.logoShell}>
+            <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
+          </View>
+
+          <View style={styles.profileHeaderRow}>
+            <View style={styles.profileTextWrap}>
+              <View style={styles.nameRow}>
+                <Text style={styles.storeName} numberOfLines={2}>
+                  {store.title}
+                </Text>
+                {isVerified ? (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={rS(18)}
+                    color="#16A34A"
+                    style={styles.verifiedIcon}
+                  />
+                ) : null}
+              </View>
+
+              <Text style={styles.storeMeta} numberOfLines={2}>
+                {[store.category, store.slug ? `@${store.slug}` : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+
+              {storeLocation ? (
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={rS(14)} color="#6B7280" />
+                  <Text style={styles.locationText} numberOfLines={2}>
+                    {storeLocation}
+                  </Text>
+                </View>
+              ) : null}
+
+              {store.description ? (
+                <Text style={styles.descriptionText} numberOfLines={2}>
+                  {store.description}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.tagRow}>
+            {store.city ? (
+              <View style={styles.tagPill}>
+                <Text style={styles.tagText}>{store.city}</Text>
+              </View>
+            ) : null}
+            <View style={styles.tagPill}>
+              <Text style={styles.tagText}>{audienceLabel}</Text>
+            </View>
+            {isVerified ? (
+              <View style={[styles.tagPill, styles.tagPillVerified]}>
+                <Text style={[styles.tagText, styles.tagTextVerified]}>Verified store</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        </View>
+
+        <View style={[styles.contentSection, { width: shellWidth, alignSelf: "center" }]}>
         {flashSaleProducts.length > 0 ? (
           <>
-            <View className="flex-row justify-between mt-8 mx-8">
-              <Text className="text-xl font-montserrat-extraBold text-gray-800 mt-8">
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>
                 Flash Sales
               </Text>
-              <Text className="font-montserrat-semiBold text-primary mt-8">
+              <Text style={styles.sectionAccent}>
                 {timeLeft}
               </Text>
             </View>
 
-            <View className="ml-[-20]">
-              <FlatList
-                data={flashSaleProducts}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <FlashSalesCard {...item} />}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
-              />
-            </View>
+            {flashSaleProducts.length === 1 ? (
+              <View style={styles.singleFlashSaleWrap}>
+                <FlashSalesCard
+                  {...flashSaleProducts[0]}
+                  cardWidth={singleFlashSaleCardWidth}
+                  cardSpacing={0}
+                  imageHeight={rV(190)}
+                />
+              </View>
+            ) : (
+              <View style={styles.horizontalListWrap}>
+                <FlatList
+                  data={flashSaleProducts}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <FlashSalesCard {...item} />}
+                  contentContainerStyle={{ paddingHorizontal: 4 }}
+                />
+              </View>
+            )}
           </>
         ) : null}
 
-        <View className="mx-6 mt-8">
-          <Text className="text-xl font-montserrat-extraBold text-gray-800">
-            Product line
-          </Text>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderCopy}>
+            <Text style={styles.sectionTitle}>
+              Product line
+            </Text>
+            {canExpandProductLine ? (
+              <Text style={styles.sectionSubtextCompact}>
+                {showAllProducts
+                  ? `${storeProducts.length} products in this store`
+                  : `Showing ${PRODUCT_PREVIEW_LIMIT} of ${storeProducts.length} products`}
+              </Text>
+            ) : null}
+          </View>
+          {canExpandProductLine ? (
+            <TouchableOpacity
+              onPress={() => setShowAllProducts((current) => !current)}
+              style={styles.inlineActionPill}
+            >
+              <Text style={styles.inlineActionText}>
+                {showAllProducts ? "Show less" : `See all (${storeProducts.length})`}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View>
           <FlatList
-            data={storeProducts}
+            data={visibleStoreProducts}
             numColumns={2}
             scrollEnabled={false}
             keyExtractor={(item) => item.id}
@@ -196,23 +362,38 @@ const StoreDetailScreen = () => {
           />
         </View>
 
-        <View className="mx-6 mt-8">
-          <Text className="text-xl font-montserrat-extraBold ">Vouchers</Text>
-        </View>
+        {storeOffers.length > 0 ? (
+          <>
+            <View style={styles.sectionHeaderBlock}>
+              <Text style={styles.sectionTitle}>
+                Store offers
+              </Text>
+              <Text style={styles.sectionSubtext}>
+                Save a store promotion now and use it when your basket qualifies.
+              </Text>
+            </View>
 
-        <View>
-          <FlatList
-            data={vouchers}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <VoucherCard {...item} />}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          />
-        </View>
+            <View style={styles.horizontalListWrap}>
+              <FlatList
+                data={storeOffers}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <StoreOfferCard
+                    offer={item}
+                    isBusy={isClaimingOfferId === item.id}
+                    onClaim={handleClaimOffer}
+                    onUse={handleUseOffer}
+                  />
+                )}
+                contentContainerStyle={{ paddingHorizontal: 4 }}
+              />
+            </View>
+          </>
+        ) : null}
 
-        {/* Visit Store CTA */}
-        <View className="px-12">
+        <View style={styles.ctaWrap}>
           <PrimaryButton
             title="Visit Store"
             roundedFull
@@ -232,9 +413,217 @@ const StoreDetailScreen = () => {
             }
           />
         </View>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
 export default StoreDetailScreen;
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F6F8FB",
+  },
+  heroSection: {
+    paddingHorizontal: 0,
+  },
+  coverWrap: {
+    height: rS(232),
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: rS(30),
+    borderBottomRightRadius: rS(30),
+    overflow: "hidden",
+    backgroundColor: "#D9E1EA",
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
+  },
+  coverOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.12)",
+  },
+  backButton: {
+    position: "absolute",
+    top: rS(16),
+    left: rS(16),
+    zIndex: 3,
+    width: rS(40),
+    height: rS(40),
+    borderRadius: rS(20),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.34)",
+  },
+  profileCard: {
+    marginTop: -rS(52),
+    marginHorizontal: 0,
+    backgroundColor: "#FFFFFF",
+    borderRadius: rS(30),
+    paddingHorizontal: rS(20),
+    paddingTop: rS(20),
+    paddingBottom: rS(18),
+    borderWidth: 1,
+    borderColor: "#E8EDF3",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  logoShell: {
+    width: rS(92),
+    height: rS(92),
+    borderRadius: rS(28),
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+    marginTop: -rS(66),
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
+  },
+  profileHeaderRow: {
+    marginTop: rS(12),
+  },
+  profileTextWrap: {
+    gap: rS(6),
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(6),
+    paddingRight: rS(10),
+  },
+  storeName: {
+    flexShrink: 1,
+    color: "#111827",
+    fontFamily: "Montserrat-ExtraBold",
+    fontSize: rS(22),
+    lineHeight: rS(28),
+  },
+  verifiedIcon: {
+    marginTop: rS(1),
+  },
+  storeMeta: {
+    color: "#4B5563",
+    fontFamily: "Montserrat-SemiBold",
+    fontSize: rS(12.5),
+    lineHeight: rS(18),
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(6),
+  },
+  locationText: {
+    flex: 1,
+    color: "#6B7280",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(11.5),
+    lineHeight: rS(17),
+  },
+  descriptionText: {
+    color: "#667085",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(11.5),
+    lineHeight: rS(18),
+    marginTop: rS(2),
+  },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+    marginTop: rS(12),
+  },
+  tagPill: {
+    borderRadius: rS(999),
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: rS(12),
+    paddingVertical: rS(7),
+  },
+  tagPillVerified: {
+    backgroundColor: "#E8F8EE",
+  },
+  tagText: {
+    color: "#4B5563",
+    fontFamily: "Montserrat-SemiBold",
+    fontSize: rS(10.75),
+  },
+  tagTextVerified: {
+    color: "#15803D",
+  },
+  contentSection: {
+    marginTop: rS(10),
+  },
+  sectionHeaderRow: {
+    marginTop: rS(18),
+    marginBottom: rS(12),
+    paddingHorizontal: rS(6),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  sectionHeaderBlock: {
+    marginTop: rS(18),
+    marginBottom: rS(12),
+    paddingHorizontal: rS(6),
+  },
+  sectionTitle: {
+    color: "#1F2937",
+    fontFamily: "Montserrat-ExtraBold",
+    fontSize: rS(20),
+  },
+  sectionAccent: {
+    color: "#667085",
+    fontFamily: "Montserrat-SemiBold",
+    fontSize: rS(12.5),
+  },
+  sectionSubtext: {
+    marginTop: rS(5),
+    color: "#6B7280",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(12),
+    lineHeight: rS(18),
+  },
+  sectionHeaderCopy: {
+    flex: 1,
+  },
+  sectionSubtextCompact: {
+    marginTop: rS(3),
+    color: "#6B7280",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(11.25),
+    lineHeight: rS(16),
+  },
+  inlineActionPill: {
+    borderRadius: rS(999),
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: rS(12),
+    paddingVertical: rS(8),
+  },
+  inlineActionText: {
+    color: "#344054",
+    fontFamily: "Montserrat-SemiBold",
+    fontSize: rS(11),
+  },
+  horizontalListWrap: {
+    marginLeft: rS(-4),
+  },
+  singleFlashSaleWrap: {
+    paddingHorizontal: rS(12),
+  },
+  ctaWrap: {
+    paddingHorizontal: rS(30),
+    marginTop: rS(18),
+  },
+});

@@ -5,6 +5,7 @@ import Fonts from "@/constants/Fonts";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { CatalogProductItem, useCatalogCategories, useCatalogProducts } from "@/hooks/useCatalog";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -540,7 +541,7 @@ export default function SearchScreen() {
         <View style={styles.headerRow}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.back()}
+            onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={rMS(20)} color={AppColors.text} />

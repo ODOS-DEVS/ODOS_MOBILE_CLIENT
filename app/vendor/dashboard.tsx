@@ -161,6 +161,32 @@ export default function VendorDashboardScreen() {
               subtitle="Update the store details customers see."
               onPress={() => router.push("/vendor/store" as any)}
             />
+            <QuickActionCard
+              icon="ticket-outline"
+              title="Promotions"
+              subtitle="Create store offers and gift vouchers to shoppers."
+              onPress={() => router.push("/vendor/vouchers" as any)}
+            />
+            <QuickActionCard
+              icon="chatbubble-ellipses-outline"
+              title="Shopper Chats"
+              subtitle="Reply to questions from customers browsing your store."
+              onPress={() => router.push("/vendor/chats" as any)}
+            />
+            <QuickActionCard
+              icon="headset-outline"
+              title="Admin Support"
+              subtitle="Message the admin team about approvals, payouts, or store issues."
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/support/chat",
+                  params: {
+                    subject: "Vendor admin support",
+                    fallback: "/vendor/dashboard",
+                  },
+                })
+              }
+            />
           </View>
 
           <View style={styles.card}>

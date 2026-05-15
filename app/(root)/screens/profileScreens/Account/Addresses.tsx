@@ -2,6 +2,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
+import { goBackOr } from "@/utils/navigation";
 import {
   Edit2,
   MapPin,
@@ -125,7 +126,7 @@ export default function AddressScreen() {
         }
         resetForm();
         setShowModal(false);
-        router.back();
+        goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
         return;
       }
 
@@ -154,12 +155,15 @@ export default function AddressScreen() {
 
   const handleUseForCheckout = (id: string) => {
     setCheckoutAddressId(id);
-    router.back();
+    goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
   };
 
   return (
     <View className="flex-1 bg-gray-100">
-      <ProfileHeader title={fromCheckout ? "Choose Address" : "My Addresses"} />
+      <ProfileHeader
+        title={fromCheckout ? "Choose Address" : "My Addresses"}
+        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+      />
 
       {/* Empty State */}
       {!isSyncingProfileData && addresses.length === 0 && (

@@ -1,10 +1,4 @@
 import { API_BASE_URL } from "@/constants/auth";
-import {
-  deriveDashboardStats,
-  ensureVendorMockState,
-  loadVendorMockState,
-  saveVendorMockState,
-} from "@/services/vendorMock";
 import { appendImageToFormData } from "@/utils/media";
 import type {
   VendorApplication,
@@ -169,156 +163,107 @@ function requireUserId(session: VendorSessionContext) {
   }
 }
 
-function shouldUseFallback(status: number) {
-  return status === 404 || status === 405 || status === 501;
+function requireAccessToken(session: VendorSessionContext) {
+  requireUserId(session);
+  if (!session.accessToken) {
+    throw new Error("Please sign in to continue.");
+  }
+  return session.accessToken;
 }
 
 export async function fetchMyVendorApplication(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/applications/me`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    const response = await fetch(`${API_BASE_URL}/vendor/applications/me`, {
-      headers: buildHeaders(session.accessToken),
-    });
-
-    if (response.ok) {
-      const payload = await parseResponse<VendorApplicationApi>(response);
-      return payload ? mapApplication(payload, session) : null;
-    }
-
-    if (!shouldUseFallback(response.status)) {
-      throw new Error(await parseErrorMessage(response));
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return mockState.application;
+  const payload = await parseResponse<VendorApplicationApi>(response);
+  return payload ? mapApplication(payload, session) : null;
 }
 
 export async function submitVendorApplication(
   session: VendorSessionContext,
   input: VendorApplicationInput,
 ) {
-  requireUserId(session);
-
-  if (session.accessToken) {
-    const formData = new FormData();
-    formData.append("business_name", input.businessName);
-    formData.append("business_category", input.businessCategory);
-    formData.append("business_description", input.businessDescription);
-    formData.append("phone_number", input.phoneNumber);
-    formData.append("region", input.region);
-    formData.append("city", input.city);
-    formData.append("store_name", input.storeName);
-    if (input.whatsappNumber?.trim()) {
-      formData.append("whatsapp_number", input.whatsappNumber.trim());
-    }
-    if (input.marketId?.trim()) {
-      formData.append("market_id", input.marketId.trim());
-    }
-    if (input.storeLocation?.trim()) {
-      formData.append("store_location", input.storeLocation.trim());
-    }
-    if (input.storeDescription?.trim()) {
-      formData.append("store_description", input.storeDescription.trim());
-    }
-    if (input.ghanaCardNumber?.trim()) {
-      formData.append("ghana_card_number", input.ghanaCardNumber.trim());
-    }
-    if (input.businessRegistrationNumber?.trim()) {
-      formData.append(
-        "business_registration_number",
-        input.businessRegistrationNumber.trim(),
-      );
-    }
-    appendImageToFormData(formData, "logo_image", input.logoImage, "vendor-logo");
-    appendImageToFormData(formData, "banner_image", input.bannerImage, "vendor-banner");
-    appendImageToFormData(formData, "shop_image", input.shopImage, "vendor-shop");
-
-    const response = await fetch(`${API_BASE_URL}/vendor/applications`, {
-      method: "POST",
-      headers: session.accessToken
-        ? { Authorization: `Bearer ${session.accessToken}` }
-        : undefined,
-      body: formData,
-    });
-
-    if (response.ok) {
-      const payload = await parseResponse<VendorApplicationApi>(response);
-      if (!payload) {
-        throw new Error("The vendor application response was empty.");
-      }
-      return mapApplication(payload, session);
-    }
-
-    if (!shouldUseFallback(response.status)) {
-      throw new Error(await parseErrorMessage(response));
-    }
+  const accessToken = requireAccessToken(session);
+  const formData = new FormData();
+  formData.append("business_name", input.businessName);
+  formData.append("business_category", input.businessCategory);
+  formData.append("business_description", input.businessDescription);
+  formData.append("phone_number", input.phoneNumber);
+  formData.append("region", input.region);
+  formData.append("city", input.city);
+  formData.append("store_name", input.storeName);
+  if (input.whatsappNumber?.trim()) {
+    formData.append("whatsapp_number", input.whatsappNumber.trim());
   }
+  if (input.marketId?.trim()) {
+    formData.append("market_id", input.marketId.trim());
+  }
+  if (input.storeLocation?.trim()) {
+    formData.append("store_location", input.storeLocation.trim());
+  }
+  if (input.storeDescription?.trim()) {
+    formData.append("store_description", input.storeDescription.trim());
+  }
+  if (input.ghanaCardNumber?.trim()) {
+    formData.append("ghana_card_number", input.ghanaCardNumber.trim());
+  }
+  if (input.businessRegistrationNumber?.trim()) {
+    formData.append(
+      "business_registration_number",
+      input.businessRegistrationNumber.trim(),
+    );
+  }
+  appendImageToFormData(formData, "logo_image", input.logoImage, "vendor-logo");
+  appendImageToFormData(formData, "banner_image", input.bannerImage, "vendor-banner");
+  appendImageToFormData(formData, "shop_image", input.shopImage, "vendor-shop");
 
-  const mockState = await loadVendorMockState(session.userId!);
-  const nextApplication: VendorApplication = {
-    id: `vendor-application-${Date.now()}`,
-    userId: session.userId!,
-    status: "pending",
-    submittedAt: new Date().toISOString(),
-    reviewedAt: null,
-    rejectionReason: undefined,
-    ...input,
-  };
-
-  await saveVendorMockState(session.userId!, {
-    ...mockState,
-    application: nextApplication,
-    profile: null,
+  const response = await fetch(`${API_BASE_URL}/vendor/applications`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
   });
 
-  return nextApplication;
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorApplicationApi>(response);
+  if (!payload) {
+    throw new Error("The vendor application response was empty.");
+  }
+  return mapApplication(payload, session);
 }
 
 export async function fetchVendorProfile(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/me`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    const response = await fetch(`${API_BASE_URL}/vendor/me`, {
-      headers: buildHeaders(session.accessToken),
-    });
-
-    if (response.ok) {
-      const payload = await parseResponse<VendorProfileApi>(response);
-      return payload ? mapProfile(payload, session) : null;
-    }
-
-    if (!shouldUseFallback(response.status)) {
-      throw new Error(await parseErrorMessage(response));
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return mockState.profile;
+  const payload = await parseResponse<VendorProfileApi>(response);
+  return payload ? mapProfile(payload, session) : null;
 }
 
 export async function fetchVendorDashboard(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/dashboard`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    const response = await fetch(`${API_BASE_URL}/vendor/dashboard`, {
-      headers: buildHeaders(session.accessToken),
-    });
-
-    if (response.ok) {
-      const payload = await parseResponse<VendorDashboardApi>(response);
-      return payload ? mapDashboard(payload) : null;
-    }
-
-    if (!shouldUseFallback(response.status)) {
-      throw new Error(await parseErrorMessage(response));
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return deriveDashboardStats(
-    mockState,
-    mockState.profile?.status ?? mockState.application?.status ?? session.vendorStatus ?? "none",
-  );
+  const payload = await parseResponse<VendorDashboardApi>(response);
+  return payload ? mapDashboard(payload) : null;
 }

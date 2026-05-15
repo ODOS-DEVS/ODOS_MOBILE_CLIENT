@@ -52,6 +52,7 @@ type ProfileContextType = {
   paymentMethods: PaymentMethod[];
   checkoutAddressId: string | null;
   checkoutPaymentId: string | null;
+  checkoutVoucherCode: string | null;
   isSyncingProfileData: boolean;
   defaultAddress: Address | null;
   defaultPayment: PaymentMethod | null;
@@ -66,6 +67,7 @@ type ProfileContextType = {
   setDefaultPayment: (id: string) => Promise<void>;
   setCheckoutAddressId: (id: string | null) => void;
   setCheckoutPaymentId: (id: string | null) => void;
+  setCheckoutVoucherCode: (code: string | null) => void;
   clearCheckoutSelection: () => void;
   refreshProfileData: () => Promise<void>;
 };
@@ -132,6 +134,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [checkoutAddressId, setCheckoutAddressId] = useState<string | null>(null);
   const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
+  const [checkoutVoucherCode, setCheckoutVoucherCode] = useState<string | null>(null);
   const [isSyncingProfileData, setIsSyncingProfileData] = useState(false);
 
   const defaultAddress = useMemo(
@@ -167,6 +170,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setPaymentMethods([]);
       setCheckoutAddressId(null);
       setCheckoutPaymentId(null);
+      setCheckoutVoucherCode(null);
       setIsSyncingProfileData(false);
       return;
     }
@@ -209,6 +213,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setPaymentMethods([]);
       setCheckoutAddressId(null);
       setCheckoutPaymentId(null);
+      setCheckoutVoucherCode(null);
       return;
     }
 
@@ -461,6 +466,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const clearCheckoutSelection = useCallback(() => {
     setCheckoutAddressId(null);
     setCheckoutPaymentId(null);
+    setCheckoutVoucherCode(null);
   }, []);
 
   const value = useMemo<ProfileContextType>(
@@ -469,6 +475,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       paymentMethods,
       checkoutAddressId,
       checkoutPaymentId,
+      checkoutVoucherCode,
       isSyncingProfileData,
       defaultAddress,
       defaultPayment,
@@ -483,6 +490,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setDefaultPayment,
       setCheckoutAddressId,
       setCheckoutPaymentId,
+      setCheckoutVoucherCode,
       clearCheckoutSelection,
       refreshProfileData,
     }),
@@ -491,6 +499,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       paymentMethods,
       checkoutAddressId,
       checkoutPaymentId,
+      checkoutVoucherCode,
       isSyncingProfileData,
       defaultAddress,
       defaultPayment,
@@ -503,6 +512,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       addPayment,
       removePayment,
       setDefaultPayment,
+      setCheckoutVoucherCode,
       clearCheckoutSelection,
       refreshProfileData,
     ],

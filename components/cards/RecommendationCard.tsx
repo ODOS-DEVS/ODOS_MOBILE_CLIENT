@@ -1,11 +1,12 @@
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -69,9 +70,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   rating,
   reviews,
 }) => {
+  const { width } = useResponsive();
   const hasPrice = typeof price === "number" || typeof oldPrice === "number";
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const offerLabel = buildOfferLabel(discount, oldPrice, price);
+  const isLargeAndroidScreen = Platform.OS === "android" && width >= 500;
   const reviewCount =
     typeof reviews === "number"
       ? reviews
@@ -103,7 +106,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
       }
     >
       <View style={styles.card}>
-        <View style={styles.imageShell}>
+        <View
+          style={[
+            styles.imageShell,
+            isLargeAndroidScreen ? styles.imageShellLargeAndroid : null,
+          ]}
+        >
           <Image source={image} style={styles.image} resizeMode="cover" />
           {offerLabel ? (
             <View style={styles.offerBadge}>
@@ -112,7 +120,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           ) : null}
         </View>
 
-        <View style={styles.content}>
+        <View
+          style={[
+            styles.content,
+            isLargeAndroidScreen ? styles.contentLargeAndroid : null,
+          ]}
+        >
           <View style={styles.topRow}>
             <View style={styles.pill}>
               <Ionicons name="sparkles-outline" size={rMS(12)} color="#8A6A2E" />
@@ -127,17 +140,34 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             ) : null}
           </View>
 
-          <Text style={styles.title} numberOfLines={2}>
+          <Text
+            style={[
+              styles.title,
+              isLargeAndroidScreen ? styles.titleLargeAndroid : null,
+            ]}
+            numberOfLines={2}
+          >
             {title}
           </Text>
 
           {metaLabel ? (
-            <Text style={styles.metaLabel} numberOfLines={1}>
+            <Text
+              style={[
+                styles.metaLabel,
+                isLargeAndroidScreen ? styles.metaLabelLargeAndroid : null,
+              ]}
+              numberOfLines={1}
+            >
               {metaLabel}
             </Text>
           ) : null}
 
-          <View style={styles.subMetaRow}>
+          <View
+            style={[
+              styles.subMetaRow,
+              isLargeAndroidScreen ? styles.subMetaRowLargeAndroid : null,
+            ]}
+          >
             {category ? (
               <View style={styles.microChip}>
                 <Text style={styles.microChipText} numberOfLines={1}>
@@ -153,7 +183,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             ) : null}
           </View>
 
-          <View style={styles.bottomRow}>
+          <View
+            style={[
+              styles.bottomRow,
+              isLargeAndroidScreen ? styles.bottomRowLargeAndroid : null,
+            ]}
+          >
             <View style={styles.priceBlock}>
               {hasPrice ? (
                 <>
@@ -213,7 +248,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "flex-start",
     borderRadius: rS(22),
     backgroundColor: AppColors.white,
     borderWidth: StyleSheet.hairlineWidth,
@@ -255,8 +290,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     marginLeft: rS(12),
-    justifyContent: "space-between",
-    minHeight: rS(118),
+    justifyContent: "flex-start",
+  },
+  contentLargeAndroid: {
+    marginLeft: rS(10),
   },
   topRow: {
     flexDirection: "row",
@@ -300,11 +337,18 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     lineHeight: rMS(19),
   },
+  titleLargeAndroid: {
+    marginTop: rV(5),
+    lineHeight: rMS(17),
+  },
   metaLabel: {
     marginTop: rV(4),
     fontFamily: Fonts.text,
     fontSize: rMS(12),
     color: AppColors.secondary,
+  },
+  metaLabelLargeAndroid: {
+    marginTop: rV(2),
   },
   subMetaRow: {
     flexDirection: "row",
@@ -312,6 +356,9 @@ const styles = StyleSheet.create({
     gap: rS(8),
     marginTop: rV(8),
     flexWrap: "wrap",
+  },
+  subMetaRowLargeAndroid: {
+    marginTop: rV(3),
   },
   microChip: {
     borderRadius: rS(999),
@@ -335,7 +382,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "space-between",
     gap: rS(10),
-    marginTop: rV(10),
+    marginTop: rV(12),
+  },
+  bottomRowLargeAndroid: {
+    marginTop: rV(4),
   },
   priceBlock: {
     flex: 1,
@@ -370,6 +420,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#D7DDE5",
     elevation: 0,
+  },
+  imageShellLargeAndroid: {
+    width: rS(96),
+    height: rS(114),
   },
 });
 
