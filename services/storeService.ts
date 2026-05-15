@@ -1,12 +1,6 @@
 import { API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import {
-  createVendorProductRecord,
-  ensureVendorMockState,
-  loadVendorMockState,
-  saveVendorMockState,
-} from "@/services/vendorMock";
-import {
   appendImageToFormData,
   resolveApiMediaUrl,
 } from "@/utils/media";
@@ -56,6 +50,7 @@ type VendorProductApi = {
   color_options?: string[] | null;
   size_options?: string[] | null;
   specifications?: string[] | null;
+  is_returnable?: boolean | null;
   status?: string;
   created_at?: string;
   updated_at?: string;
@@ -111,14 +106,18 @@ function buildHeaders(accessToken?: string | null): Record<string, string> {
   return headers;
 }
 
-function shouldUseFallback(status: number) {
-  return status === 404 || status === 405 || status >= 500;
-}
-
 function requireUserId(session: VendorSessionContext) {
   if (!session.userId) {
     throw new Error("Please sign in to continue.");
   }
+}
+
+function requireAccessToken(session: VendorSessionContext) {
+  requireUserId(session);
+  if (!session.accessToken) {
+    throw new Error("Please sign in to continue.");
+  }
+  return session.accessToken;
 }
 
 function mapStore(payload: StoreProfileApi): ManagedStoreProfile {
@@ -163,6 +162,7 @@ function mapProduct(payload: VendorProductApi): VendorProduct {
     colorOptions: payload.color_options ?? undefined,
     sizeOptions: payload.size_options ?? undefined,
     specifications: payload.specifications ?? undefined,
+    isReturnable: payload.is_returnable ?? true,
     image: primaryImageUrl
       ? { uri: primaryImageUrl }
       : resolveCatalogImage(payload.image_key),
@@ -196,231 +196,129 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
 }
 
 export async function fetchVendorStore(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/store`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendor/store`, {
-        headers: buildHeaders(session.accessToken),
-      });
-
-      if (response.ok) {
-        const payload = await parseResponse<StoreProfileApi>(response);
-        return payload ? mapStore(payload) : null;
-      }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
-      }
-    } catch {
-      // fall back to local vendor state during development
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return mockState.store;
+  const payload = await parseResponse<StoreProfileApi>(response);
+  return payload ? mapStore(payload) : null;
 }
 
 export async function updateVendorStore(
   session: VendorSessionContext,
   input: ManagedStoreUpdateInput,
 ) {
-  requireUserId(session);
-
-  if (session.accessToken) {
-    try {
-      const formData = new FormData();
-      formData.append("name", input.name);
-      formData.append("description", input.description);
-      formData.append("category", input.category);
-      formData.append("region", input.region);
-      formData.append("city", input.city);
-      if (input.marketId?.trim()) {
-        formData.append("market_id", input.marketId.trim());
-      }
-      if (input.location?.trim()) {
-        formData.append("location", input.location.trim());
-      }
-      if (input.audienceSlugs?.length) {
-        formData.append("audience_slugs", input.audienceSlugs.join(", "));
-      }
-      appendImageToFormData(formData, "logo_image", input.logoImage, "store-logo");
-      appendImageToFormData(formData, "banner_image", input.bannerImage, "store-banner");
-
-      const response = await fetch(`${API_BASE_URL}/vendor/store`, {
-        method: "PATCH",
-        headers: session.accessToken
-          ? { Authorization: `Bearer ${session.accessToken}` }
-          : undefined,
-        body: formData,
-      });
-
-      if (response.ok) {
-        const payload = await parseResponse<StoreProfileApi>(response);
-        if (!payload) {
-          throw new Error("The store update response was empty.");
-        }
-        return mapStore(payload);
-      }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw error;
-      }
-    }
+  const accessToken = requireAccessToken(session);
+  const formData = new FormData();
+  formData.append("name", input.name);
+  formData.append("description", input.description);
+  formData.append("category", input.category);
+  formData.append("region", input.region);
+  formData.append("city", input.city);
+  if (input.marketId?.trim()) {
+    formData.append("market_id", input.marketId.trim());
   }
-
-  const mockState = await ensureVendorMockState(session);
-  if (!mockState.store) {
-    throw new Error("No managed store is linked to this vendor yet.");
+  if (input.location?.trim()) {
+    formData.append("location", input.location.trim());
   }
+  if (input.audienceSlugs?.length) {
+    formData.append("audience_slugs", input.audienceSlugs.join(", "));
+  }
+  appendImageToFormData(formData, "logo_image", input.logoImage, "store-logo");
+  appendImageToFormData(formData, "banner_image", input.bannerImage, "store-banner");
 
-  const nextStore: ManagedStoreProfile = {
-    ...mockState.store,
-    ...input,
-  };
-
-  await saveVendorMockState(session.userId!, {
-    ...mockState,
-    store: nextStore,
-    profile: mockState.profile
-      ? {
-          ...mockState.profile,
-          storeName: nextStore.name,
-        }
-      : mockState.profile,
+  const response = await fetch(`${API_BASE_URL}/vendor/store`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
   });
 
-  return nextStore;
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<StoreProfileApi>(response);
+  if (!payload) {
+    throw new Error("The store update response was empty.");
+  }
+  return mapStore(payload);
 }
 
 export async function fetchVendorProducts(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/products`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendor/products`, {
-        headers: buildHeaders(session.accessToken),
-      });
-
-      if (response.ok) {
-        const payload = await parseResponse<VendorProductApi[]>(response);
-        return payload?.map(mapProduct) ?? [];
-      }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
-      }
-    } catch {
-      // fall back to local vendor state during development
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return mockState.products.map((product) => ({
-    ...product,
-    image: product.imageUrl
-      ? { uri: resolveApiMediaUrl(product.imageUrl)! }
-      : resolveCatalogImage(product.imageKey),
-  }));
+  const payload = await parseResponse<VendorProductApi[]>(response);
+  return payload?.map(mapProduct) ?? [];
 }
 
 export async function createVendorProduct(
   session: VendorSessionContext,
   input: VendorProductInput,
 ) {
-  requireUserId(session);
-
-  if (session.accessToken) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendor/products`, {
-        method: "POST",
-        headers: session.accessToken
-          ? { Authorization: `Bearer ${session.accessToken}` }
-          : undefined,
-        body: (() => {
-          const formData = new FormData();
-          formData.append("name", input.name);
-          formData.append("description", input.description);
-          formData.append("category", input.category);
-          formData.append("price", String(input.price));
-          if (typeof input.oldPrice === "number" && Number.isFinite(input.oldPrice)) {
-            formData.append("old_price", String(input.oldPrice));
-          }
-          formData.append("stock", String(input.stock));
-          if (input.subcategory?.trim()) {
-            formData.append("subcategory", input.subcategory.trim());
-          }
-          if (input.imageKey?.trim()) {
-            formData.append("image_key", input.imageKey.trim());
-          }
-          if (input.imageUrl?.trim()) {
-            formData.append("image_url", input.imageUrl.trim());
-          }
-          if (input.placementTags?.length) {
-            formData.append("placement_tags", input.placementTags.join(", "));
-          }
-          if (input.colorOptions?.length) {
-            formData.append("color_options", input.colorOptions.join(", "));
-          }
-          if (input.sizeOptions?.length) {
-            formData.append("size_options", input.sizeOptions.join(", "));
-          }
-          if (input.specifications?.length) {
-            formData.append("specifications", input.specifications.join("\n"));
-          }
-          for (const [index, uri] of (input.imageUris ?? []).entries()) {
-            appendImageToFormData(formData, "images", uri, `product-image-${index + 1}`);
-          }
-          return formData;
-        })(),
-      });
-
-      if (response.ok) {
-        const payload = await parseResponse<VendorProductApi>(response);
-        if (!payload) {
-          throw new Error("The product creation response was empty.");
-        }
-        return mapProduct(payload);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/products`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: (() => {
+      const formData = new FormData();
+      formData.append("name", input.name);
+      formData.append("description", input.description);
+      formData.append("category", input.category);
+      formData.append("price", String(input.price));
+      if (typeof input.oldPrice === "number" && Number.isFinite(input.oldPrice)) {
+        formData.append("old_price", String(input.oldPrice));
       }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
+      formData.append("stock", String(input.stock));
+      if (input.subcategory?.trim()) {
+        formData.append("subcategory", input.subcategory.trim());
       }
-    } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw error;
+      if (input.imageKey?.trim()) {
+        formData.append("image_key", input.imageKey.trim());
       }
-    }
-  }
-
-  const mockState = await ensureVendorMockState(session);
-  if (!mockState.store || !mockState.profile) {
-    throw new Error("Your vendor profile needs an approved store before adding products.");
-  }
-
-  const nextProduct = {
-    ...createVendorProductRecord({
-      vendorId: mockState.profile.id,
-      storeId: mockState.store.id,
-      ...input,
-    }),
-    image: input.imageUrl
-      ? { uri: resolveApiMediaUrl(input.imageUrl)! }
-      : input.imageUris?.[0]
-        ? { uri: input.imageUris[0] }
-      : resolveCatalogImage(input.imageKey),
-  };
-
-  await saveVendorMockState(session.userId!, {
-    ...mockState,
-    products: [nextProduct, ...mockState.products],
+      if (input.imageUrl?.trim()) {
+        formData.append("image_url", input.imageUrl.trim());
+      }
+      if (input.placementTags?.length) {
+        formData.append("placement_tags", input.placementTags.join(", "));
+      }
+      if (input.colorOptions?.length) {
+        formData.append("color_options", input.colorOptions.join(", "));
+      }
+      if (input.sizeOptions?.length) {
+        formData.append("size_options", input.sizeOptions.join(", "));
+      }
+      if (input.specifications?.length) {
+        formData.append("specifications", input.specifications.join("\n"));
+      }
+      formData.append("is_returnable", String(input.isReturnable ?? true));
+      for (const [index, uri] of (input.imageUris ?? []).entries()) {
+        appendImageToFormData(formData, "images", uri, `product-image-${index + 1}`);
+      }
+      return formData;
+    })(),
   });
 
-  return nextProduct;
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductApi>(response);
+  if (!payload) {
+    throw new Error("The product creation response was empty.");
+  }
+  return mapProduct(payload);
 }
 
 export async function updateVendorProduct(
@@ -428,112 +326,69 @@ export async function updateVendorProduct(
   productId: string,
   input: VendorProductInput,
 ) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const formData = new FormData();
+  formData.append("name", input.name);
+  formData.append("description", input.description);
+  formData.append("category", input.category);
+  formData.append(
+    "price",
+    String(input.price),
+  );
+  formData.append(
+    "old_price",
+    typeof input.oldPrice === "number" && Number.isFinite(input.oldPrice)
+      ? String(input.oldPrice)
+      : "",
+  );
+  formData.append("stock", String(input.stock));
+  formData.append("subcategory", input.subcategory?.trim() ?? "");
+  formData.append("image_key", input.imageKey?.trim() ?? "");
+  formData.append("image_url", input.imageUrl?.trim() ?? "");
+  formData.append("placement_tags", input.placementTags?.join(", ") ?? "");
+  formData.append("color_options", input.colorOptions?.join(", ") ?? "");
+  formData.append("size_options", input.sizeOptions?.join(", ") ?? "");
+  formData.append("specifications", input.specifications?.join("\n") ?? "");
+  formData.append("is_returnable", String(input.isReturnable ?? true));
 
-  if (session.accessToken) {
-    const formData = new FormData();
-    formData.append("name", input.name);
-    formData.append("description", input.description);
-    formData.append("category", input.category);
-    formData.append("price", String(input.price));
-    formData.append("old_price", typeof input.oldPrice === "number" && Number.isFinite(input.oldPrice) ? String(input.oldPrice) : "");
-    formData.append("stock", String(input.stock));
-    formData.append("subcategory", input.subcategory?.trim() ?? "");
-    formData.append("image_key", input.imageKey?.trim() ?? "");
-    formData.append("image_url", input.imageUrl?.trim() ?? "");
-    formData.append("placement_tags", input.placementTags?.join(", ") ?? "");
-    formData.append("color_options", input.colorOptions?.join(", ") ?? "");
-    formData.append("size_options", input.sizeOptions?.join(", ") ?? "");
-    formData.append("specifications", input.specifications?.join("\n") ?? "");
+  const retainedRemoteUrls = (input.imageUris ?? []).filter(
+    (value) => !value.startsWith("file://") && !value.startsWith("content://") && !value.startsWith("ph://"),
+  );
+  formData.append("image_urls", retainedRemoteUrls.join("\n"));
 
-    const retainedRemoteUrls = (input.imageUris ?? []).filter(
-      (value) => !value.startsWith("file://") && !value.startsWith("content://") && !value.startsWith("ph://"),
-    );
-    formData.append("image_urls", retainedRemoteUrls.join("\n"));
-
-    for (const [index, uri] of (input.imageUris ?? []).entries()) {
-      appendImageToFormData(formData, "images", uri, `product-image-${index + 1}`);
-    }
-
-    const response = await fetch(`${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}`, {
-      method: "PATCH",
-      headers: session.accessToken
-        ? { Authorization: `Bearer ${session.accessToken}` }
-        : undefined,
-      body: formData,
-    });
-
-    if (response.ok) {
-      const payload = await parseResponse<VendorProductApi>(response);
-      if (!payload) {
-        throw new Error("The product update response was empty.");
-      }
-      return mapProduct(payload);
-    }
-
-    if (!shouldUseFallback(response.status)) {
-      throw new Error(await parseErrorMessage(response));
-    }
+  for (const [index, uri] of (input.imageUris ?? []).entries()) {
+    appendImageToFormData(formData, "images", uri, `product-image-${index + 1}`);
   }
 
-  const mockState = await ensureVendorMockState(session);
-  const existingProduct = mockState.products.find((product) => product.id === productId);
-  if (!existingProduct) {
-    throw new Error("That vendor product could not be found.");
-  }
-
-  const updatedProduct = {
-    ...existingProduct,
-    ...input,
-    imageUrls: input.imageUris?.length ? input.imageUris : existingProduct.imageUrls,
-    imageUrl: input.imageUris?.[0] ?? existingProduct.imageUrl,
-    image:
-      input.imageUris?.[0]
-        ? { uri: input.imageUris[0] }
-        : existingProduct.imageUrl
-          ? { uri: resolveApiMediaUrl(existingProduct.imageUrl)! }
-          : resolveCatalogImage(existingProduct.imageKey),
-    discount:
-      input.oldPrice && input.oldPrice > input.price
-        ? `${Math.round(((input.oldPrice - input.price) / input.oldPrice) * 100)}% off`
-        : undefined,
-    updatedAt: new Date().toISOString(),
-  } satisfies VendorProduct;
-
-  await saveVendorMockState(session.userId!, {
-    ...mockState,
-    products: mockState.products.map((product) =>
-      product.id === productId ? updatedProduct : product,
-    ),
+  const response = await fetch(`${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
   });
 
-  return updatedProduct;
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductApi>(response);
+  if (!payload) {
+    throw new Error("The product update response was empty.");
+  }
+  return mapProduct(payload);
 }
 
 export async function fetchVendorOrders(session: VendorSessionContext) {
-  requireUserId(session);
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/orders`, {
+    headers: buildHeaders(accessToken),
+  });
 
-  if (session.accessToken) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendor/orders`, {
-        headers: buildHeaders(session.accessToken),
-      });
-
-      if (response.ok) {
-        const payload = await parseResponse<VendorOrderApi[]>(response);
-        return payload?.map(mapOrder) ?? [];
-      }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
-      }
-    } catch {
-      // fall back to local vendor state during development
-    }
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  const mockState = await ensureVendorMockState(session);
-  return mockState.orders;
+  const payload = await parseResponse<VendorOrderApi[]>(response);
+  return payload?.map(mapOrder) ?? [];
 }
 
 export async function updateVendorOrderStatus(
@@ -541,51 +396,23 @@ export async function updateVendorOrderStatus(
   orderId: string,
   status: VendorOrderStatus,
 ) {
-  requireUserId(session);
-
-  if (session.accessToken) {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}/status`,
-        {
-          method: "PATCH",
-          headers: buildHeaders(session.accessToken),
-          body: JSON.stringify({ status }),
-        },
-      );
-
-      if (response.ok) {
-        const payload = await parseResponse<VendorOrderApi>(response);
-        if (!payload) {
-          throw new Error("The order update response was empty.");
-        }
-        return mapOrder(payload);
-      }
-
-      if (!shouldUseFallback(response.status)) {
-        throw new Error(await parseErrorMessage(response));
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message) {
-        throw error;
-      }
-    }
-  }
-
-  const mockState = await ensureVendorMockState(session);
-  const nextOrders = mockState.orders.map((order) =>
-    order.id === orderId ? { ...order, status } : order,
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}/status`,
+    {
+      method: "PATCH",
+      headers: buildHeaders(accessToken),
+      body: JSON.stringify({ status }),
+    },
   );
-  const updatedOrder = nextOrders.find((order) => order.id === orderId);
 
-  if (!updatedOrder) {
-    throw new Error("We couldn't find that order.");
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
   }
 
-  await saveVendorMockState(session.userId!, {
-    ...mockState,
-    orders: nextOrders,
-  });
-
-  return updatedOrder;
+  const payload = await parseResponse<VendorOrderApi>(response);
+  if (!payload) {
+    throw new Error("The order update response was empty.");
+  }
+  return mapOrder(payload);
 }

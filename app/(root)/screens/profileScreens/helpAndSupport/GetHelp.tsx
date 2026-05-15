@@ -1,8 +1,10 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -14,6 +16,8 @@ const channels = [
 ];
 
 export default function GetHelp() {
+  const { requireAuth } = useRequireAuth();
+
   return (
     <View style={styles.container}>
       <ProfileHeader title="Get Help" />
@@ -37,6 +41,29 @@ export default function GetHelp() {
               style={styles.channelCard}
               className="shadow-sm"
               activeOpacity={0.8}
+              onPress={() => {
+                if (item.id !== "chat") {
+                  return;
+                }
+
+                if (
+                  !requireAuth({
+                    title: "Sign in to chat with support",
+                    message:
+                      "Create an account or log in so the admin team can keep your support history in one place.",
+                  })
+                ) {
+                  return;
+                }
+
+                router.push({
+                  pathname: "/screens/support/chat",
+                  params: {
+                    subject: "General account or order help",
+                    fallback: "/(root)/screens/profileScreens/helpAndSupport/GetHelp",
+                  },
+                });
+              }}
             >
               {item.icon}
               <Text style={styles.channelLabel}>{item.label}</Text>

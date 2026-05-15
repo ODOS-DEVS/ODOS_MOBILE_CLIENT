@@ -283,7 +283,13 @@ export default function ProfileScreen() {
             openProtectedRoute("../screens/profileScreens/orders");
           }}
         />
-        <MenuItem icon="return-up-back-outline" label="Returns" />
+        <MenuItem
+          icon="return-up-back-outline"
+          label="Returns"
+          onPress={() => {
+            openProtectedRoute("../screens/profileScreens/Account/Returns");
+          }}
+        />
         <MenuItem
           icon="location-outline"
           label="Addresses"

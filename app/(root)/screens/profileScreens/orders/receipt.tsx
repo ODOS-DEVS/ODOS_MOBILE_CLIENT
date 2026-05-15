@@ -4,6 +4,7 @@ import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useOrder } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
@@ -52,7 +53,11 @@ export default function OrderReceiptScreen() {
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.88}
-            onPress={() => router.back()}
+            onPress={() =>
+              goBackOr(router, {
+                fallback: "/(root)/screens/profileScreens/orders" as any,
+              })
+            }
           >
             <Text style={styles.primaryButtonText}>Back</Text>
           </TouchableOpacity>
@@ -139,6 +144,16 @@ export default function OrderReceiptScreen() {
               {order.shipping_amount === 0 ? "FREE" : formatMoney(order.shipping_amount)}
             </Text>
           </View>
+          {order.discount_amount > 0 ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.label}>
+                Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
+              </Text>
+              <Text style={[styles.value, styles.discountValue]}>
+                -{formatMoney(order.discount_amount)}
+              </Text>
+            </View>
+          ) : null}
           <View style={[styles.summaryRow, styles.summaryRowLast]}>
             <Text style={styles.totalLabel}>Total paid</Text>
             <Text style={styles.totalValue}>{formatMoney(order.total_amount)}</Text>
@@ -164,6 +179,12 @@ export default function OrderReceiptScreen() {
                 : order.payment_network || "Mobile Money"}
             </Text>
             {order.payment_phone ? <Text style={styles.detailText}>{order.payment_phone}</Text> : null}
+            {order.voucher_code ? (
+              <Text style={styles.detailText}>
+                Voucher: {order.voucher_code}
+                {order.voucher_title ? ` · ${order.voucher_title}` : ""}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -304,6 +325,9 @@ const styles = StyleSheet.create({
     fontSize: rMS(15),
     fontFamily: Fonts.titleBold,
     color: AppColors.text,
+  },
+  discountValue: {
+    color: "#166534",
   },
   itemRow: {
     flexDirection: "row",

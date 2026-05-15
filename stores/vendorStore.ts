@@ -31,6 +31,7 @@ type VendorStoreState = {
   fetchMyVendorApplication: (session: VendorSessionContext) => Promise<void>;
   fetchVendorProfile: (session: VendorSessionContext) => Promise<void>;
   fetchVendorDashboard: (session: VendorSessionContext) => Promise<void>;
+  setRealtimeVendorDashboard: (stats: VendorDashboardStats) => void;
   submitVendorApplication: (
     session: VendorSessionContext,
     input: VendorApplicationInput,
@@ -199,6 +200,13 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
             : "We couldn't load your vendor dashboard right now.",
       });
     }
+  },
+
+  setRealtimeVendorDashboard: (vendorDashboardStats) => {
+    set({
+      vendorDashboardStats,
+      error: null,
+    });
   },
 
   submitVendorApplication: async (session, input) => {

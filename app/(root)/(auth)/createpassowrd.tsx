@@ -2,8 +2,8 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { StatusBar, Text, TouchableOpacity, View } from "react-native";
@@ -19,6 +19,7 @@ const CreatePasswordScreen = () => {
   const resetToken = Array.isArray(params.resetToken)
     ? params.resetToken[0]
     : params.resetToken;
+  useBlockBackNavigation(true);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -70,13 +71,6 @@ const CreatePasswordScreen = () => {
   return (
     <View className="flex-1 bg-white px-6 pt-24">
       <StatusBar barStyle={"dark-content"} />
-      <TouchableOpacity
-        onPress={() => {
-          router.back();
-        }}
-      >
-        <Ionicons name="arrow-back" size={20} className="" />
-      </TouchableOpacity>
 
       <Text className="text-primary text-2xl font-extrabold text-center mb-4">
         Create new password
@@ -84,6 +78,12 @@ const CreatePasswordScreen = () => {
 
       <Text className="text-center text-primary mb-10">
         Enter your new password
+      </Text>
+      <Text
+        className="text-center text-secondary mb-6"
+        style={{ fontSize: rMS(13), lineHeight: rV(20) }}
+      >
+        Finish this password update here so the reset session stays valid from start to finish.
       </Text>
       <View className="px-4">
         <TextInputField
@@ -139,10 +139,28 @@ const CreatePasswordScreen = () => {
       ) : null}
       <View className="px-4">
         <PrimaryButton
-          title={isResettingPassword ? "Updating password..." : "Create new password"}
+          title="Create new password"
           onPress={handleSubmit}
+          isLoading={isResettingPassword}
           disabled={isResettingPassword || !password || !confirmPassword}
         />
+      </View>
+      <View className="items-center mt-5">
+        <TouchableOpacity
+          onPress={() =>
+            router.replace({
+              pathname: "/forgotpassword",
+              params: routeEmail ? { email: routeEmail } : undefined,
+            })
+          }
+        >
+          <Text
+            className="text-primary font-montserrat-extraBold"
+            style={{ fontSize: rMS(13.5) }}
+          >
+            Start password reset again
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

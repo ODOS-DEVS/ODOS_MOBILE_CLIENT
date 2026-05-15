@@ -30,10 +30,11 @@ const CategoryDetailScreen = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState(DEFAULT_SUBCATEGORY);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const { gridCardWidth, responsiveColumns } = useResponsive();
+  const { gridCardWidth, horizontalPadding, responsiveColumns } = useResponsive();
   const numColumns = responsiveColumns;
-  const gridGap = rS(6);
-  const gridPadding = rS(17);
+  const gridGap = rS(10);
+  const gridPadding = horizontalPadding;
+  const cardWidth = gridCardWidth(numColumns, gridGap);
 
   const parsedSubcategories = useMemo(() => {
     if (!subcategories) {
@@ -131,13 +132,31 @@ const CategoryDetailScreen = () => {
                 numColumns={numColumns}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
-                columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
-                renderItem={({ item }) => (
-                  <ProductCard
-                    {...item}
-                    cardWidth={gridCardWidth(numColumns, gridGap)}
-                    horizontalSpacing={0}
-                  />
+                columnWrapperStyle={
+                  numColumns > 1
+                    ? {
+                        justifyContent: "space-between",
+                        columnGap: gridGap,
+                      }
+                    : undefined
+                }
+                renderItem={({ item, index }) => (
+                  <View
+                    style={{
+                      width: cardWidth,
+                      marginBottom: rS(4),
+                      marginRight:
+                        numColumns > 1 && index % numColumns !== numColumns - 1
+                          ? 0
+                          : 0,
+                    }}
+                  >
+                    <ProductCard
+                      {...item}
+                      cardWidth={cardWidth}
+                      horizontalSpacing={0}
+                    />
+                  </View>
                 )}
               />
             )}
@@ -239,13 +258,22 @@ const CategoryDetailScreen = () => {
               numColumns={numColumns}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
-              columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
+              columnWrapperStyle={
+                numColumns > 1
+                  ? {
+                      justifyContent: "space-between",
+                      columnGap: gridGap,
+                    }
+                  : undefined
+              }
               renderItem={({ item }) => (
-                <ProductCard
-                  {...item}
-                  cardWidth={gridCardWidth(numColumns, gridGap)}
-                  horizontalSpacing={0}
-                />
+                <View style={{ width: cardWidth, marginBottom: rS(4) }}>
+                  <ProductCard
+                    {...item}
+                    cardWidth={cardWidth}
+                    horizontalSpacing={0}
+                  />
+                </View>
               )}
               contentContainerStyle={{
                 paddingHorizontal: gridPadding,

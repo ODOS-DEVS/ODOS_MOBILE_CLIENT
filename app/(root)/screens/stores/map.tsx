@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
+import { goBackOr } from "@/utils/navigation";
 import {
   ImageBackground,
   ScrollView,
@@ -23,7 +24,9 @@ const StoreMapScreen = () => {
     >
       <View className="px-4 mb-4 flex-row items-center gap-3">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() =>
+            goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+          }
           className="w-10 h-10 bg-black/10 rounded-full justify-center items-center"
           style={{
             shadowColor: "#0f172a",
