@@ -1,10 +1,9 @@
 import RecommendationCard from "@/components/cards/RecommendationCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { recommendations } from "@/constants/Data";
 import {
   type CatalogProductItem,
   useRecommendedProducts,
@@ -81,8 +80,7 @@ export default function RecommendationScreen() {
   const [activeFilter, setActiveFilter] =
     useState<RecommendationFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
-  const { products: catalogProducts, isLoading } = useRecommendedProducts({
-    fallback: recommendations,
+  const { products: catalogProducts, isLoading, error } = useRecommendedProducts({
     limit: 24,
   });
   const [searchResults, setSearchResults] = useState<CatalogProductItem[]>([]);
@@ -274,15 +272,16 @@ export default function RecommendationScreen() {
           </View>
 
           {isLoading && allProducts.length === 0 ? (
-            <ScreenLoader
-              label="Curating recommendations..."
-              sublabel="Pulling the best live picks for this screen."
-            />
+            <ProductListSkeleton count={5} />
           ) : displayed.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Nothing here yet</Text>
+              <Text style={styles.emptyTitle}>
+                {error ? "We couldn't load recommendations" : "Nothing here yet"}
+              </Text>
               <Text style={styles.emptySubtitle}>
-                {isSearching
+                {error
+                  ? "The live catalog is unavailable right now. Try again in a moment."
+                  : isSearching
                   ? "Try a broader search or switch to another recommendation view."
                   : "New recommendation matches will appear here as more products are curated."}
               </Text>

@@ -155,16 +155,12 @@ function areStoresEqual(current: StoreItem[], next: StoreItem[]) {
   );
 }
 
-export function useMarkets(fallback: MarketItem[] = []) {
-  const [markets, setMarkets] = useState<MarketItem[]>(fallback);
+export function useMarkets() {
+  const [markets, setMarkets] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
-  const fallbackRef = useRef(fallback);
-
-  useEffect(() => {
-    fallbackRef.current = fallback;
-  }, [fallback]);
 
   const loadMarkets = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -176,6 +172,7 @@ export function useMarkets(fallback: MarketItem[] = []) {
 
       if (!background) {
         setIsLoading(true);
+        setError(null);
       }
 
       try {
@@ -194,9 +191,7 @@ export function useMarkets(fallback: MarketItem[] = []) {
         );
       } catch {
         if (isMountedRef.current && !background) {
-          setMarkets((current) =>
-            areMarketsEqual(current, fallbackRef.current) ? current : fallbackRef.current,
-          );
+          setError("We couldn't load markets right now.");
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -219,28 +214,22 @@ export function useMarkets(fallback: MarketItem[] = []) {
 
   useLiveRefresh(() => loadMarkets({ background: true }));
 
-  return { markets, isLoading };
+  return { markets, isLoading, error, refresh: loadMarkets };
 }
 
 export function useStores({
   marketSlug,
   audience,
-  fallback = [],
 }: {
   marketSlug?: string;
   audience?: string;
-  fallback?: StoreItem[];
 }) {
-  const [stores, setStores] = useState<StoreItem[]>(fallback);
+  const [stores, setStores] = useState<StoreItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
-  const fallbackRef = useRef(fallback);
-
-  useEffect(() => {
-    fallbackRef.current = fallback;
-  }, [fallback]);
 
   const loadStores = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -252,6 +241,7 @@ export function useStores({
 
       if (!background) {
         setIsLoading(true);
+        setError(null);
       }
 
       try {
@@ -279,9 +269,7 @@ export function useStores({
         );
       } catch {
         if (isMountedRef.current && !background) {
-          setStores((current) =>
-            areStoresEqual(current, fallbackRef.current) ? current : fallbackRef.current,
-          );
+          setError("We couldn't load stores right now.");
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -308,7 +296,7 @@ export function useStores({
     });
   }, [loadStores, subscribe]);
 
-  return { stores, isLoading };
+  return { stores, isLoading, error, refresh: loadStores };
 }
 
 export function useStore({
@@ -316,10 +304,11 @@ export function useStore({
   fallback,
 }: {
   storeId?: string;
-  fallback: StoreItem;
+  fallback?: StoreItem | null;
 }) {
-  const [store, setStore] = useState<StoreItem>(fallback);
+  const [store, setStore] = useState<StoreItem | null>(fallback ?? null);
   const [isLoading, setIsLoading] = useState(Boolean(storeId));
+  const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -334,6 +323,7 @@ export function useStore({
 
       if (!background) {
         setIsLoading(true);
+        setError(null);
       }
 
       try {
@@ -350,13 +340,11 @@ export function useStore({
 
         const nextStore = mapStore(payload);
         setStore((current) =>
-          isSameStore(current, nextStore) ? current : nextStore,
+          current && isSameStore(current, nextStore) ? current : nextStore,
         );
       } catch {
         if (isMountedRef.current && !background) {
-          setStore((current) =>
-            isSameStore(current, fallback) ? current : fallback,
-          );
+          setError("We couldn't load this store right now.");
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -365,11 +353,11 @@ export function useStore({
         isFetchingRef.current = false;
       }
     },
-    [fallback, storeId],
+    [storeId],
   );
 
   useEffect(() => {
-    setStore(fallback);
+    setStore(fallback ?? null);
   }, [fallback]);
 
   useEffect(() => {
@@ -401,7 +389,7 @@ export function useStore({
     });
   }, [loadStore, storeId, subscribe]);
 
-  return { store, isLoading };
+  return { store, isLoading, error, refresh: loadStore };
 }
 
 export function useMarketLookup(markets: MarketItem[]) {

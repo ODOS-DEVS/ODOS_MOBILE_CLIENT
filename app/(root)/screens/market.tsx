@@ -1,10 +1,9 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreCard from "@/components/cards/StoreCard";
 import { SearchBar } from "@/components/SearchBar";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { markets, Stores } from "@/constants/Data";
 import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
@@ -27,36 +26,12 @@ const MarketScreen = () => {
       : "All";
   const [activeMarket, setActiveMarket] = useState<string>(initialMarket);
   const [isSearching, setIsSearching] = useState(false);
-  const fallbackMarkets = useMemo(
-    () =>
-      markets.map((item) => ({
-        id: item.id,
-        slug: item.title.toLowerCase(),
-        title: item.title,
-        image: item.image,
-      })),
-    [],
-  );
-  const fallbackStores = useMemo(
-    () =>
-      Stores.map((item) => ({
-        id: item.id,
-        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
-        title: item.title,
-        category: item.category,
-        image: item.image,
-        rating: item.rating,
-        marketSlug: item.market?.toLowerCase(),
-      })),
-    [],
-  );
-  const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets(fallbackMarkets);
+  const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets();
   const marketLookup = useMarketLookup(marketItems);
   const activeMarketSlug =
     activeMarket === "All" ? undefined : marketLookup.get(activeMarket.toLowerCase());
   const { stores: fetchedStores, isLoading: isLoadingStores } = useStores({
     marketSlug: activeMarketSlug,
-    fallback: fallbackStores,
   });
   const [searchResults, setSearchResults] = useState(fetchedStores);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
@@ -160,7 +135,7 @@ const MarketScreen = () => {
           </View>
 
           {isLoadingMarkets || isLoadingStores ? (
-            <ScreenLoader label="Loading stores..." />
+            <StoreGridSkeleton />
           ) : filteredStores.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No stores here yet</Text>

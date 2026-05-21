@@ -3,15 +3,10 @@ import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
 import RecommendationCard from "@/components/cards/RecommendationCard";
+import { HomeFeedSkeleton } from "@/components/loaders/CommerceSkeletons";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
-import {
-  markets,
-  PopularProducts,
-  recommendations,
-  Stores,
-} from "@/constants/Data";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { useCatalogProducts, useRecommendedProducts } from "@/hooks/useCatalog";
 import { rS, rV, useResponsive } from "@/styles/responsive";
@@ -31,45 +26,29 @@ const HomeScreen = () => {
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [recommendationSeed, setRecommendationSeed] = useState(1);
-  const fallbackMarkets = useMemo(
-    () =>
-      markets.map((item) => ({
-        id: item.id,
-        slug: item.title.toLowerCase(),
-        title: item.title,
-        image: item.image,
-      })),
-    [],
-  );
-  const fallbackStores = useMemo(
-    () =>
-      Stores.map((item) => ({
-        id: item.id,
-        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
-        title: item.title,
-        category: item.category,
-        image: item.image,
-        rating: item.rating,
-        marketSlug: item.market?.toLowerCase(),
-      })),
-    [],
-  );
-  const { products: flashSaleProducts } = useCatalogProducts({
+  const { products: flashSaleProducts, isLoading: isLoadingFlashSales } = useCatalogProducts({
     placement: "flash-sale",
-    fallback: [],
   });
-  const { products: recommendationProducts } = useRecommendedProducts({
-    fallback: recommendations,
-    limit: 12,
-  });
-  const { products: popularProducts } = useCatalogProducts({
+  const { products: recommendationProducts, isLoading: isLoadingRecommendations } =
+    useRecommendedProducts({
+      limit: 12,
+    });
+  const { products: popularProducts, isLoading: isLoadingPopular } = useCatalogProducts({
     section: "popular",
-    fallback: PopularProducts,
   });
-  const { markets: marketItems } = useMarkets(fallbackMarkets);
-  const { stores: storeItems } = useStores({
-    fallback: fallbackStores,
-  });
+  const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets();
+  const { stores: storeItems, isLoading: isLoadingStores } = useStores({});
+  const isInitialLoading =
+    flashSaleProducts.length === 0 &&
+    recommendationProducts.length === 0 &&
+    popularProducts.length === 0 &&
+    marketItems.length === 0 &&
+    storeItems.length === 0 &&
+    (isLoadingFlashSales ||
+      isLoadingRecommendations ||
+      isLoadingPopular ||
+      isLoadingMarkets ||
+      isLoadingStores);
   // ---------------- TIMER (UNCHANGED) --------------------
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
@@ -122,6 +101,9 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
       <StatusBar barStyle={"dark-content"} />
+      {isInitialLoading ? (
+        <HomeFeedSkeleton />
+      ) : (
       <FlatList
         data={[]}
         keyExtractor={() => "dummy"}
@@ -315,6 +297,7 @@ const HomeScreen = () => {
           </View>
         }
       />
+      )}
     </SafeAreaView>
   );
 };

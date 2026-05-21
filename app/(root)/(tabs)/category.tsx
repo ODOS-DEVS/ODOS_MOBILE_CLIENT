@@ -1,26 +1,34 @@
 import CategoryCard from "@/components/cards/CategoryCard";
+import { CategoryListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { categories } from "@/constants/Data";
 import { CatalogCategoryItem, useCatalogCategories } from "@/hooks/useCatalog";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { router } from "expo-router";
-import React, { useMemo } from "react";
-import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import { FlatList, RefreshControl, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const CategoryScreen = () => {
-  const fallbackCategories = useMemo<CatalogCategoryItem[]>(
-    () =>
-      categories.map((item) => ({
-        ...item,
-        slug: item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      })),
-    [],
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { categories: catalogCategories, isLoading, error, refresh } =
+    useCatalogCategories();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh({ background: true });
+    }, [refresh]),
   );
-  const { categories: catalogCategories } =
-    useCatalogCategories(fallbackCategories);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refresh]);
 
   const handlePress = (category: CatalogCategoryItem) => {
     router.push({
@@ -63,6 +71,29 @@ const CategoryScreen = () => {
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          isLoading ? (
+            <CategoryListSkeleton />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>
+                {error ? "We couldn't load categories" : "No categories live yet"}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {error
+                  ? "Pull down to try again and make sure the backend is reachable."
+                  : "Categories you enable from admin will appear here automatically."}
+              </Text>
+            </View>
+          )
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => void handleRefresh()}
+            tintColor={AppColors.primary}
+          />
+        }
       />
     </View>
   );
@@ -97,5 +128,25 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: rS(16),
     paddingBottom: rV(118),
+    flexGrow: 1,
+  },
+  emptyState: {
+    marginTop: rV(12),
+    paddingVertical: rV(24),
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(16),
+    color: AppColors.text,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    marginTop: rV(8),
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: rMS(19),
   },
 });

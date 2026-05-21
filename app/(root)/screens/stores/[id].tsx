@@ -2,8 +2,7 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import StoreOfferCard from "@/components/cards/StoreOfferCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { gentsData } from "@/constants/Data";
+import { ProductGridSkeleton, StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
@@ -72,30 +71,22 @@ const StoreDetailScreen = () => {
     }),
     [paramTitle, params.image, params.imageBanner, params.imageBannerKey, params.imageKey, storeId],
   );
-  const { store, isLoading } = useStore({
+  const { store, isLoading, error: storeError } = useStore({
     storeId,
     fallback: fallbackStore,
   });
-  const { products: storeProducts } = useCatalogProducts({
+  const { products: storeProducts, isLoading: isLoadingStoreProducts } = useCatalogProducts({
     storeId,
-    fallback: gentsData,
   });
   const { products: flashSaleProducts } = useCatalogProducts({
     storeId,
     placement: "flash-sale",
-    fallback: [],
   });
   const insets = useSafeAreaInsets();
   const { gridCardWidth, horizontalPadding, width } = useResponsive();
   const gridGap = rS(6);
   const gridPadding = horizontalPadding;
   const shellWidth = width;
-  const storeLocation = [store.address, store.city].filter(Boolean).join(", ");
-  const audienceLabel =
-    store.audienceSlugs && store.audienceSlugs.length > 0
-      ? store.audienceSlugs.join(", ")
-      : "All shoppers";
-  const isVerified = store.status === "active";
   const canExpandProductLine = storeProducts.length > PRODUCT_PREVIEW_LIMIT;
   const visibleStoreProducts = showAllProducts
     ? storeProducts
@@ -189,9 +180,31 @@ const StoreDetailScreen = () => {
     showToast(`${offer.code} saved for checkout.`);
   };
 
-  if (isLoading) {
-    return <ScreenLoader label="Loading store..." />;
+  if (isLoading && !store) {
+    return <StoreProfileSkeleton />;
   }
+
+  if (!store) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateTitle}>
+            {storeError ?? "We couldn't load this store"}
+          </Text>
+          <Text style={styles.emptyStateSubtitle}>
+            Reopen the store from the live catalog and try again.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const storeLocation = [store.address, store.city].filter(Boolean).join(", ");
+  const audienceLabel =
+    store.audienceSlugs && store.audienceSlugs.length > 0
+      ? store.audienceSlugs.join(", ")
+      : "All shoppers";
+  const isVerified = store.status === "active";
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -342,24 +355,30 @@ const StoreDetailScreen = () => {
         </View>
 
         <View>
-          <FlatList
-            data={visibleStoreProducts}
-            numColumns={2}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            columnWrapperStyle={{ columnGap: gridGap }}
-            renderItem={({ item }) => (
-              <ProductCard
-                {...item}
-                cardWidth={gridCardWidth(2, gridGap)}
-                horizontalSpacing={7}
-              />
-            )}
-            contentContainerStyle={{
-              paddingHorizontal: gridPadding,
-              paddingTop: 16,
-            }}
-          />
+          {isLoadingStoreProducts && visibleStoreProducts.length === 0 ? (
+            <View style={{ paddingHorizontal: gridPadding, paddingTop: 16 }}>
+              <ProductGridSkeleton count={4} />
+            </View>
+          ) : (
+            <FlatList
+              data={visibleStoreProducts}
+              numColumns={2}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.id}
+              columnWrapperStyle={{ columnGap: gridGap }}
+              renderItem={({ item }) => (
+                <ProductCard
+                  {...item}
+                  cardWidth={gridCardWidth(2, gridGap)}
+                  horizontalSpacing={7}
+                />
+              )}
+              contentContainerStyle={{
+                paddingHorizontal: gridPadding,
+                paddingTop: 16,
+              }}
+            />
+          )}
         </View>
 
         {storeOffers.length > 0 ? (
@@ -425,6 +444,26 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F6F8FB",
+  },
+  emptyState: {
+    flex: 1,
+    paddingHorizontal: rS(24),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyStateTitle: {
+    color: "#1F2937",
+    fontFamily: "Montserrat-ExtraBold",
+    fontSize: rS(18),
+    textAlign: "center",
+  },
+  emptyStateSubtitle: {
+    marginTop: rS(8),
+    color: "#6B7280",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(12.5),
+    lineHeight: rS(19),
+    textAlign: "center",
   },
   heroSection: {
     paddingHorizontal: 0,

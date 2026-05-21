@@ -2,9 +2,8 @@ import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AppColors } from "@/constants/Colors";
-import { PopularProducts, Stores } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
 import { useStore } from "@/hooks/useCommerce";
 import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
@@ -126,32 +125,6 @@ function formatReviewCountLabel(value?: string | number | null) {
   return "Customer reviews";
 }
 
-function buildFallbackStore() {
-  const fallback = Stores[0];
-  return {
-    id: fallback?.id ?? "odos-official",
-    slug: normalizeValue(fallback?.title ?? "ODOS Official"),
-    title: fallback?.title ?? "ODOS Official",
-    category: fallback?.category,
-    audienceSlugs: undefined,
-    marketSlug: fallback?.market ? normalizeValue(fallback.market) : undefined,
-    imageKey: undefined,
-    imageUrl: undefined,
-    imageBannerKey: undefined,
-    imageBannerUrl: undefined,
-    image: fallback?.image,
-    imageBanner: fallback?.image,
-    rating: fallback?.rating,
-    address: "ODOS Marketplace",
-    phone: undefined,
-    email: undefined,
-    city: "Accra",
-    distanceKm: undefined,
-    travelMinutes: undefined,
-    description: "Curated products managed through ODOS.",
-  };
-}
-
 function ProductMetaChip({
   icon,
   label,
@@ -252,17 +225,13 @@ export default function ProductDetail() {
   const primaryCategoryQuery = product.categorySlugs?.[0] ?? product.category;
   const { products: categoryProducts } = useCatalogProducts({
     category: primaryCategoryQuery,
-    fallback: PopularProducts,
   });
   const { products: popularProducts } = useCatalogProducts({
     section: "popular",
-    fallback: PopularProducts,
   });
 
-  const fallbackStore = useMemo(() => buildFallbackStore(), []);
   const { store } = useStore({
     storeId: product.storeId,
-    fallback: fallbackStore,
   });
   const { reviews: productReviews } = useProductReviews(id);
 
@@ -490,7 +459,7 @@ export default function ProductDetail() {
       </View>
 
       {shouldShowLoadingState ? (
-        <ScreenLoader label="Loading product..." />
+        <ProductDetailSkeleton />
       ) : (
         <>
           <ScrollView
@@ -627,14 +596,14 @@ export default function ProductDetail() {
                   />
                   <InfoStat
                     label="Market"
-                    value={titleFromSlug(store?.marketSlug) ?? "ODOS"}
+                    value={titleFromSlug(store?.marketSlug) ?? "Storefront"}
                   />
                   <InfoStat
                     label="Store rating"
                     value={
                       typeof store?.rating === "number"
                         ? `${store.rating.toFixed(1)} / 5`
-                        : "Trusted seller"
+                        : "Live seller"
                     }
                   />
                 </View>
@@ -731,7 +700,7 @@ export default function ProductDetail() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.storeEyebrow}>Sold by</Text>
-                      <Text style={styles.storeTitle}>{store?.title ?? "ODOS Official"}</Text>
+                      <Text style={styles.storeTitle}>{store?.title ?? "Store"}</Text>
                       {storeMeta ? <Text style={styles.storeMeta}>{storeMeta}</Text> : null}
                     </View>
                   </View>
@@ -748,41 +717,45 @@ export default function ProductDetail() {
                 ) : null}
 
                 <View style={styles.storeActionsRow}>
-                  <TouchableOpacity
-                    style={styles.storePrimaryAction}
-                    activeOpacity={0.84}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/stores/[id]" as any,
-                        params: {
-                          id: store.id,
-                          title: store.title,
-                          image: store.image,
-                        },
-                      })
-                    }
-                  >
-                    <Text style={styles.storePrimaryActionText}>Visit Store</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.storeSecondaryAction}
-                    activeOpacity={0.84}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/screens/productDetails/chat/[vendorId]",
-                        params: {
-                          vendorId: store.id,
-                          vendorName: String(store.title ?? "Store"),
-                          productId: id,
-                          productTitle: title,
-                          productImageUrl: product.imageUrl ?? productImages[0]?.uri,
-                        },
-                      } as any)
-                    }
-                  >
-                    <Ionicons name="chatbubble-outline" size={rMS(16)} color={AppColors.text} />
-                    <Text style={styles.storeSecondaryActionText}>Chat Store</Text>
-                  </TouchableOpacity>
+                  {store ? (
+                    <>
+                      <TouchableOpacity
+                        style={styles.storePrimaryAction}
+                        activeOpacity={0.84}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/stores/[id]" as any,
+                            params: {
+                              id: store.id,
+                              title: store.title,
+                              image: store.image,
+                            },
+                          })
+                        }
+                      >
+                        <Text style={styles.storePrimaryActionText}>Visit Store</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.storeSecondaryAction}
+                        activeOpacity={0.84}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/productDetails/chat/[vendorId]",
+                            params: {
+                              vendorId: store.id,
+                              vendorName: String(store.title ?? "Store"),
+                              productId: id,
+                              productTitle: title,
+                              productImageUrl: product.imageUrl ?? productImages[0]?.uri,
+                            },
+                          } as any)
+                        }
+                      >
+                        <Ionicons name="chatbubble-outline" size={rMS(16)} color={AppColors.text} />
+                        <Text style={styles.storeSecondaryActionText}>Chat Store</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
                 </View>
               </View>
 

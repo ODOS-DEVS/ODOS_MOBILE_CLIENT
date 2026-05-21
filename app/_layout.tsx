@@ -52,20 +52,16 @@ function VendorStateBridge() {
 }
 
 function AppBootOverlay() {
-  const { isHydrating, isRefreshingSession } = useAuth();
+  const { isHydrating } = useAuth();
 
-  if (!isHydrating && !isRefreshingSession) {
+  if (!isHydrating) {
     return null;
   }
 
   return (
     <AppLoadingOverlay
-      label={isHydrating ? "Preparing ODOS" : "Refreshing your account"}
-      sublabel={
-        isHydrating
-          ? "We’re loading your saved session, storefront data, and account state."
-          : "We’re syncing the latest account access and vendor permissions."
-      }
+      label="Preparing ODOS"
+      sublabel="We’re loading your saved session, storefront data, and account state."
     />
   );
 }
