@@ -18,7 +18,8 @@ import {
 } from "react-native";
 
 const MarketScreen = () => {
-  const { activeMarket: initialMarketParam } = useLocalSearchParams();
+  const { activeMarket: initialMarketParam, activeMarketSlug: initialMarketSlugParam } =
+    useLocalSearchParams();
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
   const initialMarket =
     typeof initialMarketParam === "string" && initialMarketParam.length
@@ -29,7 +30,11 @@ const MarketScreen = () => {
   const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets();
   const marketLookup = useMarketLookup(marketItems);
   const activeMarketSlug =
-    activeMarket === "All" ? undefined : marketLookup.get(activeMarket.toLowerCase());
+    typeof initialMarketSlugParam === "string" && initialMarketSlugParam.trim()
+      ? initialMarketSlugParam
+      : activeMarket === "All"
+        ? undefined
+        : marketLookup.get(activeMarket.toLowerCase());
   const { stores: fetchedStores, isLoading: isLoadingStores } = useStores({
     marketSlug: activeMarketSlug,
   });

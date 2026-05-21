@@ -1,7 +1,8 @@
 import type { ProductCardProps } from "@/components/cards/ProductCard";
 import { API_BASE_URL } from "@/constants/auth";
 import { useRealtime } from "@/context/RealtimeContext";
-import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import { resolveApiMediaUrl } from "@/utils/media";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CatalogCategoryItem = {
@@ -80,19 +81,21 @@ type CatalogProductChangedEvent = {
 };
 
 function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
+  const imageUrl = resolveApiMediaUrl(item.image_url);
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
     subtitle: item.subtitle,
     imageKey: item.image_key,
-    imageUrl: resolveApiMediaUrl(item.image_url),
+    imageUrl,
     subcategories: item.subcategories ?? undefined,
-    image: resolveImageSource(item.image_url, item.image_key),
+    image: imageUrl ? { uri: imageUrl } : null,
   };
 }
 
 function mapProduct(item: ProductApiItem): CatalogProductItem {
+  const imageUrl = resolveApiMediaUrl(item.image_url);
   return {
     id: item.id,
     title: item.title,
@@ -104,7 +107,7 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     rating: item.rating ?? undefined,
     reviews: item.reviews ?? undefined,
     imageKey: item.image_key,
-    imageUrl: resolveApiMediaUrl(item.image_url),
+    imageUrl,
     imageUrls: item.image_urls?.map((value) => resolveApiMediaUrl(value) ?? value) ?? undefined,
     audienceSlug: item.audience_slug ?? undefined,
     section: item.section ?? undefined,
@@ -120,7 +123,7 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     status: item.status ?? undefined,
     createdAt: item.created_at ?? undefined,
     updatedAt: item.updated_at ?? undefined,
-    image: resolveImageSource(item.image_url, item.image_key),
+    image: imageUrl ? { uri: imageUrl } : null,
   };
 }
 
@@ -178,7 +181,9 @@ function buildFallbackProduct(product: Partial<CatalogProductItem> & { id: strin
     status: product.status ?? undefined,
     createdAt: product.createdAt ?? undefined,
     updatedAt: product.updatedAt ?? undefined,
-    image: product.image ?? resolveImageSource(product.imageUrl, product.imageKey),
+    image:
+      product.image ??
+      (product.imageUrl ? { uri: product.imageUrl } : null),
   };
 }
 
@@ -364,6 +369,7 @@ function curateRecommendedProducts({
 }
 
 export function useCatalogCategories() {
+  const { subscribe } = useRealtime();
   const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -423,6 +429,14 @@ export function useCatalogCategories() {
       isMountedRef.current = false;
     };
   }, [loadCategories]);
+
+  useLiveRefresh(() => loadCategories({ background: true }));
+
+  useEffect(() => {
+    return subscribe("catalog.category.changed", () => {
+      void loadCategories({ background: true });
+    });
+  }, [loadCategories, subscribe]);
 
   return { categories, isLoading, error, refresh: loadCategories };
 }

@@ -14,8 +14,9 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageSourcePropType,
@@ -31,6 +32,25 @@ const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
 const normalizeVoucherCode = (value: string) => value.trim().toUpperCase();
+
+function normalizeRouteParamsFromUrl(url: string) {
+  const parsed = Linking.parse(url);
+  const queryParams = parsed.queryParams ?? {};
+  const normalizedParams: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (typeof value === "string" && value.length > 0) {
+      normalizedParams[key] = value;
+      continue;
+    }
+
+    if (Array.isArray(value) && value[0]) {
+      normalizedParams[key] = String(value[0]);
+    }
+  }
+
+  return normalizedParams;
+}
 
 export default function CheckoutScreen() {
   const { requireAuth, user, isHydrating } = useRequireAuth();
@@ -80,6 +100,16 @@ export default function CheckoutScreen() {
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherPreview | null>(null);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
   const [voucherError, setVoucherError] = useState("");
+
+  const routeToPaymentReturn = useCallback(
+    (params: Record<string, string>) => {
+      router.replace({
+        pathname: "/payments/return" as any,
+        params,
+      });
+    },
+    [],
+  );
 
   const productImage = useMemo<ImageSourcePropType | null>(
     () => (product.image ? (product.image as ImageSourcePropType) : null),
@@ -296,8 +326,24 @@ export default function CheckoutScreen() {
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
       });
-      showToast("Opening secure payment...");
-      await Linking.openURL(checkoutSession.authorization_url);
+      showToast("Opening secure checkout...");
+      const checkoutResult = await WebBrowser.openAuthSessionAsync(
+        checkoutSession.authorization_url,
+        callbackUrl,
+      );
+
+      if (checkoutResult.type === "success" && checkoutResult.url) {
+        routeToPaymentReturn(normalizeRouteParamsFromUrl(checkoutResult.url));
+        return;
+      }
+
+      if (checkoutResult.type === "cancel" || checkoutResult.type === "dismiss") {
+        routeToPaymentReturn({
+          orderId: checkoutSession.order_id,
+          reference: checkoutSession.reference,
+          cancelled: "1",
+        });
+      }
     } catch (error) {
       const message =
         error instanceof Error && error.message

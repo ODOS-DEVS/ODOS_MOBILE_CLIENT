@@ -82,15 +82,33 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             overflow: "hidden",
           }}
         >
-          <Image
-            source={image}
-            resizeMode="cover"
-            style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: rS(12),
-            }}
-          />
+          {image ? (
+            <Image
+              source={image}
+              resizeMode="cover"
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: rS(12),
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: rV(6),
+                backgroundColor: "#EEF2F7",
+              }}
+            >
+              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
+              <Text style={{ fontSize: rS(11), color: "#64748B", fontWeight: "600" }}>
+                Image pending
+              </Text>
+            </View>
+          )}
           <View className="absolute top-2 bottom-2 right-2 flex-col gap-5 py-2">
             <AddToWishList
               product={{
