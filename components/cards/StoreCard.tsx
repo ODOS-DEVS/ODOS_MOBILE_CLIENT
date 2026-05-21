@@ -42,7 +42,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
           pathname: "/screens/stores/[id]" as any,
           params: {
             id,
-            image: imageUrl ?? imageKey,
+            image: imageUrl ?? undefined,
             imageKey,
             imageUrl,
             title,
@@ -72,12 +72,30 @@ const StoreCard: React.FC<StoreCardProps> = ({
             overflow: "hidden",
           }}
         >
-          <Image
-            source={image}
-            className="bg-tertiary"
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
-          />
+          {image ? (
+            <Image
+              source={image}
+              className="bg-tertiary"
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: rV(6),
+                backgroundColor: "#EEF2F7",
+              }}
+            >
+              <Ionicons name="storefront-outline" size={rS(22)} color="#94A3B8" />
+              <Text style={{ fontSize: rS(11), color: "#64748B" }}>
+                Store image pending
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ padding: rS(12) }}>

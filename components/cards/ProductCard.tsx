@@ -57,7 +57,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           pathname: "/screens/[id]" as any,
           params: {
             id,
-            image: imageUrl ?? imageKey,
+            image: imageUrl ?? undefined,
             imageKey,
             imageUrl,
             title,
@@ -94,11 +94,35 @@ const ProductCard: React.FC<ProductCardProps> = ({
             overflow: "hidden",
           }}
         >
-          <Image
-            source={image}
-            className="w-full h-full bg-tertiary"
-            resizeMode="cover"
-          />
+          {image ? (
+            <Image
+              source={image}
+              className="w-full h-full bg-tertiary"
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: rV(6),
+                backgroundColor: "#EEF2F7",
+              }}
+            >
+              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
+              <Text
+                style={{
+                  color: "#64748B",
+                  fontSize: rS(11),
+                  fontWeight: "600",
+                }}
+              >
+                Product image pending
+              </Text>
+            </View>
+          )}
 
           {/* Discount badge */}
           {discount && (

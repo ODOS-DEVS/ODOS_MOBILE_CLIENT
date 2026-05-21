@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/constants/auth";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
-import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { resolveApiMediaUrl } from "@/utils/media";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type MarketItem = {
@@ -70,17 +70,19 @@ type CatalogStoreChangedEvent = {
 };
 
 function mapMarket(item: MarketApiItem): MarketItem {
+  const imageUrl = resolveApiMediaUrl(item.image_url);
   return {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    image: resolveImageSource(item.image_url, item.image_key),
+    image: imageUrl ? { uri: imageUrl } : null,
   };
 }
 
 function mapStore(item: StoreApiItem): StoreItem {
   const primaryStoreImageUrl = item.image_url ?? item.image_banner_url ?? null;
-  const primaryStoreImageKey = item.image_key || item.image_banner_key || "bag";
+  const resolvedPrimaryImageUrl = resolveApiMediaUrl(primaryStoreImageUrl);
+  const resolvedBannerImageUrl = resolveApiMediaUrl(item.image_banner_url ?? item.image_url);
   return {
     id: item.id,
     slug: item.slug,
@@ -89,15 +91,12 @@ function mapStore(item: StoreApiItem): StoreItem {
     category: item.category ?? undefined,
     audienceSlugs: item.audience_slugs ?? undefined,
     marketSlug: item.market_slug ?? undefined,
-    imageKey: primaryStoreImageKey,
-    imageUrl: resolveApiMediaUrl(primaryStoreImageUrl),
+    imageKey: item.image_key || item.image_banner_key || undefined,
+    imageUrl: resolvedPrimaryImageUrl,
     imageBannerKey: item.image_banner_key ?? undefined,
-    imageBannerUrl: resolveApiMediaUrl(item.image_banner_url),
-    image: resolveImageSource(primaryStoreImageUrl, primaryStoreImageKey),
-    imageBanner: resolveImageSource(
-      item.image_banner_url ?? item.image_url,
-      item.image_banner_key ?? item.image_key,
-    ),
+    imageBannerUrl: resolvedBannerImageUrl,
+    image: resolvedPrimaryImageUrl ? { uri: resolvedPrimaryImageUrl } : null,
+    imageBanner: resolvedBannerImageUrl ? { uri: resolvedBannerImageUrl } : null,
     rating: item.rating ?? undefined,
     address: item.address ?? undefined,
     phone: item.phone ?? undefined,
@@ -156,6 +155,7 @@ function areStoresEqual(current: StoreItem[], next: StoreItem[]) {
 }
 
 export function useMarkets() {
+  const { subscribe } = useRealtime();
   const [markets, setMarkets] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,6 +213,12 @@ export function useMarkets() {
   }, [loadMarkets]);
 
   useLiveRefresh(() => loadMarkets({ background: true }));
+
+  useEffect(() => {
+    return subscribe("catalog.market.changed", () => {
+      void loadMarkets({ background: true });
+    });
+  }, [loadMarkets, subscribe]);
 
   return { markets, isLoading, error, refresh: loadMarkets };
 }

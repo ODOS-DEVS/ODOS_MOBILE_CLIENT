@@ -1,4 +1,5 @@
 import { rS, rV } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
@@ -6,6 +7,7 @@ interface MarketCardProps {
   id: string;
   image: any;
   title: string;
+  slug?: string;
   category?: string;
   rating?: number;
   reviews?: string;
@@ -19,6 +21,7 @@ const MarketCard: React.FC<MarketCardProps> = ({
   id,
   image,
   title,
+  slug,
   category,
   cardWidth,
   horizontalSpacing,
@@ -34,6 +37,7 @@ const MarketCard: React.FC<MarketCardProps> = ({
           pathname: "/screens/market" as any,
           params: {
             activeMarket: title,
+            activeMarketSlug: slug,
           },
         })
       }
@@ -59,11 +63,32 @@ const MarketCard: React.FC<MarketCardProps> = ({
             overflow: "hidden",
           }}
         >
-          <Image
-            source={image}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
-          />
+          {image ? (
+            <Image
+              source={image}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: rV(6),
+                backgroundColor: "#EEF2F7",
+              }}
+            >
+              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
+              <Text
+                className="text-subtext"
+                style={{ fontSize: rS(11) }}
+              >
+                Market image pending
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ padding: rS(12) }}>

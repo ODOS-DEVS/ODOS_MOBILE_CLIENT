@@ -1,4 +1,5 @@
 import { AppColors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
@@ -54,11 +55,20 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       </View>
 
       <View className="w-[118px] h-[118px] rounded-[28px] overflow-hidden items-center justify-center bg-[#F4F7FB]">
-        <Image
-          source={image}
-          className="w-full h-full"
-          resizeMode="cover"
-        />
+        {image ? (
+          <Image
+            source={image}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="w-full h-full items-center justify-center bg-[#F4F7FB] px-3">
+            <Ionicons name="image-outline" size={26} color="#94A3B8" />
+            <Text className="text-subtext text-xs font-montserrat-semiBold mt-2 text-center">
+              Image pending
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

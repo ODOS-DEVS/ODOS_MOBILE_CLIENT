@@ -11,7 +11,7 @@ import { useStore } from "@/hooks/useCommerce";
 import { type StoreVoucherOffer, useVouchers } from "@/hooks/useVouchers";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
-import { resolveImageSource } from "@/utils/media";
+import { resolveApiMediaUrl } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -52,24 +52,28 @@ const StoreDetailScreen = () => {
       slug: paramTitle.toLowerCase().replace(/\s+/g, "-"),
       title: paramTitle,
       status: "active",
-      image: resolveImageSource(
-        typeof params.image === "string" ? params.image : undefined,
-        typeof params.imageKey === "string" ? params.imageKey : undefined,
-      ),
-      imageBanner: resolveImageSource(
+      image: resolveApiMediaUrl(typeof params.image === "string" ? params.image : undefined)
+        ? { uri: resolveApiMediaUrl(typeof params.image === "string" ? params.image : undefined)! }
+        : null,
+      imageBanner: resolveApiMediaUrl(
         typeof params.imageBanner === "string"
           ? params.imageBanner
           : typeof params.image === "string"
             ? params.image
             : undefined,
-        typeof params.imageBannerKey === "string"
-          ? params.imageBannerKey
-          : typeof params.imageKey === "string"
-            ? params.imageKey
-            : undefined,
-      ),
+      )
+        ? {
+            uri: resolveApiMediaUrl(
+              typeof params.imageBanner === "string"
+                ? params.imageBanner
+                : typeof params.image === "string"
+                  ? params.image
+                  : undefined,
+            )!,
+          }
+        : null,
     }),
-    [paramTitle, params.image, params.imageBanner, params.imageBannerKey, params.imageKey, storeId],
+    [paramTitle, params.image, params.imageBanner, storeId],
   );
   const { store, isLoading, error: storeError } = useStore({
     storeId,
@@ -223,17 +227,30 @@ const StoreDetailScreen = () => {
             <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Image
-            source={store.imageBanner ?? store.image}
-            style={styles.coverImage}
-            resizeMode="cover"
-          />
+          {store.imageBanner ?? store.image ? (
+            <Image
+              source={(store.imageBanner ?? store.image) as any}
+              style={styles.coverImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.coverPlaceholder}>
+              <Ionicons name="image-outline" size={rS(26)} color="#CBD5E1" />
+              <Text style={styles.coverPlaceholderText}>Store cover pending</Text>
+            </View>
+          )}
           <View style={styles.coverOverlay} />
         </View>
 
         <View style={styles.profileCard}>
           <View style={styles.logoShell}>
-            <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
+            {store.image ? (
+              <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.logoPlaceholder}>
+                <Ionicons name="storefront-outline" size={rS(22)} color="#94A3B8" />
+              </View>
+            )}
           </View>
 
           <View style={styles.profileHeaderRow}>
@@ -253,9 +270,7 @@ const StoreDetailScreen = () => {
               </View>
 
               <Text style={styles.storeMeta} numberOfLines={2}>
-                {[store.category, store.slug ? `@${store.slug}` : null]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[store.category, store.city].filter(Boolean).join(" · ")}
               </Text>
 
               {storeLocation ? (
@@ -481,6 +496,19 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  coverPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rV(6),
+    backgroundColor: "#CBD5E1",
+  },
+  coverPlaceholderText: {
+    fontSize: rS(11),
+    color: "#FFFFFF",
+    fontFamily: "Montserrat-SemiBold",
+  },
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(15, 23, 42, 0.12)",
@@ -529,6 +557,13 @@ const styles = StyleSheet.create({
   logoImage: {
     width: "100%",
     height: "100%",
+  },
+  logoPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
   },
   profileHeaderRow: {
     marginTop: rS(12),

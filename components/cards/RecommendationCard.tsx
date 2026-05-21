@@ -91,7 +91,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           pathname: "/screens/[id]" as any,
           params: {
             id,
-            image: imageUrl ?? imageKey ?? image,
+            image: imageUrl ?? undefined,
             imageKey,
             imageUrl,
             title,
@@ -112,7 +112,14 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             isLargeAndroidScreen ? styles.imageShellLargeAndroid : null,
           ]}
         >
-          <Image source={image} style={styles.image} resizeMode="cover" />
+          {image ? (
+            <Image source={image} style={styles.image} resizeMode="cover" />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="image-outline" size={rMS(22)} color="#94A3B8" />
+              <Text style={styles.imagePlaceholderText}>Image pending</Text>
+            </View>
+          )}
           {offerLabel ? (
             <View style={styles.offerBadge}>
               <Text style={styles.offerBadgeText}>{offerLabel}</Text>
@@ -271,6 +278,19 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rV(6),
+    backgroundColor: "#EEF2F7",
+  },
+  imagePlaceholderText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.title,
+    color: "#64748B",
   },
   offerBadge: {
     position: "absolute",
