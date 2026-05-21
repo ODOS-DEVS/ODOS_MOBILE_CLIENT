@@ -51,7 +51,6 @@ const CategoryDetailScreen = () => {
 
   const { products: categoryProducts, isLoading } = useCatalogProducts({
     category: slug,
-    fallback: [],
   });
 
   const filteredProducts = useMemo(() => {

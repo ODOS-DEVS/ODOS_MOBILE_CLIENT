@@ -1,9 +1,8 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreCard from "@/components/cards/StoreCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
-import { Stores } from "@/constants/Data";
 import { useStores } from "@/hooks/useCommerce";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
@@ -28,56 +27,28 @@ const normalizeStoreCategory = (value?: string) => {
   return "Others";
 };
 
-const audienceCategoryMap: Record<string, string> = {
-  Ladies: "ladies",
-  Gents: "gents",
-  kids: "kids",
-  Groceries: "groceries",
-  Automobile: "automobile",
-  Beauty: "beauty",
-};
-
-const categoryOptions = [
-  "All",
-  "Ladies",
-  "Gents",
-  "Groceries",
-  "kids",
-  "Automobile",
-  "Beauty",
-  "Others",
-] as const;
-
 const StoreScreen = () => {
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
   const [activeCategory, setActiveCategory] = useState("All");
   const [isSearching, setIsSearching] = useState(false);
-  const fallbackStores = useMemo(
-    () =>
-      Stores.map((item) => ({
-        id: item.id,
-        slug: item.title.toLowerCase().replace(/\s+/g, "-"),
-        title: item.title,
-        category: item.category,
-        image: item.image,
-        rating: item.rating,
-        marketSlug: item.market?.toLowerCase(),
-      })),
-    [],
-  );
-  const { stores: storeItems, isLoading } = useStores({ fallback: fallbackStores });
+  const { stores: storeItems, isLoading } = useStores({});
   const [searchResults, setSearchResults] = useState(storeItems);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
 
-  const categories = useMemo(() => [...categoryOptions], []);
+  const categories = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(storeItems.map((store) => normalizeStoreCategory(store.category))),
+      ).filter(Boolean),
+    ],
+    [storeItems],
+  );
 
   const filteredByCategory = useMemo(() => {
     if (activeCategory === "All") return storeItems;
-    const audienceSlug = audienceCategoryMap[activeCategory];
     return storeItems.filter(
-      (store) =>
-        (audienceSlug && store.audienceSlugs?.includes(audienceSlug)) ||
-        normalizeStoreCategory(store.category) === activeCategory,
+      (store) => normalizeStoreCategory(store.category) === activeCategory,
     );
   }, [activeCategory, storeItems]);
 
@@ -147,7 +118,7 @@ const StoreScreen = () => {
           </View>
 
           {isLoading ? (
-            <ScreenLoader label="Loading stores..." />
+            <StoreGridSkeleton />
           ) : displayedStores.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons

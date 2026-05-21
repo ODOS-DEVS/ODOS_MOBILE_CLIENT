@@ -1,10 +1,9 @@
 import BannerCard from "@/components/cards/BannerCard";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProductCard from "@/components/cards/ProductCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import SortTabs from "@/components/SortTabs";
-import { kidsData } from "@/constants/Data";
 import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rS, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,11 +24,11 @@ const KidsScreen = () => {
     products: catalogProducts,
     sortOptions,
     isLoading,
-  } = useCatalogProducts({ audience: "kids", fallback: kidsData });
+    error,
+  } = useCatalogProducts({ audience: "kids" });
   const { products: popularNewProducts } = useCatalogProducts({
     audience: "kids",
     placement: "popular-new",
-    fallback: catalogProducts.slice(0, 5),
   });
   const [filteredData, setFilteredData] = useState(catalogProducts);
   const { gridCardWidth, responsiveColumns } = useResponsive();
@@ -141,8 +140,16 @@ const KidsScreen = () => {
           </View>
 
           {/* PRODUCT GRID */}
-          {isLoading ? (
-            <ScreenLoader label="Loading products..." />
+          {isLoading && catalogProducts.length === 0 ? (
+            <View style={{ paddingHorizontal: gridPadding, paddingTop: 16 }}>
+              <ProductGridSkeleton count={6} />
+            </View>
+          ) : filteredData.length === 0 ? (
+            <View className="px-4 pt-6">
+              <Text className="text-center text-base font-montserrat-semiBold text-primary">
+                {error ? "We couldn't load live kids products" : "No kids products live yet"}
+              </Text>
+            </View>
           ) : (
             <FlatList
               data={filteredData}

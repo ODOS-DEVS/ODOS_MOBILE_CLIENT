@@ -206,10 +206,10 @@ export default function SearchScreen() {
   const [selectedSort, setSelectedSort] = useState<SortMode>("relevance");
   const [selectedPriceRange, setSelectedPriceRange] = useState<PriceRange>("all");
 
-  const { products, isLoading: isLoadingProducts } = useCatalogProducts({ fallback: [] });
-  const { categories, isLoading: isLoadingCategories } = useCatalogCategories([]);
-  const { stores, isLoading: isLoadingStores } = useStores({ fallback: [] });
-  const { markets, isLoading: isLoadingMarkets } = useMarkets([]);
+  const { products, isLoading: isLoadingProducts } = useCatalogProducts({});
+  const { categories, isLoading: isLoadingCategories } = useCatalogCategories();
+  const { stores, isLoading: isLoadingStores } = useStores({});
+  const { markets, isLoading: isLoadingMarkets } = useMarkets();
 
   const categoryLookup = useMemo(
     () => new Map(categories.map((category) => [category.slug, category])),

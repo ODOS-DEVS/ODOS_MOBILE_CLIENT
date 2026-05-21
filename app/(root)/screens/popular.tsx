@@ -1,9 +1,8 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { AppColors } from "@/constants/Colors";
-import { PopularProducts } from "@/constants/Data";
 import Fonts from "@/constants/Fonts";
 import { useCatalogProducts } from "@/hooks/useCatalog";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
@@ -13,9 +12,8 @@ import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
 export default function PopularProductsScreen() {
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [isSearching, setIsSearching] = useState(false);
-  const { products: catalogProducts, isLoading } = useCatalogProducts({
+  const { products: catalogProducts, isLoading, error } = useCatalogProducts({
     section: "popular",
-    fallback: PopularProducts,
   });
   const [searchResults, setSearchResults] = useState(catalogProducts);
 
@@ -52,13 +50,17 @@ export default function PopularProductsScreen() {
             <Text style={styles.sectionTitle}>All popular products</Text>
           </View>
 
-          {isLoading ? (
-            <ScreenLoader label="Loading popular products..." />
+          {isLoading && catalogProducts.length === 0 ? (
+            <ProductListSkeleton count={5} />
           ) : displayed.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No products found</Text>
+              <Text style={styles.emptyTitle}>
+                {error ? "We couldn't load popular products" : "No products found"}
+              </Text>
               <Text style={styles.emptySubtitle}>
-                Adjust filters or clear search to see more items.
+                {error
+                  ? "The live popular feed is unavailable right now. Try again shortly."
+                  : "Adjust filters or clear search to see more items."}
               </Text>
             </View>
           ) : (

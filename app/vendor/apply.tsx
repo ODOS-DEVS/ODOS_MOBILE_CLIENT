@@ -4,7 +4,6 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { StatusBadge } from "@/components/vendor/StatusBadge";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { markets } from "@/constants/Data";
 import { vendorBusinessCategories } from "@/constants/vendor";
 import { useToast } from "@/context/ToastContext";
 import { useMarkets } from "@/hooks/useCommerce";
@@ -77,17 +76,7 @@ export default function VendorApplyScreen() {
   const { contentMaxWidth } = useResponsive();
   const { showToast } = useToast();
   const { isHydrating, session, user } = useVendorSession();
-  const marketFallback = useMemo(
-    () =>
-      markets.map((market) => ({
-        id: market.id,
-        slug: market.title.toLowerCase().replace(/\s+/g, "-"),
-        title: market.title,
-        image: market.image,
-      })),
-    [],
-  );
-  const { markets: availableMarkets } = useMarkets(marketFallback);
+  const { markets: availableMarkets } = useMarkets();
   const {
     error,
     isLoading,

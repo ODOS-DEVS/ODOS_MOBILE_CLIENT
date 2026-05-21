@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const {
-    isRefreshingSession,
     isSigningOut,
     refreshCurrentUser,
     signOut,
@@ -231,9 +230,16 @@ export default function ProfileScreen() {
     vendorApplication?.storeName,
   ]);
 
-  const isVendorSectionLoading = !user
-    ? false
-    : isRefreshingSession || (isLoading && resolvedVendorStatus === "none");
+  const hasResolvedVendorState = Boolean(
+    user &&
+      (vendorApplication ||
+        resolvedVendorStatus === "approved" ||
+        resolvedVendorStatus === "pending" ||
+        resolvedVendorStatus === "under_review" ||
+        resolvedVendorStatus === "rejected" ||
+        resolvedVendorStatus === "suspended"),
+  );
+  const isVendorSectionLoading = Boolean(user) && isLoading && !hasResolvedVendorState;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

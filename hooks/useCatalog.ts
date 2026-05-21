@@ -317,16 +317,14 @@ function curateRecommendedProducts({
   highlighted,
   popular,
   allProducts,
-  fallback,
   limit,
 }: {
   highlighted: CatalogProductItem[];
   popular: CatalogProductItem[];
   allProducts: CatalogProductItem[];
-  fallback: CatalogProductItem[];
   limit: number;
 }) {
-  const pool = mergeUniqueProducts(highlighted, popular, allProducts, fallback).filter(
+  const pool = mergeUniqueProducts(highlighted, popular, allProducts).filter(
     (product) => Boolean(product?.id && product?.title && product?.image),
   );
 
@@ -365,16 +363,12 @@ function curateRecommendedProducts({
     .slice(0, Math.max(limit, 1));
 }
 
-export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
-  const [categories, setCategories] = useState<CatalogCategoryItem[]>(fallback);
+export function useCatalogCategories() {
+  const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
-  const fallbackRef = useRef(fallback);
-
-  useEffect(() => {
-    fallbackRef.current = fallback;
-  }, [fallback]);
 
   const loadCategories = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -386,6 +380,7 @@ export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
 
       if (!background) {
         setIsLoading(true);
+        setError(null);
       }
 
       try {
@@ -403,11 +398,12 @@ export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
         setCategories((current) =>
           areCategoriesEqual(current, nextCategories) ? current : nextCategories,
         );
+        if (isMountedRef.current && !background) {
+          setError(null);
+        }
       } catch {
         if (isMountedRef.current && !background) {
-          setCategories((current) =>
-            areCategoriesEqual(current, fallbackRef.current) ? current : fallbackRef.current,
-          );
+          setError("We couldn't load categories right now.");
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -428,7 +424,7 @@ export function useCatalogCategories(fallback: CatalogCategoryItem[] = []) {
     };
   }, [loadCategories]);
 
-  return { categories, isLoading };
+  return { categories, isLoading, error, refresh: loadCategories };
 }
 
 export function useCatalogProducts({
@@ -438,7 +434,6 @@ export function useCatalogProducts({
   placement,
   subcategory,
   storeId,
-  fallback = [],
 }: {
   audience?: string;
   category?: string;
@@ -446,18 +441,13 @@ export function useCatalogProducts({
   placement?: string;
   subcategory?: string;
   storeId?: string;
-  fallback?: CatalogProductItem[];
 }) {
-  const [products, setProducts] = useState<CatalogProductItem[]>(fallback);
+  const [products, setProducts] = useState<CatalogProductItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
-  const fallbackRef = useRef(fallback);
-
-  useEffect(() => {
-    fallbackRef.current = fallback;
-  }, [fallback]);
 
   const loadProducts = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -469,6 +459,7 @@ export function useCatalogProducts({
 
       if (!background) {
         setIsLoading(true);
+        setError(null);
       }
 
       try {
@@ -509,11 +500,12 @@ export function useCatalogProducts({
         setProducts((current) =>
           areProductsEqual(current, nextProducts) ? current : nextProducts,
         );
+        if (isMountedRef.current && !background) {
+          setError(null);
+        }
       } catch {
         if (isMountedRef.current && !background) {
-          setProducts((current) =>
-            areProductsEqual(current, fallbackRef.current) ? current : fallbackRef.current,
-          );
+          setError("We couldn't load products right now.");
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -559,27 +551,24 @@ export function useCatalogProducts({
   return {
     products,
     isLoading,
+    error,
     sortOptions,
+    refresh: loadProducts,
   };
 }
 
 export function useRecommendedProducts({
-  fallback = [],
   limit = 8,
 }: {
-  fallback?: CatalogProductItem[];
   limit?: number;
 }) {
   const highlightedCatalog = useCatalogProducts({
     section: "recommendations",
-    fallback,
   });
   const popularCatalog = useCatalogProducts({
     section: "popular",
-    fallback: [],
   });
   const allCatalog = useCatalogProducts({
-    fallback: [],
   });
 
   const products = useMemo(
@@ -588,12 +577,10 @@ export function useRecommendedProducts({
         highlighted: highlightedCatalog.products,
         popular: popularCatalog.products,
         allProducts: allCatalog.products,
-        fallback,
         limit,
       }),
     [
       allCatalog.products,
-      fallback,
       highlightedCatalog.products,
       limit,
       popularCatalog.products,
@@ -609,6 +596,10 @@ export function useRecommendedProducts({
   return {
     products,
     isLoading,
+    error:
+      highlightedCatalog.error ??
+      popularCatalog.error ??
+      allCatalog.error,
   };
 }
 
