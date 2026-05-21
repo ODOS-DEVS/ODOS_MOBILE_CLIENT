@@ -7,12 +7,13 @@ import { useCart } from "@/context/CartContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
-import { createOrderRequest } from "@/hooks/useOrders";
+import { createCheckoutSessionRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -34,7 +35,7 @@ const normalizeVoucherCode = (value: string) => value.trim().toUpperCase();
 export default function CheckoutScreen() {
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
-  const { cart, clearCart } = useCart();
+  const { cart } = useCart();
   const { showToast } = useToast();
   const { previewVoucher } = useVouchers();
   const params = useLocalSearchParams();
@@ -71,7 +72,6 @@ export default function CheckoutScreen() {
     checkoutVoucherCode,
     setCheckoutVoucherCode,
     isSyncingProfileData,
-    clearCheckoutSelection,
   } = useProfile();
 
   const [quantity, setQuantity] = useState(1);
@@ -274,7 +274,8 @@ export default function CheckoutScreen() {
 
     setIsPlacingOrder(true);
     try {
-      const createdOrder = await createOrderRequest(accessToken, {
+      const callbackUrl = Linking.createURL("/payments/return");
+      const checkoutSession = await createCheckoutSessionRequest(accessToken, {
         source: checkoutMode,
         items: checkoutItems,
         subtotal_amount: subtotal,
@@ -292,31 +293,16 @@ export default function CheckoutScreen() {
         payment_network: selectedPayment.network ?? null,
         payment_phone: selectedPayment.phone ?? null,
         payment_last4: selectedPayment.cardLast4 ?? null,
+        callback_url: callbackUrl,
+        cancel_url: callbackUrl,
       });
-
-      if (checkoutMode === "cart") {
-        await clearCart();
-      }
-
-      clearCheckoutSelection();
-      showToast("Order placed successfully.");
-      router.replace({
-        pathname: "/(root)/screens/order-success" as any,
-        params: {
-          orderId: createdOrder.id,
-          orderNumber: createdOrder.order_number,
-          total: String(createdOrder.total_amount),
-          itemCount: String(
-            createdOrder.items.reduce((sum, item) => sum + item.quantity, 0),
-          ),
-          eta: createdOrder.tracking_eta ?? "Estimated delivery in 2–3 days",
-        },
-      });
+      showToast("Opening secure payment...");
+      await Linking.openURL(checkoutSession.authorization_url);
     } catch (error) {
       const message =
         error instanceof Error && error.message
           ? error.message
-          : "We couldn't place your order right now.";
+          : "We couldn't start your payment right now.";
       showToast(message);
     } finally {
       setIsPlacingOrder(false);

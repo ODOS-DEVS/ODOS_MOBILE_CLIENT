@@ -32,7 +32,9 @@ export default function OrdersScreen() {
   const { orders, isLoadingOrders, isMutatingOrder, cancelOrder } = useOrders();
 
   const deliveredOrders = orders.filter((order) => order.status === "delivered");
-  const processingOrders = orders.filter((order) => order.status === "processing");
+  const processingOrders = orders.filter(
+    (order) => order.status === "processing" || order.status === "pending_payment",
+  );
   const cancelledOrders = orders.filter((order) => order.status === "cancelled");
 
   return (

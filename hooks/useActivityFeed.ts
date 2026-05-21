@@ -10,7 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 export type ActivityRoute =
   | { type: "order"; orderId: string }
   | { type: "profile" }
-  | { type: "orders" };
+  | { type: "orders" }
+  | { type: "vendor_wallet" };
 
 export type ActivityItem = {
   id: string;
@@ -18,7 +19,15 @@ export type ActivityItem = {
   body: string;
   occurredAt: string;
   relativeTime: string;
-  icon: "bag-handle-outline" | "checkmark-done-outline" | "close-circle-outline" | "person-outline" | "mail-outline";
+  icon:
+    | "bag-handle-outline"
+    | "checkmark-done-outline"
+    | "close-circle-outline"
+    | "person-outline"
+    | "mail-outline"
+    | "wallet-outline"
+    | "cash-outline"
+    | "refresh-circle-outline";
   accent: "neutral" | "success" | "warning";
   isRead?: boolean;
   productImage?: any;
@@ -118,6 +127,9 @@ function mapRoute(
   }
   if (routeType === "orders") {
     return { type: "orders" };
+  }
+  if (routeType === "vendor_wallet") {
+    return { type: "vendor_wallet" };
   }
   return undefined;
 }
