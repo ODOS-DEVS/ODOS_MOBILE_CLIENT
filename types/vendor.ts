@@ -72,6 +72,88 @@ export type VendorDashboardStats = {
   completedOrders: number;
   totalSales: number;
   currency: string;
+  availableBalance: number;
+  pendingWithdrawalBalance: number;
+  lifetimeEarnings: number;
+  totalCommission: number;
+};
+
+export type VendorWalletTransaction = {
+  id: string;
+  kind: string;
+  title: string;
+  amount: number;
+  grossAmount?: number | null;
+  commissionAmount?: number | null;
+  balanceAfter: number;
+  orderId?: string | null;
+  returnRequestId?: string | null;
+  withdrawalRequestId?: string | null;
+  createdAt: string;
+};
+
+export type VendorWithdrawalStatus =
+  | "pending"
+  | "approved"
+  | "processing"
+  | "rejected"
+  | "failed"
+  | "paid";
+
+export type VendorWithdrawalRequest = {
+  id: string;
+  status: VendorWithdrawalStatus;
+  amount: number;
+  note?: string | null;
+  adminNote?: string | null;
+  payoutMethodType: string;
+  payoutAccountName: string;
+  payoutAccountNumberMasked: string;
+  payoutProvider?: string | null;
+  transferFailureReason?: string | null;
+  reviewedByUserId?: string | null;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  paidAt?: string | null;
+  transferInitiatedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VendorWallet = {
+  id: string;
+  vendorUserId: string;
+  currency: string;
+  availableBalance: number;
+  pendingWithdrawalBalance: number;
+  lifetimeEarnings: number;
+  totalWithdrawn: number;
+  totalCommission: number;
+  payoutMethodType?: string | null;
+  payoutAccountName?: string | null;
+  payoutAccountNumberMasked?: string | null;
+  payoutProvider?: string | null;
+  recentTransactions: VendorWalletTransaction[];
+  withdrawalRequests: VendorWithdrawalRequest[];
+};
+
+export type VendorPayoutDetailsInput = {
+  payoutMethodType: "mobile_money" | "bank_transfer";
+  payoutAccountName: string;
+  payoutAccountNumber: string;
+  payoutProvider: string;
+};
+
+export type VendorPayoutInstitution = {
+  code: string;
+  name: string;
+  payoutMethodType: "mobile_money" | "bank_transfer";
+  currency: string;
+};
+
+export type VendorWithdrawalInput = {
+  amount: number;
+  note?: string;
 };
 
 const VALID_ROLES: AppRole[] = ["customer", "vendor", "admin"];

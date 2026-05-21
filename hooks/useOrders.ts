@@ -36,6 +36,11 @@ export type OrderPayload = {
   payment_last4?: string | null;
 };
 
+export type CheckoutSessionPayload = OrderPayload & {
+  callback_url?: string | null;
+  cancel_url?: string | null;
+};
+
 export type OrderItem = {
   id: string;
   product_id: string;
@@ -92,7 +97,17 @@ export type Order = {
   id: string;
   order_number: string;
   source: "buy_now" | "cart";
-  status: "processing" | "delivered" | "cancelled" | string;
+  status: "pending_payment" | "processing" | "delivered" | "cancelled" | string;
+  payment_status:
+    | "pending"
+    | "paid"
+    | "failed"
+    | "cancelled"
+    | "refunded"
+    | "partially_refunded"
+    | string;
+  payment_provider: string;
+  payment_reference: string | null;
   subtotal_amount: number;
   shipping_amount: number;
   discount_amount: number;
@@ -113,12 +128,35 @@ export type Order = {
   voucher_code: string | null;
   voucher_title: string | null;
   placed_at: string;
+  paid_at: string | null;
   delivered_at: string | null;
   cancelled_at: string | null;
+  refunded_at: string | null;
   created_at: string;
   updated_at: string;
   items: OrderItem[];
   return_requests: ReturnRequest[];
+};
+
+export type CheckoutSession = {
+  order_id: string;
+  order_number: string;
+  reference: string;
+  authorization_url: string;
+  access_code: string;
+  amount: number;
+  currency: string;
+  payment_status: string;
+};
+
+export type PaymentVerification = {
+  order: Order;
+  reference: string;
+  payment_status: string;
+  provider_status: string;
+  paid_at: string | null;
+  verified_at: string | null;
+  message: string;
 };
 
 async function getStoredAccessToken() {
@@ -157,6 +195,47 @@ export async function createOrderRequest(accessToken: string, payload: OrderPayl
   }
 
   return (await response.json()) as Order;
+}
+
+export async function createCheckoutSessionRequest(
+  accessToken: string,
+  payload: CheckoutSessionPayload,
+) {
+  const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return (await response.json()) as CheckoutSession;
+}
+
+export async function verifyCheckoutSessionRequest(
+  accessToken: string,
+  reference: string,
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/payments/checkout/${encodeURIComponent(reference)}/verify`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return (await response.json()) as PaymentVerification;
 }
 
 async function fetchOrderRequest(accessToken: string, orderId: string) {

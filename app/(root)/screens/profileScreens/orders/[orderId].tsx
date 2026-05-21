@@ -26,6 +26,18 @@ const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 function getStatusMeta(order: Order) {
+  if (order.status === "pending_payment") {
+    return {
+      label: "Awaiting Payment",
+      backgroundColor: "#FEF3C7",
+      textColor: "#B45309",
+      helperText:
+        order.payment_status === "failed"
+          ? "Payment was not completed successfully."
+          : "We’re waiting for secure payment confirmation before preparation starts.",
+    };
+  }
+
   if (order.status === "delivered") {
     return {
       label: "Delivered",
@@ -71,6 +83,32 @@ function getTimelineSteps(order: Order) {
   const placedAt = formatTimelineDate(order.placed_at);
   const deliveredAt = formatTimelineDate(order.delivered_at);
   const cancelledAt = formatTimelineDate(order.cancelled_at);
+
+  if (order.status === "pending_payment") {
+    return [
+      {
+        key: "placed",
+        title: "Order reserved",
+        caption: placedAt || "Your order has been created",
+        state: "done" as const,
+      },
+      {
+        key: "payment",
+        title: "Awaiting payment confirmation",
+        caption:
+          order.payment_status === "failed"
+            ? "Payment failed, so preparation has not started."
+            : "We’ll start preparing this order after payment clears.",
+        state: "active" as const,
+      },
+      {
+        key: "processing",
+        title: "Preparation starts",
+        caption: "This begins once payment is verified.",
+        state: "pending" as const,
+      },
+    ];
+  }
 
   if (order.status === "cancelled") {
     return [
@@ -775,6 +813,36 @@ export default function OrderDetailScreen() {
             >
               <Text style={styles.destructiveButtonText}>
                 {isMutatingOrder ? "Updating..." : "Cancel Order"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {order.status === "pending_payment" ? (
+          <View style={styles.processingActions}>
+            <TouchableOpacity
+              style={[styles.destructiveButton, isMutatingOrder && styles.destructiveButtonDisabled]}
+              activeOpacity={0.88}
+              disabled={isMutatingOrder}
+              onPress={() =>
+                Alert.alert(
+                  "Cancel this pending order?",
+                  "This removes the payment hold request from your active orders list.",
+                  [
+                    { text: "Keep order", style: "cancel" },
+                    {
+                      text: "Cancel order",
+                      style: "destructive",
+                      onPress: () => {
+                        void handleCancelOrder();
+                      },
+                    },
+                  ],
+                )
+              }
+            >
+              <Text style={styles.destructiveButtonText}>
+                {isMutatingOrder ? "Updating..." : "Cancel Pending Order"}
               </Text>
             </TouchableOpacity>
           </View>

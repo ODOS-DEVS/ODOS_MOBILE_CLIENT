@@ -101,6 +101,11 @@ export default function NotificationScreen() {
       return;
     }
 
+    if (item.route.type === "vendor_wallet") {
+      router.push("/vendor/wallet" as any);
+      return;
+    }
+
     router.push("/(root)/screens/profileScreens/orders" as any);
   };
 
