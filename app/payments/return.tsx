@@ -17,6 +17,20 @@ const getParam = (value: string | string[] | undefined) =>
 
 type VerificationState = "verifying" | "cancelled" | "pending" | "failed" | "error";
 
+function resolveVerificationState(result: PaymentVerification): VerificationState {
+  if (
+    result.payment_status === "cancelled" ||
+    result.provider_status === "abandoned" ||
+    result.provider_status === "cancelled"
+  ) {
+    return "cancelled";
+  }
+  if (result.payment_status === "pending") {
+    return "pending";
+  }
+  return "failed";
+}
+
 function ResultIcon({ state }: { state: VerificationState }) {
   if (state === "cancelled") {
     return <Ionicons name="close-circle" size={rMS(72)} color="#D97706" />;
@@ -49,7 +63,9 @@ export default function PaymentReturnScreen() {
     if (verificationState === "cancelled") {
       return {
         title: "Payment was cancelled",
-        body: "No money was confirmed yet, so your order is still waiting for payment.",
+        body:
+          verification?.message ||
+          "No money was confirmed yet, so your order is still waiting for payment.",
       };
     }
     if (verificationState === "pending") {
@@ -134,7 +150,7 @@ export default function PaymentReturnScreen() {
           return;
         }
 
-        setVerificationState("failed");
+        setVerificationState(resolveVerificationState(result));
       } catch (error) {
         if (!isMounted) {
           return;
@@ -196,7 +212,7 @@ export default function PaymentReturnScreen() {
         return;
       }
 
-      setVerificationState(result.payment_status === "pending" ? "pending" : "failed");
+      setVerificationState(resolveVerificationState(result));
     } catch (error) {
       setVerificationState("error");
       setErrorMessage(
