@@ -341,7 +341,6 @@ export default function CheckoutScreen() {
         routeToPaymentReturn({
           orderId: checkoutSession.order_id,
           reference: checkoutSession.reference,
-          cancelled: "1",
         });
       }
     } catch (error) {
