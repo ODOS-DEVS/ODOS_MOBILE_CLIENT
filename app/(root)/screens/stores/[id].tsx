@@ -227,6 +227,13 @@ const StoreDetailScreen = () => {
             <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={() => router.replace("/(root)/(tabs)" as any)}
+            style={[styles.backButton, styles.homeButton]}
+          >
+            <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
           {store.imageBanner ?? store.image ? (
             <Image
               source={(store.imageBanner ?? store.image) as any}
@@ -524,6 +531,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(15, 23, 42, 0.34)",
+  },
+  homeButton: {
+    left: undefined,
+    right: rS(16),
   },
   profileCard: {
     marginTop: -rS(52),
