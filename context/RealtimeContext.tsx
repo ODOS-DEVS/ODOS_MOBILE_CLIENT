@@ -28,9 +28,12 @@ type RealtimeContextType = {
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
 const MAX_RECONNECT_DELAY_MS = 10000;
 
-function buildWebSocketUrl(token: string) {
+function buildWebSocketUrl(token: string | null) {
   const base = API_BASE_URL.replace(/\/api\/?$/, "");
   const wsBase = base.replace(/^http:\/\//i, "ws://").replace(/^https:\/\//i, "wss://");
+  if (!token) {
+    return `${wsBase}/api/ws`;
+  }
   return `${wsBase}/api/ws?token=${encodeURIComponent(token)}`;
 }
 
@@ -41,6 +44,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const reconnectAttemptRef = useRef(0);
   const isActiveRef = useRef(true);
   const latestTokenRef = useRef<string | null>(null);
+  const latestAuthenticatedRef = useRef(false);
   const listenersRef = useRef<Map<string, Set<(event: RealtimeEventEnvelope) => void>>>(
     new Map(),
   );
@@ -55,16 +59,6 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const disconnect = useCallback(() => {
-    clearReconnectTimeout();
-    reconnectAttemptRef.current = 0;
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
-    }
-    setConnectionState("disconnected");
-  }, [clearReconnectTimeout]);
-
   const dispatchEvent = useCallback((event: RealtimeEventEnvelope) => {
     const exactListeners = listenersRef.current.get(event.type);
     exactListeners?.forEach((handler) => handler(event));
@@ -74,8 +68,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   const scheduleReconnect = useCallback(() => {
     clearReconnectTimeout();
-    const token = latestTokenRef.current;
-    if (!token || !isActiveRef.current) {
+    if (!isActiveRef.current) {
       return;
     }
     const attempt = reconnectAttemptRef.current + 1;
@@ -83,7 +76,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const delay = Math.min(1000 * 2 ** (attempt - 1), MAX_RECONNECT_DELAY_MS);
     reconnectTimeoutRef.current = setTimeout(() => {
       reconnectTimeoutRef.current = null;
-      if (!latestTokenRef.current || !isActiveRef.current) {
+      if (!isActiveRef.current) {
         return;
       }
       connect(latestTokenRef.current);
@@ -96,17 +89,21 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         const event = JSON.parse(raw) as RealtimeEventEnvelope;
         dispatchEvent(event);
 
-        if (
-          event.type === "account.updated" ||
-          (event.type === "notification.created" &&
-            typeof event.payload === "object" &&
-            event.payload &&
-            "kind" in event.payload &&
-            (event.payload as { kind?: unknown }).kind &&
-            ["vendor_approved", "vendor_rejected"].includes(
-              String((event.payload as { kind?: unknown }).kind),
-            ))
-        ) {
+        const shouldRefreshAccount =
+          latestAuthenticatedRef.current &&
+          (
+            event.type === "account.updated" ||
+            (event.type === "notification.created" &&
+              typeof event.payload === "object" &&
+              event.payload &&
+              "kind" in event.payload &&
+              (event.payload as { kind?: unknown }).kind &&
+              ["vendor_approved", "vendor_rejected"].includes(
+                String((event.payload as { kind?: unknown }).kind),
+              ))
+          );
+
+        if (shouldRefreshAccount) {
           await refreshCurrentUser();
         }
       } catch {
@@ -117,7 +114,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   );
 
   const connect = useCallback(
-    (token: string) => {
+    (token: string | null) => {
       if (!isActiveRef.current) {
         return;
       }
@@ -158,17 +155,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    latestTokenRef.current = accessToken;
-    if (!accessToken || !user) {
-      disconnect();
-      return;
-    }
+    const authenticatedToken = accessToken && user ? accessToken : null;
+    latestTokenRef.current = authenticatedToken;
+    latestAuthenticatedRef.current = Boolean(authenticatedToken);
 
     if (!isActiveRef.current) {
       return;
     }
 
-    connect(accessToken);
+    connect(authenticatedToken);
 
     return () => {
       if (socketRef.current) {
@@ -176,15 +171,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         socketRef.current = null;
       }
     };
-  }, [accessToken, connect, disconnect, user]);
+  }, [accessToken, connect, user]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       isActiveRef.current = nextState === "active";
       if (nextState === "active") {
-        const token = latestTokenRef.current;
-        if (token && !socketRef.current) {
-          connect(token);
+        if (!socketRef.current) {
+          connect(latestTokenRef.current);
         }
       } else {
         if (socketRef.current) {
