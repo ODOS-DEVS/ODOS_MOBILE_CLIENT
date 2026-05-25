@@ -30,6 +30,14 @@ type VendorApplicationApi = {
   city?: string;
   market_id?: string | null;
   store_location?: string | null;
+  store_latitude?: number | null;
+  store_longitude?: number | null;
+  store_instagram_url?: string | null;
+  store_facebook_url?: string | null;
+  store_tiktok_url?: string | null;
+  store_twitter_url?: string | null;
+  store_whatsapp_url?: string | null;
+  store_website_url?: string | null;
   store_name?: string;
   store_description?: string | null;
   ghana_card_number?: string | null;
@@ -181,6 +189,14 @@ function mapApplication(
     city: payload.city ?? "",
     marketId: payload.market_id ?? undefined,
     storeLocation: payload.store_location ?? undefined,
+    storeLatitude: payload.store_latitude ?? undefined,
+    storeLongitude: payload.store_longitude ?? undefined,
+    storeInstagramUrl: payload.store_instagram_url ?? undefined,
+    storeFacebookUrl: payload.store_facebook_url ?? undefined,
+    storeTiktokUrl: payload.store_tiktok_url ?? undefined,
+    storeTwitterUrl: payload.store_twitter_url ?? undefined,
+    storeWhatsappUrl: payload.store_whatsapp_url ?? undefined,
+    storeWebsiteUrl: payload.store_website_url ?? undefined,
     storeName: payload.store_name ?? "",
     storeDescription: payload.store_description ?? undefined,
     ghanaCardNumber: payload.ghana_card_number ?? undefined,
@@ -360,6 +376,30 @@ export async function submitVendorApplication(
   }
   if (input.storeLocation?.trim()) {
     formData.append("store_location", input.storeLocation.trim());
+  }
+  if (typeof input.storeLatitude === "number" && Number.isFinite(input.storeLatitude)) {
+    formData.append("store_latitude", String(input.storeLatitude));
+  }
+  if (typeof input.storeLongitude === "number" && Number.isFinite(input.storeLongitude)) {
+    formData.append("store_longitude", String(input.storeLongitude));
+  }
+  if (input.storeInstagramUrl?.trim()) {
+    formData.append("store_instagram_url", input.storeInstagramUrl.trim());
+  }
+  if (input.storeFacebookUrl?.trim()) {
+    formData.append("store_facebook_url", input.storeFacebookUrl.trim());
+  }
+  if (input.storeTiktokUrl?.trim()) {
+    formData.append("store_tiktok_url", input.storeTiktokUrl.trim());
+  }
+  if (input.storeTwitterUrl?.trim()) {
+    formData.append("store_twitter_url", input.storeTwitterUrl.trim());
+  }
+  if (input.storeWhatsappUrl?.trim()) {
+    formData.append("store_whatsapp_url", input.storeWhatsappUrl.trim());
+  }
+  if (input.storeWebsiteUrl?.trim()) {
+    formData.append("store_website_url", input.storeWebsiteUrl.trim());
   }
   if (input.storeDescription?.trim()) {
     formData.append("store_description", input.storeDescription.trim());

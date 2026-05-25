@@ -30,6 +30,14 @@ export type VendorApplicationInput = {
   city: string;
   marketId?: string;
   storeLocation?: string;
+  storeLatitude?: number | null;
+  storeLongitude?: number | null;
+  storeInstagramUrl?: string;
+  storeFacebookUrl?: string;
+  storeTiktokUrl?: string;
+  storeTwitterUrl?: string;
+  storeWhatsappUrl?: string;
+  storeWebsiteUrl?: string;
   storeName: string;
   storeDescription?: string;
   ghanaCardNumber?: string;

@@ -1,9 +1,12 @@
 import Colors from "@/constants/Colors";
+import LoadingSpinner from "@/components/loaders/LoadingSpinner";
 import { useAuth } from "@/context/AuthContext";
 import { rS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
 import React, { useEffect } from "react";
-import { ActivityIndicator, Image, View } from "react-native";
+import { Image, View } from "react-native";
+
+const SPLASH_HOLD_MS = 700;
 
 export default function SplashScreen() {
   const { isHydrating } = useAuth();
@@ -15,7 +18,8 @@ export default function SplashScreen() {
 
     const timer = setTimeout(() => {
       router.replace("./(tabs)");
-    }, 1200);
+    }, SPLASH_HOLD_MS);
+
     return () => clearTimeout(timer);
   }, [isHydrating]);
 
@@ -26,24 +30,29 @@ export default function SplashScreen() {
         backgroundColor: Colors.primary,
         justifyContent: "center",
         alignItems: "center",
-        paddingBottom: rV(40),
+        paddingHorizontal: rS(32),
       }}
     >
       <Image
         source={require("@/assets/images/splash.png")}
         style={{
-          width: rS(200),
-          height: rV(170),
-          marginBottom: rV(300),
+          width: rS(188),
+          height: rV(156),
           resizeMode: "contain",
         }}
       />
 
-      <ActivityIndicator
-        color={"#ffffff"}
-        size="large"
-        style={{ marginTop: rV(40) }}
-      />
+      <View style={{ marginTop: rV(48), minHeight: rV(88) }}>
+        <LoadingSpinner
+          tone="inverse"
+          label={isHydrating ? "Starting ODOS" : "Welcome back"}
+          sublabel={
+            isHydrating
+              ? "Connecting to your account"
+              : "Opening your storefront"
+          }
+        />
+      </View>
     </View>
   );
 }

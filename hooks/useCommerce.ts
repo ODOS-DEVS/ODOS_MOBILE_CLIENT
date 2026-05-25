@@ -27,9 +27,18 @@ export type StoreItem = {
   imageBanner?: any;
   rating?: number;
   address?: string;
+  latitude?: number;
+  longitude?: number;
+  instagramUrl?: string;
+  facebookUrl?: string;
+  tiktokUrl?: string;
+  twitterUrl?: string;
+  whatsappUrl?: string;
+  websiteUrl?: string;
   phone?: string;
   email?: string;
   city?: string;
+  region?: string;
   distanceKm?: string;
   travelMinutes?: string;
   description?: string;
@@ -57,9 +66,18 @@ type StoreApiItem = {
   image_banner_url?: string | null;
   rating: number | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  tiktok_url: string | null;
+  twitter_url: string | null;
+  whatsapp_url: string | null;
+  website_url: string | null;
   phone: string | null;
   email: string | null;
   city: string | null;
+  region: string | null;
   distance_km: string | null;
   travel_minutes: string | null;
   description: string | null;
@@ -99,9 +117,18 @@ function mapStore(item: StoreApiItem): StoreItem {
     imageBanner: resolvedBannerImageUrl ? { uri: resolvedBannerImageUrl } : null,
     rating: item.rating ?? undefined,
     address: item.address ?? undefined,
+    latitude: item.latitude ?? undefined,
+    longitude: item.longitude ?? undefined,
+    instagramUrl: item.instagram_url ?? undefined,
+    facebookUrl: item.facebook_url ?? undefined,
+    tiktokUrl: item.tiktok_url ?? undefined,
+    twitterUrl: item.twitter_url ?? undefined,
+    whatsappUrl: item.whatsapp_url ?? undefined,
+    websiteUrl: item.website_url ?? undefined,
     phone: item.phone ?? undefined,
     email: item.email ?? undefined,
     city: item.city ?? undefined,
+    region: item.region ?? undefined,
     distanceKm: item.distance_km ?? undefined,
     travelMinutes: item.travel_minutes ?? undefined,
     description: item.description ?? undefined,

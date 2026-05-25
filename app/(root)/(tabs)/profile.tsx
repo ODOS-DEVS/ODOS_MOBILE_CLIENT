@@ -1,3 +1,4 @@
+import { AccountListCard, accountStyles } from "@/components/account/AccountUi";
 import { MenuItem } from "@/components/MenuItem";
 import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
@@ -247,13 +248,10 @@ export default function ProfileScreen() {
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{
-          paddingTop: rV(10),
-          paddingBottom: 90,
-        }}
+        contentContainerStyle={styles.scrollContent}
       >
-      {/* Header */}
       <TouchableOpacity
+        activeOpacity={0.9}
         onPress={() => {
           openProtectedRoute(
             "../screens/profileScreens/CustomerProfile",
@@ -262,22 +260,58 @@ export default function ProfileScreen() {
           );
         }}
       >
-        <View
-          className="bg-white rounded-3xl mb-5 shadow-sm"
-          style={styles.header}
-        >
-          <View style={styles.subHeader}>
-            <UserAvatar avatarUrl={user?.avatar_url} size={rS(50)} style={styles.avatar} />
-            <View>
-              <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
-              <Text style={styles.email}>
-                {user?.email || "Sign in to view account details"}
-              </Text>
+        <AccountListCard style={styles.profileEntryCard}>
+          <View style={styles.profileEntryRow}>
+            <View style={styles.subHeader}>
+              <UserAvatar avatarUrl={user?.avatar_url} size={rS(52)} style={styles.avatar} />
+              <View style={styles.profileEntryCopy}>
+                <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
+                <Text style={styles.email}>
+                  {user?.email || "Sign in to view account details"}
+                </Text>
+                <Text style={styles.profileEntryHint}>Tap to edit your profile</Text>
+              </View>
             </View>
+            <Ionicons name="chevron-forward" size={rMS(22)} color="#D1D5DB" />
           </View>
-          <Ionicons name="arrow-forward-circle" size={28} color="#111" />
-        </View>
+        </AccountListCard>
       </TouchableOpacity>
+
+      <Text style={styles.sectionTitle}>Vendor</Text>
+      <View style={styles.vendorCard}>
+        <View style={styles.vendorCardHeader}>
+          <View style={styles.vendorIconWrap}>
+            <Ionicons name="briefcase-outline" size={rMS(18)} color={AppColors.text} />
+          </View>
+          <View style={styles.vendorTextWrap}>
+            <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
+            <Text style={styles.vendorBody}>{vendorSection.body}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.vendorButton}
+          onPress={vendorSection.onPress}
+          activeOpacity={0.85}
+          disabled={isVendorSectionLoading}
+        >
+          <Text style={styles.vendorButtonLabel}>
+            {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
+          </Text>
+        </TouchableOpacity>
+
+        {vendorSection.secondaryAction ? (
+          <TouchableOpacity
+            onPress={vendorSection.secondaryAction.onPress}
+            activeOpacity={0.75}
+            style={styles.vendorSecondaryButton}
+          >
+            <Text style={styles.vendorSecondaryButtonLabel}>
+              {vendorSection.secondaryAction.label}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
@@ -331,42 +365,6 @@ export default function ProfileScreen() {
             openProtectedRoute("../screens/profileScreens/Account/Vouchers");
           }}
         />
-      </View>
-
-      <Text style={styles.sectionTitle}>Vendor</Text>
-      <View style={styles.vendorCard}>
-        <View style={styles.vendorCardHeader}>
-          <View style={styles.vendorIconWrap}>
-            <Ionicons name="briefcase-outline" size={rMS(18)} color={AppColors.text} />
-          </View>
-          <View style={styles.vendorTextWrap}>
-            <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
-            <Text style={styles.vendorBody}>{vendorSection.body}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.vendorButton}
-          onPress={vendorSection.onPress}
-          activeOpacity={0.85}
-          disabled={isVendorSectionLoading}
-        >
-          <Text style={styles.vendorButtonLabel}>
-            {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
-          </Text>
-        </TouchableOpacity>
-
-        {vendorSection.secondaryAction ? (
-          <TouchableOpacity
-            onPress={vendorSection.secondaryAction.onPress}
-            activeOpacity={0.75}
-            style={styles.vendorSecondaryButton}
-          >
-            <Text style={styles.vendorSecondaryButtonLabel}>
-              {vendorSection.secondaryAction.label}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {/* Personalization */}
@@ -475,29 +473,42 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-
-  header: {
+  scrollContent: {
+    paddingTop: rV(10),
+    paddingBottom: 90,
+  },
+  profileEntryCard: {
+    marginBottom: rV(14),
+  },
+  profileEntryRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: rMS(16),
-    marginTop: rV(8),
+    gap: rS(10),
   },
   subHeader: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
   },
-
+  profileEntryCopy: {
+    flex: 1,
+  },
+  profileEntryHint: {
+    marginTop: rV(4),
+    fontSize: rMS(11.5),
+    fontFamily: Fonts.title,
+    color: AppColors.primary,
+  },
   avatar: {
-    width: rS(50),
-    height: rV(50),
-    borderRadius: rMS(30),
+    width: rS(52),
+    height: rS(52),
+    borderRadius: rMS(26),
     marginRight: rS(12),
   },
-
   name: {
     fontSize: rMS(16),
-    fontFamily: Fonts.title,
+    fontFamily: Fonts.titleBold,
     color: AppColors.text,
   },
 

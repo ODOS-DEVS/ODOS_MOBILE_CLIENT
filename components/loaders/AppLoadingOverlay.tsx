@@ -1,6 +1,8 @@
-import LoaderPanel from "@/components/loaders/LoaderPanel";
+import LoadingSpinner from "@/components/loaders/LoadingSpinner";
+import Colors from "@/constants/Colors";
+import { rS, rV } from "@/styles/responsive";
 import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 type AppLoadingOverlayProps = {
   label?: string;
@@ -8,20 +10,18 @@ type AppLoadingOverlayProps = {
 };
 
 export default function AppLoadingOverlay({
-  label = "Getting ODOS ready",
-  sublabel = "Please wait while we finish loading your session, storefront, and latest account updates.",
+  label = "Starting ODOS",
+  sublabel = "Restoring your session",
 }: AppLoadingOverlayProps) {
   return (
     <View pointerEvents="auto" style={styles.overlay}>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          Platform.OS === "ios" ? styles.iosGlass : styles.fallbackGlass,
-        ]}
-      />
-      <View style={styles.scrim} />
-      <View style={styles.contentWrap}>
-        <LoaderPanel label={label} sublabel={sublabel} />
+      <View style={styles.content}>
+        <Image
+          source={require("@/assets/images/splash.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <LoadingSpinner label={label} sublabel={sublabel} tone="inverse" />
       </View>
     </View>
   );
@@ -33,19 +33,16 @@ const styles = StyleSheet.create({
     zIndex: 999,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: Colors.primary,
   },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(241,245,249,0.72)",
+  content: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: rS(32),
+    gap: rV(28),
   },
-  iosGlass: {
-    backgroundColor: "rgba(255,255,255,0.32)",
-  },
-  fallbackGlass: {
-    backgroundColor: "rgba(255,255,255,0.24)",
-  },
-  contentWrap: {
-    width: "100%",
-    paddingHorizontal: 24,
+  logo: {
+    width: rS(168),
+    height: rV(140),
   },
 });

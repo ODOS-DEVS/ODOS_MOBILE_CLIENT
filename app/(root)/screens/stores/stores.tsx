@@ -1,21 +1,18 @@
 import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreCard from "@/components/cards/StoreCard";
-import ProfileHeader from "@/components/profile/ProfileHeader";
-import { SearchBar } from "@/components/SearchBar";
-import { AppColors } from "@/constants/Colors";
-import { useStores } from "@/hooks/useCommerce";
-import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
 import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  CommerceFilterChips,
+  CommerceSeeAllEmptyState,
+  CommerceSeeAllHero,
+  CommerceSeeAllSearch,
+  CommerceSeeAllSectionHeader,
+  commerceSeeAllScreenStyles,
+} from "@/components/browse/CommerceSeeAllUi";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useStores } from "@/hooks/useCommerce";
+import { rS, rV, useResponsive } from "@/styles/responsive";
+import React, { useMemo, useState } from "react";
+import { FlatList, ScrollView, View } from "react-native";
 
 const normalizeStoreCategory = (value?: string) => {
   const v = (value ?? "").toLowerCase();
@@ -45,6 +42,31 @@ const StoreScreen = () => {
     [storeItems],
   );
 
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    counts.set("All", storeItems.length);
+    for (const category of categories) {
+      if (category === "All") continue;
+      counts.set(
+        category,
+        storeItems.filter(
+          (store) => normalizeStoreCategory(store.category) === category,
+        ).length,
+      );
+    }
+    return counts;
+  }, [categories, storeItems]);
+
+  const filterChips = useMemo(
+    () =>
+      categories.map((category) => ({
+        key: category,
+        label: category,
+        count: categoryCounts.get(category) ?? 0,
+      })),
+    [categories, categoryCounts],
+  );
+
   const filteredByCategory = useMemo(() => {
     if (activeCategory === "All") return storeItems;
     return storeItems.filter(
@@ -61,21 +83,39 @@ const StoreScreen = () => {
     setSearchResults([]);
   };
 
+  const ratedCount = useMemo(
+    () => storeItems.filter((store) => (store.rating ?? 0) >= 4).length,
+    [storeItems],
+  );
+
   return (
-    <View style={styles.container}>
-      <ProfileHeader
-        title="Stores"
-      />
+    <View style={commerceSeeAllScreenStyles.screen}>
+      <ProfileHeader title="Stores" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: horizontalPadding,
-          paddingBottom: sectionSpacing,
-          paddingTop: rV(12),
-        }}
+        contentContainerStyle={[
+          commerceSeeAllScreenStyles.scrollContent,
+          {
+            paddingHorizontal: horizontalPadding,
+            paddingBottom: sectionSpacing,
+          },
+        ]}
       >
-        <SearchBar
+        <CommerceSeeAllHero
+          badgeIcon="storefront-outline"
+          badgeLabel="Shop local"
+          title="Every store on ODOS"
+          subtitle="Browse verified vendors, compare ratings, and jump straight into a store you trust."
+          accent="teal"
+          stats={[
+            { value: storeItems.length, label: "stores" },
+            { value: categories.length - 1, label: "categories" },
+            { value: ratedCount, label: "top rated" },
+          ]}
+        />
+
+        <CommerceSeeAllSearch
           key={`${activeCategory}-${searchSessionKey}`}
           data={filteredByCategory}
           onStartSearch={() => setIsSearching(true)}
@@ -83,56 +123,37 @@ const StoreScreen = () => {
             setIsSearching(true);
             setSearchResults(results);
           }}
-          placeholder="Search stores, designers, categories"
-          containerStyle={{ marginTop: rV(14) }}
+          placeholder="Search stores, designers, or categories"
+          searchKeys={["title", "category", "subtitle", "name"]}
         />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          style={{ marginTop: rV(12) }}
-        >
-          {categories.map((category) => {
-            const isActive = category === activeCategory;
-            return (
-              <TouchableOpacity
-                key={category}
-                onPress={() => handleCategoryPress(category)}
-                activeOpacity={0.8}
-                style={[styles.chip, isActive && styles.chipActive]}
-              >
-                <Text
-                  style={[styles.chipLabel, isActive && styles.chipLabelActive]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <CommerceFilterChips
+          chips={filterChips}
+          activeKey={activeCategory}
+          onChange={handleCategoryPress}
+        />
 
-        <View style={{ marginTop: sectionSpacing }}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse stores</Text>
-          </View>
+        <View style={commerceSeeAllScreenStyles.contentBlock}>
+          <CommerceSeeAllSectionHeader
+            title="Browse stores"
+            subtitle={
+              isSearching
+                ? `${displayedStores.length} match${displayedStores.length === 1 ? "" : "es"} for your search`
+                : activeCategory === "All"
+                  ? "All stores available right now"
+                  : `Showing ${activeCategory.toLowerCase()} stores`
+            }
+            count={displayedStores.length}
+          />
 
-          {isLoading ? (
+          {isLoading && storeItems.length === 0 ? (
             <StoreGridSkeleton />
           ) : displayedStores.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="search-outline"
-                size={rMS(22)}
-                color={AppColors.subtext[100]}
-              />
-              <Text style={styles.emptyTitle}>
-                No stores match your filters
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                Try another category or clear the search to see more options.
-              </Text>
-            </View>
+            <CommerceSeeAllEmptyState
+              icon="storefront-outline"
+              title="No stores match your filters"
+              subtitle="Try another category or clear the search to see more options."
+            />
           ) : (
             <FlatList
               data={displayedStores}
@@ -148,7 +169,7 @@ const StoreScreen = () => {
                   horizontalSpacing={0}
                 />
               )}
-              contentContainerStyle={{ paddingTop: rV(12) }}
+              contentContainerStyle={{ paddingTop: rV(4) }}
             />
           )}
         </View>
@@ -158,189 +179,3 @@ const StoreScreen = () => {
 };
 
 export default StoreScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  mapButton: {
-    width: rMS(36),
-    height: rMS(36),
-    borderRadius: rMS(12),
-    backgroundColor: "#EFF3F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  heroEyebrow: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-    letterSpacing: 0.4,
-  },
-  heroTitle: {
-    marginTop: rV(8),
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroSubtitle: {
-    marginTop: rV(6),
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-  },
-  heroActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: rV(12),
-  },
-  primaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    borderRadius: rMS(10),
-    marginRight: rS(8),
-  },
-  primaryBtnText: {
-    marginLeft: rS(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.white,
-  },
-  secondaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    borderRadius: rMS(10),
-    backgroundColor: "transparent",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D8DEE6",
-  },
-  secondaryBtnText: {
-    marginLeft: rS(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  chipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingRight: rS(2),
-  },
-  chip: {
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: rMS(80),
-    backgroundColor: "#EEF2F5",
-    marginRight: rS(10),
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  chipActive: {
-    backgroundColor: AppColors.text,
-    borderColor: AppColors.text,
-  },
-  chipLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  chipLabelActive: {
-    color: AppColors.white,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-    borderRadius: rMS(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E1E6ED",
-  },
-  statIconWrap: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(8),
-    backgroundColor: "#EEF2F5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(10),
-  },
-  statTextWrap: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  statLabel: {
-    marginTop: rV(2),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  sectionAction: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-  },
-  emptyState: {
-    marginTop: rV(16),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(12),
-    paddingVertical: rV(24),
-    paddingHorizontal: rS(14),
-    alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-  },
-  emptyTitle: {
-    marginTop: rV(10),
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  emptySubtitle: {
-    marginTop: rV(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-    lineHeight: rMS(17),
-  },
-});

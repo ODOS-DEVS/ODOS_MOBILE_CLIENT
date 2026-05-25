@@ -1,12 +1,25 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import {
+  AccountActionButton,
+  AccountBadge,
+  AccountEmptyState,
+  AccountListCard,
+  AccountSectionCard,
+  accountStyles,
+  formatOrderMoney,
+  getOrderLineItemImage,
+  OrderProgressBar,
+  OrderSummaryRow,
+  orderStyles,
+} from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import TextInputField from "@/components/TextInputField";
 import { AppColors } from "@/constants/Colors";
-import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
+import { useReviews } from "@/hooks/useReviews";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -24,6 +37,19 @@ import {
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
+
+function getStatusTone(order: Order): "success" | "danger" | "warning" | "info" {
+  if (order.status === "pending_payment") {
+    return "warning";
+  }
+  if (order.status === "delivered") {
+    return "success";
+  }
+  if (order.status === "cancelled") {
+    return "danger";
+  }
+  return "info";
+}
 
 function getStatusMeta(order: Order) {
   if (order.status === "pending_payment") {
@@ -229,6 +255,11 @@ export default function OrderDetailScreen() {
     useOrders();
   const { addItemsToCart } = useCart();
   const { showToast } = useToast();
+  const { reviews: savedReviews } = useReviews();
+  const reviewedItemKeys = React.useMemo(
+    () => new Set(savedReviews.map((review) => `${review.orderId}:${review.productId}`)),
+    [savedReviews],
+  );
   const [returnTargetItem, setReturnTargetItem] = React.useState<OrderItem | null>(null);
   const [returnType, setReturnType] = React.useState<"refund" | "exchange" | "return">("refund");
   const [returnQuantity, setReturnQuantity] = React.useState(1);
@@ -405,7 +436,7 @@ export default function OrderDetailScreen() {
 
   if (isLoadingOrder) {
     return (
-      <View style={styles.container}>
+      <View style={accountStyles.screen}>
         <ProfileHeader title="Order Details" />
         <ScreenLoader label="Loading order..." />
       </View>
@@ -414,20 +445,16 @@ export default function OrderDetailScreen() {
 
   if (!order) {
     return (
-      <View style={styles.container}>
+      <View style={accountStyles.screen}>
         <ProfileHeader title="Order Details" />
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>We couldn’t find that order</Text>
-          <Text style={styles.emptyText}>
-            It may have been removed, or the order details are no longer available.
-          </Text>
-          <TouchableOpacity
-            style={styles.backToOrdersButton}
-            activeOpacity={0.85}
-            onPress={() => router.replace("/(root)/screens/profileScreens/orders" as any)}
-          >
-            <Text style={styles.backToOrdersButtonText}>Back to My Orders</Text>
-          </TouchableOpacity>
+        <View style={styles.emptyWrap}>
+          <AccountEmptyState
+            icon="receipt-outline"
+            title="We couldn't find that order"
+            message="It may have been removed, or the order details are no longer available."
+            actionLabel="Back to My Orders"
+            onAction={() => router.replace("/(root)/screens/profileScreens/orders" as any)}
+          />
         </View>
       </View>
     );
@@ -438,54 +465,32 @@ export default function OrderDetailScreen() {
   const timelineSteps = getTimelineSteps(order);
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Order Details" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[accountStyles.content, styles.scrollContent]}
       >
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View>
-              <Text style={styles.orderNumber}>#{order.order_number}</Text>
-              <Text style={styles.orderDate}>
+        <AccountListCard>
+          <View style={orderStyles.orderTopRow}>
+            <View style={orderStyles.orderInfo}>
+              <Text style={orderStyles.orderNumber}>#{order.order_number}</Text>
+              <Text style={orderStyles.orderTitle}>
                 Placed on {new Date(order.placed_at).toLocaleDateString()}
               </Text>
             </View>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: statusMeta.backgroundColor },
-              ]}
-            >
-              <Text style={[styles.statusBadgeText, { color: statusMeta.textColor }]}>
-                {statusMeta.label}
-              </Text>
-            </View>
+            <AccountBadge label={statusMeta.label} tone={getStatusTone(order)} />
           </View>
 
           <Text style={styles.helperText}>{statusMeta.helperText}</Text>
 
           {order.status === "processing" ? (
-            <>
-              <View style={styles.trackBar}>
-                <View
-                  style={[
-                    styles.trackFill,
-                    { width: `${Math.round((order.progress ?? 0.18) * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {Math.round((order.progress ?? 0.18) * 100)}% on the way
-              </Text>
-            </>
+            <OrderProgressBar progress={order.progress ?? 0.18} eta={order.tracking_eta} />
           ) : null}
-        </View>
+        </AccountListCard>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Order Journey</Text>
+        <AccountSectionCard title="Order journey">
           {timelineSteps.map((step, index) => {
             const isLast = index === timelineSteps.length - 1;
             const iconName =
@@ -518,13 +523,11 @@ export default function OrderDetailScreen() {
               </View>
             );
           })}
-        </View>
+        </AccountSectionCard>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Items</Text>
+        <AccountSectionCard title="Items">
           {order.items.map((item, index) => {
-            const itemImage =
-              item.image_key ? resolveCatalogImage(item.image_key) : item.image_url ? { uri: item.image_url } : null;
+            const itemImage = getOrderLineItemImage(item);
             const latestRequest = latestReturnRequestsByItem.get(item.id);
             const hasOpenRequest = latestRequest
               ? OPEN_RETURN_STATUSES.has(latestRequest.status)
@@ -541,8 +544,8 @@ export default function OrderDetailScreen() {
               >
                 <View style={styles.itemRowTop}>
                   <View style={styles.imageWrap}>
-                    {itemImage ? (
-                      <Image source={itemImage} style={styles.image} resizeMode="contain" />
+                    {item.image_url || item.image_key ? (
+                      <Image source={itemImage} style={styles.image} resizeMode="cover" />
                     ) : (
                       <Ionicons name="image-outline" size={rMS(24)} color={AppColors.subtext[100]} />
                     )}
@@ -565,32 +568,60 @@ export default function OrderDetailScreen() {
 
                 {order.status === "delivered" ? (
                   <View style={styles.itemActionRow}>
-                    {hasOpenRequest && latestRequest && latestRequestMeta ? (
-                      <View
-                        style={[
-                          styles.inlineStatusPill,
-                          { backgroundColor: latestRequestMeta.backgroundColor },
-                        ]}
+                    <View style={styles.itemInlineActionsRow}>
+                      <TouchableOpacity
+                        style={styles.reviewActionButton}
+                        activeOpacity={0.88}
+                        onPress={() =>
+                          router.push({
+                            pathname:
+                              "/(root)/screens/profileScreens/Account/Reviews" as any,
+                            params: {
+                              orderId: order.id,
+                              productId: item.product_id,
+                            },
+                          })
+                        }
                       >
-                        <Text
+                        <Ionicons
+                          name="star-outline"
+                          size={rMS(14)}
+                          color="#B45309"
+                        />
+                        <Text style={styles.reviewActionButtonText}>
+                          {reviewedItemKeys.has(`${order.id}:${item.product_id}`)
+                            ? "Edit review"
+                            : "Write review"}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {hasOpenRequest && latestRequest && latestRequestMeta ? (
+                        <View
                           style={[
-                            styles.inlineStatusPillText,
-                            { color: latestRequestMeta.textColor },
+                            styles.inlineStatusPill,
+                            { backgroundColor: latestRequestMeta.backgroundColor },
                           ]}
                         >
-                          {latestRequestMeta.label}
-                        </Text>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.inlineActionButton}
-                        activeOpacity={0.88}
-                        onPress={() => openReturnModal(item)}
-                      >
-                        <Ionicons name="refresh-outline" size={rMS(14)} color="#1D4ED8" />
-                        <Text style={styles.inlineActionButtonText}>Request return</Text>
-                      </TouchableOpacity>
-                    )}
+                          <Text
+                            style={[
+                              styles.inlineStatusPillText,
+                              { color: latestRequestMeta.textColor },
+                            ]}
+                          >
+                            {latestRequestMeta.label}
+                          </Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.inlineActionButton}
+                          activeOpacity={0.88}
+                          onPress={() => openReturnModal(item)}
+                        >
+                          <Ionicons name="refresh-outline" size={rMS(14)} color="#1D4ED8" />
+                          <Text style={styles.inlineActionButtonText}>Request return</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     {latestRequest ? (
                       <Text style={styles.inlineHelperText}>
@@ -598,7 +629,7 @@ export default function OrderDetailScreen() {
                       </Text>
                     ) : (
                       <Text style={styles.inlineHelperText}>
-                        Delivered items can be reviewed for refund, exchange, or return.
+                        Share a product review or start a return if something was not right.
                       </Text>
                     )}
                   </View>
@@ -606,11 +637,10 @@ export default function OrderDetailScreen() {
               </View>
             );
           })}
-        </View>
+        </AccountSectionCard>
 
         {order.status === "delivered" || order.return_requests.length > 0 ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Returns & Refunds</Text>
+          <AccountSectionCard title="Returns & refunds">
             <Text style={styles.returnIntro}>
               Start a request per delivered item, then track review, approval, refund, or exchange updates here.
             </Text>
@@ -684,20 +714,18 @@ export default function OrderDetailScreen() {
                   );
                 })
             )}
-          </View>
+          </AccountSectionCard>
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Delivery</Text>
+        <AccountSectionCard title="Delivery">
           <Text style={styles.detailPrimary}>{order.address_full_name}</Text>
           <Text style={styles.detailText}>
             {order.address_street}, {order.address_city}, {order.address_region}
           </Text>
           <Text style={styles.detailText}>{order.address_phone}</Text>
-        </View>
+        </AccountSectionCard>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Payment</Text>
+        <AccountSectionCard title="Payment">
           <Text style={styles.detailPrimary}>{order.payment_label}</Text>
           <Text style={styles.detailText}>
             {order.payment_type === "card"
@@ -711,63 +739,50 @@ export default function OrderDetailScreen() {
               {order.voucher_title ? ` · ${order.voucher_title}` : ""}
             </Text>
           ) : null}
-        </View>
+        </AccountSectionCard>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Summary</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Items</Text>
-            <Text style={styles.summaryValue}>
-              {totalItems} item{totalItems === 1 ? "" : "s"}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₵{order.subtotal_amount.toFixed(2)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Shipping</Text>
-            <Text style={styles.summaryValue}>
-              {order.shipping_amount === 0 ? "FREE" : `₵${order.shipping_amount.toFixed(2)}`}
-            </Text>
-          </View>
+        <AccountSectionCard title="Summary">
+          <OrderSummaryRow
+            label="Items"
+            value={`${totalItems} item${totalItems === 1 ? "" : "s"}`}
+          />
+          <OrderSummaryRow label="Subtotal" value={formatOrderMoney(order.subtotal_amount)} />
+          <OrderSummaryRow
+            label="Shipping"
+            value={
+              order.shipping_amount === 0 ? "FREE" : formatOrderMoney(order.shipping_amount)
+            }
+            accent={order.shipping_amount === 0 ? "success" : "default"}
+          />
           {order.discount_amount > 0 ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Voucher{order.voucher_code ? ` (${order.voucher_code})` : ""}
-              </Text>
-              <Text style={[styles.summaryValue, styles.discountText]}>
-                -₵{order.discount_amount.toFixed(2)}
-              </Text>
-            </View>
+            <OrderSummaryRow
+              label={`Voucher${order.voucher_code ? ` (${order.voucher_code})` : ""}`}
+              value={`-${formatOrderMoney(order.discount_amount).slice(1)}`}
+              accent="discount"
+            />
           ) : null}
-          <View style={[styles.summaryRow, styles.summaryRowLast]}>
-            <Text style={styles.summaryTotalLabel}>Total</Text>
-            <Text style={styles.summaryTotalValue}>₵{order.total_amount.toFixed(2)}</Text>
-          </View>
+          <OrderSummaryRow label="Total" value={formatOrderMoney(order.total_amount)} last />
 
-          <TouchableOpacity
-            style={styles.receiptButton}
-            activeOpacity={0.88}
+          <AccountActionButton
+            label="View Receipt"
+            variant="secondary"
+            icon="receipt-outline"
             onPress={() =>
               router.push({
                 pathname: "/(root)/screens/profileScreens/orders/receipt" as any,
                 params: { orderId: order.id },
               })
             }
-          >
-            <Ionicons name="receipt-outline" size={rMS(16)} color={AppColors.primary} />
-            <Text style={styles.receiptButtonText}>View Receipt</Text>
-          </TouchableOpacity>
-        </View>
+          />
+        </AccountSectionCard>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={orderStyles.stickyFooter}>
         {order.status === "processing" ? (
-          <View style={styles.processingActions}>
-            <TouchableOpacity
-              style={[styles.primaryButton, styles.processingPrimaryButton, isMutatingOrder && styles.buttonDisabled]}
-              activeOpacity={0.88}
+          <>
+            <AccountActionButton
+              label={isMutatingOrder ? "Updating..." : "Confirm Delivery"}
+              variant="primary"
               disabled={isMutatingOrder}
               onPress={() =>
                 Alert.alert(
@@ -784,20 +799,15 @@ export default function OrderDetailScreen() {
                   ],
                 )
               }
-            >
-              <Text style={styles.primaryButtonText}>
-                {isMutatingOrder ? "Updating..." : "Confirm Delivery"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.destructiveButton, isMutatingOrder && styles.destructiveButtonDisabled]}
-              activeOpacity={0.88}
+            />
+            <AccountActionButton
+              label={isMutatingOrder ? "Updating..." : "Cancel Order"}
+              variant="danger"
               disabled={isMutatingOrder}
               onPress={() =>
                 Alert.alert(
                   "Cancel this order?",
-                  "We’ll stop processing it and move it to your cancelled orders list.",
+                  "We'll stop processing it and move it to your cancelled orders list.",
                   [
                     { text: "Keep order", style: "cancel" },
                     {
@@ -810,59 +820,46 @@ export default function OrderDetailScreen() {
                   ],
                 )
               }
-            >
-              <Text style={styles.destructiveButtonText}>
-                {isMutatingOrder ? "Updating..." : "Cancel Order"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            />
+          </>
         ) : null}
 
         {order.status === "pending_payment" ? (
-          <View style={styles.processingActions}>
-            <TouchableOpacity
-              style={[styles.destructiveButton, isMutatingOrder && styles.destructiveButtonDisabled]}
-              activeOpacity={0.88}
-              disabled={isMutatingOrder}
-              onPress={() =>
-                Alert.alert(
-                  "Cancel this pending order?",
-                  "This removes the payment hold request from your active orders list.",
-                  [
-                    { text: "Keep order", style: "cancel" },
-                    {
-                      text: "Cancel order",
-                      style: "destructive",
-                      onPress: () => {
-                        void handleCancelOrder();
-                      },
+          <AccountActionButton
+            label={isMutatingOrder ? "Updating..." : "Cancel Pending Order"}
+            variant="danger"
+            disabled={isMutatingOrder}
+            onPress={() =>
+              Alert.alert(
+                "Cancel this pending order?",
+                "This removes the payment hold request from your active orders list.",
+                [
+                  { text: "Keep order", style: "cancel" },
+                  {
+                    text: "Cancel order",
+                    style: "destructive",
+                    onPress: () => {
+                      void handleCancelOrder();
                     },
-                  ],
-                )
-              }
-            >
-              <Text style={styles.destructiveButtonText}>
-                {isMutatingOrder ? "Updating..." : "Cancel Pending Order"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                  },
+                ],
+              )
+            }
+          />
         ) : null}
 
         {order.status === "cancelled" ? (
-          <View style={styles.processingActions}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              activeOpacity={0.88}
+          <>
+            <AccountActionButton
+              label="Reorder Items"
+              variant="primary"
               onPress={() => {
                 void handleReorder();
               }}
-            >
-              <Text style={styles.primaryButtonText}>Reorder Items</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.destructiveButton, isMutatingOrder && styles.destructiveButtonDisabled]}
-              activeOpacity={0.88}
+            />
+            <AccountActionButton
+              label={isMutatingOrder ? "Removing..." : "Remove from History"}
+              variant="danger"
               disabled={isMutatingOrder}
               onPress={() =>
                 Alert.alert(
@@ -880,33 +877,25 @@ export default function OrderDetailScreen() {
                   ],
                 )
               }
-            >
-              <Text style={styles.destructiveButtonText}>
-                {isMutatingOrder ? "Removing..." : "Remove from History"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            />
+          </>
         ) : null}
 
         {order.status === "delivered" ? (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.88}
+          <AccountActionButton
+            label="Reorder Items"
+            variant="primary"
             onPress={() => {
               void handleReorder();
             }}
-          >
-            <Text style={styles.primaryButtonText}>Reorder Items</Text>
-          </TouchableOpacity>
+          />
         ) : null}
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          activeOpacity={0.88}
+        <AccountActionButton
+          label="Back to My Orders"
+          variant="secondary"
           onPress={() => router.push("/(root)/screens/profileScreens/orders" as any)}
-        >
-          <Text style={styles.secondaryButtonText}>Back to My Orders</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <Modal
@@ -1044,13 +1033,12 @@ export default function OrderDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  emptyWrap: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
+    justifyContent: "center",
     paddingHorizontal: rS(16),
-    paddingTop: rV(14),
+  },
+  scrollContent: {
     paddingBottom: rV(150),
   },
   heroCard: {
@@ -1215,6 +1203,28 @@ const styles = StyleSheet.create({
   itemActionRow: {
     marginLeft: rMS(78),
     gap: rV(6),
+  },
+  itemInlineActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: rS(8),
+  },
+  reviewActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(6),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(7),
+    borderRadius: rMS(999),
+    backgroundColor: "#FFFBEB",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FDE68A",
+  },
+  reviewActionButtonText: {
+    fontSize: rMS(11),
+    fontFamily: Fonts.textBold,
+    color: "#B45309",
   },
   inlineActionButton: {
     alignSelf: "flex-start",

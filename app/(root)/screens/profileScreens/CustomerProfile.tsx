@@ -1,19 +1,25 @@
 import UserAvatar from "@/components/UserAvatar";
+import {
+  AccountActionButton,
+  AccountChoiceOption,
+  AccountChoiceSheet,
+  AccountFormField,
+  AccountInsightCard,
+  AccountPickerField,
+  AccountProfileHero,
+  AccountSectionCard,
+  accountStyles,
+} from "@/components/account/AccountUi";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import TextInputField from "@/components/TextInputField";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { pickCroppedImage } from "@/utils/imagePicker";
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -23,12 +29,7 @@ import {
 } from "react-native";
 
 const PHONE_REGEX = /^[+0-9()\-\s]{7,30}$/;
-const GENDER_OPTIONS = [
-  "Male",
-  "Female",
-  "Non-binary",
-  "Prefer not to say",
-];
+const GENDER_OPTIONS = ["Male", "Female"];
 
 function formatDateForInput(value?: string | null) {
   if (!value) {
@@ -46,7 +47,7 @@ function formatDateForInput(value?: string | null) {
 
 function formatDateForDisplay(value: Date | null) {
   if (!value) {
-    return "Select date";
+    return "Select date of birth";
   }
 
   return value.toLocaleDateString(undefined, {
@@ -104,6 +105,23 @@ const CustomerProfile = () => {
     setRegion(user.region || "");
     setAvatarUri(user.avatar_url || null);
   }, [user]);
+
+  const profileCompletion = useMemo(() => {
+    const fields = [fullName, phoneNumber, gender, city, region, dateOfBirth];
+    const filled = fields.filter((value) => {
+      if (value instanceof Date) {
+        return true;
+      }
+      return String(value ?? "").trim().length > 0;
+    }).length;
+    return Math.round((filled / fields.length) * 100);
+  }, [city, dateOfBirth, fullName, gender, phoneNumber, region]);
+
+  const clearGeneralError = () => {
+    if (generalError) {
+      setGeneralError("");
+    }
+  };
 
   const handleSave = async () => {
     let hasError = false;
@@ -169,30 +187,6 @@ const CustomerProfile = () => {
     setGeneralError(result.fieldErrors?.general || result.message || "");
   };
 
-  const openDatePicker = () => {
-    setDraftDateOfBirth(dateOfBirth || new Date(2000, 0, 1));
-    setShowDatePicker(true);
-    if (dateOfBirthError) {
-      setDateOfBirthError("");
-    }
-    if (generalError) {
-      setGeneralError("");
-    }
-  };
-
-  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
-    if (!selectedDate) {
-      return;
-    }
-
-    setDraftDateOfBirth(selectedDate);
-  };
-
-  const handleConfirmDate = () => {
-    setDateOfBirth(draftDateOfBirth);
-    setShowDatePicker(false);
-  };
-
   const handlePickAvatar = async () => {
     setIsPickingAvatar(true);
 
@@ -232,321 +226,202 @@ const CustomerProfile = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={accountStyles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={2}
     >
-      <ProfileHeader title="Customer Profile" />
+      <ProfileHeader title="My Profile" />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={accountStyles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.avatarContainer}>
-          <UserAvatar avatarUrl={avatarUri} size={rS(96)} imageStyle={styles.avatar} />
-          <TouchableOpacity
-            style={styles.editAvatar}
-            activeOpacity={0.8}
-            onPress={handlePickAvatar}
-            disabled={isPickingAvatar}
-          >
-            {isPickingAvatar ? (
-              <ActivityIndicator size="small" color={AppColors.white} />
-            ) : (
-              <Ionicons name="camera-outline" size={18} color={AppColors.white} />
-            )}
-          </TouchableOpacity>
-          <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
-          <Text style={styles.email}>{user?.email || "No email available"}</Text>
-        </View>
+        <AccountProfileHero
+          name={user?.full_name || fullName || "ODOS User"}
+          email={user?.email || email || "No email on file"}
+          onEditPhoto={() => void handlePickAvatar()}
+          isEditingPhoto={isPickingAvatar}
+          renderAvatar={(size) => (
+            <UserAvatar avatarUrl={avatarUri} size={size} imageStyle={styles.avatar} />
+          )}
+        />
 
-        <View style={styles.formCard}>
-          <Text style={styles.sectionLabel}>Basic Details</Text>
-          <TextInputField
+        <AccountInsightCard
+          title="Profile completeness"
+          subtitle="A complete profile helps checkout, delivery, and support move faster when you need help."
+          stats={[
+            { value: `${profileCompletion}%`, label: "Complete" },
+            { value: city ? "Set" : "—", label: "City" },
+            { value: phoneNumber ? "Set" : "—", label: "Phone" },
+          ]}
+        />
+
+        <AccountSectionCard title="Basic details">
+          <AccountFormField
+            label="Full name"
             icon="person-outline"
-            label="Name"
-            placeholder="Enter your name"
+            placeholder="Your full name"
             value={fullName}
             onChangeText={(text) => {
               setFullName(text);
-              if (fullNameError) {
-                setFullNameError("");
-              }
-              if (generalError) {
-                setGeneralError("");
-              }
+              setFullNameError("");
+              clearGeneralError();
             }}
-            errorMessage={fullNameError}
+            error={fullNameError}
             autoCapitalize="words"
           />
-          <TextInputField
-            icon="mail-outline"
+          <AccountFormField
             label="Email"
-            placeholder="Enter your email"
+            icon="mail-outline"
+            placeholder="Email address"
             value={email}
             editable={false}
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <View style={styles.dateFieldContainer}>
-            <Text style={styles.dateFieldLabel}>Date of Birth</Text>
-            <TouchableOpacity
-              style={[
-                styles.dateField,
-                dateOfBirthError ? styles.dateFieldError : null,
-              ]}
-              activeOpacity={0.8}
-              onPress={openDatePicker}
-            >
-              <View style={styles.dateFieldValueRow}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={18}
-                  color={AppColors.secondary}
-                />
-                <Text
-                  style={[
-                    styles.dateFieldValue,
-                    !dateOfBirth ? styles.dateFieldPlaceholder : null,
-                  ]}
-                >
-                  {formatDateForDisplay(dateOfBirth)}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-down-outline"
-                size={18}
-                color={AppColors.secondary}
-              />
-            </TouchableOpacity>
-            {dateOfBirth ? (
-              <TouchableOpacity
-                style={styles.clearDateButton}
-                onPress={() => setDateOfBirth(null)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.clearDateButtonText}>Clear date</Text>
-              </TouchableOpacity>
-            ) : null}
-            {dateOfBirthError ? (
-              <Text style={styles.errorText}>{dateOfBirthError}</Text>
-            ) : null}
-          </View>
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <View style={styles.modalBackdrop}>
-              <View style={styles.datePickerModal}>
-                <Text style={styles.datePickerModalTitle}>Select Date of Birth</Text>
-                <DateTimePicker
-                  value={draftDateOfBirth}
-                  mode="date"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  maximumDate={new Date()}
-                  onChange={handleDateChange}
-                  style={styles.datePickerControl}
-                />
-                <View style={styles.datePickerActions}>
-                  <TouchableOpacity
-                    style={styles.datePickerSecondaryButton}
-                    onPress={() => setShowDatePicker(false)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.datePickerSecondaryText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.datePickerPrimaryButton}
-                    onPress={handleConfirmDate}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.datePickerPrimaryText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-          <TextInputField
+          <AccountPickerField
+            label="Date of birth"
+            value={formatDateForDisplay(dateOfBirth)}
+            placeholder="Select date of birth"
+            icon="calendar-outline"
+            error={dateOfBirthError}
+            onPress={() => {
+              setDraftDateOfBirth(dateOfBirth || new Date(2000, 0, 1));
+              setShowDatePicker(true);
+              setDateOfBirthError("");
+              clearGeneralError();
+            }}
+            onClear={() => setDateOfBirth(null)}
+          />
+          <AccountFormField
+            label="Phone number"
             icon="call-outline"
-            label="Telephone"
             placeholder="+233 54 187 4005"
             value={phoneNumber}
             onChangeText={(text) => {
               setPhoneNumber(text);
-              if (phoneNumberError) {
-                setPhoneNumberError("");
-              }
-              if (generalError) {
-                setGeneralError("");
-              }
+              setPhoneNumberError("");
+              clearGeneralError();
             }}
-            errorMessage={phoneNumberError}
+            error={phoneNumberError}
             keyboardType="phone-pad"
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <View style={styles.dateFieldContainer}>
-            <Text style={styles.dateFieldLabel}>Gender</Text>
-            <TouchableOpacity
-              style={[
-                styles.dateField,
-                genderError ? styles.dateFieldError : null,
-              ]}
-              activeOpacity={0.8}
-              onPress={() => {
-                setShowGenderPicker(true);
-                if (genderError) {
-                  setGenderError("");
-                }
-                if (generalError) {
-                  setGeneralError("");
-                }
-              }}
-            >
-              <View style={styles.dateFieldValueRow}>
-                <Ionicons
-                  name="male-female-outline"
-                  size={18}
-                  color={AppColors.secondary}
-                />
-                <Text
-                  style={[
-                    styles.dateFieldValue,
-                    !gender ? styles.dateFieldPlaceholder : null,
-                  ]}
-                >
-                  {gender || "Select gender"}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-down-outline"
-                size={18}
-                color={AppColors.secondary}
-              />
-            </TouchableOpacity>
-            {gender ? (
-              <TouchableOpacity
-                style={styles.clearDateButton}
-                onPress={() => setGender("")}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.clearDateButtonText}>Clear selection</Text>
-              </TouchableOpacity>
-            ) : null}
-            {genderError ? <Text style={styles.errorText}>{genderError}</Text> : null}
-          </View>
+          <AccountPickerField
+            label="Gender"
+            value={gender}
+            placeholder="Select gender"
+            icon="male-female-outline"
+            error={genderError}
+            onPress={() => {
+              setShowGenderPicker(true);
+              setGenderError("");
+              clearGeneralError();
+            }}
+            onClear={() => setGender("")}
+          />
+        </AccountSectionCard>
 
-          <Modal
-            visible={showGenderPicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowGenderPicker(false)}
-          >
-            <View style={styles.modalBackdrop}>
-              <View style={styles.optionModal}>
-                <Text style={styles.datePickerModalTitle}>Select Gender</Text>
-                {GENDER_OPTIONS.map((option) => {
-                  const isSelected = gender === option;
-
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      style={styles.optionRow}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        setGender(option);
-                        setShowGenderPicker(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isSelected ? styles.optionTextSelected : null,
-                        ]}
-                      >
-                        {option}
-                      </Text>
-                      {isSelected ? (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={18}
-                          color={AppColors.primary}
-                        />
-                      ) : null}
-                    </TouchableOpacity>
-                  );
-                })}
-                <TouchableOpacity
-                  style={styles.datePickerSecondaryButton}
-                  onPress={() => setShowGenderPicker(false)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.datePickerSecondaryText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-
-          <Text style={[styles.sectionLabel, styles.sectionSpacing]}>Location</Text>
-          <TextInputField
-            icon="business-outline"
+        <AccountSectionCard title="Location">
+          <AccountFormField
             label="City"
-            placeholder="Enter your city"
+            icon="business-outline"
+            placeholder="Your city"
             value={city}
             onChangeText={(text) => {
               setCity(text);
-              if (cityError) {
-                setCityError("");
-              }
-              if (generalError) {
-                setGeneralError("");
-              }
+              setCityError("");
+              clearGeneralError();
             }}
-            errorMessage={cityError}
+            error={cityError}
             autoCapitalize="words"
           />
-          <TextInputField
+          <AccountFormField
+            label="Region / state"
             icon="map-outline"
-            label="Region / State"
-            placeholder="Enter your region or state"
+            placeholder="Your region or state"
             value={region}
             onChangeText={(text) => {
               setRegion(text);
-              if (regionError) {
-                setRegionError("");
-              }
-              if (generalError) {
-                setGeneralError("");
-              }
+              setRegionError("");
+              clearGeneralError();
             }}
-            errorMessage={regionError}
+            error={regionError}
             autoCapitalize="words"
           />
-        </View>
+        </AccountSectionCard>
 
         {generalError ? (
-          <View style={styles.errorCard}>
-            <Text style={styles.errorText}>{generalError}</Text>
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{generalError}</Text>
           </View>
         ) : null}
 
-        <TouchableOpacity
-          style={[styles.saveBtn, isUpdatingProfile ? styles.saveBtnDisabled : null]}
-          activeOpacity={0.85}
-          onPress={handleSave}
+        <AccountActionButton
+          label={isUpdatingProfile ? "Saving..." : "Save changes"}
+          variant="primary"
+          onPress={() => void handleSave()}
           disabled={isUpdatingProfile}
-        >
-          <Text style={styles.saveBtnText}>
-            {isUpdatingProfile ? "Saving..." : "Save Changes"}
-          </Text>
-        </TouchableOpacity>
+        />
       </ScrollView>
+
+      <AccountChoiceSheet
+        visible={showDatePicker}
+        title="Date of birth"
+        onClose={() => setShowDatePicker(false)}
+        footer={
+          <View style={styles.sheetFooter}>
+            <AccountActionButton
+              label="Cancel"
+              variant="secondary"
+              onPress={() => setShowDatePicker(false)}
+            />
+            <AccountActionButton
+              label="Done"
+              variant="primary"
+              onPress={() => {
+                setDateOfBirth(draftDateOfBirth);
+                setShowDatePicker(false);
+              }}
+            />
+          </View>
+        }
+      >
+        <DateTimePicker
+          value={draftDateOfBirth}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          maximumDate={new Date()}
+          onChange={(_event, selectedDate) => {
+            if (selectedDate) {
+              setDraftDateOfBirth(selectedDate);
+            }
+          }}
+          style={styles.datePicker}
+        />
+      </AccountChoiceSheet>
+
+      <AccountChoiceSheet
+        visible={showGenderPicker}
+        title="Gender"
+        onClose={() => setShowGenderPicker(false)}
+      >
+        {GENDER_OPTIONS.map((option) => (
+          <AccountChoiceOption
+            key={option}
+            label={option}
+            selected={gender === option}
+            onPress={() => {
+              setGender(option);
+              setShowGenderPicker(false);
+            }}
+          />
+        ))}
+      </AccountChoiceSheet>
     </KeyboardAvoidingView>
   );
 };
@@ -554,224 +429,30 @@ const CustomerProfile = () => {
 export default CustomerProfile;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(72),
-  },
-  avatarContainer: {
-    alignItems: "center",
-    borderRadius: rMS(16),
-    paddingVertical: rV(18),
-    marginBottom: rV(12),
-  },
   avatar: {
-    width: rMS(96),
-    height: rMS(96),
     borderRadius: rMS(48),
   },
-  editAvatar: {
-    position: "absolute",
-    top: rV(78),
-    right: "36%",
-    backgroundColor: AppColors.primary,
-    width: rMS(34),
-    height: rMS(34),
-    borderRadius: rMS(17),
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  name: {
-    marginTop: rV(10),
-    fontSize: rMS(17),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  email: {
-    marginTop: rV(2),
-    fontSize: rMS(13),
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.text,
-  },
-  formCard: {
-    borderRadius: rMS(16),
-  },
-  sectionLabel: {
-    marginBottom: rV(10),
-    fontSize: rMS(13),
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  sectionSpacing: {
-    marginTop: rV(8),
-  },
-  dateFieldContainer: {
-    marginBottom: rV(16),
-  },
-  dateFieldLabel: {
-    marginBottom: rV(6),
-    paddingLeft: rS(8),
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  dateField: {
-    minHeight: rV(54),
-    borderRadius: rMS(22),
-    borderWidth: 1,
-    borderColor: "#D1D1D1",
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: rS(14),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dateFieldError: {
-    borderColor: "#D64545",
-  },
-  dateFieldValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  dateFieldValue: {
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(14),
-  },
-  dateFieldPlaceholder: {
-    color: AppColors.secondary,
-  },
-  clearDateButton: {
-    alignSelf: "flex-end",
-    paddingTop: rV(8),
-    paddingRight: rS(6),
-  },
-  clearDateButtonText: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  datePickerWrap: {
-    marginTop: rV(8),
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.28)",
-    justifyContent: "center",
-    paddingHorizontal: rS(18),
-  },
-  datePickerModal: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(14),
-  },
-  optionModal: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(14),
-  },
-  datePickerModalTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    marginBottom: rV(10),
-    textAlign: "center",
-  },
-  optionRow: {
-    minHeight: rV(48),
+  errorBanner: {
     borderRadius: rMS(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
     paddingHorizontal: rS(14),
-    marginBottom: rV(8),
-    backgroundColor: "#F8FAFB",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    paddingVertical: rV(12),
   },
-  optionText: {
-    color: AppColors.text,
+  errorBannerText: {
     fontFamily: Fonts.text,
-    fontSize: rMS(14),
+    fontSize: rMS(13),
+    color: "#B91C1C",
+    lineHeight: rMS(18),
   },
-  optionTextSelected: {
-    fontFamily: Fonts.textBold,
-  },
-  datePickerControl: {
-    alignSelf: "center",
-  },
-  datePickerActions: {
+  sheetFooter: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: rS(10),
     marginTop: rV(12),
+    marginBottom: rV(8),
   },
-  datePickerSecondaryButton: {
-    minWidth: rS(86),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(12),
-    borderRadius: rMS(14),
-    backgroundColor: "#F3F5F6",
-    alignItems: "center",
-  },
-  datePickerPrimaryButton: {
-    minWidth: rS(86),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(12),
-    borderRadius: rMS(14),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-  },
-  datePickerSecondaryText: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  datePickerPrimaryText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  errorCard: {
-    marginTop: rV(8),
-    borderRadius: rMS(16),
-    borderWidth: 1,
-    borderColor: "#F2C7C7",
-    backgroundColor: "#FDF1F1",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-  },
-  errorText: {
-    color: "#B93838",
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-  },
-  saveBtn: {
-    marginTop: rV(18),
-    borderRadius: rMS(50),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(14),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveBtnDisabled: {
-    opacity: 0.7,
-  },
-  saveBtnText: {
-    fontSize: rMS(15),
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
+  datePicker: {
+    alignSelf: "center",
   },
 });

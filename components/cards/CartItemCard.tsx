@@ -1,7 +1,9 @@
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { formatCurrency } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -11,16 +13,20 @@ interface CartItemProps {
   category?: string;
   price: number;
   image?: any;
+  imageKey?: string;
   quantity: number;
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
-}
-
-const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+  /** Render without outer card chrome when nested in a group */
+  embedded?: boolean;
+  showDivider?: boolean;
+};
 
 const CartItemCard = ({
+  id,
   image,
+  imageKey,
   title,
   category,
   price,
@@ -28,113 +34,113 @@ const CartItemCard = ({
   onIncrease,
   onDecrease,
   onRemove,
+  embedded = false,
+  showDivider = false,
 }: CartItemProps) => {
   const lineTotal = price * quantity;
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.topRow}>
-        <View style={styles.imageWrap}>
-          {image ? (
-            <Image source={image} style={styles.image} resizeMode="cover" />
-          ) : (
-            <View style={styles.imageFallback}>
-              <Ionicons
-                name="bag-handle-outline"
-                size={rS(26)}
-                color={AppColors.secondary}
-              />
-            </View>
-          )}
-        </View>
+  const openProduct = () => {
+    router.push({
+      pathname: "/screens/[id]" as any,
+      params: { id, title, category, price, imageKey },
+    });
+  };
 
-        <View style={styles.meta}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleBlock}>
-              <Text style={styles.title} numberOfLines={2}>
+  return (
+    <View style={[embedded && showDivider && styles.divider]}>
+      <View style={[styles.card, embedded && styles.cardEmbedded]}>
+        <TouchableOpacity activeOpacity={0.92} onPress={openProduct} style={styles.row}>
+          <View style={styles.imageWrap}>
+            {image ? (
+              <Image source={image} style={styles.image} resizeMode="cover" />
+            ) : (
+              <View style={styles.imageFallback}>
+                <Ionicons name="bag-outline" size={rS(18)} color="#94A3B8" />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.copy}>
+            <View style={styles.titleLine}>
+              <Text style={styles.title} numberOfLines={1}>
                 {title}
               </Text>
-              {category ? (
-                <Text style={styles.category} numberOfLines={1}>
-                  {category}
-                </Text>
-              ) : null}
+              <TouchableOpacity
+                onPress={onRemove}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.removeHit}
+              >
+                <Ionicons name="close" size={rS(14)} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              onPress={onRemove}
-              activeOpacity={0.8}
-              style={styles.removeButton}
-            >
-              <Ionicons name="trash-outline" size={18} color="#D64545" />
-            </TouchableOpacity>
+            {category ? (
+              <Text style={styles.category} numberOfLines={1}>
+                {category}
+              </Text>
+            ) : null}
+
+            <View style={styles.actionRow}>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  onPress={onDecrease}
+                  disabled={quantity <= 1}
+                  style={[styles.stepBtn, quantity <= 1 && styles.stepBtnDisabled]}
+                >
+                  <Ionicons
+                    name="remove"
+                    size={rS(14)}
+                    color={quantity <= 1 ? "#D1D5DB" : AppColors.text}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.qty}>{quantity}</Text>
+                <TouchableOpacity onPress={onIncrease} style={styles.stepBtn}>
+                  <Ionicons name="add" size={rS(14)} color={AppColors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.priceCol}>
+                <Text style={styles.lineTotal}>{formatCurrency(lineTotal)}</Text>
+                <Text style={styles.unit}>{formatCurrency(price)} ea</Text>
+              </View>
+            </View>
           </View>
-
-          <Text style={styles.unitPrice}>{formatCurrency(price)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.footerRow}>
-        <View style={styles.quantityBlock}>
-          <Text style={styles.quantityLabel}>Quantity</Text>
-          <View style={styles.stepper}>
-            <TouchableOpacity
-              onPress={onDecrease}
-              activeOpacity={0.85}
-              style={styles.stepperButton}
-            >
-              <Ionicons name="remove" size={16} color={AppColors.text} />
-            </TouchableOpacity>
-
-            <Text style={styles.quantityValue}>
-              {quantity.toString().padStart(2, "0")}
-            </Text>
-
-            <TouchableOpacity
-              onPress={onIncrease}
-              activeOpacity={0.85}
-              style={styles.stepperButton}
-            >
-              <Ionicons name="add" size={16} color={AppColors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.totalBlock}>
-          <Text style={styles.totalLabel}>Item Total</Text>
-          <Text style={styles.totalValue}>{formatCurrency(lineTotal)}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    marginBottom: rV(12),
-    borderWidth: 1,
-    borderColor: "#E8ECEF",
-    shadowColor: "#111827",
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 1,
+  divider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#F1F5F9",
   },
-  topRow: {
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: rMS(16),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E8ECF0",
+  },
+  cardEmbedded: {
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: rS(12),
+    backgroundColor: "transparent",
+  },
+  row: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: rS(10),
   },
   imageWrap: {
-    width: rS(80),
-    height: rV(84),
+    width: rS(58),
+    height: rS(58),
     borderRadius: rMS(14),
     overflow: "hidden",
-    backgroundColor: "#EEF2F4",
-    marginRight: rS(12),
+    backgroundColor: "#F1F5F9",
   },
   image: {
     width: "100%",
@@ -144,104 +150,78 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EEF2F4",
   },
-  meta: {
+  copy: {
     flex: 1,
-    minHeight: rV(84),
-    justifyContent: "space-between",
+    gap: rV(2),
   },
-  titleRow: {
+  titleLine: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  titleBlock: {
-    flex: 1,
-    paddingTop: rV(2),
+    alignItems: "center",
+    gap: rS(6),
   },
   title: {
+    flex: 1,
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    lineHeight: rMS(20),
+    fontSize: rMS(12.5),
     color: AppColors.text,
-    marginBottom: rV(4),
+  },
+  removeHit: {
+    padding: rS(2),
   },
   category: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    color: AppColors.subtext[100],
+    fontFamily: Fonts.text,
+    fontSize: rMS(10.5),
+    color: "#9CA3AF",
   },
-  removeButton: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(16),
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF1F2",
-  },
-  unitPrice: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-  },
-  footerRow: {
-    marginTop: rV(12),
-    paddingTop: rV(12),
-    borderTopWidth: 1,
-    borderTopColor: "#EEF2F4",
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: rS(12),
-  },
-  quantityBlock: {
-    flex: 1,
-  },
-  quantityLabel: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    color: AppColors.subtext[100],
-    marginBottom: rV(6),
+    marginTop: rV(4),
   },
   stepper: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "#F3F5F6",
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(7),
-    paddingVertical: rV(7),
+    backgroundColor: "#F8FAFC",
+    borderRadius: rS(999),
+    paddingHorizontal: rS(4),
+    paddingVertical: rV(3),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
   },
-  stepperButton: {
-    width: rMS(30),
-    height: rMS(30),
-    borderRadius: rMS(10),
+  stepBtn: {
+    width: rS(24),
+    height: rS(24),
+    borderRadius: rS(12),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: AppColors.white,
+    backgroundColor: "#FFFFFF",
   },
-  quantityValue: {
-    minWidth: rS(24),
+  stepBtnDisabled: {
+    backgroundColor: "#F8FAFC",
+  },
+  qty: {
+    minWidth: rS(20),
     textAlign: "center",
-    marginHorizontal: rS(10),
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
+    fontSize: rMS(12),
     color: AppColors.text,
+    marginHorizontal: rS(2),
   },
-  totalBlock: {
+  priceCol: {
     alignItems: "flex-end",
   },
-  totalLabel: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    color: AppColors.subtext[100],
-    marginBottom: rV(4),
-  },
-  totalValue: {
+  lineTotal: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
+    fontSize: rMS(13.5),
     color: AppColors.text,
+  },
+  unit: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(10),
+    color: "#9CA3AF",
+    marginTop: rV(1),
   },
 });
 

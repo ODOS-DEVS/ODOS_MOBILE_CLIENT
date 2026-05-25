@@ -2,7 +2,7 @@ import type { ProductCardProps } from "@/components/cards/ProductCard";
 import { API_BASE_URL } from "@/constants/auth";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
-import { resolveApiMediaUrl } from "@/utils/media";
+import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CatalogCategoryItem = {
@@ -90,7 +90,7 @@ function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
     imageKey: item.image_key,
     imageUrl,
     subcategories: item.subcategories ?? undefined,
-    image: imageUrl ? { uri: imageUrl } : null,
+    image: resolveImageSource(item.image_url, item.image_key),
   };
 }
 
@@ -123,7 +123,7 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     status: item.status ?? undefined,
     createdAt: item.created_at ?? undefined,
     updatedAt: item.updated_at ?? undefined,
-    image: imageUrl ? { uri: imageUrl } : null,
+    image: resolveImageSource(item.image_url, item.image_key),
   };
 }
 
@@ -182,8 +182,7 @@ function buildFallbackProduct(product: Partial<CatalogProductItem> & { id: strin
     createdAt: product.createdAt ?? undefined,
     updatedAt: product.updatedAt ?? undefined,
     image:
-      product.image ??
-      (product.imageUrl ? { uri: product.imageUrl } : null),
+      product.image ?? resolveImageSource(product.imageUrl, product.imageKey),
   };
 }
 
@@ -569,6 +568,11 @@ export function useCatalogProducts({
     sortOptions,
     refresh: loadProducts,
   };
+}
+
+/** Loads products for a catalog category slug (matches slugs, titles, and department audiences). */
+export function useCategoryBrowseProducts(slug?: string) {
+  return useCatalogProducts({ category: slug });
 }
 
 export function useRecommendedProducts({

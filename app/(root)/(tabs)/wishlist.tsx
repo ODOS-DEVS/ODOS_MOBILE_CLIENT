@@ -1,72 +1,160 @@
+import WishlistTileCard from "@/components/cards/WishlistTileCard";
+import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
+import { WishlistGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import RecommendationCard from "@/components/cards/RecommendationCard";
+import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo } from "react";
 import {
-  ScrollView,
+  Alert,
+  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WishlistScreen = () => {
-  const { wishlist } = useWishlist();
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { requireAuth } = useRequireAuth();
+  const { wishlist, isSyncingWishlist, refreshWishlist, removeFromWishlist } = useWishlist();
+  const { width, horizontalPadding, gridCardWidth } = useResponsive();
 
-  const isWishlistEmpty = wishlist.length === 0;
+  const columns = width >= 700 ? 3 : 2;
+  const gap = rS(10);
+  const cardWidth = gridCardWidth(columns, gap);
+  const isEmpty = wishlist.length === 0;
+  const showInitialLoader = isSyncingWishlist && isEmpty;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        void refreshWishlist();
+      }
+    }, [refreshWishlist, user]),
+  );
+
+  const listHeader = useMemo(() => {
+    if (isEmpty) {
+      return null;
+    }
+
+    return (
+      <View style={styles.headerBlock}>
+        <View style={styles.heroPill}>
+          <Ionicons name="heart" size={rS(14)} color="#F43F5E" />
+          <Text style={styles.heroPillText}>Your saved favorites</Text>
+        </View>
+
+        <View style={styles.toolbar}>
+          <View style={styles.toolbarCopy}>
+            <Text style={styles.toolbarTitle}>
+              {wishlist.length} lovely pick{wishlist.length === 1 ? "" : "s"}
+            </Text>
+            <Text style={styles.toolbarMeta}>
+              Tap a tile to view · use the heart button to remove
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.clearButton}
+            activeOpacity={0.82}
+            onPress={() => {
+              Alert.alert("Clear wishlist?", "Remove every saved item?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Clear",
+                  style: "destructive",
+                  onPress: () => {
+                    void Promise.all(wishlist.map((item) => removeFromWishlist(item.id)));
+                  },
+                },
+              ]);
+            }}
+          >
+            <Text style={styles.clearButtonText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }, [isEmpty, removeFromWishlist, wishlist.length]);
+
+  const openWishlistGate = () => {
+    requireAuth({
+      title: "Sign in to save favorites",
+      message: "Log in to keep your wishlist on every device.",
+    });
+  };
 
   return (
     <View style={styles.container}>
       <ProfileHeader title="Wishlist" showBackButton={false} />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {isWishlistEmpty ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons
-                name="heart-outline"
-                size={32}
-                color={AppColors.text}
-              />
-            </View>
-
-            <Text style={styles.emptyTitle}>Your Wishlist is Empty</Text>
-
-            <Text style={styles.emptyDescription}>
-              Browse products and tap the heart icon to save your favorites.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => router.push("/")}
-              activeOpacity={0.8}
-              style={styles.emptyButton}
-            >
-              <Text style={styles.emptyButtonText}>Shop now</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.listWrap}>
-            {wishlist.map((item) => (
-              <RecommendationCard
-                key={item.id}
-                id={item.id}
-                image={item.image}
-                title={item.title}
-                category={item.category}
-                oldPrice={item.oldPrice}
-                price={item.price}
-                rating={item.rating}
-                reviews={item.reviews}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      {showInitialLoader ? (
+        <WishlistGridSkeleton columns={columns} count={columns * 2} />
+      ) : isEmpty ? (
+        <View style={[styles.emptyWrap, { paddingBottom: insets.bottom + rV(100) }]}>
+          <CommerceEmptyState
+            icon="heart-outline"
+            title="Nothing saved yet"
+            message="Tap the heart on any product to save it here for later."
+            primaryLabel="Discover products"
+            onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
+            secondaryLabel={user ? "Browse categories" : "Sign in to sync"}
+            onSecondaryPress={() =>
+              user
+                ? router.push("/(root)/(tabs)/category" as any)
+                : openWishlistGate()
+            }
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={wishlist}
+          key={`wishlist-${columns}`}
+          numColumns={columns}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: insets.bottom + rV(100),
+            },
+          ]}
+          columnWrapperStyle={columns > 1 ? { gap } : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={isSyncingWishlist}
+              onRefresh={() => void refreshWishlist()}
+              tintColor="#F43F5E"
+            />
+          }
+          renderItem={({ item }) => (
+            <WishlistTileCard
+              id={item.id}
+              image={item.image}
+              title={item.title}
+              category={item.category}
+              oldPrice={item.oldPrice}
+              price={item.price}
+              rating={item.rating}
+              reviews={item.reviews}
+              cardWidth={cardWidth}
+              onRemove={() => void removeFromWishlist(item.id)}
+            />
+          )}
+        />
+      )}
     </View>
   );
 };
@@ -76,56 +164,68 @@ export default WishlistScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#FAFAFA",
   },
-  content: {
+  emptyWrap: {
     paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(120),
+    paddingTop: rV(8),
   },
-  listWrap: {
-    gap: rV(12),
+  listContent: {
+    paddingTop: rV(10),
   },
-  emptyState: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(34),
+  headerBlock: {
+    marginBottom: rV(12),
+    gap: rV(10),
+  },
+  heroPill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: rV(36),
+    gap: rS(6),
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(7),
+    borderRadius: rS(999),
+    backgroundColor: "#FFF1F2",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FECDD3",
   },
-  emptyIconWrap: {
-    width: rMS(72),
-    height: rMS(72),
-    borderRadius: rMS(36),
-    backgroundColor: "#EEF2F4",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: rV(16),
-  },
-  emptyTitle: {
+  heroPillText: {
+    color: "#BE123C",
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(20),
+    fontSize: rMS(11.5),
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: rS(10),
+  },
+  toolbarCopy: {
+    flex: 1,
+    gap: rV(3),
+  },
+  toolbarTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(15),
     color: AppColors.text,
-    marginBottom: rV(8),
   },
-  emptyDescription: {
+  toolbarMeta: {
     fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    color: AppColors.subtext[100],
-    textAlign: "center",
-    marginBottom: rV(22),
+    fontSize: rMS(11.5),
+    lineHeight: rMS(16),
+    color: "#9CA3AF",
   },
-  emptyButton: {
-    backgroundColor: AppColors.text,
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(14),
+  clearButton: {
+    borderRadius: rS(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FECDD3",
+    backgroundColor: "#FFF1F2",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(7),
   },
-  emptyButtonText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(14),
+  clearButtonText: {
+    color: "#E11D48",
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(11),
   },
 });

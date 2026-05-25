@@ -1,4 +1,5 @@
-import LoaderPanel from "@/components/loaders/LoaderPanel";
+import LoadingSpinner from "@/components/loaders/LoadingSpinner";
+import { AppColors } from "@/constants/Colors";
 import { rS, rV } from "@/styles/responsive";
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -9,12 +10,12 @@ type ScreenLoaderProps = {
 };
 
 export default function ScreenLoader({
-  label = "Loading content...",
+  label = "Loading",
   sublabel,
 }: ScreenLoaderProps) {
   return (
     <View style={styles.container}>
-      <LoaderPanel label={label} sublabel={sublabel} />
+      <LoadingSpinner label={label} sublabel={sublabel} />
     </View>
   );
 }
@@ -27,5 +28,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(24),
     paddingVertical: rV(40),
     minHeight: rV(280),
+    backgroundColor: "#F5F7FA",
   },
 });

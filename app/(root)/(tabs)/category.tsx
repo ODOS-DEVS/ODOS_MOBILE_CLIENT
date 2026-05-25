@@ -1,16 +1,18 @@
-import CategoryCard from "@/components/cards/CategoryCard";
+import { CategoryBrowseCardFromItem } from "@/components/category/CategoryUi";
 import { CategoryListSkeleton } from "@/components/loaders/CommerceSkeletons";
-import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AccountEmptyState } from "@/components/account/AccountUi";
 import SearchLauncher from "@/components/search/SearchLauncher";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { CatalogCategoryItem, useCatalogCategories } from "@/hooks/useCatalog";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { useCatalogCategories } from "@/hooks/useCatalog";
+import { buildCategoryRouteParams } from "@/utils/catalogLanes";
+import { rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, RefreshControl, StatusBar, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { FlatList, RefreshControl, StatusBar, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AppColors } from "@/constants/Colors";
 
 const CategoryScreen = () => {
+  const { horizontalPadding } = useResponsive();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { categories: catalogCategories, isLoading, error, refresh } =
     useCatalogCategories();
@@ -30,60 +32,54 @@ const CategoryScreen = () => {
     }
   }, [refresh]);
 
-  const handlePress = (category: CatalogCategoryItem) => {
+  const handlePress = useCallback((category: (typeof catalogCategories)[number]) => {
     router.push({
       pathname: "/screens/categories/[slug]" as any,
-      params: {
-        slug: category.slug,
-        title: category.title,
-        subtitle: category.subtitle,
-        subcategories: JSON.stringify(category.subcategories ?? []),
-      },
+      params: buildCategoryRouteParams(category),
     });
-  };
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle={"dark-content"} />
-      <ProfileHeader title="Explore" showBackButton={false} />
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
+      <StatusBar barStyle="dark-content" />
       <FlatList
         data={catalogCategories}
         keyExtractor={(item) => item.id}
+        style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="automatic"
         renderItem={({ item }) => (
-          <CategoryCard
-            {...item}
-            subcategoryCount={item.subcategories?.length}
-            onPress={() => handlePress(item)}
-          />
+          <View style={{ paddingHorizontal: horizontalPadding }}>
+            <CategoryBrowseCardFromItem item={item} onPress={() => handlePress(item)} />
+          </View>
         )}
         ListHeaderComponent={
-          <View style={styles.content}>
-            <SearchLauncher />
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Browse Categories</Text>
-              <Text style={styles.sectionSubtitle}>
-                Find what you want faster across ODOS.
-              </Text>
-            </View>
+          <View style={{ paddingBottom: rV(10) }}>
+            <SearchLauncher placeholder="Search products, stores & more" />
           </View>
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={{
+          paddingBottom: rV(118),
+          gap: rV(12),
+        }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          isLoading ? (
-            <CategoryListSkeleton />
+          catalogCategories.length > 0 ? null : isLoading ? (
+            <View style={{ paddingHorizontal: horizontalPadding }}>
+              <CategoryListSkeleton />
+            </View>
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>
-                {error ? "We couldn't load categories" : "No categories live yet"}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {error
-                  ? "Pull down to try again and make sure the backend is reachable."
-                  : "Categories you enable from admin will appear here automatically."}
-              </Text>
+            <View style={{ paddingHorizontal: horizontalPadding }}>
+              <AccountEmptyState
+                icon="grid-outline"
+                title={error ? "Couldn't load categories" : "No categories yet"}
+                message={
+                  error
+                    ? "Pull down to refresh and confirm the ODOS backend is reachable."
+                    : "Categories you enable in admin will show up here automatically."
+                }
+                actionLabel={error ? "Try again" : undefined}
+                onAction={error ? () => void refresh() : undefined}
+              />
             </View>
           )
         }
@@ -95,58 +91,8 @@ const CategoryScreen = () => {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default CategoryScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
-    paddingTop: rV(18),
-    paddingHorizontal: rS(16),
-  },
-  section: {
-    marginTop: rV(24),
-    marginBottom: rV(10),
-  },
-  sectionTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-    color: AppColors.text,
-  },
-  sectionSubtitle: {
-    marginTop: rV(6),
-    fontFamily: Fonts.title,
-    fontSize: rMS(13),
-    color: "#6B7280",
-  },
-  listContent: {
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(118),
-    flexGrow: 1,
-  },
-  emptyState: {
-    marginTop: rV(12),
-    paddingVertical: rV(24),
-    alignItems: "center",
-  },
-  emptyTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    marginTop: rV(8),
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: rMS(19),
-  },
-});

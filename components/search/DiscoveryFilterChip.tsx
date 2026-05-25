@@ -31,10 +31,9 @@ export default function DiscoveryFilterChip({
 const styles = StyleSheet.create({
   chip: {
     borderRadius: 999,
-    paddingHorizontal: rS(13),
-    paddingVertical: rV(8),
-    borderWidth: 1,
-    marginRight: rS(8),
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(7),
+    borderWidth: StyleSheet.hairlineWidth,
   },
   chipDefault: {
     backgroundColor: "#F7FAFC",

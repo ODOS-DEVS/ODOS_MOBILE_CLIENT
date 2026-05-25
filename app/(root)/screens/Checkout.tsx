@@ -1,4 +1,14 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import {
+  AccountEmptyState,
+  AccountListCard,
+  AccountSectionCard,
+  accountStyles,
+  formatOrderMoney,
+  OrderSelectableRow,
+  OrderStickyFooter,
+  OrderSummaryRow,
+} from "@/components/orders/OrderUi";
 import { AppColors } from "@/constants/Colors";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
@@ -11,6 +21,7 @@ import { createCheckoutSessionRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { buildOrderItemImagePayload } from "@/utils/orderImages";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
@@ -56,7 +67,7 @@ export default function CheckoutScreen() {
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
   const { cart } = useCart();
-  const { showToast } = useToast();
+  const { showSuccessToast, showErrorToast, showInfoToast } = useToast();
   const { previewVoucher } = useVouchers();
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
@@ -122,14 +133,11 @@ export default function CheckoutScreen() {
         product_id: item.id,
         title: item.title,
         category: item.category ?? null,
-        image_url:
-          item.image &&
-          typeof item.image === "object" &&
-          "uri" in item.image &&
-          typeof item.image.uri === "string"
-            ? item.image.uri
-            : null,
-        image_key: item.imageKey ?? null,
+        ...buildOrderItemImagePayload({
+          image: item.image,
+          imageKey: item.imageKey,
+          imageUrl: item.imageUrl,
+        }),
         quantity: item.quantity,
         unit_price: item.price,
         selected_color: null,
@@ -142,8 +150,11 @@ export default function CheckoutScreen() {
         product_id: id,
         title: product.title,
         category: product.category ?? null,
-        image_url: null,
-        image_key: product.imageKey ?? imageKey ?? null,
+        ...buildOrderItemImagePayload({
+          image: product.image,
+          imageKey: product.imageKey ?? imageKey ?? null,
+          imageUrl: product.imageUrl,
+        }),
         quantity,
         unit_price: product.price ?? 0,
         selected_color: selectedColor ?? null,
@@ -156,7 +167,9 @@ export default function CheckoutScreen() {
     id,
     imageKey,
     product.category,
+    product.image,
     product.imageKey,
+    product.imageUrl,
     product.price,
     product.title,
     quantity,
@@ -242,7 +255,7 @@ export default function CheckoutScreen() {
         setCheckoutVoucherCode(preview.code);
         setVoucherError("");
         if (!options?.silent) {
-          showToast(`${preview.code} applied successfully.`);
+          showSuccessToast(`${preview.code} applied successfully.`);
         }
         return preview;
       } catch (error) {
@@ -254,14 +267,14 @@ export default function CheckoutScreen() {
         setCheckoutVoucherCode(null);
         setVoucherError(message);
         if (!options?.silent) {
-          showToast(message);
+          showErrorToast(message);
         }
         return null;
       } finally {
         setIsApplyingVoucher(false);
       }
     },
-    [checkoutItems, previewVoucher, setCheckoutVoucherCode, shipping, showToast],
+    [checkoutItems, previewVoucher, setCheckoutVoucherCode, shipping, showSuccessToast, showErrorToast],
   );
 
   const handleApplyVoucher = async () => {
@@ -326,7 +339,7 @@ export default function CheckoutScreen() {
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
       });
-      showToast("Opening secure checkout...");
+      showInfoToast("Opening secure checkout...");
       const checkoutResult = await WebBrowser.openAuthSessionAsync(
         checkoutSession.authorization_url,
         callbackUrl,
@@ -348,14 +361,25 @@ export default function CheckoutScreen() {
         error instanceof Error && error.message
           ? error.message
           : "We couldn't start your payment right now.";
-      showToast(message);
+      showErrorToast(message);
     } finally {
       setIsPlacingOrder(false);
     }
   };
 
+  const footerHint =
+    !canPlaceOrder && checkoutItems.length > 0
+      ? !selectedAddress && !selectedPayment
+        ? "Add address and payment to continue"
+        : !selectedAddress
+          ? "Add delivery address to continue"
+          : !selectedPayment
+            ? "Add payment method to continue"
+            : "Sign in to continue"
+      : undefined;
+
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -379,29 +403,24 @@ export default function CheckoutScreen() {
         <ScreenLoader label="Loading checkout..." />
       ) : checkoutItems.length === 0 ? (
         <View style={styles.emptyCheckout}>
-          <Text style={styles.emptyTitle}>Nothing to check out yet</Text>
-          <Text style={styles.emptyText}>
-            Add an item to your cart or pick a product first, then we’ll get the rest of the order ready here.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            activeOpacity={0.85}
-            onPress={() => router.replace("/(root)/(tabs)/cart")}
-          >
-            <Text style={styles.emptyButtonText}>Go to Cart</Text>
-          </TouchableOpacity>
+          <AccountEmptyState
+            icon="bag-outline"
+            title="Nothing to check out yet"
+            message="Add an item to your cart or pick a product first, then we'll get the rest of the order ready here."
+            actionLabel="Go to Cart"
+            onAction={() => router.replace("/(root)/(tabs)/cart")}
+          />
         </View>
       ) : (
         <>
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[accountStyles.content, styles.scrollContent]}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.card}>
-              <Text style={styles.sectionLabel}>
-                {checkoutMode === "cart" ? "Cart summary" : "Order summary"}
-              </Text>
+            <AccountSectionCard
+              title={checkoutMode === "cart" ? "Cart summary" : "Order summary"}
+            >
               {checkoutMode === "cart" ? (
                 <View style={styles.cartSummaryList}>
                   {checkoutItems.map((item, index) => (
@@ -497,78 +516,38 @@ export default function CheckoutScreen() {
                   </View>
                 </View>
               )}
-            </View>
+            </AccountSectionCard>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionLabel}>Delivery</Text>
-              <TouchableOpacity
-                style={styles.deliveryRow}
-                activeOpacity={0.7}
+            <AccountSectionCard title="Delivery">
+              <OrderSelectableRow
+                icon="location-outline"
+                tag={selectedAddress?.label}
+                title={selectedAddress?.fullName ?? "Add delivery address"}
+                subtitle={
+                  selectedAddress
+                    ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.region} · ${selectedAddress.phone}`
+                    : "Select or add an address"
+                }
                 onPress={openAddressScreen}
-              >
-                <View style={styles.deliveryIcon}>
-                  <Ionicons name="location-outline" size={20} color={AppColors.primary} />
-                </View>
-                <View style={styles.deliveryText}>
-                  {selectedAddress ? (
-                    <>
-                      {selectedAddress.label ? (
-                        <Text style={styles.deliveryTag}>{selectedAddress.label}</Text>
-                      ) : null}
-                      <Text style={styles.deliveryTitle}>{selectedAddress.fullName}</Text>
-                      <Text style={styles.deliverySub} numberOfLines={2}>
-                        {selectedAddress.street}, {selectedAddress.city}, {selectedAddress.region} ·{" "}
-                        {selectedAddress.phone}
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.deliveryTitle}>Add delivery address</Text>
-                      <Text style={styles.deliverySub}>Select or add an address</Text>
-                    </>
-                  )}
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={AppColors.subtext[100]}
-                />
-              </TouchableOpacity>
-            </View>
+              />
+            </AccountSectionCard>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionLabel}>Payment</Text>
-              <TouchableOpacity
-                style={styles.paymentRow}
-                activeOpacity={0.7}
+            <AccountSectionCard title="Payment">
+              <OrderSelectableRow
+                icon="card-outline"
+                title={selectedPayment?.label ?? "Add payment method"}
+                subtitle={
+                  selectedPayment
+                    ? selectedPayment.type === "card"
+                      ? "Debit / Credit Card"
+                      : selectedPayment.network ?? "MoMo"
+                    : "Choose card or mobile money"
+                }
                 onPress={openPaymentScreen}
-              >
-                <View style={styles.paymentIcon}>
-                  <Ionicons name="card-outline" size={20} color={AppColors.primary} />
-                </View>
-                <View style={styles.paymentText}>
-                  {selectedPayment ? (
-                    <>
-                      <Text style={styles.paymentTitle}>{selectedPayment.label}</Text>
-                      <Text style={styles.paymentSub}>
-                        {selectedPayment.type === "card"
-                          ? "Debit / Credit Card"
-                          : selectedPayment.network ?? "MoMo"}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.paymentTitle}>Add payment method</Text>
-                  )}
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={AppColors.subtext[100]}
-                />
-              </TouchableOpacity>
-            </View>
+              />
+            </AccountSectionCard>
 
-            <View style={styles.card}>
+            <AccountListCard>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionLabel}>Voucher</Text>
                 <TouchableOpacity
@@ -651,62 +630,36 @@ export default function CheckoutScreen() {
                   Apply an ODOS promo here, or pick a claimed store offer from your wallet.
                 </Text>
               )}
-            </View>
+            </AccountListCard>
 
-            <View style={styles.card}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>₵{subtotal.toFixed(2)}</Text>
-              </View>
+            <AccountSectionCard title="Order total">
+              <OrderSummaryRow label="Subtotal" value={formatOrderMoney(subtotal)} />
               {discountAmount > 0 ? (
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Voucher savings</Text>
-                  <Text style={styles.discountValue}>-₵{discountAmount.toFixed(2)}</Text>
-                </View>
+                <OrderSummaryRow
+                  label="Voucher savings"
+                  value={`-${formatOrderMoney(discountAmount).slice(1)}`}
+                  accent="discount"
+                />
               ) : null}
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Shipping</Text>
-                <Text style={[styles.totalValue, styles.shippingFree]}>
-                  {shipping === 0 ? "FREE" : `₵${shipping.toFixed(2)}`}
-                </Text>
-              </View>
-              <View style={[styles.totalRow, styles.totalRowLast]}>
-                <Text style={styles.totalLabelBold}>Total</Text>
-                <Text style={styles.totalValueBold}>₵{total.toFixed(2)}</Text>
-              </View>
-            </View>
+              <OrderSummaryRow
+                label="Shipping"
+                value={shipping === 0 ? "FREE" : formatOrderMoney(shipping)}
+                accent={shipping === 0 ? "success" : "default"}
+              />
+              <OrderSummaryRow label="Total" value={formatOrderMoney(total)} last />
+            </AccountSectionCard>
 
             <View style={styles.bottomSpacer} />
           </ScrollView>
 
-          <View style={styles.footer}>
-            {!canPlaceOrder ? (
-              <Text style={styles.footerHint}>
-                {!selectedAddress && !selectedPayment
-                  ? "Add address and payment to continue"
-                  : !selectedAddress
-                    ? "Add delivery address to continue"
-                    : !selectedPayment
-                      ? "Add payment method to continue"
-                      : "Sign in to continue"}
-              </Text>
-            ) : null}
-            <TouchableOpacity
-              style={[
-                styles.placeOrderBtn,
-                !canPlaceOrder && styles.placeOrderBtnDisabled,
-              ]}
-              onPress={handlePlaceOrder}
-              activeOpacity={0.85}
-              disabled={!canPlaceOrder}
-            >
-              <Text style={styles.placeOrderText}>
-                {isPlacingOrder
-                  ? "Placing order..."
-                  : `Place order · ₵${total.toFixed(2)}`}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <OrderStickyFooter
+            hint={footerHint}
+            primaryLabel={
+              isPlacingOrder ? "Placing order..." : `Place order · ${formatOrderMoney(total)}`
+            }
+            onPrimaryPress={handlePlaceOrder}
+            disabled={!canPlaceOrder}
+          />
         </>
       )}
     </View>

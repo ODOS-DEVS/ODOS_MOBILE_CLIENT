@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.paul.odos",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "ODOS uses your location to pin your store on the map and show directions to shoppers."
       }
     },
     "android": {
@@ -44,7 +45,13 @@
       "expo-secure-store",
       "expo-notifications",
       "@react-native-community/datetimepicker",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ODOS uses your location to pin your store on the map and show directions to shoppers."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,7 +1,9 @@
 import { AppColors } from "@/constants/Colors";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
+  Dimensions,
   Easing,
   StyleSheet,
   View,
@@ -9,6 +11,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+
+const SHIMMER_TRAVEL = Dimensions.get("window").width;
 
 type SkeletonBlockProps = {
   width?: DimensionValue;
@@ -24,32 +28,7 @@ export function SkeletonPulse({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const opacity = useRef(new Animated.Value(0.6)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 850,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.6,
-          duration: 850,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    animation.start();
-
-    return () => animation.stop();
-  }, [opacity]);
-
-  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
+  return <View style={style}>{children}</View>;
 }
 
 export function SkeletonBlock({
@@ -58,6 +37,27 @@ export function SkeletonBlock({
   radius = 16,
   style,
 }: SkeletonBlockProps) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 1300,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [progress]);
+
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SHIMMER_TRAVEL, SHIMMER_TRAVEL],
+  });
+
   return (
     <View
       style={[
@@ -69,13 +69,33 @@ export function SkeletonBlock({
         },
         style,
       ]}
-    />
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          { transform: [{ translateX }] },
+        ]}
+      >
+        <LinearGradient
+          colors={[
+            "rgba(255,255,255,0)",
+            "rgba(255,255,255,0.55)",
+            "rgba(255,255,255,0)",
+          ]}
+          locations={[0.35, 0.5, 0.65]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={{ width: SHIMMER_TRAVEL, height: "100%" }}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   block: {
-    backgroundColor: AppColors.tertiary,
+    backgroundColor: "#E8ECF1",
     overflow: "hidden",
   },
 });

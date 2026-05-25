@@ -1,9 +1,6 @@
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
+import SearchField from "@/components/search/SearchField";
 import React, { useCallback, useMemo, useState } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View, type ViewStyle } from "react-native";
+import { type ViewStyle } from "react-native";
 
 interface SearchBarProps {
   data?: any[];
@@ -13,6 +10,8 @@ interface SearchBarProps {
   placeholder?: string;
   searchKeys?: string[];
   containerStyle?: ViewStyle;
+  embedded?: boolean;
+  size?: "default" | "large";
 }
 
 export const SearchBar = ({
@@ -20,16 +19,17 @@ export const SearchBar = ({
   onResults,
   onStartSearch,
   onQueryChange,
-  placeholder = "Search products, stores...",
+  placeholder = "Search products, stores & more",
   searchKeys = ["title", "category", "subtitle", "name", "label", "store"],
   containerStyle,
+  embedded = false,
+  size = "default",
 }: SearchBarProps) => {
   const [query, setQuery] = useState("");
-  const { horizontalPadding } = useResponsive();
 
   const normalizedQuery = useMemo(
     () => query.trim().toLowerCase().replace(/\s+/g, " "),
-    [query]
+    [query],
   );
 
   const performSearch = useCallback(
@@ -51,7 +51,7 @@ export const SearchBar = ({
       });
       onResults(filtered);
     },
-    [data, onResults, searchKeys]
+    [data, onResults, searchKeys],
   );
 
   const handleQueryChange = (value: string) => {
@@ -65,75 +65,19 @@ export const SearchBar = ({
   };
 
   return (
-    <View style={[styles.wrapper, { marginHorizontal: horizontalPadding }, containerStyle]}>
-      <TouchableOpacity
-        style={styles.searchIconWrap}
-        onPress={() => {
-          if (normalizedQuery.length > 0) {
-            onStartSearch?.();
-            performSearch(normalizedQuery);
-          }
-        }}
-        activeOpacity={0.75}
-      >
-        <Ionicons name="search-outline" size={rMS(17)} color={AppColors.secondary} />
-      </TouchableOpacity>
-
-      <TextInput
-        value={query}
-        onChangeText={handleQueryChange}
-        placeholder={placeholder}
-        placeholderTextColor={AppColors.subtext[100]}
-        style={styles.input}
-        returnKeyType="search"
-        onSubmitEditing={() => {
-          if (normalizedQuery.length > 0) {
-            onStartSearch?.();
-            performSearch(normalizedQuery);
-          }
-        }}
-      />
-
-      {query.length > 0 && (
-        <TouchableOpacity
-          style={styles.clearBtn}
-          onPress={() => handleQueryChange("")}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="close-circle" size={rMS(17)} color={AppColors.subtext[100]} />
-        </TouchableOpacity>
-      )}
-    </View>
+    <SearchField
+      value={query}
+      onChangeText={handleQueryChange}
+      placeholder={placeholder}
+      containerStyle={containerStyle}
+      embedded={embedded}
+      size={size}
+      onSubmit={() => {
+        if (normalizedQuery.length > 0) {
+          onStartSearch?.();
+          performSearch(normalizedQuery);
+        }
+      }}
+    />
   );
 };
-
-const styles = StyleSheet.create({
-  wrapper: {
-    marginTop: rV(14),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(12),
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    minHeight: rMS(44),
-    paddingHorizontal: rS(10),
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchIconWrap: {
-    paddingHorizontal: rS(4),
-    paddingVertical: rV(4),
-    marginRight: rS(4),
-  },
-  input: {
-    flex: 1,
-    fontSize: rMS(13),
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    paddingVertical: rV(7),
-  },
-  clearBtn: {
-    paddingHorizontal: rS(4),
-    paddingVertical: rV(4),
-    marginLeft: rS(4),
-  },
-});

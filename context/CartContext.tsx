@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
+import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useAuth } from "@/context/AuthContext";
 import * as SecureStore from "expo-secure-store";
 import React, {
@@ -18,6 +19,7 @@ export type CartItem = {
   price: number;
   image?: any;
   imageKey?: string;
+  imageUrl?: string;
   quantity: number;
 };
 
@@ -62,17 +64,15 @@ function parsePrice(value: string): number {
 }
 
 function mapCartApiItem(item: CartApiItem): CartItem {
+  const imageUrl = resolveApiMediaUrl(item.image_url);
   return {
     id: item.product_id,
     title: item.title,
     category: item.category || undefined,
     price: parsePrice(item.price),
-    image: item.image_url
-      ? { uri: item.image_url }
-      : item.image_key
-        ? resolveCatalogImage(item.image_key)
-        : undefined,
+    image: resolveImageSource(item.image_url, item.image_key),
     imageKey: item.image_key || undefined,
+    imageUrl,
     quantity: item.quantity,
   };
 }
@@ -92,7 +92,10 @@ function mergeCartItems(current: CartItem[], incomingItems: CartItemInput[]) {
         ...normalizedItem,
         image:
           normalizedItem.image ||
-          (normalizedItem.imageKey ? resolveCatalogImage(normalizedItem.imageKey) : existingItem.image),
+          (normalizedItem.imageKey || normalizedItem.imageUrl
+            ? resolveImageSource(normalizedItem.imageUrl, normalizedItem.imageKey)
+            : existingItem.image),
+        imageUrl: normalizedItem.imageUrl ?? existingItem.imageUrl,
         quantity: Math.min(existingItem.quantity + quantityToAdd, 99),
       };
       return;
@@ -102,7 +105,9 @@ function mergeCartItems(current: CartItem[], incomingItems: CartItemInput[]) {
       ...normalizedItem,
       image:
         normalizedItem.image ||
-        (normalizedItem.imageKey ? resolveCatalogImage(normalizedItem.imageKey) : undefined),
+        (normalizedItem.imageKey || normalizedItem.imageUrl
+          ? resolveImageSource(normalizedItem.imageUrl, normalizedItem.imageKey)
+          : undefined),
       quantity: quantityToAdd,
     });
   });
@@ -187,11 +192,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
                 product_id: product.id,
                 title: product.title,
                 image_url:
-                  product.image &&
+                  product.imageUrl ??
+                  (product.image &&
                   typeof product.image === "object" &&
-                  "uri" in product.image
-                    ? product.image.uri
-                    : null,
+                  "uri" in product.image &&
+                  typeof product.image.uri === "string"
+                    ? resolveApiMediaUrl(product.image.uri) ?? product.image.uri
+                    : null),
                 image_key: product.imageKey ?? null,
                 category: product.category ?? null,
                 price: String(product.price),

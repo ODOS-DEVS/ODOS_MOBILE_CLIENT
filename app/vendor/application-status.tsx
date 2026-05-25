@@ -1,15 +1,21 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import ProfileHeader from "@/components/profile/ProfileHeader";
-import { StatusBadge } from "@/components/vendor/StatusBadge";
-import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import {
+  AccountActionButton,
+  AccountEmptyState,
+  AccountListCard,
+  StatusBadge,
+  VendorDetailRow,
+  VendorNoticeCard,
+  VendorScreenShell,
+  VendorSectionHeader,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const statusCopy = {
@@ -19,7 +25,7 @@ const statusCopy = {
   },
   pending: {
     title: "Application received",
-    body: "Your vendor request is queued. We’ll keep this screen updated as soon as the review moves forward.",
+    body: "Your vendor request is queued. We'll keep this screen updated as soon as the review moves forward.",
   },
   under_review: {
     title: "Under review",
@@ -31,7 +37,7 @@ const statusCopy = {
   },
   rejected: {
     title: "Application needs changes",
-    body: "Your previous submission wasn’t approved yet. Review the feedback below, update the information, and apply again when ready.",
+    body: "Your previous submission wasn't approved yet. Review the feedback below, update the information, and apply again when ready.",
   },
   suspended: {
     title: "Vendor access suspended",
@@ -69,19 +75,13 @@ export default function VendorApplicationStatusScreen() {
 
   const currentCopy = useMemo(() => statusCopy[vendorStatus], [vendorStatus]);
 
-  if (isLoading && !vendorApplication && !vendorProfile) {
-    return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Vendor Status" />
-        <ScreenLoader label="Loading application status..." />
-      </View>
-    );
-  }
-
   const detailItems = [
     { label: "Business", value: vendorApplication?.businessName || vendorProfile?.businessName },
     { label: "Store", value: vendorApplication?.storeName || vendorProfile?.storeName },
-    { label: "Category", value: vendorApplication?.businessCategory || vendorProfile?.businessCategory },
+    {
+      label: "Category",
+      value: vendorApplication?.businessCategory || vendorProfile?.businessCategory,
+    },
     { label: "City", value: vendorApplication?.city },
     { label: "Region", value: vendorApplication?.region },
     {
@@ -90,54 +90,77 @@ export default function VendorApplicationStatusScreen() {
         ? new Date(vendorApplication.submittedAt).toLocaleDateString()
         : undefined,
     },
-  ].filter((item) => Boolean(item.value));
+  ].filter((item) => Boolean(item.value)) as Array<{ label: string; value: string }>;
+
+  const rejectionNote =
+    vendorApplication?.rejectionReason || vendorProfile?.rejectionReason;
+
+  const primaryLabel =
+    vendorStatus === "approved"
+      ? "Open Vendor Dashboard"
+      : vendorStatus === "rejected"
+        ? "Apply Again"
+        : vendorStatus === "none"
+          ? "Start Application"
+          : "Update Application Details";
+
+  if (isLoading && !vendorApplication && !vendorProfile) {
+    return (
+      <VendorScreenShell
+        title="Vendor Status"
+        showSettings={false}
+        loading
+        loadingLabel="Loading application status..."
+      />
+    );
+  }
 
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Vendor Status" />
+    <VendorScreenShell title="Vendor Status" showSettings={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
-          styles.scrollContent,
+          vendorStyles.content,
           { paddingBottom: insets.bottom + rV(28) },
         ]}
       >
-        <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-          <View style={styles.heroCard}>
+        <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <AccountListCard>
             <StatusBadge status={vendorStatus} />
-            <Text style={styles.title}>{currentCopy.title}</Text>
-            <Text style={styles.body}>{currentCopy.body}</Text>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-          </View>
+            <VendorSectionHeader title={currentCopy.title} description={currentCopy.body} />
+            {error ? <Text style={vendorStyles.errorText}>{error}</Text> : null}
+          </AccountListCard>
 
           {vendorStatus === "none" ? (
-            <VendorEmptyState
+            <AccountEmptyState
               icon="briefcase-outline"
               title="Start your vendor journey"
               message="ODOS keeps the customer and vendor experience on the same account. Apply once and come back here for review updates."
             />
           ) : (
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Application summary</Text>
-              {detailItems.map((item) => (
-                <View key={item.label} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{item.label}</Text>
-                  <Text style={styles.detailValue}>{item.value}</Text>
-                </View>
+            <AccountListCard>
+              <VendorSectionHeader
+                title="Application summary"
+                description="Details from your latest vendor submission."
+              />
+              {detailItems.map((item, index) => (
+                <VendorDetailRow
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  isLast={index === detailItems.length - 1 && !rejectionNote}
+                />
               ))}
-              {vendorApplication?.rejectionReason || vendorProfile?.rejectionReason ? (
-                <View style={styles.noticeBox}>
-                  <Text style={styles.noticeTitle}>Review note</Text>
-                  <Text style={styles.noticeText}>
-                    {vendorApplication?.rejectionReason || vendorProfile?.rejectionReason}
-                  </Text>
-                </View>
+              {rejectionNote ? (
+                <VendorNoticeCard title="Review note" body={rejectionNote} />
               ) : null}
-            </View>
+            </AccountListCard>
           )}
 
-          <TouchableOpacity
-            style={styles.primaryButton}
+          <AccountActionButton
+            label={primaryLabel}
+            variant="primary"
             onPress={() => {
               if (vendorStatus === "approved") {
                 router.push("/vendor/dashboard" as any);
@@ -146,130 +169,9 @@ export default function VendorApplicationStatusScreen() {
 
               router.push("/vendor/apply" as any);
             }}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryButtonLabel}>
-              {vendorStatus === "approved"
-                ? "Open Vendor Dashboard"
-                : vendorStatus === "rejected"
-                  ? "Apply Again"
-                  : vendorStatus === "none"
-                    ? "Start Application"
-                    : "Update Application Details"}
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
       </ScrollView>
-    </View>
+    </VendorScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scrollContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    marginBottom: rV(16),
-  },
-  title: {
-    marginTop: rV(14),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-  },
-  body: {
-    marginTop: rV(8),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-  },
-  error: {
-    marginTop: rV(10),
-    color: "#B91C1C",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    marginBottom: rV(16),
-  },
-  sectionTitle: {
-    marginBottom: rV(12),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(15),
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(12),
-    paddingVertical: rV(10),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ECEFF3",
-  },
-  detailLabel: {
-    flex: 1,
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-  },
-  detailValue: {
-    flex: 1,
-    textAlign: "right",
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  noticeBox: {
-    marginTop: rV(16),
-    borderRadius: rMS(18),
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  noticeTitle: {
-    color: "#991B1B",
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  noticeText: {
-    marginTop: rV(6),
-    color: "#7F1D1D",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-  },
-  primaryButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(999),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(16),
-  },
-  primaryButtonLabel: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(14),
-  },
-});

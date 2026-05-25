@@ -1,4 +1,11 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import {
+  AccountChannelCard,
+  AccountInsightCard,
+  AccountListCard,
+  AccountTipBanner,
+  accountStyles,
+} from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -6,158 +13,146 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const channels = [
-  { id: "facebook", icon: <FontAwesome name="facebook" size={22} color="#1877F2" />, label: "Facebook" },
-  { id: "twitter", icon: <FontAwesome name="twitter" size={22} color="#1DA1F2" />, label: "Twitter" },
-  { id: "whatsapp", icon: <FontAwesome name="whatsapp" size={22} color="#25D366" />, label: "WhatsApp" },
-  { id: "chat", icon: <Ionicons name="chatbubble-ellipses" size={22} color="#111827" />, label: "Live Chat" },
+  {
+    id: "chat",
+    icon: <Ionicons name="chatbubble-ellipses" size={22} color={AppColors.text} />,
+    label: "Live chat",
+    active: true,
+  },
+  {
+    id: "whatsapp",
+    icon: <FontAwesome name="whatsapp" size={22} color="#25D366" />,
+    label: "WhatsApp",
+    active: false,
+  },
+  {
+    id: "facebook",
+    icon: <FontAwesome name="facebook" size={22} color="#1877F2" />,
+    label: "Facebook",
+    active: false,
+  },
+  {
+    id: "twitter",
+    icon: <FontAwesome name="twitter" size={22} color="#1DA1F2" />,
+    label: "Twitter",
+    active: false,
+  },
 ];
 
 export default function GetHelp() {
   const { requireAuth } = useRequireAuth();
 
+  const openSupportChat = () => {
+    if (
+      !requireAuth({
+        title: "Sign in to chat with support",
+        message:
+          "Create an account or log in so the admin team can keep your support history in one place.",
+      })
+    ) {
+      return;
+    }
+
+    router.push({
+      pathname: "/screens/support/chat",
+      params: {
+        subject: "General account or order help",
+        fallback: "/(root)/screens/profileScreens/helpAndSupport/GetHelp",
+      },
+    });
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Get Help" />
 
-      <View style={styles.content}>
-        <View style={styles.heroCircle}>
-          <View style={styles.heroInner}>
-            <Ionicons name="help-outline" size={rMS(36)} color={AppColors.white} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={accountStyles.content}
+      >
+        <AccountInsightCard
+          title="We're here for you"
+          subtitle="Reach ODOS support through live chat today. More channels are opening soon."
+          stats={[
+            { value: "Live", label: "Chat" },
+            { value: "Mon–Sat", label: "Hours" },
+          ]}
+        />
+
+        <View style={styles.heroRow}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="headset-outline" size={rMS(28)} color="#FFFFFF" />
           </View>
+          <Text style={styles.heroText}>
+            Fastest response: sign in and message the admin team directly in the app.
+          </Text>
         </View>
 
-        <Text style={styles.title}>We are here to support you</Text>
-        <Text style={styles.subtitle}>
-          Reach out to us through any channel below and our team will respond quickly.
-        </Text>
-
+        <Text style={styles.gridLabel}>Contact channels</Text>
         <View style={styles.channelGrid}>
           {channels.map((item) => (
-            <TouchableOpacity
+            <AccountChannelCard
               key={item.id}
-              style={styles.channelCard}
-              className="shadow-sm"
-              activeOpacity={0.8}
-              onPress={() => {
-                if (item.id !== "chat") {
-                  return;
-                }
-
-                if (
-                  !requireAuth({
-                    title: "Sign in to chat with support",
-                    message:
-                      "Create an account or log in so the admin team can keep your support history in one place.",
-                  })
-                ) {
-                  return;
-                }
-
-                router.push({
-                  pathname: "/screens/support/chat",
-                  params: {
-                    subject: "General account or order help",
-                    fallback: "/(root)/screens/profileScreens/helpAndSupport/GetHelp",
-                  },
-                });
-              }}
-            >
-              {item.icon}
-              <Text style={styles.channelLabel}>{item.label}</Text>
-            </TouchableOpacity>
+              icon={item.icon}
+              label={item.label}
+              active={item.active}
+              onPress={item.id === "chat" ? openSupportChat : undefined}
+            />
           ))}
         </View>
 
-        <View style={styles.infoCard} className="shadow-sm">
-          <Ionicons name="time-outline" size={rMS(16)} color={AppColors.secondary} />
-          <Text style={styles.infoText}>Support hours: Mon - Sat, 8:00 AM - 8:00 PM</Text>
-        </View>
-      </View>
+        <AccountListCard>
+          <AccountTipBanner
+            title="Support hours"
+            message="Monday – Saturday, 8:00 AM – 8:00 PM (GMT). Messages outside hours are answered next business day."
+            icon="time-outline"
+          />
+        </AccountListCard>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
-    flex: 1,
+  heroRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: rS(12),
+    backgroundColor: AppColors.text,
+    borderRadius: rMS(20),
     paddingHorizontal: rS(16),
-    paddingTop: rV(20),
+    paddingVertical: rV(14),
   },
-  heroCircle: {
-    width: rMS(180),
-    height: rMS(180),
-    borderRadius: rMS(90),
-    backgroundColor: "#E6EBEF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: rV(20),
-  },
-  heroInner: {
-    width: rMS(72),
-    height: rMS(72),
-    borderRadius: rMS(36),
-    backgroundColor: AppColors.primary,
+  heroIcon: {
+    width: rMS(48),
+    height: rMS(48),
+    borderRadius: rMS(24),
+    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
-  title: {
-    fontSize: rMS(20),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  subtitle: {
-    marginTop: rV(8),
-    fontSize: rMS(13),
-    color: AppColors.secondary,
-    textAlign: "center",
-    lineHeight: rMS(20),
+  heroText: {
+    flex: 1,
     fontFamily: Fonts.text,
-    paddingHorizontal: rS(12),
+    fontSize: rMS(12.5),
+    lineHeight: rMS(18),
+    color: "#E5E7EB",
+  },
+  gridLabel: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12),
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: rV(4),
   },
   channelGrid: {
-    marginTop: rV(22),
-    width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     gap: rS(10),
-  },
-  channelCard: {
-    width: "48%",
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(14),
-    paddingVertical: rV(16),
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rV(8),
-  },
-  channelLabel: {
-    fontSize: rMS(12),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-  },
-  infoCard: {
-    marginTop: rV(16),
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(12),
-    borderRadius: rMS(12),
-    backgroundColor: AppColors.white,
-    gap: rS(8),
-  },
-  infoText: {
-    fontSize: rMS(12),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
   },
 });

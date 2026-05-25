@@ -34,12 +34,15 @@ type ChatContextType = {
   isLoadingSupportThreads: boolean;
   loadingThreadId: string | null;
   sendingThreadId: string | null;
-  loadCustomerThreads: () => Promise<void>;
-  loadVendorThreads: () => Promise<void>;
-  loadSupportThreads: () => Promise<void>;
+  loadCustomerThreads: (options?: { silent?: boolean }) => Promise<void>;
+  loadVendorThreads: (options?: { silent?: boolean }) => Promise<void>;
+  loadSupportThreads: (options?: { silent?: boolean }) => Promise<void>;
   ensureThread: (input: EnsureChatThreadInput) => Promise<ChatThread>;
   ensureSupportThread: (input: EnsureSupportChatThreadInput) => Promise<ChatThread>;
-  loadMessages: (threadId: string) => Promise<ChatMessage[]>;
+  loadMessages: (
+    threadId: string,
+    options?: { silent?: boolean },
+  ) => Promise<ChatMessage[]>;
   sendMessage: (threadId: string, text: string) => Promise<ChatMessage>;
   getThreadById: (threadId: string | undefined | null) => ChatThread | undefined;
 };
@@ -314,7 +317,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [subscribe, user]);
 
   const loadThreadsForScope = useCallback(
-    async (scope: ChatThreadScope) => {
+    async (scope: ChatThreadScope, options?: { silent?: boolean }) => {
       if (!user) {
         if (scope === "vendor") {
           setVendorThreads([]);
@@ -326,12 +329,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (scope === "vendor") {
-        setIsLoadingVendorThreads(true);
-      } else if (scope === "support") {
-        setIsLoadingSupportThreads(true);
-      } else {
-        setIsLoadingCustomerThreads(true);
+      const showLoading = !options?.silent;
+      if (showLoading) {
+        if (scope === "vendor") {
+          setIsLoadingVendorThreads(true);
+        } else if (scope === "support") {
+          setIsLoadingSupportThreads(true);
+        } else {
+          setIsLoadingCustomerThreads(true);
+        }
       }
 
       try {
@@ -344,28 +350,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setCustomerThreads(threads);
         }
       } finally {
-        if (scope === "vendor") {
-          setIsLoadingVendorThreads(false);
-        } else if (scope === "support") {
-          setIsLoadingSupportThreads(false);
-        } else {
-          setIsLoadingCustomerThreads(false);
+        if (showLoading) {
+          if (scope === "vendor") {
+            setIsLoadingVendorThreads(false);
+          } else if (scope === "support") {
+            setIsLoadingSupportThreads(false);
+          } else {
+            setIsLoadingCustomerThreads(false);
+          }
         }
       }
     },
     [accessToken, user],
   );
 
-  const loadCustomerThreads = useCallback(async () => {
-    await loadThreadsForScope("customer");
+  const loadCustomerThreads = useCallback(async (options?: { silent?: boolean }) => {
+    await loadThreadsForScope("customer", options);
   }, [loadThreadsForScope]);
 
-  const loadVendorThreads = useCallback(async () => {
-    await loadThreadsForScope("vendor");
+  const loadVendorThreads = useCallback(async (options?: { silent?: boolean }) => {
+    await loadThreadsForScope("vendor", options);
   }, [loadThreadsForScope]);
 
-  const loadSupportThreads = useCallback(async () => {
-    await loadThreadsForScope("support");
+  const loadSupportThreads = useCallback(async (options?: { silent?: boolean }) => {
+    await loadThreadsForScope("support", options);
   }, [loadThreadsForScope]);
 
   const ensureThread = useCallback(
@@ -394,12 +402,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadMessages = useCallback(
-    async (threadId: string) => {
+    async (threadId: string, options?: { silent?: boolean }) => {
       if (!threadId) {
         return [];
       }
 
-      setLoadingThreadId(threadId);
+      const showLoading = !options?.silent;
+      if (showLoading) {
+        setLoadingThreadId(threadId);
+      }
+
       try {
         const messages = await fetchChatMessages(threadId, accessToken);
         setMessagesByThread((current) => ({
@@ -411,7 +423,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setSupportThreads((current) => resetUnreadCount(current, threadId));
         return messages;
       } finally {
-        setLoadingThreadId((current) => (current === threadId ? null : current));
+        if (showLoading) {
+          setLoadingThreadId((current) => (current === threadId ? null : current));
+        }
       }
     },
     [accessToken, resetUnreadCount],

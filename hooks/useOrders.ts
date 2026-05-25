@@ -1,4 +1,5 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
+import { enrichOrderWithProductImages, enrichOrdersWithProductImages } from "@/utils/orderImages";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import * as SecureStore from "expo-secure-store";
@@ -331,7 +332,7 @@ export function useOrders() {
       }
 
       const payload = (await response.json()) as Order[];
-      setOrders(payload);
+      setOrders(await enrichOrdersWithProductImages(payload));
     } catch {
       setOrders([]);
     } finally {
@@ -354,19 +355,21 @@ export function useOrders() {
         return;
       }
 
-      setOrders((current) => {
-        const existingIndex = current.findIndex((order) => order.id === payload.id);
-        if (existingIndex < 0) {
-          return [payload, ...current].sort(
-            (left, right) =>
-              new Date(right.placed_at ?? right.created_at).getTime() -
-              new Date(left.placed_at ?? left.created_at).getTime(),
-          );
-        }
+      void enrichOrderWithProductImages(payload).then((enriched) => {
+        setOrders((current) => {
+          const existingIndex = current.findIndex((order) => order.id === enriched.id);
+          if (existingIndex < 0) {
+            return [enriched, ...current].sort(
+              (left, right) =>
+                new Date(right.placed_at ?? right.created_at).getTime() -
+                new Date(left.placed_at ?? left.created_at).getTime(),
+            );
+          }
 
-        const next = [...current];
-        next[existingIndex] = payload;
-        return next;
+          const next = [...current];
+          next[existingIndex] = enriched;
+          return next;
+        });
       });
     });
   }, [subscribe, user]);
@@ -394,7 +397,9 @@ export function useOrders() {
           throw new Error(await parseErrorMessage(response));
         }
 
-        const updatedOrder = (await response.json()) as Order;
+        const updatedOrder = await enrichOrderWithProductImages(
+          (await response.json()) as Order,
+        );
         setOrders((current) =>
           current.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
         );
@@ -429,7 +434,9 @@ export function useOrders() {
           throw new Error(await parseErrorMessage(response));
         }
 
-        const updatedOrder = (await response.json()) as Order;
+        const updatedOrder = await enrichOrderWithProductImages(
+          (await response.json()) as Order,
+        );
         setOrders((current) =>
           current.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
         );
@@ -538,10 +545,11 @@ export function useOrder(orderId?: string) {
     }
     try {
       const payload = await fetchOrderRequest(token, orderId);
+      const enriched = await enrichOrderWithProductImages(payload);
       if (isMountedRef.current) {
-        setOrder(payload);
+        setOrder(enriched);
       }
-      return payload;
+      return enriched;
     } catch {
       if (isMountedRef.current) {
         setOrder(null);
@@ -573,9 +581,11 @@ export function useOrder(orderId?: string) {
         return;
       }
 
-      if (isMountedRef.current) {
-        setOrder(payload);
-      }
+      void enrichOrderWithProductImages(payload).then((enriched) => {
+        if (isMountedRef.current) {
+          setOrder(enriched);
+        }
+      });
     });
   }, [orderId, subscribe, user]);
 

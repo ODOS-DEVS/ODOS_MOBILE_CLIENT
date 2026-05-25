@@ -1,15 +1,22 @@
-import ProfileHeader from "@/components/profile/ProfileHeader";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
-import { AppColors } from "@/constants/Colors";
+import { AccountBadge } from "@/components/account/AccountUi";
+import {
+  AccountActionButton,
+  AccountEmptyState,
+  AccountListCard,
+  VendorPageIntro,
+  VendorScreenShell,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import Fonts from "@/constants/Fonts";
+import { AppColors } from "@/constants/Colors";
 import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { VendorOrderStatus } from "@/types/store";
 import React, { useEffect } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NEXT_STATUS: Partial<Record<VendorOrderStatus, VendorOrderStatus>> = {
@@ -18,6 +25,13 @@ const NEXT_STATUS: Partial<Record<VendorOrderStatus, VendorOrderStatus>> = {
   processing: "ready",
   ready: "delivered",
 };
+
+function orderStatusTone(status: VendorOrderStatus): "neutral" | "warning" | "success" | "info" {
+  if (status === "delivered") return "success";
+  if (status === "pending") return "warning";
+  if (status === "ready") return "info";
+  return "neutral";
+}
 
 export default function VendorOrdersScreen() {
   const insets = useSafeAreaInsets();
@@ -41,19 +55,6 @@ export default function VendorOrdersScreen() {
     void fetchOrders(session);
   }, [fetchOrders, hasVendorAccess, session]);
 
-  if (isCheckingVendorAccess || isLoadingOrders) {
-    return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Vendor Orders" />
-        <ScreenLoader label="Loading vendor orders..." />
-      </View>
-    );
-  }
-
-  if (!hasVendorAccess) {
-    return null;
-  }
-
   const handleAdvance = async (orderId: string, status: VendorOrderStatus) => {
     const nextStatus = NEXT_STATUS[status];
     if (!nextStatus) {
@@ -72,29 +73,54 @@ export default function VendorOrdersScreen() {
     }
   };
 
+  if (isCheckingVendorAccess) {
+    return (
+      <VendorScreenShell title="Vendor Orders" loading loadingLabel="Loading vendor orders..." />
+    );
+  }
+
+  if (!hasVendorAccess) {
+    return null;
+  }
+
+  const showLoader = isLoadingOrders && orders.length === 0;
+
+  if (showLoader) {
+    return (
+      <VendorScreenShell title="Vendor Orders" loading loadingLabel="Loading vendor orders..." />
+    );
+  }
+
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Vendor Orders" />
+    <VendorScreenShell title="Vendor Orders">
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
-          styles.listContent,
+          vendorStyles.listContent,
           { paddingBottom: insets.bottom + rV(28) },
         ]}
         ListHeaderComponent={
-          <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-            <Text style={styles.pageTitle}>Fulfillment queue</Text>
-            <Text style={styles.pageBody}>
-              These are vendor-facing orders only. Update status as orders move from confirmation to delivery.
-            </Text>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+            <VendorPageIntro
+              title="Fulfillment queue"
+              subtitle="Vendor-facing orders only. Update status as each order moves from confirmation to delivery."
+              stats={[
+                { value: orders.length, label: "Orders" },
+                {
+                  value: orders.filter((o) => o.status !== "delivered").length,
+                  label: "Active",
+                },
+              ]}
+              error={error}
+            />
           </View>
         }
         ListEmptyComponent={
-          <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-            <VendorEmptyState
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+            <AccountEmptyState
               icon="receipt-outline"
               title="No vendor orders yet"
               message="Orders placed for your approved store will appear here with customer and fulfillment details."
@@ -105,20 +131,19 @@ export default function VendorOrdersScreen() {
           const nextStatus = NEXT_STATUS[item.status];
 
           return (
-            <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-              <View style={styles.card}>
+            <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+              <AccountListCard style={styles.orderCard}>
                 <View style={styles.headerRow}>
-                  <View>
+                  <View style={styles.headerCopy}>
                     <Text style={styles.orderNumber}>{item.orderNumber}</Text>
                     <Text style={styles.customerName}>
                       {item.customerName || "ODOS Customer"}
                     </Text>
                   </View>
-                  <View style={styles.statusPill}>
-                    <Text style={styles.statusPillLabel}>
-                      {item.status.replace(/_/g, " ")}
-                    </Text>
-                  </View>
+                  <AccountBadge
+                    label={item.status.replace(/_/g, " ")}
+                    tone={orderStatusTone(item.status)}
+                  />
                 </View>
 
                 <View style={styles.metaGrid}>
@@ -130,68 +155,29 @@ export default function VendorOrdersScreen() {
                 </View>
 
                 {nextStatus ? (
-                  <TouchableOpacity
-                    style={[styles.primaryButton, isUpdatingOrder && styles.buttonDisabled]}
+                  <AccountActionButton
+                    label={
+                      isUpdatingOrder
+                        ? "Updating..."
+                        : `Mark as ${nextStatus.replace(/_/g, " ")}`
+                    }
+                    variant="primary"
                     onPress={() => handleAdvance(item.id, item.status)}
                     disabled={isUpdatingOrder}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.primaryButtonLabel}>
-                      {isUpdatingOrder
-                        ? "Updating..."
-                        : `Mark as ${nextStatus.replace(/_/g, " ")}`}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 ) : null}
-              </View>
+              </AccountListCard>
             </View>
           );
         }}
       />
-    </View>
+    </VendorScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  listContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  pageTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(20),
-  },
-  pageBody: {
-    marginTop: rV(8),
-    marginBottom: rV(14),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-  },
-  errorText: {
+  orderCard: {
     marginBottom: rV(10),
-    color: "#B91C1C",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(16),
-    marginBottom: rV(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
   },
   headerRow: {
     flexDirection: "row",
@@ -199,53 +185,27 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: rS(12),
   },
+  headerCopy: {
+    flex: 1,
+  },
   orderNumber: {
-    color: AppColors.text,
-    fontFamily: Fonts.title,
+    fontFamily: Fonts.titleBold,
     fontSize: rMS(14),
+    color: AppColors.text,
   },
   customerName: {
     marginTop: rV(4),
-    color: AppColors.secondary,
     fontFamily: Fonts.text,
     fontSize: rMS(12.5),
-  },
-  statusPill: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(6),
-  },
-  statusPillLabel: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11.5),
-    textTransform: "capitalize",
+    color: "#6B7280",
   },
   metaGrid: {
-    marginTop: rV(14),
-    gap: rV(6),
+    marginTop: rV(12),
+    gap: rV(5),
   },
   metaText: {
-    color: AppColors.secondary,
     fontFamily: Fonts.text,
     fontSize: rMS(12.5),
-  },
-  primaryButton: {
-    marginTop: rV(16),
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(999),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(14),
-  },
-  buttonDisabled: {
-    opacity: 0.72,
-  },
-  primaryButtonLabel: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    textTransform: "capitalize",
+    color: "#6B7280",
   },
 });

@@ -1,4 +1,5 @@
 import UserAvatar from "@/components/UserAvatar";
+import VendorQuickAccessButton from "@/components/vendor/VendorQuickAccessButton";
 import { useAuth } from "@/context/AuthContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -64,7 +65,9 @@ export const HomeHeader = () => {
           </Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity
+      <View style={{ flexDirection: "row", alignItems: "center", gap: rS(10) }}>
+        <VendorQuickAccessButton compact />
+        <TouchableOpacity
         onPress={() => {
           if (
             !requireAuth({
@@ -109,6 +112,7 @@ export const HomeHeader = () => {
           </View>
         ) : null}
       </TouchableOpacity>
+      </View>
     </View>
   );
 };

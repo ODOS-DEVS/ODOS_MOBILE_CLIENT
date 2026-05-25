@@ -1,21 +1,19 @@
 import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreCard from "@/components/cards/StoreCard";
-import { SearchBar } from "@/components/SearchBar";
-import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState, useEffect } from "react";
 import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  CommerceFilterChips,
+  CommerceSeeAllEmptyState,
+  CommerceSeeAllHero,
+  CommerceSeeAllSearch,
+  CommerceSeeAllSectionHeader,
+  commerceSeeAllScreenStyles,
+} from "@/components/browse/CommerceSeeAllUi";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
+import { rS, rV, useResponsive } from "@/styles/responsive";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { FlatList, ScrollView, View } from "react-native";
 
 const MarketScreen = () => {
   const { activeMarket: initialMarketParam, activeMarketSlug: initialMarketSlugParam } =
@@ -43,17 +41,25 @@ const MarketScreen = () => {
 
   const marketNames = useMemo(
     () => ["All", ...Array.from(new Set(marketItems.map((m) => m.title)))],
-    [marketItems]
+    [marketItems],
   );
 
   const filteredStores = useMemo(
     () => (isSearching ? searchResults : fetchedStores),
-    [fetchedStores, isSearching, searchResults]
+    [fetchedStores, isSearching, searchResults],
   );
 
+  const filterChips = useMemo(
+    () =>
+      marketNames.map((name) => ({
+        key: name,
+        label: name,
+        count: name === activeMarket ? filteredStores.length : undefined,
+      })),
+    [activeMarket, filteredStores.length, marketNames],
+  );
 
   useEffect(() => {
-    // Update if navigated with a new param
     if (
       typeof initialMarketParam === "string" &&
       initialMarketParam.length &&
@@ -72,25 +78,46 @@ const MarketScreen = () => {
   };
 
   const handleReset = () => {
-    setActiveMarket("All");
-    setIsSearching(false);
-    setSearchResults([]);
-    setSearchSessionKey((prev) => prev + 1);
+    handleMarketChange("All");
   };
 
+  const sectionTitle =
+    activeMarket === "All" ? "All market stores" : `Stores in ${activeMarket}`;
+
   return (
-    <View style={styles.container}>
+    <View style={commerceSeeAllScreenStyles.screen}>
       <ProfileHeader title="Markets" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: horizontalPadding,
-          paddingBottom: sectionSpacing,
-          paddingTop: rV(8),
-        }}
+        contentContainerStyle={[
+          commerceSeeAllScreenStyles.scrollContent,
+          {
+            paddingHorizontal: horizontalPadding,
+            paddingBottom: sectionSpacing,
+          },
+        ]}
       >
-        <SearchBar
+        <CommerceSeeAllHero
+          badgeIcon="location-outline"
+          badgeLabel="Markets & hubs"
+          title="Find stores by market"
+          subtitle="Filter by popular markets across Ghana and discover vendors near the areas you shop most."
+          accent="default"
+          stats={[
+            { value: marketItems.length, label: "markets" },
+            { value: filteredStores.length, label: "stores shown" },
+            {
+              value:
+                activeMarket.length > 12
+                  ? `${activeMarket.slice(0, 12)}…`
+                  : activeMarket,
+              label: "selected",
+            },
+          ]}
+        />
+
+        <CommerceSeeAllSearch
           key={`${activeMarket}-${searchSessionKey}`}
           data={fetchedStores}
           onStartSearch={() => setIsSearching(true)}
@@ -98,56 +125,36 @@ const MarketScreen = () => {
             setIsSearching(true);
             setSearchResults(results);
           }}
-          placeholder="Search stores by name, category or market..."
-          containerStyle={{ marginTop: rV(12) }}
+          placeholder="Search stores by name, category, or market"
+          searchKeys={["title", "category", "subtitle", "name", "store"]}
         />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          style={{ marginTop: rV(12) }}
-        >
-          {marketNames.map((marketName) => {
-            const isActive = marketName === activeMarket;
-            return (
-              <TouchableOpacity
-                key={marketName}
-                onPress={() => handleMarketChange(marketName)}
-                activeOpacity={0.85}
-                style={[styles.chip, isActive && styles.chipActive]}
-              >
-                <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
-                  {marketName}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity
-            onPress={handleReset}
-            activeOpacity={0.8}
-            style={styles.resetChip}
-          >
-            <Text style={styles.resetChipLabel}>Reset</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        <CommerceFilterChips
+          chips={filterChips}
+          activeKey={activeMarket}
+          onChange={handleMarketChange}
+          trailingAction={{ label: "Reset", onPress: handleReset }}
+        />
 
-        <View style={{ marginTop: sectionSpacing }}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {activeMarket === "All" ? "Stores" : `Stores in ${activeMarket}`}
-            </Text>
-          </View>
+        <View style={commerceSeeAllScreenStyles.contentBlock}>
+          <CommerceSeeAllSectionHeader
+            title={sectionTitle}
+            subtitle={
+              isSearching
+                ? `${filteredStores.length} search result${filteredStores.length === 1 ? "" : "s"}`
+                : "Tap a market above to narrow the list"
+            }
+            count={filteredStores.length}
+          />
 
           {isLoadingMarkets || isLoadingStores ? (
             <StoreGridSkeleton />
           ) : filteredStores.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No stores here yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Try another market or reset to see all stores.
-              </Text>
-            </View>
+            <CommerceSeeAllEmptyState
+              icon="location-outline"
+              title="No stores here yet"
+              subtitle="Try another market or reset to see all stores."
+            />
           ) : (
             <FlatList
               data={filteredStores}
@@ -160,10 +167,10 @@ const MarketScreen = () => {
                   {...item}
                   cardWidth={gridCardWidth(2, rS(12))}
                   horizontalSpacing={0}
-                  category={(item as any).market ?? item.category}
+                  category={(item as { market?: string }).market ?? item.category}
                 />
               )}
-              contentContainerStyle={{ paddingTop: rV(12) }}
+              contentContainerStyle={{ paddingTop: rV(4) }}
             />
           )}
         </View>
@@ -173,156 +180,3 @@ const MarketScreen = () => {
 };
 
 export default MarketScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  heroEyebrow: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-    letterSpacing: 0.4,
-  },
-  heroTitle: {
-    marginTop: rV(8),
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroSubtitle: {
-    marginTop: rV(6),
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-  },
-  heroActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: rV(12),
-  },
-  heroStat: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  heroStatValue: {
-    marginLeft: rS(6),
-    fontSize: rMS(12.5),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroDivider: {
-    width: 1,
-    height: rV(16),
-    backgroundColor: "#E2E8F0",
-    marginHorizontal: rS(10),
-  },
-  mapPill: {
-    marginLeft: "auto",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: rMS(18),
-    backgroundColor: "#EEF2F5",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E2E8F0",
-  },
-  mapPillText: {
-    marginLeft: rS(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  chipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  chip: {
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(8),
-    borderRadius: rMS(18),
-    backgroundColor: "#EEF2F5",
-    marginRight: rS(8),
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  chipActive: {
-    backgroundColor: AppColors.text,
-    borderColor: AppColors.text,
-  },
-  chipLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  chipLabelActive: {
-    color: AppColors.white,
-  },
-  resetChip: {
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: rMS(18),
-    backgroundColor: "transparent",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#CBD5E1",
-  },
-  resetChipLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  sectionCount: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-  },
-  emptyState: {
-    marginTop: rV(16),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(14),
-    paddingVertical: rV(20),
-    paddingHorizontal: rS(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    alignItems: "center",
-  },
-  emptyTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  emptySubtitle: {
-    marginTop: rV(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-    lineHeight: rMS(17),
-  },
-});
