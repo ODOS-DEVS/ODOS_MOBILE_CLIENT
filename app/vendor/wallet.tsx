@@ -1,7 +1,13 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
-import ProfileHeader from "@/components/profile/ProfileHeader";
 import TextInputField from "@/components/TextInputField";
+import {
+  AccountListCard,
+  formatVendorCurrency,
+  VendorDetailRow,
+  VendorPageIntro,
+  VendorScreenShell,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -42,13 +48,6 @@ const PAYOUT_METHOD_OPTIONS: Array<{
   { value: "mobile_money", label: "Mobile money" },
   { value: "bank_transfer", label: "Bank transfer" },
 ];
-
-function formatCurrency(value: number, currency = "GHS") {
-  return `${currency} ${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) {
@@ -248,22 +247,22 @@ export default function VendorWalletScreen() {
     return [
       {
         label: "Available balance",
-        value: formatCurrency(wallet.availableBalance, wallet.currency),
+        value: formatVendorCurrency(wallet.availableBalance, wallet.currency),
         helper: "Ready for withdrawal requests",
       },
       {
         label: "Pending withdrawals",
-        value: formatCurrency(wallet.pendingWithdrawalBalance, wallet.currency),
+        value: formatVendorCurrency(wallet.pendingWithdrawalBalance, wallet.currency),
         helper: "Held while ODOS reviews or pays out",
       },
       {
         label: "Lifetime earnings",
-        value: formatCurrency(wallet.lifetimeEarnings, wallet.currency),
+        value: formatVendorCurrency(wallet.lifetimeEarnings, wallet.currency),
         helper: "Net vendor earnings settled so far",
       },
       {
         label: "ODOS commission",
-        value: formatCurrency(wallet.totalCommission, wallet.currency),
+        value: formatVendorCurrency(wallet.totalCommission, wallet.currency),
         helper: "Marketplace fee deducted before payout",
       },
     ];
@@ -305,10 +304,11 @@ export default function VendorWalletScreen() {
 
   if (isCheckingVendorAccess || isLoading) {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Vendor Wallet" />
-        <ScreenLoader label="Loading your vendor wallet..." />
-      </View>
+      <VendorScreenShell
+        title="Vendor Wallet"
+        loading
+        loadingLabel="Loading your vendor wallet..."
+      />
     );
   }
 
@@ -381,47 +381,37 @@ export default function VendorWalletScreen() {
     }
   }
 
+  const walletCurrency = wallet?.currency ?? "GHS";
+
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Vendor Wallet" />
+    <VendorScreenShell title="Vendor Wallet">
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
-          styles.scrollContent,
+          vendorStyles.content,
           { paddingBottom: insets.bottom + rV(28) },
         ]}
       >
-        <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-          <View style={styles.heroCard}>
-            <Text style={styles.heroOverline}>Vendor wallet</Text>
-            <Text style={styles.heroValue}>
-              {formatCurrency(
-                wallet?.availableBalance ?? 0,
-                wallet?.currency ?? "GHS",
-              )}
-            </Text>
-            <Text style={styles.heroBody}>
-              Settled earnings land here after ODOS deducts marketplace commission.
-              Withdraw from this balance whenever you are ready for payout review.
-            </Text>
-
-            <View style={styles.heroMetaRow}>
-              <View style={styles.heroMetaCard}>
-                <Text style={styles.heroMetaLabel}>Saved payout route</Text>
-                <Text style={styles.heroMetaValue}>{payoutDestination}</Text>
-              </View>
-              <View style={styles.heroMetaCard}>
-                <Text style={styles.heroMetaLabel}>Total withdrawn</Text>
-                <Text style={styles.heroMetaValue}>
-                  {formatCurrency(
-                    wallet?.totalWithdrawn ?? 0,
-                    wallet?.currency ?? "GHS",
-                  )}
-                </Text>
-              </View>
-            </View>
-          </View>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <VendorPageIntro
+            title="Vendor wallet"
+            subtitle="Settled earnings land here after ODOS deducts marketplace commission. Withdraw when you are ready for payout review."
+            stats={[
+              {
+                value: formatVendorCurrency(wallet?.availableBalance ?? 0, walletCurrency),
+                label: "Available",
+              },
+              {
+                value: formatVendorCurrency(wallet?.totalWithdrawn ?? 0, walletCurrency),
+                label: "Withdrawn",
+              },
+            ]}
+            error={error}
+          />
+          <AccountListCard>
+            <VendorDetailRow label="Saved payout route" value={payoutDestination} isLast />
+          </AccountListCard>
 
           {walletSummary ? (
             <View style={styles.summaryGrid}>
@@ -485,7 +475,7 @@ export default function VendorWalletScreen() {
                 onChangeText={setWithdrawalAmount}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
-                helperText={`Available now: ${formatCurrency(
+                helperText={`Available now: ${formatVendorCurrency(
                   wallet?.availableBalance ?? 0,
                   wallet?.currency ?? "GHS",
                 )}`}
@@ -626,7 +616,7 @@ export default function VendorWalletScreen() {
                     <View style={styles.listHeader}>
                       <View style={styles.listTitleWrap}>
                         <Text style={styles.listTitle}>
-                          {formatCurrency(request.amount, wallet.currency)}
+                          {formatVendorCurrency(request.amount, wallet.currency)}
                         </Text>
                         <Text style={styles.listMeta}>
                           Requested {formatDateTime(request.createdAt)}
@@ -736,12 +726,12 @@ export default function VendorWalletScreen() {
                         ]}
                       >
                         {isPositive ? "+" : ""}
-                        {formatCurrency(transaction.amount, wallet.currency)}
+                        {formatVendorCurrency(transaction.amount, wallet.currency)}
                       </Text>
                     </View>
                     <Text style={styles.listMeta}>
                       Balance after:{" "}
-                      {formatCurrency(transaction.balanceAfter, wallet.currency)}
+                      {formatVendorCurrency(transaction.balanceAfter, wallet.currency)}
                     </Text>
                     <View style={styles.detailChipsRow}>
                       <View style={styles.detailChip}>
@@ -753,10 +743,10 @@ export default function VendorWalletScreen() {
                     {transaction.grossAmount !== null &&
                     transaction.grossAmount !== undefined ? (
                       <Text style={styles.listMeta}>
-                        Gross: {formatCurrency(transaction.grossAmount, wallet.currency)}
+                        Gross: {formatVendorCurrency(transaction.grossAmount, wallet.currency)}
                         {transaction.commissionAmount !== null &&
                         transaction.commissionAmount !== undefined
-                          ? ` · Commission: ${formatCurrency(
+                          ? ` · Commission: ${formatVendorCurrency(
                               transaction.commissionAmount,
                               wallet.currency,
                             )}`
@@ -864,7 +854,7 @@ export default function VendorWalletScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </VendorScreenShell>
   );
 }
 

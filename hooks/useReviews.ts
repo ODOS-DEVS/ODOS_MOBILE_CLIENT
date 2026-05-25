@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
+import { enrichStoredReview, enrichStoredReviews } from "@/utils/reviewImages";
 import { resolveApiMediaUrl } from "@/utils/media";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -152,7 +153,8 @@ export function useReviews() {
       }
 
       const payload = (await response.json()) as UserReviewApiItem[];
-      setReviews(payload.map(mapUserReview));
+      const mapped = payload.map(mapUserReview);
+      setReviews(await enrichStoredReviews(mapped));
     } catch {
       setReviews([]);
     } finally {
@@ -190,11 +192,16 @@ export function useReviews() {
       }
 
       const payload = mapUserReview((await response.json()) as UserReviewApiItem);
+      const enriched = await enrichStoredReview(payload, {
+        imageUrl: draft.imageUrl,
+        imageKey: draft.imageKey,
+      });
+
       setReviews((current) => {
-        const existingIndex = current.findIndex((item) => item.id === payload.id);
+        const existingIndex = current.findIndex((item) => item.id === enriched.id);
         if (existingIndex >= 0) {
           const next = [...current];
-          next[existingIndex] = payload;
+          next[existingIndex] = enriched;
           return next.sort(
             (left, right) =>
               new Date(right.updatedAt).getTime() -
@@ -202,13 +209,13 @@ export function useReviews() {
           );
         }
 
-        return [payload, ...current].sort(
+        return [enriched, ...current].sort(
           (left, right) =>
             new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
         );
       });
 
-      return payload;
+      return enriched;
     },
     [accessToken],
   );

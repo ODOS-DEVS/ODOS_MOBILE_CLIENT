@@ -1,28 +1,32 @@
 import CartItemCard from "@/components/cards/CartItemCard";
+import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
+import { CartPageSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { CartItem, useCart } from "@/context/CartContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { formatCurrency } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo } from "react";
 import {
+  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-
-const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MyCart = () => {
-  const { cart, increaseQty, decreaseQty, removeItem } = useCart();
+  const insets = useSafeAreaInsets();
+  const { cart, increaseQty, decreaseQty, removeItem, clearCart, isSyncingCart, refreshCart } =
+    useCart();
   const { requireAuth } = useRequireAuth();
-  const [promoCode, setPromoCode] = useState("");
 
   const isEmpty = cart.length === 0;
   const itemCount = useMemo(
@@ -38,6 +42,13 @@ const MyCart = () => {
 
   const shipping = 0;
   const total = subtotal + shipping;
+  const stickyBarHeight = rV(76) + insets.bottom;
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshCart();
+    }, [refreshCart]),
+  );
 
   const openCheckout = () => {
     if (
@@ -56,114 +67,151 @@ const MyCart = () => {
     });
   };
 
+  const confirmClearCart = () => {
+    Alert.alert("Clear cart?", "Remove every item from your cart?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear cart",
+        style: "destructive",
+        onPress: () => {
+          void clearCart();
+        },
+      },
+    ]);
+  };
+
+  const showInitialLoader = isSyncingCart && isEmpty;
+
   return (
     <View style={styles.container}>
       <ProfileHeader title="My Cart" showBackButton={false} />
 
-      {isEmpty ? (
+      {showInitialLoader ? (
+        <CartPageSkeleton />
+      ) : isEmpty ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.emptyContent}
+          contentContainerStyle={[
+            styles.emptyContent,
+            { paddingBottom: insets.bottom + rV(100) },
+          ]}
         >
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="bag-handle-outline" size={34} color={AppColors.text} />
-            </View>
-
-            <Text style={styles.emptyTitle}>Your cart is empty</Text>
-
-            <Text style={styles.emptyDescription}>
-              Add the items you love and they’ll be ready here when it’s time
-              to check out.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => router.push("/")}
-              style={styles.emptyButton}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.emptyButtonText}>Continue Shopping</Text>
-            </TouchableOpacity>
-          </View>
+          <CommerceEmptyState
+            icon="bag-handle-outline"
+            title="Your cart is empty"
+            message="Save items you love while browsing. They'll stay here until you're ready to check out."
+            primaryLabel="Start shopping"
+            onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
+            secondaryLabel="Browse categories"
+            onSecondaryPress={() => router.push("/(root)/(tabs)/category" as any)}
+          />
         </ScrollView>
       ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Cart Items</Text>
-            <Text style={styles.sectionMeta}>
-              {itemCount} piece{itemCount === 1 ? "" : "s"}
-            </Text>
-          </View>
-
-          <View style={styles.itemsSection}>
-            {cart.map((item) => (
-              <CartItemCard
-                key={item.id}
-                {...item}
-                onIncrease={() => increaseQty(item.id)}
-                onDecrease={() => decreaseQty(item.id)}
-                onRemove={() => removeItem(item.id)}
+        <>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: stickyBarHeight + rV(16) },
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={isSyncingCart}
+                onRefresh={() => void refreshCart()}
+                tintColor={AppColors.primary}
               />
-            ))}
-          </View>
-
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Order Summary</Text>
-
-            <View style={styles.promoRow}>
-              <View style={styles.promoInputWrap}>
-                <Ionicons
-                  name="pricetag-outline"
-                  size={16}
-                  color={AppColors.secondary}
-                />
-                <TextInput
-                  placeholder="Enter promo code"
-                  placeholderTextColor="#9CA3AF"
-                  value={promoCode}
-                  onChangeText={setPromoCode}
-                  style={styles.promoInput}
-                />
+            }
+          >
+            <View style={styles.toolbar}>
+              <View style={styles.toolbarCopy}>
+                <Text style={styles.toolbarTitle}>
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
+                </Text>
+                <Text style={styles.toolbarMeta}>Pull down to refresh</Text>
               </View>
-
-              <TouchableOpacity style={styles.addButton} activeOpacity={0.85}>
-                <Text style={styles.addButtonText}>Apply</Text>
+              <TouchableOpacity
+                onPress={confirmClearCart}
+                style={styles.clearButton}
+                activeOpacity={0.82}
+              >
+                <Text style={styles.clearButtonText}>Clear</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(subtotal)}</Text>
+            <View style={styles.bagCard}>
+              <View style={styles.bagHeader}>
+                <View style={styles.bagIcon}>
+                  <Ionicons name="bag-handle" size={rS(16)} color={AppColors.primary} />
+                </View>
+                <Text style={styles.bagTitle}>Your picks</Text>
+                <Text style={styles.bagCount}>{itemCount}</Text>
+              </View>
+
+              {cart.map((item, index) => (
+                <CartItemCard
+                  key={item.id}
+                  {...item}
+                  embedded
+                  showDivider={index > 0}
+                  onIncrease={() => void increaseQty(item.id)}
+                  onDecrease={() => void decreaseQty(item.id)}
+                  onRemove={() => void removeItem(item.id)}
+                />
+              ))}
             </View>
 
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.shippingFree}>FREE</Text>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Summary</Text>
+
+              <View style={styles.voucherNote}>
+                <Ionicons name="ticket-outline" size={rS(15)} color={AppColors.primary} />
+                <Text style={styles.voucherNoteText}>
+                  Voucher codes apply at checkout.
+                </Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(subtotal)}</Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Delivery</Text>
+                <Text style={styles.shippingFree}>Calculated at checkout</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.totalLabel}>Estimated total</Text>
+                <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
+              </View>
+
+              <Text style={styles.summaryHint}>
+                Final tax, discounts, and delivery fees are confirmed at checkout.
+              </Text>
             </View>
+          </ScrollView>
 
-            <View style={styles.divider} />
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
+          <View style={[styles.stickyBar, { paddingBottom: insets.bottom + rV(12) }]}>
+            <View style={styles.stickyCopy}>
+              <Text style={styles.stickyLabel}>Total</Text>
+              <Text style={styles.stickyValue}>{formatCurrency(total)}</Text>
+              <Text style={styles.stickyMeta}>
+                {itemCount} item{itemCount === 1 ? "" : "s"}
+              </Text>
             </View>
-
-            <Text style={styles.summaryHint}>
-              Taxes and delivery details will be confirmed at checkout.
-            </Text>
+            <TouchableOpacity
+              onPress={openCheckout}
+              style={styles.checkoutButton}
+              activeOpacity={0.9}
+              disabled={isSyncingCart}
+            >
+              <Text style={styles.checkoutButtonText}>Checkout</Text>
+              <Ionicons name="arrow-forward" size={rS(18)} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            onPress={openCheckout}
-            style={styles.checkoutButton}
-            activeOpacity={0.88}
-          >
-            <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </>
       )}
     </View>
   );
@@ -176,94 +224,135 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(120),
+    paddingTop: rV(14),
   },
   emptyContent: {
     paddingHorizontal: rS(16),
-    paddingTop: rV(32),
-    paddingBottom: rV(120),
+    paddingTop: rV(8),
   },
-  sectionHeader: {
+  toolbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: rV(10),
+    marginBottom: rV(14),
+    gap: rS(12),
   },
-  sectionTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-    color: AppColors.text,
-  },
-  sectionMeta: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    color: AppColors.subtext[100],
-  },
-  itemsSection: {
-    marginBottom: rV(12),
-  },
-  summaryCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(16),
-    borderWidth: 1,
-    borderColor: "#E8ECEF",
-    marginBottom: rV(18),
-  },
-  summaryTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-    color: AppColors.text,
-    marginBottom: rV(12),
-  },
-  promoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: rV(16),
-  },
-  promoInputWrap: {
+  toolbarCopy: {
     flex: 1,
-    minHeight: rV(48),
-    backgroundColor: "#F3F5F6",
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(12),
-    marginRight: rS(10),
+    gap: rV(2),
+  },
+  toolbarTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(17),
+    color: AppColors.text,
+  },
+  toolbarMeta: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
+    color: "#9CA3AF",
+  },
+  clearButton: {
+    borderRadius: rS(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(8),
+  },
+  clearButtonText: {
+    color: "#DC2626",
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12),
+  },
+  bagCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: rMS(20),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
+    marginBottom: rV(12),
+    overflow: "hidden",
+  },
+  bagHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(8),
+    paddingHorizontal: rS(12),
+    paddingTop: rV(12),
+    paddingBottom: rV(8),
+    backgroundColor: "#F8FAFC",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F1F5F9",
   },
-  promoInput: {
-    flex: 1,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-    paddingVertical: 0,
-  },
-  addButton: {
-    minHeight: rV(48),
-    paddingHorizontal: rS(16),
-    borderRadius: rMS(14),
-    backgroundColor: AppColors.text,
+  bagIcon: {
+    width: rS(28),
+    height: rS(28),
+    borderRadius: rS(10),
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
   },
-  addButtonText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
+  bagTitle: {
+    flex: 1,
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(13),
+    color: AppColors.text,
+  },
+  bagCount: {
+    minWidth: rS(22),
+    textAlign: "center",
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(11),
+    color: AppColors.primary,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: rS(8),
+    paddingVertical: rV(3),
+    borderRadius: rS(999),
+    overflow: "hidden",
+  },
+  summaryCard: {
+    backgroundColor: AppColors.white,
+    borderRadius: rMS(18),
+    paddingHorizontal: rS(14),
+    marginBottom: rV(62),
+    paddingVertical: rV(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E6EAF0",
+  },
+  summaryTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+    color: AppColors.text,
+    marginBottom: rV(8),
+  },
+  voucherNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+    borderRadius: rMS(12),
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(8),
+    marginBottom: rV(10),
+  },
+  voucherNoteText: {
+    flex: 1,
+    color: "#4B5563",
+    fontFamily: Fonts.text,
+    fontSize: rMS(12.5),
+    lineHeight: rMS(18),
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: rV(12),
+    marginBottom: rV(10),
   },
   summaryLabel: {
     color: "#6B7280",
-    fontFamily: Fonts.title,
-    fontSize: rMS(14),
+    fontFamily: Fonts.text,
+    fontSize: rMS(13.5),
   },
   summaryValue: {
     color: AppColors.text,
@@ -271,19 +360,19 @@ const styles = StyleSheet.create({
     fontSize: rMS(14),
   },
   shippingFree: {
-    color: "#16A34A",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
+    color: "#059669",
+    fontFamily: Fonts.title,
+    fontSize: rMS(12.5),
   },
   divider: {
-    height: 1,
-    backgroundColor: "#E8ECEF",
-    marginBottom: rV(12),
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#E5E7EB",
+    marginVertical: rV(10),
   },
   totalLabel: {
     color: AppColors.text,
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
+    fontSize: rMS(15),
   },
   totalValue: {
     color: AppColors.text,
@@ -291,65 +380,65 @@ const styles = StyleSheet.create({
     fontSize: rMS(20),
   },
   summaryHint: {
-    marginTop: rV(2),
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
+    color: "#9CA3AF",
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
     lineHeight: rMS(16),
   },
+  stickyBar: {
+    position: "absolute",
+    left: rS(12),
+    right: rS(12),
+    bottom: rV(78),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+    paddingTop: rV(10),
+    paddingHorizontal: rS(14),
+    borderRadius: rMS(20),
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
+  },
+  stickyCopy: {
+    flex: 1,
+    gap: rV(1),
+  },
+  stickyLabel: {
+    color: "#6B7280",
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
+  },
+  stickyValue: {
+    color: AppColors.text,
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(20),
+  },
+  stickyMeta: {
+    color: "#9CA3AF",
+    fontFamily: Fonts.text,
+    fontSize: rMS(10.5),
+    marginTop: rV(2),
+  },
   checkoutButton: {
-    minHeight: rV(52),
-    borderRadius: rMS(16),
-    backgroundColor: AppColors.text,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: rV(6),
+    gap: rS(6),
+    minHeight: rV(44),
+    minWidth: rS(118),
+    borderRadius: rMS(14),
+    backgroundColor: AppColors.text,
+    paddingHorizontal: rS(18),
   },
   checkoutButtonText: {
-    color: AppColors.white,
+    color: "#FFFFFF",
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-  },
-  emptyState: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(28),
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(34),
-    alignItems: "center",
-    marginTop: rV(36),
-  },
-  emptyIconWrap: {
-    width: rMS(74),
-    height: rMS(74),
-    borderRadius: rMS(37),
-    backgroundColor: "#EEF2F4",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: rV(18),
-  },
-  emptyTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(22),
-    color: AppColors.text,
-    marginBottom: rV(8),
-  },
-  emptyDescription: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    color: AppColors.subtext[100],
-    textAlign: "center",
-    marginBottom: rV(22),
-  },
-  emptyButton: {
-    backgroundColor: AppColors.text,
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(14),
-  },
-  emptyButtonText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
     fontSize: rMS(14),
   },
 });

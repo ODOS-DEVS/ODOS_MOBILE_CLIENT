@@ -1,98 +1,102 @@
-import { PreferenceItem } from "@/components/PreferencesItem";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV } from "@/styles/responsive";
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  AccountInsightCard,
+  AccountSettingToggle,
+  AccountSettingsGroup,
+  AccountStickySaveBar,
+  AccountTipBanner,
+  accountStyles,
+} from "@/components/profile/ProfileHubUi";
+import { useToast } from "@/context/ToastContext";
+import { rV } from "@/styles/responsive";
+import React, { useMemo, useState } from "react";
+import { ScrollView, View } from "react-native";
 
 export default function PreferenceScreen() {
-  const [analytics, setAnalytics] = useState(false);
-  const [personalization, setPersonalization] = useState(false);
+  const { showToast } = useToast();
+  const [analytics, setAnalytics] = useState(true);
+  const [personalization, setPersonalization] = useState(true);
   const [socialMedia, setSocialMedia] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const enabledCount = useMemo(
+    () => [analytics, personalization, socialMedia, darkMode].filter(Boolean).length,
+    [analytics, darkMode, personalization, socialMedia],
+  );
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    setIsSaving(false);
+    showToast("Preferences saved on this device.");
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Preferences" />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[accountStyles.content, { paddingBottom: rV(100) }]}
       >
-        <View
-          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
-          className="shadow-sm"
-        >
-          <View style={styles.card}>
-            <PreferenceItem
-              title="Analytics"
-              description="Analytics helps us improve app performance and reliability."
-              value={analytics}
-              onValueChange={setAnalytics}
-            />
+        <AccountInsightCard
+          title="Your shopping experience"
+          subtitle="Control recommendations, privacy-friendly analytics, and how ODOS personalizes what you see."
+          stats={[
+            { value: enabledCount, label: "Enabled" },
+            { value: darkMode ? "Dark" : "Light", label: "Theme" },
+          ]}
+        />
 
-            <PreferenceItem
-              title="Personalization"
-              description="Customize recommendations and content based on your activity."
-              value={personalization}
-              onValueChange={setPersonalization}
-            />
+        <AccountTipBanner
+          title="You're in control"
+          message="These preferences apply to this device. You can change them any time."
+          icon="sparkles-outline"
+        />
 
-            <PreferenceItem
-              title="Social Media Cookies"
-              description="Allow social features for sharing products with your network."
-              value={socialMedia}
-              onValueChange={setSocialMedia}
-            />
+        <AccountSettingsGroup title="Recommendations">
+          <AccountSettingToggle
+            title="Personalized picks"
+            description="Tailor home and category suggestions based on your browsing and orders."
+            value={personalization}
+            onValueChange={setPersonalization}
+            isLast
+          />
+        </AccountSettingsGroup>
 
-            <PreferenceItem
-              title="Dark Mode"
-              description="Switch between light and dark interface themes."
-              value={darkMode}
-              onValueChange={setDarkMode}
-            />
-          </View>
-        </View>
+        <AccountSettingsGroup title="Privacy & data">
+          <AccountSettingToggle
+            title="Analytics"
+            description="Help us improve performance and reliability with anonymous usage insights."
+            value={analytics}
+            onValueChange={setAnalytics}
+          />
+          <AccountSettingToggle
+            title="Social sharing cookies"
+            description="Enable share-to-social features when you choose to post products."
+            value={socialMedia}
+            onValueChange={setSocialMedia}
+            isLast
+          />
+        </AccountSettingsGroup>
 
-        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
-          <Text style={styles.actionBtnText}>Save Changes</Text>
-        </TouchableOpacity>
+        <AccountSettingsGroup title="Appearance">
+          <AccountSettingToggle
+            title="Dark mode"
+            description="Switch to a darker interface. Full app theme support is rolling out soon."
+            value={darkMode}
+            onValueChange={setDarkMode}
+            isLast
+          />
+        </AccountSettingsGroup>
       </ScrollView>
+
+      <AccountStickySaveBar
+        label="Save preferences"
+        onPress={() => void handleSave()}
+        loading={isSaving}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    overflow: "hidden",
-  },
-  actionBtn: {
-    marginTop: rV(22),
-    borderRadius: rMS(50),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(14),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionBtnText: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-});

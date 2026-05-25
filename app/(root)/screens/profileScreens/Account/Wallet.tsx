@@ -1,22 +1,29 @@
+import {
+  AccountActionButton,
+  AccountActionRow,
+  AccountBadge,
+  AccountEmptyState,
+  AccountFab,
+  AccountFormField,
+  AccountFormSheet,
+  AccountInsightCard,
+  AccountListCard,
+  AccountIconShell,
+  accountStyles,
+} from "@/components/account/AccountUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AppColors } from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
 import {
   useProfile,
   type MomoNetwork,
   type PaymentType,
 } from "@/context/ProfileContext";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
-import { CreditCard, Phone, Plus, Star, Trash2, X } from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
@@ -89,12 +96,11 @@ export default function WalletScreen() {
     setFieldErrors({});
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
 
   const handleSave = async () => {
-    let savedPaymentId: string | null = null;
     const validationErrors = validateWalletForm(type, form);
     setFieldErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) {
@@ -103,6 +109,7 @@ export default function WalletScreen() {
 
     setIsSaving(true);
     try {
+      let savedPaymentId: string | null = null;
       if (type === "card") {
         const { cardName, cardNumber, expiry } = form;
         savedPaymentId = await addPayment({
@@ -123,6 +130,7 @@ export default function WalletScreen() {
           phone,
         });
       }
+
       if (fromCheckout && savedPaymentId) {
         setCheckoutPaymentId(savedPaymentId);
         resetForm();
@@ -130,6 +138,7 @@ export default function WalletScreen() {
         goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
         return;
       }
+
       resetForm();
       setShowModal(false);
     } catch (error) {
@@ -158,261 +167,298 @@ export default function WalletScreen() {
     goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
   };
 
+  const cardCount = paymentMethods.filter((item) => item.type === "card").length;
+  const momoCount = paymentMethods.filter((item) => item.type === "momo").length;
+
   return (
-    <View className="flex-1 bg-gray-100">
+    <View style={accountStyles.screen}>
       <ProfileHeader
-        title={fromCheckout ? "Choose Payment" : "Wallet"}
+        title={fromCheckout ? "Choose Payment" : "Payment Methods"}
         fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
       />
 
-      {!isSyncingProfileData && paymentMethods.length === 0 && (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
-            <CreditCard size={40} color="#6B7280" />
-          </View>
-          <Text className="text-xl font-semibold mb-2">No payment methods</Text>
-          <Text className="text-gray-500 text-center leading-6">
-            Add a card or mobile money to make payments faster.
-          </Text>
-        </View>
-      )}
+      {!isSyncingProfileData && paymentMethods.length === 0 ? (
+        <AccountEmptyState
+          icon="card-outline"
+          title="No payment methods"
+          message="Save a card or mobile money wallet for quicker checkout on ODOS."
+          actionLabel="Add payment method"
+          onAction={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+        />
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={accountStyles.content}
+        >
+          <AccountInsightCard
+            title="Saved payment methods"
+            subtitle="Cards and MoMo wallets stay here for checkout. Paystack handles the live charge when you place an order."
+            stats={[
+              { value: paymentMethods.length, label: "Saved" },
+              { value: cardCount, label: "Cards" },
+              { value: momoCount, label: "MoMo" },
+            ]}
+          />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-        {paymentMethods.map((p) => (
-          <View key={p.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center gap-3">
-                {p.type === "card" ? (
-                  <CreditCard size={22} />
-                ) : (
-                  <Phone size={22} />
-                )}
-                <View>
-                  <Text className="font-semibold text-base">{p.label}</Text>
-                  <Text className="text-gray-600 text-sm">
-                    {p.type === "card" ? "Debit / Credit Card" : p.network}
-                  </Text>
+          {paymentMethods.map((payment) => (
+            <AccountListCard key={payment.id}>
+              <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                <AccountIconShell
+                  icon={payment.type === "card" ? "card-outline" : "phone-portrait-outline"}
+                  backgroundColor={payment.type === "card" ? "#EEF2FF" : "#ECFDF5"}
+                  color={payment.type === "card" ? "#4F46E5" : "#059669"}
+                />
+                <View style={{ flex: 1 }}>
+                  <View style={accountStyles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={accountStyles.cardTitle}>{payment.label}</Text>
+                      <Text style={accountStyles.cardSubtitle}>
+                        {payment.type === "card"
+                          ? "Debit / credit card"
+                          : `${payment.network ?? "Mobile"} money`}
+                      </Text>
+                    </View>
+                    {payment.isDefault ? <AccountBadge label="Default" tone="dark" /> : null}
+                  </View>
                 </View>
               </View>
-              {p.isDefault && (
-                <View className="bg-black px-3 py-1 rounded-full">
-                  <Text className="text-white text-xs">Default</Text>
-                </View>
-              )}
-            </View>
 
-            <View className="flex-row mt-5 gap-2">
-              {fromCheckout && (
-                <TouchableOpacity
-                  onPress={() => handleUseForCheckout(p.id)}
-                  className="flex-1 bg-black rounded-xl py-3 items-center"
-                >
-                  <Text className="text-white text-sm font-semibold">
-                    Use this method
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {!fromCheckout && (
-                <>
-                  {!p.isDefault && (
-                    <TouchableOpacity
-                      onPress={() => setDefaultPayment(p.id)}
-                      className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
-                    >
-                      <Star size={16} />
-                      <Text className="text-xs font-semibold mt-1">
-                        Set Default
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => handleDelete(p.id)}
-                    className="flex-1 bg-red-50 rounded-xl py-3 items-center"
-                  >
-                    <Trash2 size={16} color="#DC2626" />
-                    <Text className="text-xs font-semibold text-red-600 mt-1">
-                      Remove
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+              <AccountActionRow>
+                {fromCheckout ? (
+                  <AccountActionButton
+                    label="Use this method"
+                    variant="primary"
+                    onPress={() => handleUseForCheckout(payment.id)}
+                  />
+                ) : (
+                  <>
+                    {!payment.isDefault ? (
+                      <AccountActionButton
+                        label="Set default"
+                        icon="star-outline"
+                        onPress={() => setDefaultPayment(payment.id)}
+                      />
+                    ) : null}
+                    <AccountActionButton
+                      label="Remove"
+                      variant="danger"
+                      icon="trash-outline"
+                      onPress={() => handleDelete(payment.id)}
+                    />
+                  </>
+                )}
+              </AccountActionRow>
+            </AccountListCard>
+          ))}
+        </ScrollView>
+      )}
 
-      <TouchableOpacity
+      <AccountFab
         onPress={() => {
           resetForm();
           setShowModal(true);
         }}
-        className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
+      />
+
+      <AccountFormSheet
+        visible={showModal}
+        title="Add payment method"
+        subtitle="Choose card or mobile money. Details are stored for faster checkout."
+        onClose={() => {
+          setShowModal(false);
+          resetForm();
+        }}
+        onSave={() => void handleSave()}
+        saveLabel="Save payment method"
+        isSaving={isSaving}
       >
-        <Plus size={26} color="white" />
-      </TouchableOpacity>
-
-      <Modal visible={showModal} animationType="slide">
-        <View className="flex-1 bg-white px-5 pt-14">
-          <View className="flex-row items-center mb-6 mt-10">
-            <TouchableOpacity
-              onPress={() => {
-                setShowModal(false);
-                resetForm();
-              }}
-              className="w-10 h-10 rounded-full bg-black/10 items-center justify-center"
-            >
-              <X size={20} color="#111827" />
-            </TouchableOpacity>
-            <Text className="text-xl font-semibold ml-4">
-              Add Payment Method
-            </Text>
-          </View>
-
-          <View className="flex-row gap-3 mb-6">
-            {(["card", "momo"] as const).map((t) => (
+        <View style={walletStyles.typeRow}>
+          {(["card", "momo"] as const).map((option) => {
+            const active = type === option;
+            return (
               <TouchableOpacity
-                key={t}
+                key={option}
+                style={[walletStyles.typeBtn, active && walletStyles.typeBtnActive]}
                 onPress={() => {
-                  setType(t);
+                  setType(option);
                   setFieldErrors({});
                 }}
-                className={`flex-1 py-4 rounded-xl items-center ${
-                  type === t ? "bg-black" : "bg-gray-100"
-                }`}
+                activeOpacity={0.88}
               >
-                {t === "card" ? (
-                  <CreditCard color={type === t ? "white" : "black"} />
-                ) : (
-                  <Phone color={type === t ? "white" : "black"} />
-                )}
-                <Text
-                  className={`mt-2 font-semibold ${
-                    type === t ? "text-white" : "text-black"
-                  }`}
-                >
-                  {t === "card" ? "Card" : "MoMo"}
+                <Text style={[walletStyles.typeText, active && walletStyles.typeTextActive]}>
+                  {option === "card" ? "Card" : "MoMo"}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            );
+          })}
+        </View>
 
-          {type === "card" && (
-            <>
-              <TextInput
-                placeholder="Cardholder Name"
-                value={form.cardName ?? ""}
-                onChangeText={(t) => {
-                  setForm({ ...form, cardName: t });
-                  setFieldErrors((current) => ({ ...current, cardName: undefined }));
-                }}
-                className="bg-gray-100 rounded-xl px-4 py-4 mb-4"
-              />
-              {fieldErrors.cardName ? (
-                <Text className="text-red-500 text-xs -mt-2 mb-3">{fieldErrors.cardName}</Text>
-              ) : null}
-              <TextInput
-                placeholder="Card Number"
-                keyboardType="number-pad"
-                value={form.cardNumber ?? ""}
-                onChangeText={(t) => {
-                  setForm({ ...form, cardNumber: t });
-                  setFieldErrors((current) => ({ ...current, cardNumber: undefined }));
-                }}
-                className="bg-gray-100 rounded-xl px-4 py-4 mb-4"
-              />
-              {fieldErrors.cardNumber ? (
-                <Text className="text-red-500 text-xs -mt-2 mb-3">{fieldErrors.cardNumber}</Text>
-              ) : null}
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <TextInput
-                    placeholder="MM/YY"
-                    value={form.expiry ?? ""}
-                    onChangeText={(t) => {
-                      setForm({ ...form, expiry: t });
-                      setFieldErrors((current) => ({ ...current, expiry: undefined }));
-                    }}
-                    className="bg-gray-100 rounded-xl px-4 py-4"
-                  />
-                  {fieldErrors.expiry ? (
-                    <Text className="text-red-500 text-xs mt-2">{fieldErrors.expiry}</Text>
-                  ) : null}
-                </View>
-                <View className="flex-1">
-                  <TextInput
-                    placeholder="CVV"
-                    keyboardType="number-pad"
-                    value={form.cvv ?? ""}
-                    onChangeText={(t) => {
-                      setForm({ ...form, cvv: t });
-                      setFieldErrors((current) => ({ ...current, cvv: undefined }));
-                    }}
-                    className="bg-gray-100 rounded-xl px-4 py-4"
-                  />
-                  {fieldErrors.cvv ? (
-                    <Text className="text-red-500 text-xs mt-2">{fieldErrors.cvv}</Text>
-                  ) : null}
-                </View>
+        {type === "card" ? (
+          <>
+            <AccountFormField
+              label="Cardholder name"
+              placeholder="Name on card"
+              value={form.cardName ?? ""}
+              onChangeText={(value) => {
+                setForm({ ...form, cardName: value });
+                setFieldErrors((current) => ({ ...current, cardName: undefined }));
+              }}
+              error={fieldErrors.cardName}
+            />
+            <AccountFormField
+              label="Card number"
+              placeholder="0000 0000 0000 0000"
+              keyboardType="number-pad"
+              value={form.cardNumber ?? ""}
+              onChangeText={(value) => {
+                setForm({ ...form, cardNumber: value });
+                setFieldErrors((current) => ({ ...current, cardNumber: undefined }));
+              }}
+              error={fieldErrors.cardNumber}
+            />
+            <View style={walletStyles.splitRow}>
+              <View style={{ flex: 1 }}>
+                <AccountFormField
+                  label="Expiry"
+                  placeholder="MM/YY"
+                  value={form.expiry ?? ""}
+                  onChangeText={(value) => {
+                    setForm({ ...form, expiry: value });
+                    setFieldErrors((current) => ({ ...current, expiry: undefined }));
+                  }}
+                  error={fieldErrors.expiry}
+                />
               </View>
-            </>
-          )}
-
-          {type === "momo" && (
-            <>
-              <Text className="font-semibold mb-3">Select Network</Text>
-              <View className="flex-row gap-3 mb-4">
-                {(["MTN", "Telecel", "AT"] as const).map((n) => (
+              <View style={{ flex: 1 }}>
+                <AccountFormField
+                  label="CVV"
+                  placeholder="123"
+                  keyboardType="number-pad"
+                  value={form.cvv ?? ""}
+                  onChangeText={(value) => {
+                    setForm({ ...form, cvv: value });
+                    setFieldErrors((current) => ({ ...current, cvv: undefined }));
+                  }}
+                  error={fieldErrors.cvv}
+                />
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={walletStyles.networkLabel}>Mobile network</Text>
+            <View style={walletStyles.networkRow}>
+              {(["MTN", "Telecel", "AT"] as const).map((network) => {
+                const active = form.network === network;
+                return (
                   <TouchableOpacity
-                    key={n}
+                    key={network}
+                    style={[walletStyles.networkBtn, active && walletStyles.networkBtnActive]}
                     onPress={() => {
-                      setForm({ ...form, network: n });
+                      setForm({ ...form, network });
                       setFieldErrors((current) => ({ ...current, network: undefined }));
                     }}
-                    className={`flex-1 py-4 rounded-xl items-center ${
-                      form.network === n ? "bg-black" : "bg-gray-100"
-                    }`}
+                    activeOpacity={0.88}
                   >
                     <Text
-                      className={`font-semibold ${
-                        form.network === n ? "text-white" : "text-black"
-                      }`}
+                      style={[walletStyles.networkText, active && walletStyles.networkTextActive]}
                     >
-                      {n}
+                      {network}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-              {fieldErrors.network ? (
-                <Text className="text-red-500 text-xs -mt-2 mb-3">{fieldErrors.network}</Text>
-              ) : null}
-              <TextInput
-                placeholder="Phone Number"
-                keyboardType="phone-pad"
-                value={form.phone ?? ""}
-                onChangeText={(t) => {
-                  setForm({ ...form, phone: t });
-                  setFieldErrors((current) => ({ ...current, phone: undefined }));
-                }}
-                className="bg-gray-100 rounded-xl px-4 py-4"
-              />
-              {fieldErrors.phone ? (
-                <Text className="text-red-500 text-xs mt-2">{fieldErrors.phone}</Text>
-              ) : null}
-            </>
-          )}
-
-          <TouchableOpacity
-            onPress={handleSave}
-            className="bg-black py-4 rounded-full mt-8"
-            disabled={isSaving}
-            style={{ opacity: isSaving ? 0.7 : 1 }}
-          >
-            <Text className="text-white text-center font-semibold text-base">
-              {isSaving ? "Saving..." : "Save Payment Method"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+                );
+              })}
+            </View>
+            {fieldErrors.network ? (
+              <Text style={walletStyles.error}>{fieldErrors.network}</Text>
+            ) : null}
+            <AccountFormField
+              label="MoMo number"
+              placeholder="Phone number"
+              keyboardType="phone-pad"
+              value={form.phone ?? ""}
+              onChangeText={(value) => {
+                setForm({ ...form, phone: value });
+                setFieldErrors((current) => ({ ...current, phone: undefined }));
+              }}
+              error={fieldErrors.phone}
+            />
+          </>
+        )}
+      </AccountFormSheet>
     </View>
   );
 }
+
+const walletStyles = StyleSheet.create({
+  typeRow: {
+    flexDirection: "row",
+    gap: rS(8),
+    marginBottom: rV(14),
+  },
+  typeBtn: {
+    flex: 1,
+    minHeight: rV(44),
+    borderRadius: rMS(14),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+  },
+  typeBtnActive: {
+    backgroundColor: AppColors.text,
+    borderColor: AppColors.text,
+  },
+  typeText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(13),
+    color: AppColors.text,
+  },
+  typeTextActive: {
+    color: "#FFFFFF",
+  },
+  splitRow: {
+    flexDirection: "row",
+    gap: rS(10),
+  },
+  networkLabel: {
+    marginBottom: rV(8),
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12),
+    color: "#4B5563",
+  },
+  networkRow: {
+    flexDirection: "row",
+    gap: rS(8),
+    marginBottom: rV(8),
+  },
+  networkBtn: {
+    flex: 1,
+    minHeight: rV(42),
+    borderRadius: rMS(12),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  networkBtnActive: {
+    backgroundColor: AppColors.text,
+  },
+  networkText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12),
+    color: AppColors.text,
+  },
+  networkTextActive: {
+    color: "#FFFFFF",
+  },
+  error: {
+    marginBottom: rV(10),
+    fontFamily: Fonts.text,
+    fontSize: rMS(11),
+    color: "#DC2626",
+  },
+});

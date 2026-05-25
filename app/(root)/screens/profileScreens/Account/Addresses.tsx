@@ -1,26 +1,23 @@
+import {
+  AccountActionButton,
+  AccountActionRow,
+  AccountBadge,
+  AccountEmptyState,
+  AccountFab,
+  AccountFormField,
+  AccountFormSheet,
+  AccountInsightCard,
+  AccountListCard,
+  AccountIconShell,
+  accountStyles,
+} from "@/components/account/AccountUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
-import {
-  Edit2,
-  MapPin,
-  Plus,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, ScrollView, Text, View } from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
@@ -98,7 +95,7 @@ export default function AddressScreen() {
     setFieldErrors({});
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
 
@@ -158,184 +155,188 @@ export default function AddressScreen() {
     goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
   };
 
+  const defaultCount = addresses.filter((item) => item.isDefault).length;
+
   return (
-    <View className="flex-1 bg-gray-100">
+    <View style={accountStyles.screen}>
       <ProfileHeader
         title={fromCheckout ? "Choose Address" : "My Addresses"}
         fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
       />
 
-      {/* Empty State */}
-      {!isSyncingProfileData && addresses.length === 0 && (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
-            <MapPin size={40} color="#6B7280" />
-          </View>
-          <Text className="text-xl font-semibold mb-2">No saved addresses</Text>
-          <Text className="text-gray-500 text-center leading-6">
-            Add a delivery address to make checkout faster and easier.
-          </Text>
-        </View>
+      {!isSyncingProfileData && addresses.length === 0 ? (
+        <AccountEmptyState
+          icon="location-outline"
+          title="No saved addresses"
+          message="Add a delivery address so checkout is faster next time you order on ODOS."
+          actionLabel="Add address"
+          onAction={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+        />
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={accountStyles.content}
+        >
+          <AccountInsightCard
+            title="Delivery addresses"
+            subtitle="Save home, office, or pickup spots. Your default address is used first at checkout."
+            stats={[
+              { value: addresses.length, label: "Saved" },
+              { value: defaultCount, label: "Default" },
+              { value: fromCheckout ? "Checkout" : "Profile", label: "Mode" },
+            ]}
+          />
+
+          {addresses.map((address) => (
+            <AccountListCard key={address.id}>
+              <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                <AccountIconShell icon="location-outline" />
+                <View style={{ flex: 1 }}>
+                  <View style={accountStyles.cardHeader}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      {address.label ? (
+                        <View style={[accountStyles.pill, { marginBottom: 6 }]}>
+                          <Text style={accountStyles.pillText}>{address.label}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={accountStyles.cardTitle}>{address.fullName}</Text>
+                      <Text style={accountStyles.cardSubtitle}>{address.phone}</Text>
+                    </View>
+                    {address.isDefault ? <AccountBadge label="Default" tone="dark" /> : null}
+                  </View>
+
+                  <View style={accountStyles.cardBody}>
+                    <Text style={accountStyles.cardLine}>{address.street}</Text>
+                    <Text style={accountStyles.cardMuted}>
+                      {address.city}, {address.region}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <AccountActionRow>
+                {fromCheckout ? (
+                  <AccountActionButton
+                    label="Use this address"
+                    variant="primary"
+                    onPress={() => handleUseForCheckout(address.id)}
+                  />
+                ) : (
+                  <>
+                    {!address.isDefault ? (
+                      <AccountActionButton
+                        label="Set default"
+                        icon="star-outline"
+                        onPress={() => setDefaultAddress(address.id)}
+                      />
+                    ) : null}
+                    <AccountActionButton
+                      label="Edit"
+                      icon="create-outline"
+                      onPress={() => {
+                        setForm(address);
+                        setEditingId(address.id);
+                        setShowModal(true);
+                      }}
+                    />
+                    <AccountActionButton
+                      label="Delete"
+                      variant="danger"
+                      icon="trash-outline"
+                      onPress={() => handleDelete(address.id)}
+                    />
+                  </>
+                )}
+              </AccountActionRow>
+            </AccountListCard>
+          ))}
+        </ScrollView>
       )}
 
-      {/* Address List */}
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-        {addresses.map((a) => (
-          <View key={a.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-start">
-              <View className="flex-1 pr-3">
-                {a.label ? (
-                  <View className="self-start bg-gray-100 px-3 py-1 rounded-full mb-2">
-                    <Text className="text-xs font-semibold text-gray-700">{a.label}</Text>
-                  </View>
-                ) : null}
-                <Text className="font-semibold text-base">{a.fullName}</Text>
-              </View>
-              {a.isDefault && (
-                <View className="bg-black px-3 py-1 rounded-full">
-                  <Text className="text-white text-xs font-medium">Default</Text>
-                </View>
-              )}
-            </View>
-
-            <View className="mt-3 space-y-1">
-              <Text className="text-gray-700">{a.street}</Text>
-              <Text className="text-gray-600">
-                {a.city}, {a.region}
-              </Text>
-              <Text className="text-gray-600">{a.phone}</Text>
-            </View>
-
-            <View className="flex-row mt-5 gap-2">
-              {fromCheckout && (
-                <TouchableOpacity
-                  onPress={() => handleUseForCheckout(a.id)}
-                  className="flex-1 bg-black rounded-xl py-3 items-center"
-                >
-                  <Text className="text-white text-sm font-semibold">
-                    Use this address
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {!fromCheckout && (
-                <>
-                  {!a.isDefault && (
-                    <TouchableOpacity
-                      onPress={() => setDefaultAddress(a.id)}
-                      className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
-                    >
-                      <Star size={16} />
-                      <Text className="text-xs font-semibold mt-1">
-                        Set Default
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setForm(a);
-                      setEditingId(a.id);
-                      setShowModal(true);
-                    }}
-                    className="flex-1 bg-gray-100 rounded-xl py-3 items-center"
-                  >
-                    <Edit2 size={16} />
-                    <Text className="text-xs font-semibold mt-1">Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDelete(a.id)}
-                    className="flex-1 bg-red-50 rounded-xl py-3 items-center"
-                  >
-                    <Trash2 size={16} color="#DC2626" />
-                    <Text className="text-xs font-semibold text-red-600 mt-1">
-                      Delete
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      <TouchableOpacity
+      <AccountFab
         onPress={() => {
           resetForm();
           setShowModal(true);
         }}
-        className="absolute bottom-24 right-8 bg-black w-14 h-14 rounded-full items-center justify-center shadow-lg"
+      />
+
+      <AccountFormSheet
+        visible={showModal}
+        title={editingId ? "Edit address" : "Add address"}
+        subtitle="Use a nickname like Home or Office so the right place is easy to spot at checkout."
+        onClose={() => {
+          setShowModal(false);
+          resetForm();
+        }}
+        onSave={() => void handleSave()}
+        saveLabel={editingId ? "Update address" : "Save address"}
+        isSaving={isSaving}
       >
-        <Plus size={26} color="white" />
-      </TouchableOpacity>
-
-      <Modal visible={showModal} animationType="slide">
-        <View className="flex-1 bg-white px-5 pt-14">
-          <View className="flex-row items-center mb-6 mt-10">
-            <TouchableOpacity
-              onPress={() => {
-                setShowModal(false);
-                resetForm();
-              }}
-              className="w-10 h-10 rounded-full bg-black/10 items-center justify-center"
-            >
-              <X size={20} color="#111827" />
-            </TouchableOpacity>
-            <Text className="text-xl font-semibold ml-4">
-              {editingId ? "Edit Address" : "Add Address"}
-            </Text>
-          </View>
-
-          <Text className="text-gray-500 mb-4">
-            Save a nickname like Home or Office so checkout feels quicker next time.
-          </Text>
-
-          {[
-            ["label", "Address Nickname (optional)"],
-            ["fullName", "Full Name"],
-            ["phone", "Phone Number"],
-            ["street", "Street Address"],
-            ["city", "City / Town"],
-            ["region", "Region / State"],
-          ].map(([key, placeholder]) => (
-            <View key={key}>
-              <TextInput
-                placeholder={placeholder}
-                value={form[key as keyof typeof form] as string}
-                onChangeText={(t) => {
-                  setForm({ ...form, [key]: t });
-                  setFieldErrors((current) => ({ ...current, [key]: undefined }));
-                }}
-                keyboardType={key === "phone" ? "phone-pad" : "default"}
-                autoCapitalize={key === "phone" ? "none" : "words"}
-                className="bg-gray-100 rounded-xl px-4 py-4 mb-2 text-base"
-              />
-              {fieldErrors[key as keyof AddressFieldErrors] ? (
-                <Text className="text-red-500 text-xs mb-3">
-                  {fieldErrors[key as keyof AddressFieldErrors]}
-                </Text>
-              ) : (
-                <View className="mb-2" />
-              )}
-            </View>
-          ))}
-
-          <TouchableOpacity
-            onPress={handleSave}
-            className="bg-black py-4 rounded-full mt-4"
-            disabled={isSaving}
-            style={{ opacity: isSaving ? 0.7 : 1 }}
-          >
-            <Text className="text-white text-center font-semibold text-base">
-              {isSaving
-                ? editingId
-                  ? "Updating..."
-                  : "Saving..."
-                : editingId
-                  ? "Update Address"
-                  : "Save Address"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        <AccountFormField
+          label="Address nickname (optional)"
+          placeholder="e.g. Home, Office"
+          value={form.label}
+          onChangeText={(value) => {
+            setForm({ ...form, label: value });
+            setFieldErrors((current) => ({ ...current, label: undefined }));
+          }}
+          error={fieldErrors.label}
+        />
+        <AccountFormField
+          label="Full name"
+          placeholder="Recipient name"
+          value={form.fullName}
+          onChangeText={(value) => {
+            setForm({ ...form, fullName: value });
+            setFieldErrors((current) => ({ ...current, fullName: undefined }));
+          }}
+          error={fieldErrors.fullName}
+        />
+        <AccountFormField
+          label="Phone number"
+          placeholder="Mobile number"
+          value={form.phone}
+          keyboardType="phone-pad"
+          onChangeText={(value) => {
+            setForm({ ...form, phone: value });
+            setFieldErrors((current) => ({ ...current, phone: undefined }));
+          }}
+          error={fieldErrors.phone}
+        />
+        <AccountFormField
+          label="Street address"
+          placeholder="House number and street"
+          value={form.street}
+          onChangeText={(value) => {
+            setForm({ ...form, street: value });
+            setFieldErrors((current) => ({ ...current, street: undefined }));
+          }}
+          error={fieldErrors.street}
+        />
+        <AccountFormField
+          label="City / town"
+          placeholder="City"
+          value={form.city}
+          onChangeText={(value) => {
+            setForm({ ...form, city: value });
+            setFieldErrors((current) => ({ ...current, city: undefined }));
+          }}
+          error={fieldErrors.city}
+        />
+        <AccountFormField
+          label="Region / state"
+          placeholder="Region"
+          value={form.region}
+          onChangeText={(value) => {
+            setForm({ ...form, region: value });
+            setFieldErrors((current) => ({ ...current, region: undefined }));
+          }}
+          error={fieldErrors.region}
+        />
+      </AccountFormSheet>
     </View>
   );
 }

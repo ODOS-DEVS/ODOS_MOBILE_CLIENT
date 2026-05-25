@@ -1,7 +1,16 @@
+import StoreLocationPicker, {
+  type StoreLocationValue,
+} from "@/components/location/StoreLocationPicker";
+import StoreSocialLinksEditor from "@/components/store/StoreSocialLinksEditor";
 import TextInputField from "@/components/TextInputField";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
-import ProfileHeader from "@/components/profile/ProfileHeader";
-import { StatusBadge } from "@/components/vendor/StatusBadge";
+import {
+  AccountActionButton,
+  AccountListCard,
+  StatusBadge,
+  VendorPageIntro,
+  VendorScreenShell,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { vendorBusinessCategories } from "@/constants/vendor";
@@ -11,6 +20,8 @@ import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { VendorApplicationInput } from "@/types/vendor";
+import { getStoreLocationValidationError } from "@/utils/location";
+import { normalizeStoreSocialLinks } from "@/utils/social";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import { router } from "expo-router";
@@ -39,6 +50,14 @@ const initialForm = (phoneNumber?: string | null): VendorApplicationInput => ({
   city: "",
   marketId: "",
   storeLocation: "",
+  storeLatitude: null,
+  storeLongitude: null,
+  storeInstagramUrl: "",
+  storeFacebookUrl: "",
+  storeTiktokUrl: "",
+  storeTwitterUrl: "",
+  storeWhatsappUrl: "",
+  storeWebsiteUrl: "",
   storeName: "",
   storeDescription: "",
 });
@@ -68,13 +87,22 @@ function validateForm(values: VendorApplicationInput) {
     errors.storeName = "Enter the store name customers will see.";
   }
 
+  const storeLocationError = getStoreLocationValidationError(
+    values.storeLocation,
+    values.storeLatitude,
+    values.storeLongitude,
+  );
+  if (storeLocationError) {
+    errors.storeLocation = storeLocationError;
+  }
+
   return errors;
 }
 
 export default function VendorApplyScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
-  const { showToast } = useToast();
+  const { showSuccessToast, showWarningToast, showErrorToast } = useToast();
   const { isHydrating, session, user } = useVendorSession();
   const { markets: availableMarkets } = useMarkets();
   const {
@@ -129,6 +157,14 @@ export default function VendorApplyScreen() {
       city: vendorApplication.city,
       marketId: vendorApplication.marketId ?? "",
       storeLocation: vendorApplication.storeLocation ?? "",
+      storeLatitude: vendorApplication.storeLatitude ?? null,
+      storeLongitude: vendorApplication.storeLongitude ?? null,
+      storeInstagramUrl: vendorApplication.storeInstagramUrl ?? "",
+      storeFacebookUrl: vendorApplication.storeFacebookUrl ?? "",
+      storeTiktokUrl: vendorApplication.storeTiktokUrl ?? "",
+      storeTwitterUrl: vendorApplication.storeTwitterUrl ?? "",
+      storeWhatsappUrl: vendorApplication.storeWhatsappUrl ?? "",
+      storeWebsiteUrl: vendorApplication.storeWebsiteUrl ?? "",
       storeName: vendorApplication.storeName,
       storeDescription: vendorApplication.storeDescription ?? "",
       ghanaCardNumber: vendorApplication.ghanaCardNumber ?? "",
@@ -188,22 +224,39 @@ export default function VendorApplyScreen() {
     setFieldErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      showToast("Please complete the required vendor details.");
+      showWarningToast("Please complete the required vendor details.");
       return;
     }
 
     try {
+      const socialLinks = normalizeStoreSocialLinks({
+        instagramUrl: form.storeInstagramUrl,
+        facebookUrl: form.storeFacebookUrl,
+        tiktokUrl: form.storeTiktokUrl,
+        twitterUrl: form.storeTwitterUrl,
+        whatsappUrl: form.storeWhatsappUrl,
+        websiteUrl: form.storeWebsiteUrl,
+      });
+
       await submitVendorApplication(session, {
         ...form,
         marketId: form.marketId?.trim() || undefined,
         storeLocation: form.storeLocation?.trim() || undefined,
+        storeLatitude: form.storeLatitude ?? undefined,
+        storeLongitude: form.storeLongitude ?? undefined,
+        storeInstagramUrl: socialLinks.instagramUrl ?? undefined,
+        storeFacebookUrl: socialLinks.facebookUrl ?? undefined,
+        storeTiktokUrl: socialLinks.tiktokUrl ?? undefined,
+        storeTwitterUrl: socialLinks.twitterUrl ?? undefined,
+        storeWhatsappUrl: socialLinks.whatsappUrl ?? undefined,
+        storeWebsiteUrl: socialLinks.websiteUrl ?? undefined,
         storeDescription: form.storeDescription?.trim() || undefined,
         whatsappNumber: form.whatsappNumber?.trim() || undefined,
       });
-      showToast("Vendor application submitted.");
+      showSuccessToast("Vendor application submitted.");
       router.replace("/vendor/application-status" as any);
     } catch (submitError) {
-      showToast(
+      showErrorToast(
         submitError instanceof Error
           ? submitError.message
           : "We couldn't submit your application right now.",
@@ -216,7 +269,7 @@ export default function VendorApplyScreen() {
   ) => {
     const result = await pickCroppedImage(undefined, 0.8);
     if (!result.granted) {
-      showToast("Allow photo access to upload store images.");
+      showWarningToast("Allow photo access to upload store images.");
       return;
     }
     if (result.canceled || !result.uri) {
@@ -245,28 +298,35 @@ export default function VendorApplyScreen() {
 
   if (isLoading && !vendorApplication && !vendorProfile && vendorStatus === "none") {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Become a Vendor" />
-        <ScreenLoader label="Loading vendor details..." />
-      </View>
+      <VendorScreenShell
+        title="Become a Vendor"
+        showSettings={false}
+        loading
+        loadingLabel="Loading vendor details..."
+      />
     );
   }
 
   if (vendorStatus === "approved" || vendorStatus === "pending" || vendorStatus === "under_review" || vendorStatus === "suspended") {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Become a Vendor" />
+      <VendorScreenShell title="Become a Vendor" showSettings={false}>
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[
-            styles.scrollContent,
+            vendorStyles.content,
             { paddingBottom: insets.bottom + rV(28) },
           ]}
         >
-          <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             {topCard}
-            <TouchableOpacity
-              style={styles.primaryButton}
+            <AccountActionButton
+              label={
+                vendorStatus === "approved"
+                  ? "Open Vendor Dashboard"
+                  : "View Application Status"
+              }
+              variant="primary"
               onPress={() =>
                 router.push(
                   vendorStatus === "approved"
@@ -274,23 +334,15 @@ export default function VendorApplyScreen() {
                     : ("/vendor/application-status" as any),
                 )
               }
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryButtonLabel}>
-                {vendorStatus === "approved"
-                  ? "Open Vendor Dashboard"
-                  : "View Application Status"}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         </ScrollView>
-      </View>
+      </VendorScreenShell>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Become a Vendor" />
+    <VendorScreenShell title="Become a Vendor" showSettings={false}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -414,12 +466,49 @@ export default function VendorApplyScreen() {
                 errorMessage={fieldErrors.city}
               />
 
-              <TextInputField
-                label="Store Location"
-                icon="pin-outline"
-                placeholder="Optional landmark or market row"
-                value={form.storeLocation}
-                onChangeText={(text) => handleChange("storeLocation", text)}
+              <StoreLocationPicker
+                value={{
+                  address: form.storeLocation ?? "",
+                  latitude: form.storeLatitude ?? null,
+                  longitude: form.storeLongitude ?? null,
+                }}
+                onChange={(value: StoreLocationValue) => {
+                  setForm((current) => ({
+                    ...current,
+                    storeLocation: value.address,
+                    storeLatitude: value.latitude,
+                    storeLongitude: value.longitude,
+                  }));
+                  setFieldErrors((current) => ({
+                    ...current,
+                    storeLocation: undefined,
+                  }));
+                }}
+                errorMessage={fieldErrors.storeLocation}
+                city={form.city}
+                region={form.region}
+              />
+
+              <StoreSocialLinksEditor
+                value={{
+                  instagramUrl: form.storeInstagramUrl,
+                  facebookUrl: form.storeFacebookUrl,
+                  tiktokUrl: form.storeTiktokUrl,
+                  twitterUrl: form.storeTwitterUrl,
+                  whatsappUrl: form.storeWhatsappUrl,
+                  websiteUrl: form.storeWebsiteUrl,
+                }}
+                onChange={(socialLinks) =>
+                  setForm((current) => ({
+                    ...current,
+                    storeInstagramUrl: socialLinks.instagramUrl ?? "",
+                    storeFacebookUrl: socialLinks.facebookUrl ?? "",
+                    storeTiktokUrl: socialLinks.tiktokUrl ?? "",
+                    storeTwitterUrl: socialLinks.twitterUrl ?? "",
+                    storeWhatsappUrl: socialLinks.whatsappUrl ?? "",
+                    storeWebsiteUrl: socialLinks.websiteUrl ?? "",
+                  }))
+                }
               />
 
               <Text style={styles.fieldLabel}>Preferred Market</Text>
@@ -508,7 +597,7 @@ export default function VendorApplyScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </VendorScreenShell>
   );
 }
 

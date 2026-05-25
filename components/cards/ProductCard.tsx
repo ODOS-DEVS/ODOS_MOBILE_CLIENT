@@ -178,6 +178,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 category,
                 price: price ?? 0,
                 image,
+                imageKey,
+                imageUrl,
               }}
             />
           </View>

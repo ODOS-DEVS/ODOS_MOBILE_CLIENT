@@ -1,3 +1,12 @@
+import {
+  AccountActionButton,
+  AccountBadge,
+  AccountEmptyState,
+  AccountInsightCard,
+  AccountListCard,
+  AccountSegmentedTabs,
+  accountStyles,
+} from "@/components/account/AccountUi";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -217,7 +226,7 @@ export default function ReturnsScreen() {
 
   if (isLoadingOrders) {
     return (
-      <View style={styles.container}>
+      <View style={accountStyles.screen}>
         <ProfileHeader title="Returns" />
         <ScreenLoader label="Loading return options..." />
       </View>
@@ -225,54 +234,38 @@ export default function ReturnsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Returns" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={accountStyles.content}
       >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Returns, refunds, and exchanges</Text>
-          <Text style={styles.heroText}>
-            Start a case from any delivered item, add optional photos, and follow ODOS review updates in one clean place.
-          </Text>
-        </View>
+        <AccountInsightCard
+          title="Returns, refunds & exchanges"
+          subtitle="Start a case from any delivered item, add optional photos, and follow ODOS review updates here."
+          stats={[
+            { value: eligibleItems.length, label: "Eligible" },
+            { value: submittedRequests.length, label: "Requests" },
+          ]}
+        />
 
-        <View style={styles.switcher}>
-          <TouchableOpacity
-            style={[styles.switchChip, activeView === "eligible" && styles.switchChipActive]}
-            activeOpacity={0.88}
-            onPress={() => setActiveView("eligible")}
-          >
-            <Text
-              style={[styles.switchChipText, activeView === "eligible" && styles.switchChipTextActive]}
-            >
-              Eligible Items
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.switchChip, activeView === "requests" && styles.switchChipActive]}
-            activeOpacity={0.88}
-            onPress={() => setActiveView("requests")}
-          >
-            <Text
-              style={[styles.switchChipText, activeView === "requests" && styles.switchChipTextActive]}
-            >
-              My Requests
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <AccountSegmentedTabs
+          options={[
+            { key: "eligible", label: "Eligible items" },
+            { key: "requests", label: "My requests" },
+          ]}
+          activeKey={activeView}
+          onChange={setActiveView}
+        />
 
         {activeView === "eligible" ? (
           eligibleItems.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="bag-check-outline" size={rMS(22)} color={AppColors.secondary} />
-              <Text style={styles.emptyTitle}>No returnable items yet</Text>
-              <Text style={styles.emptyText}>
-                Once a returnable order item is delivered, it will show up here so you can request a refund, exchange, or return if needed.
-              </Text>
-            </View>
+            <AccountEmptyState
+              icon="bag-check-outline"
+              title="No returnable items yet"
+              message="Once a returnable order item is delivered, it will show up here so you can request a refund, exchange, or return."
+            />
           ) : (
             eligibleItems.map(({ order, item, latestRequest }) => {
               const imageSource = resolveImageSource(item.image_url, item.image_key);
@@ -282,7 +275,7 @@ export default function ReturnsScreen() {
               const statusMeta = latestRequest ? getReturnStatusMeta(latestRequest.status) : null;
 
               return (
-                <View key={`${order.id}-${item.id}`} style={styles.itemCard}>
+                <AccountListCard key={`${order.id}-${item.id}`}>
                   <View style={styles.itemTopRow}>
                     <View style={styles.itemImageWrap}>
                       {imageSource ? (
@@ -305,48 +298,40 @@ export default function ReturnsScreen() {
 
                   <View style={styles.itemFooter}>
                     {latestRequest && statusMeta ? (
-                      <View
-                        style={[styles.statusPill, { backgroundColor: statusMeta.bg }]}
-                      >
-                        <Text style={[styles.statusPillText, { color: statusMeta.color }]}>
-                          {statusMeta.label}
-                        </Text>
-                      </View>
+                      <AccountBadge label={statusMeta.label} tone="info" />
                     ) : (
-                      <View style={styles.helperPill}>
-                        <Ionicons name="camera-outline" size={rMS(13)} color={AppColors.secondary} />
-                        <Text style={styles.helperPillText}>Photos optional</Text>
-                      </View>
+                      <AccountBadge label="Photos optional" tone="neutral" />
                     )}
 
-                    <TouchableOpacity
-                      style={[styles.actionButton, hasOpenRequest && styles.actionButtonDisabled]}
-                      activeOpacity={0.88}
+                    <AccountActionButton
+                      label={
+                        hasOpenRequest
+                          ? "In review"
+                          : latestRequest
+                            ? "Request again"
+                            : "Start request"
+                      }
+                      variant="primary"
+                      compact
                       disabled={hasOpenRequest || isMutatingOrder}
                       onPress={() => openComposer({ order, item })}
-                    >
-                      <Text style={styles.actionButtonText}>
-                        {hasOpenRequest ? "In review" : latestRequest ? "Request again" : "Start request"}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   </View>
-                </View>
+                </AccountListCard>
               );
             })
           )
         ) : submittedRequests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="swap-horizontal-outline" size={rMS(22)} color={AppColors.secondary} />
-            <Text style={styles.emptyTitle}>No return requests yet</Text>
-            <Text style={styles.emptyText}>
-              When you submit a return, refund, or exchange case, ODOS will keep the full conversation and status updates here.
-            </Text>
-          </View>
+          <AccountEmptyState
+            icon="swap-horizontal-outline"
+            title="No return requests yet"
+            message="When you submit a return, refund, or exchange case, ODOS will keep status updates here."
+          />
         ) : (
           submittedRequests.map(({ order, request, item }) => {
             const statusMeta = getReturnStatusMeta(request.status);
             return (
-              <View key={request.id} style={styles.requestCard}>
+              <AccountListCard key={request.id}>
                 <View style={styles.requestTopRow}>
                   <View style={styles.requestTopText}>
                     <Text style={styles.requestTitle}>{item?.title || "Order item"}</Text>
@@ -354,11 +339,7 @@ export default function ReturnsScreen() {
                       Order #{order.order_number} · {request.request_type} · Qty {request.quantity}
                     </Text>
                   </View>
-                  <View style={[styles.statusPill, { backgroundColor: statusMeta.bg }]}>
-                    <Text style={[styles.statusPillText, { color: statusMeta.color }]}>
-                      {statusMeta.label}
-                    </Text>
-                  </View>
+                  <AccountBadge label={statusMeta.label} tone="info" />
                 </View>
 
                 <Text style={styles.requestReason}>{request.reason}</Text>
@@ -402,7 +383,7 @@ export default function ReturnsScreen() {
                     <Text style={styles.noteText}>{request.admin_note}</Text>
                   </View>
                 ) : null}
-              </View>
+              </AccountListCard>
             );
           })
         )}

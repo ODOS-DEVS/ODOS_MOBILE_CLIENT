@@ -1,12 +1,19 @@
-import { NotificationItem } from "@/components/NotificationItem";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import {
+  AccountInsightCard,
+  AccountLinkRow,
+  AccountSettingToggle,
+  AccountSettingsGroup,
+  AccountStickySaveBar,
+  AccountTipBanner,
+  accountStyles,
+} from "@/components/profile/ProfileHubUi";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { rMS, rS, rV } from "@/styles/responsive";
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { rV } from "@/styles/responsive";
+import { router } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, View } from "react-native";
 
 export default function NotificationScreen() {
   const { user, updateProfile, isUpdatingProfile } = useAuth();
@@ -31,6 +38,12 @@ export default function NotificationScreen() {
     setLocationUpdates(user.location_updates);
   }, [user]);
 
+  const enabledCount = useMemo(
+    () =>
+      [discounts, store, system, location, locationUpdates].filter(Boolean).length,
+    [discounts, location, locationUpdates, store, system],
+  );
+
   const handleSave = async () => {
     const result = await updateProfile({
       allowNotifications,
@@ -42,7 +55,9 @@ export default function NotificationScreen() {
     });
 
     if (!result.success) {
-      showToast(result.message || result.fieldErrors?.general || "We couldn't save your notification settings.");
+      showToast(
+        result.message || result.fieldErrors?.general || "We couldn't save your notification settings.",
+      );
       return;
     }
 
@@ -50,141 +65,102 @@ export default function NotificationScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Notification Settings" />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[accountStyles.content, { paddingBottom: rV(100) }]}
       >
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Manage how we alert you</Text>
-          <Text style={styles.infoText}>
-            Order and account updates show up in your Activity feed. These settings control which alerts you want us to send.
-          </Text>
-        </View>
+        <AccountInsightCard
+          title="Stay in the loop"
+          subtitle="Order and account updates always appear in Activity. Choose which push alerts you want on this device."
+          stats={[
+            { value: allowNotifications ? "On" : "Off", label: "Master" },
+            { value: enabledCount, label: "Channels" },
+          ]}
+        />
 
-        <View
-          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
-          className="shadow-sm"
-        >
-          <View style={styles.card}>
-            <NotificationItem
-              label="Allow Notifications"
-              value={allowNotifications}
-              onValueChange={(value) => {
-                setAllowNotifications(value);
-                if (!value) {
-                  setDiscounts(false);
-                  setStore(false);
-                  setSystem(false);
-                  setLocation(false);
-                  setLocationUpdates(false);
-                }
-              }}
-            />
-            <NotificationItem
-              label="Discount Notifications"
-              value={discounts}
-              onValueChange={setDiscounts}
-              disabled={!allowNotifications}
-            />
-            <NotificationItem
-              label="Store Notifications"
-              value={store}
-              onValueChange={setStore}
-              disabled={!allowNotifications}
-            />
-            <NotificationItem
-              label="System Notifications"
-              value={system}
-              onValueChange={setSystem}
-              disabled={!allowNotifications}
-            />
-            <NotificationItem
-              label="Location Notifications"
-              value={location}
-              onValueChange={setLocation}
-              disabled={!allowNotifications}
-            />
-            <NotificationItem
-              label="Location Updates"
-              value={locationUpdates}
-              onValueChange={setLocationUpdates}
-              disabled={!allowNotifications}
-            />
-          </View>
-        </View>
+        <AccountTipBanner
+          title="Activity vs push alerts"
+          message="Your order timeline in Activity is separate from these notification toggles."
+          icon="notifications-outline"
+        />
 
-        <TouchableOpacity
-          style={[styles.actionBtn, isUpdatingProfile && styles.actionBtnDisabled]}
-          activeOpacity={0.85}
-          onPress={() => {
-            void handleSave();
-          }}
-          disabled={isUpdatingProfile}
-        >
-          <Text style={styles.actionBtnText}>
-            {isUpdatingProfile ? "Saving..." : "Save Changes"}
-          </Text>
-        </TouchableOpacity>
+        <AccountSettingsGroup title="Master control">
+          <AccountSettingToggle
+            title="Allow notifications"
+            description="Turn off to pause every push alert from ODOS on this device."
+            value={allowNotifications}
+            onValueChange={(value) => {
+              setAllowNotifications(value);
+              if (!value) {
+                setDiscounts(false);
+                setStore(false);
+                setSystem(false);
+                setLocation(false);
+                setLocationUpdates(false);
+              }
+            }}
+            isLast
+          />
+        </AccountSettingsGroup>
+
+        <AccountSettingsGroup title="Alert types">
+          <AccountSettingToggle
+            title="Deals & vouchers"
+            description="Sales, voucher drops, and limited-time offers."
+            value={discounts}
+            onValueChange={setDiscounts}
+            disabled={!allowNotifications}
+          />
+          <AccountSettingToggle
+            title="Store messages"
+            description="Replies and updates from vendors you chat with."
+            value={store}
+            onValueChange={setStore}
+            disabled={!allowNotifications}
+          />
+          <AccountSettingToggle
+            title="System updates"
+            description="Security, policy, and account notices."
+            value={system}
+            onValueChange={setSystem}
+            disabled={!allowNotifications}
+          />
+          <AccountSettingToggle
+            title="Location alerts"
+            description="Delivery proximity and location-based reminders."
+            value={location}
+            onValueChange={setLocation}
+            disabled={!allowNotifications}
+          />
+          <AccountSettingToggle
+            title="Live location updates"
+            description="Share location updates for smoother delivery tracking."
+            value={locationUpdates}
+            onValueChange={setLocationUpdates}
+            disabled={!allowNotifications}
+            isLast
+          />
+        </AccountSettingsGroup>
+
+        <AccountSettingsGroup>
+          <AccountLinkRow
+            icon="list-outline"
+            title="View activity feed"
+            subtitle="See order milestones and account events in one timeline."
+            onPress={() => router.push("/(root)/screens/Notification" as any)}
+            isLast
+          />
+        </AccountSettingsGroup>
       </ScrollView>
+
+      <AccountStickySaveBar
+        label="Save notification settings"
+        onPress={() => void handleSave()}
+        loading={isUpdatingProfile}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  infoCard: {
-    backgroundColor: "#EEF4FF",
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(14),
-    marginBottom: rV(14),
-  },
-  infoTitle: {
-    fontSize: rMS(14),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-  },
-  infoText: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    overflow: "hidden",
-  },
-  actionBtn: {
-    marginTop: rV(22),
-    borderRadius: rMS(50),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(14),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionBtnDisabled: {
-    opacity: 0.7,
-  },
-  actionBtnText: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-});

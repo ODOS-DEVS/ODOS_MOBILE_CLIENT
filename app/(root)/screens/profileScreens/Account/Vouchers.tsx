@@ -1,3 +1,13 @@
+import {
+  AccountActionButton,
+  AccountBadge,
+  AccountEmptyState,
+  AccountFilterChips,
+  AccountInsightCard,
+  AccountListCard,
+  AccountSegmentedTabs,
+  accountStyles,
+} from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -124,7 +134,7 @@ export default function VouchersScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader
         title="My Vouchers"
         fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
@@ -135,109 +145,41 @@ export default function VouchersScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={accountStyles.content}
         >
-          <View style={styles.summaryCard} className="shadow-sm">
-            <Text style={styles.summaryTitle}>Wallet Benefits</Text>
-            <Text style={styles.summarySub}>
-              Save ODOS promotions and store offers here. Gift cards stay separate so wallet value and discounts never get mixed up.
-            </Text>
-            <View style={styles.summaryStatsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{activeCount}</Text>
-                <Text style={styles.statLabel}>Active</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{usedCount}</Text>
-                <Text style={styles.statLabel}>Used</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{expiredCount}</Text>
-                <Text style={styles.statLabel}>Expired</Text>
-              </View>
-            </View>
-          </View>
+          <AccountInsightCard
+            title="Wallet benefits"
+            subtitle="Keep ODOS promotions and store offers here. Gift cards stay separate from discount codes."
+            stats={[
+              { value: activeCount, label: "Active" },
+              { value: usedCount, label: "Used" },
+              { value: expiredCount, label: "Expired" },
+            ]}
+          />
 
-          <View style={styles.sectionSwitchRow}>
-            <TouchableOpacity
-              style={[
-                styles.sectionSwitchBtn,
-                activeSection === "promotions" && styles.sectionSwitchBtnActive,
-              ]}
-              activeOpacity={0.85}
-              onPress={() => setActiveSection("promotions")}
-            >
-              <Text
-                style={[
-                  styles.sectionSwitchText,
-                  activeSection === "promotions" && styles.sectionSwitchTextActive,
-                ]}
-              >
-                Promotions
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.sectionSwitchBtn,
-                activeSection === "gift_cards" && styles.sectionSwitchBtnActive,
-              ]}
-              activeOpacity={0.85}
-              onPress={() => setActiveSection("gift_cards")}
-            >
-              <Text
-                style={[
-                  styles.sectionSwitchText,
-                  activeSection === "gift_cards" && styles.sectionSwitchTextActive,
-                ]}
-              >
-                Gift Cards
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <AccountSegmentedTabs
+            options={[
+              { key: "promotions", label: "Promotions" },
+              { key: "gift_cards", label: "Gift cards" },
+            ]}
+            activeKey={activeSection}
+            onChange={setActiveSection}
+          />
 
           {activeSection === "promotions" ? (
             <>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterRow}
-              >
-                {filters.map((item) => {
-                  const isActive = item.key === activeFilter;
-                  return (
-                    <TouchableOpacity
-                      key={item.key}
-                      style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-                      onPress={() => setActiveFilter(item.key)}
-                      activeOpacity={0.85}
-                    >
-                      <Text
-                        style={[
-                          styles.filterText,
-                          isActive && styles.filterTextActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              <AccountFilterChips
+                options={filters}
+                activeKey={activeFilter}
+                onChange={setActiveFilter}
+              />
 
               {filteredVouchers.length === 0 ? (
-                <View style={styles.emptyWrap} className="shadow-sm">
-                  <Ionicons
-                    name="ticket-outline"
-                    size={rMS(34)}
-                    color={AppColors.subtext[100]}
-                  />
-                  <Text style={styles.emptyTitle}>No promotions here yet</Text>
-                  <Text style={styles.emptySub}>
-                    Claimed store offers and active ODOS promos will show up here.
-                  </Text>
-                </View>
+                <AccountEmptyState
+                  icon="ticket-outline"
+                  title="No promotions here yet"
+                  message="Claimed store offers and active ODOS promos will show up here."
+                />
               ) : (
                 filteredVouchers.map((voucher) => {
                   const meta = statusMeta[voucher.status];
@@ -245,7 +187,7 @@ export default function VouchersScreen() {
                   const isSelected = checkoutVoucherCode === voucher.code;
 
                   return (
-                    <View key={voucher.id} style={styles.voucherCard} className="shadow-sm">
+                    <AccountListCard key={voucher.id}>
                       <View style={styles.cardTop}>
                         <View style={styles.storeBadge}>
                           <Ionicons
@@ -259,11 +201,16 @@ export default function VouchersScreen() {
                               : voucher.issuerName ?? "ODOS"}
                           </Text>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: meta.badgeBg }]}>
-                          <Text style={[styles.statusText, { color: meta.badgeText }]}>
-                            {meta.label}
-                          </Text>
-                        </View>
+                        <AccountBadge
+                          label={meta.label}
+                          tone={
+                            voucher.status === "active"
+                              ? "success"
+                              : voucher.status === "used"
+                                ? "neutral"
+                                : "danger"
+                          }
+                        />
                       </View>
 
                       <View style={styles.heroRow}>
@@ -324,35 +271,26 @@ export default function VouchersScreen() {
                             </View>
                           ) : null}
                           {isActive ? (
-                            <TouchableOpacity
-                              style={styles.actionBtn}
-                              activeOpacity={0.85}
+                            <AccountActionButton
+                              label={fromCheckout ? "Use at checkout" : "Save for checkout"}
+                              variant="primary"
+                              compact
                               onPress={() => handleUseVoucher(voucher)}
-                            >
-                              <Text style={styles.actionBtnText}>
-                                {fromCheckout ? "Use" : "Save"}
-                              </Text>
-                            </TouchableOpacity>
+                            />
                           ) : null}
                         </View>
                       </View>
-                    </View>
+                    </AccountListCard>
                   );
                 })
               )}
             </>
           ) : (
-            <View style={styles.emptyWrap} className="shadow-sm">
-              <Ionicons
-                name="card-outline"
-                size={rMS(34)}
-                color={AppColors.subtext[100]}
-              />
-              <Text style={styles.emptyTitle}>Gift cards are next</Text>
-              <Text style={styles.emptySub}>
-                ODOS gift cards will live here as stored value, separate from discount promotions.
-              </Text>
-            </View>
+            <AccountEmptyState
+              icon="card-outline"
+              title="Gift cards are next"
+              message="ODOS gift cards will live here as stored value, separate from discount promotions."
+            />
           )}
         </ScrollView>
       )}

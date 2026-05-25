@@ -1,6 +1,12 @@
 import TextInputField from "@/components/TextInputField";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import {
+  AccountActionButton,
+  StatCard,
+  VendorPageIntro,
+  VendorScreenShell,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -423,10 +429,11 @@ export default function VendorVouchersScreen() {
 
   if (isCheckingVendorAccess || isLoading) {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Store Promotions" />
-        <ScreenLoader label="Loading store promotions..." />
-      </View>
+      <VendorScreenShell
+        title="Store Promotions"
+        loading
+        loadingLabel="Loading store promotions..."
+      />
     );
   }
 
@@ -435,38 +442,42 @@ export default function VendorVouchersScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Store Promotions" />
+    <VendorScreenShell title="Store Promotions">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + rV(28) }]}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[vendorStyles.content, { paddingBottom: insets.bottom + rV(28) }]}
       >
-        <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-          <View style={styles.heroCard}>
-            <Text style={styles.heroEyebrow}>Voucher desk</Text>
-            <Text style={styles.heroTitle}>Run cleaner store offers</Text>
-            <Text style={styles.heroBody}>
-              Create claimable store promotions, keep private gifted offers for selected shoppers, and watch how much value your store is returning.
-            </Text>
-            <TouchableOpacity style={styles.primaryCta} activeOpacity={0.9} onPress={openCreate}>
-              <Ionicons name="add-circle-outline" size={rMS(18)} color={AppColors.white} />
-              <Text style={styles.primaryCtaText}>Create promotion</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <VendorPageIntro
+            title="Run cleaner store offers"
+            subtitle="Create claimable promotions, gift private offers to selected shoppers, and track returned value."
+            stats={[
+              { value: summary.liveCount, label: "Live" },
+              { value: summary.totalRedemptions, label: "Redemptions" },
+              { value: formatCurrency(summary.totalSavings), label: "Savings" },
+            ]}
+          />
+          <AccountActionButton
+            label="Create promotion"
+            variant="primary"
+            icon="add-circle-outline"
+            onPress={openCreate}
+          />
 
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Live</Text>
-              <Text style={styles.statValue}>{summary.liveCount}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Redemptions</Text>
-              <Text style={styles.statValue}>{summary.totalRedemptions}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Savings</Text>
-              <Text style={styles.statValue}>{formatCurrency(summary.totalSavings)}</Text>
-            </View>
+          <View style={vendorStyles.statsRow}>
+            <StatCard
+              label="Live"
+              value={String(summary.liveCount)}
+              hint="Active promotions"
+              tone="success"
+            />
+            <StatCard
+              label="Redemptions"
+              value={String(summary.totalRedemptions)}
+              hint="Applied at checkout"
+              tone="accent"
+            />
           </View>
 
           {vouchers.length === 0 ? (
@@ -879,7 +890,7 @@ export default function VendorVouchersScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </VendorScreenShell>
   );
 }
 

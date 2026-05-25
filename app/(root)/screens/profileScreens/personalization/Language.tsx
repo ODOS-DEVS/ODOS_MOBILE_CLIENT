@@ -1,125 +1,108 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV } from "@/styles/responsive";
+import {
+  AccountInsightCard,
+  AccountRadioRow,
+  AccountSettingsGroup,
+  AccountStickySaveBar,
+  AccountTipBanner,
+  accountStyles,
+} from "@/components/profile/ProfileHubUi";
+import { useToast } from "@/context/ToastContext";
+import { rV } from "@/styles/responsive";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
-interface LanguageItemProps {
+type LanguageOption = {
+  id: string;
   label: string;
-  selected: boolean;
-  onPress: () => void;
-}
-
-const LanguageItem = ({ label, selected, onPress }: LanguageItemProps) => {
-  return (
-    <TouchableOpacity style={styles.languageItem} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.languageText}>{label}</Text>
-      <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-        {selected && <View style={styles.radioInner} />}
-      </View>
-    </TouchableOpacity>
-  );
+  available: boolean;
 };
 
+const LANGUAGES: LanguageOption[] = [
+  { id: "en-us", label: "English (US)", available: true },
+  { id: "en-gb", label: "English (UK)", available: false },
+  { id: "fr", label: "French", available: false },
+  { id: "tw", label: "Twi", available: false },
+  { id: "zh", label: "Mandarin", available: false },
+  { id: "ar", label: "Arabic", available: false },
+];
+
 export default function LanguageScreen() {
-  const [selectedLanguage, setSelectedLanguage] = useState("English (US)");
-  const languages = ["English (US)", "English (UK)", "French", "Twi", "Mandarin", "Arabic"];
+  const { showToast } = useToast();
+  const [selectedId, setSelectedId] = useState("en-us");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    const selected = LANGUAGES.find((lang) => lang.id === selectedId);
+    if (!selected?.available) {
+      showToast("That language is not available yet.");
+      return;
+    }
+
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    setIsSaving(false);
+    showToast(`Language set to ${selected.label}.`);
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Language" />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[accountStyles.content, { paddingBottom: rV(100) }]}
       >
-        <View
-          style={{ borderRadius: rMS(16), backgroundColor: AppColors.white }}
-          className="shadow-sm"
-        >
-          <View style={styles.card}>
-            {languages.map((lang) => (
-              <LanguageItem
-                key={lang}
-                label={lang}
-                selected={selectedLanguage === lang}
-                onPress={() => setSelectedLanguage(lang)}
-              />
-            ))}
-          </View>
-        </View>
+        <AccountInsightCard
+          title="App language"
+          subtitle="Choose how ODOS reads for you. More regional languages are on the way."
+          stats={[
+            {
+              value: LANGUAGES.find((lang) => lang.id === selectedId)?.label ?? "English",
+              label: "Selected",
+            },
+            { value: 1, label: "Available" },
+          ]}
+        />
 
-        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.85}>
-          <Text style={styles.actionBtnText}>Save Changes</Text>
-        </TouchableOpacity>
+        <AccountTipBanner
+          title="English is live today"
+          message="Additional languages will unlock in future updates without losing your account data."
+          icon="language-outline"
+        />
+
+        <AccountSettingsGroup title="Available now">
+          {LANGUAGES.filter((lang) => lang.available).map((lang) => (
+            <AccountRadioRow
+              key={lang.id}
+              label={lang.label}
+              selected={selectedId === lang.id}
+              onPress={() => setSelectedId(lang.id)}
+              isLast
+            />
+          ))}
+        </AccountSettingsGroup>
+
+        <AccountSettingsGroup title="Coming soon">
+          {LANGUAGES.filter((lang) => !lang.available).map((lang, index, list) => (
+            <AccountRadioRow
+              key={lang.id}
+              label={lang.label}
+              selected={selectedId === lang.id}
+              onPress={() => setSelectedId(lang.id)}
+              hint="Coming soon"
+              disabled
+              isLast={index === list.length - 1}
+            />
+          ))}
+        </AccountSettingsGroup>
       </ScrollView>
+
+      <AccountStickySaveBar
+        label="Save language"
+        onPress={() => void handleSave()}
+        loading={isSaving}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    overflow: "hidden",
-  },
-  languageItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(16),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ECEFF3",
-  },
-  languageText: {
-    fontSize: rMS(14),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-  },
-  radioOuter: {
-    width: rMS(20),
-    height: rMS(20),
-    borderRadius: rMS(10),
-    borderWidth: rMS(2),
-    borderColor: "#BDBDBD",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  radioOuterSelected: {
-    borderColor: AppColors.primary,
-  },
-  radioInner: {
-    width: rMS(10),
-    height: rMS(10),
-    borderRadius: rMS(5),
-    backgroundColor: AppColors.primary,
-  },
-  actionBtn: {
-    marginTop: rV(22),
-    borderRadius: rMS(50),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(14),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionBtnText: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-});

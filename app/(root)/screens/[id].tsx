@@ -9,10 +9,10 @@ import { useStore } from "@/hooks/useCommerce";
 import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useProductReviews } from "@/hooks/useReviews";
+import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
-import { getStarIconName } from "@/utils/ratings";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -724,7 +724,7 @@ export default function ProductDetail() {
                         activeOpacity={0.84}
                         onPress={() =>
                           router.push({
-                            pathname: "/screens/stores/[id]" as any,
+                            pathname: "/(root)/screens/stores/[id]" as any,
                             params: {
                               id: store.id,
                               title: store.title,
@@ -759,85 +759,13 @@ export default function ProductDetail() {
                 </View>
               </View>
 
-              <View style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewHeaderTextWrap}>
-                    <Text style={styles.reviewSectionTitle}>Customer reviews</Text>
-                    <Text style={styles.reviewSectionSubtitle}>
-                      {localReviewCount > 0
-                        ? "Latest feedback from delivered ODOS purchases."
-                        : "Delivered purchases can be reviewed from your account, and they will appear here."}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.reviewManageButton}
-                    activeOpacity={0.84}
-                    onPress={() =>
-                      router.push("/(root)/screens/profileScreens/Account/Reviews" as any)
-                    }
-                  >
-                    <Text style={styles.reviewManageButtonText}>My Reviews</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.reviewSummaryRow}>
-                  <View style={styles.reviewSummaryCard}>
-                    <Text style={styles.reviewSummaryValue}>
-                      {rating > 0 ? rating.toFixed(1) : "0.0"}
-                    </Text>
-                    <View style={styles.reviewSummaryStars}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Ionicons
-                          key={`product-review-summary-${star}`}
-                          name={getStarIconName(star, rating)}
-                          size={rMS(14)}
-                          color="#F59E0B"
-                        />
-                      ))}
-                    </View>
-                    <Text style={styles.reviewSummaryLabel}>{reviewsLabel}</Text>
-                  </View>
-
-                  <View style={styles.reviewSummaryHintCard}>
-                    <Ionicons
-                      name="chatbubble-ellipses-outline"
-                      size={rMS(18)}
-                      color={AppColors.primary}
-                    />
-                    <Text style={styles.reviewSummaryHintText}>
-                      Review this item after a delivered order from your account history.
-                    </Text>
-                  </View>
-                </View>
-
-                {productReviews.length > 0 ? (
-                  <View style={styles.reviewPreviewStack}>
-                    {productReviews.slice(0, 2).map((item) => (
-                      <View key={item.id} style={styles.reviewPreviewCard}>
-                        <View style={styles.reviewPreviewTopRow}>
-                          <View style={styles.reviewPreviewStars}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Ionicons
-                                key={`${item.id}-star-${star}`}
-                                name={getStarIconName(star, item.rating)}
-                                size={rMS(13)}
-                                color="#F59E0B"
-                              />
-                            ))}
-                          </View>
-                          <Text style={styles.reviewPreviewDate}>
-                            {new Date(item.updatedAt).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </Text>
-                        </View>
-                        <Text style={styles.reviewPreviewComment}>{item.comment}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
+              <View style={styles.reviewSectionWrap}>
+                <ProductReviewsPanel
+                  rating={rating}
+                  reviewsLabel={reviewsLabel}
+                  reviewCount={localReviewCount}
+                  reviews={productReviews}
+                />
               </View>
 
               <View style={styles.sectionStack}>
@@ -1565,124 +1493,8 @@ const styles = StyleSheet.create({
     fontSize: rMS(12),
     fontFamily: Fonts.title,
   },
-  reviewCard: {
+  reviewSectionWrap: {
     marginTop: rV(18),
-    borderRadius: rMS(24),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  reviewHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  reviewHeaderTextWrap: {
-    flex: 1,
-  },
-  reviewSectionTitle: {
-    fontSize: rMS(16),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  reviewSectionSubtitle: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  reviewManageButton: {
-    alignSelf: "flex-start",
-    borderRadius: rMS(12),
-    backgroundColor: "#EEF2F6",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-  },
-  reviewManageButtonText: {
-    fontSize: rMS(11.5),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-  },
-  reviewSummaryRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(14),
-  },
-  reviewSummaryCard: {
-    flex: 0.95,
-    borderRadius: rMS(18),
-    backgroundColor: "#0F172A",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  reviewSummaryValue: {
-    fontSize: rMS(24),
-    color: AppColors.white,
-    fontFamily: Fonts.titleBold,
-  },
-  reviewSummaryStars: {
-    flexDirection: "row",
-    gap: rS(4),
-    marginTop: rV(8),
-  },
-  reviewSummaryLabel: {
-    marginTop: rV(8),
-    fontSize: rMS(11),
-    color: "#CBD5E1",
-    fontFamily: Fonts.text,
-  },
-  reviewSummaryHintCard: {
-    flex: 1,
-    borderRadius: rMS(18),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    justifyContent: "space-between",
-  },
-  reviewSummaryHintText: {
-    marginTop: rV(12),
-    fontSize: rMS(11.5),
-    lineHeight: rMS(17),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  reviewPreviewStack: {
-    marginTop: rV(14),
-    gap: rS(10),
-  },
-  reviewPreviewCard: {
-    borderRadius: rMS(18),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-  },
-  reviewPreviewTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(8),
-  },
-  reviewPreviewStars: {
-    flexDirection: "row",
-    gap: rS(3),
-  },
-  reviewPreviewDate: {
-    fontSize: rMS(10.5),
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.text,
-  },
-  reviewPreviewComment: {
-    marginTop: rV(8),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: AppColors.text,
-    fontFamily: Fonts.text,
   },
   sectionStack: {
     marginTop: rV(18),

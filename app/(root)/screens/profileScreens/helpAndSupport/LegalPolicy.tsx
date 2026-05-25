@@ -1,10 +1,17 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import {
+  AccountBulletList,
+  AccountInsightCard,
+  AccountListCard,
+  AccountMetaFooter,
+  AccountSegmentedTabs,
+  accountStyles,
+} from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { rMS, rS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
+import { rMS, rV } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type PolicyKey = "terms" | "privacy" | "shipping";
 
@@ -38,7 +45,7 @@ const POLICY_CONTENT: Record<PolicyKey, { title: string; subtitle: string; point
   },
 };
 
-const POLICY_FILTERS: { key: PolicyKey; label: string }[] = [
+const POLICY_TABS: Array<{ key: PolicyKey; label: string }> = [
   { key: "terms", label: "Terms" },
   { key: "privacy", label: "Privacy" },
   { key: "shipping", label: "Shipping" },
@@ -49,189 +56,58 @@ export default function LegalPoliciesScreen() {
   const activeContent = useMemo(() => POLICY_CONTENT[activePolicy], [activePolicy]);
 
   return (
-    <View style={styles.container}>
+    <View style={accountStyles.screen}>
       <ProfileHeader title="Legal & Policies" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.heroCard} className="shadow-sm">
-          <Ionicons name="shield-checkmark-outline" size={rMS(26)} color={AppColors.white} />
-          <Text style={styles.heroTitle}>Policy Center</Text>
-          <Text style={styles.heroSub}>
-            Transparent policies to keep your shopping, payments, and data secure.
-          </Text>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={accountStyles.content}>
+        <AccountInsightCard
+          title="Policy center"
+          subtitle="Transparent policies for shopping, payments, privacy, and delivery on ODOS."
+          stats={[
+            { value: 3, label: "Policies" },
+            { value: "Feb 2026", label: "Updated" },
+          ]}
+        />
 
-        <View style={styles.filterRow}>
-          {POLICY_FILTERS.map((item) => {
-            const isActive = item.key === activePolicy;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-                onPress={() => setActivePolicy(item.key)}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <AccountSegmentedTabs
+          options={POLICY_TABS}
+          activeKey={activePolicy}
+          onChange={setActivePolicy}
+        />
 
-        <View style={styles.sectionCard} className="shadow-sm">
-          <Text style={styles.sectionTitle}>{activeContent.title}</Text>
-          <Text style={styles.sectionSub}>{activeContent.subtitle}</Text>
+        <AccountListCard>
+          <Text style={policyStyles.title}>{activeContent.title}</Text>
+          <Text style={policyStyles.subtitle}>{activeContent.subtitle}</Text>
+          <View style={policyStyles.divider} />
+          <AccountBulletList points={activeContent.points} />
+        </AccountListCard>
 
-          <View style={styles.divider} />
-
-          {activeContent.points.map((point, index) => (
-            <View key={`${activePolicy}-${index}`} style={styles.pointRow}>
-              <View style={styles.bullet} />
-              <Text style={styles.pointText}>{point}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.footerCard} className="shadow-sm">
-          <Text style={styles.footerMeta}>Last updated: February 16, 2026</Text>
-          <Text style={styles.footerText}>
-            For legal enquiries, contact our support/legal team.
-          </Text>
-          <TouchableOpacity activeOpacity={0.8}>
-            <Text style={styles.footerEmail}>legal@odosapp.com</Text>
-          </TouchableOpacity>
-        </View>
+        <AccountMetaFooter
+          meta="Last updated · February 16, 2026"
+          message="For legal enquiries, contact our support or legal team."
+          actionLabel="legal@odosapp.com"
+          onAction={() => void Linking.openURL("mailto:legal@odosapp.com")}
+        />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(14),
-    paddingBottom: rV(28),
-  },
-  heroCard: {
-    backgroundColor: AppColors.secondary,
-    borderRadius: rMS(16),
-    paddingVertical: rV(16),
-    paddingHorizontal: rS(14),
-    alignItems: "center",
-  },
-  heroTitle: {
-    marginTop: rV(6),
-    fontSize: rMS(17),
-    color: AppColors.white,
+const policyStyles = StyleSheet.create({
+  title: {
     fontFamily: Fonts.titleBold,
-  },
-  heroSub: {
-    marginTop: rV(4),
-    textAlign: "center",
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#E7EDF2",
-    fontFamily: Fonts.text,
-  },
-  filterRow: {
-    marginTop: rV(12),
-    flexDirection: "row",
-    gap: rS(8),
-  },
-  filterBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(10),
-    borderRadius: rMS(999),
-    borderWidth: 1,
-    borderColor: "#D6DCE5",
-    backgroundColor: AppColors.white,
-  },
-  filterBtnActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
-  },
-  filterText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  filterTextActive: {
-    color: AppColors.white,
-  },
-  sectionCard: {
-    marginTop: rV(12),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  sectionTitle: {
     fontSize: rMS(16),
     color: AppColors.text,
-    fontFamily: Fonts.titleBold,
   },
-  sectionSub: {
+  subtitle: {
     marginTop: rV(4),
-    fontSize: rMS(12),
-    color: AppColors.secondary,
     fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    color: "#6B7280",
   },
   divider: {
-    marginVertical: rV(10),
+    marginVertical: rV(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E8ECF1",
-  },
-  pointRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: rV(10),
-  },
-  bullet: {
-    marginTop: rV(6),
-    width: rMS(6),
-    height: rMS(6),
-    borderRadius: rMS(3),
-    backgroundColor: AppColors.primary,
-    marginRight: rS(8),
-  },
-  pointText: {
-    flex: 1,
-    fontSize: rMS(12),
-    lineHeight: rMS(19),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  footerCard: {
-    marginTop: rV(12),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    paddingVertical: rV(16),
-    paddingHorizontal: rS(14),
-    alignItems: "center",
-  },
-  footerMeta: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.subtext[100],
-  },
-  footerText: {
-    marginTop: rV(8),
-    fontSize: rMS(12),
-    textAlign: "center",
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  footerEmail: {
-    marginTop: rV(6),
-    fontSize: rMS(13),
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
+    borderBottomColor: "#EEF2F6",
   },
 });

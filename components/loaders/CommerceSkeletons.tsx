@@ -1,9 +1,91 @@
 import { AppColors } from "@/constants/Colors";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { gridCardWidth, rMS, rS, rV } from "@/styles/responsive";
 import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 
-import { SkeletonBlock, SkeletonPulse } from "@/components/loaders/Skeleton";
+import { SkeletonBlock } from "@/components/loaders/Skeleton";
+
+export function HomeHeaderSkeleton() {
+  return (
+    <View style={styles.homeHeader}>
+      <View style={styles.homeHeaderLeft}>
+        <SkeletonBlock width={rS(44)} height={rS(44)} radius={22} />
+        <View style={styles.homeHeaderText}>
+          <SkeletonBlock width={rS(108)} height={rV(12)} radius={8} />
+          <SkeletonBlock width={rS(140)} height={rV(18)} radius={10} style={styles.mt8} />
+        </View>
+      </View>
+      <SkeletonBlock width={rS(40)} height={rS(40)} radius={20} />
+    </View>
+  );
+}
+
+export function SearchLauncherSkeleton() {
+  return (
+    <SkeletonBlock
+      height={rV(46)}
+      radius={999}
+      style={{ marginHorizontal: rS(16), marginTop: rV(12) }}
+    />
+  );
+}
+
+export function SectionTitleSkeleton() {
+  return (
+    <View style={styles.sectionHeader}>
+      <SkeletonBlock width="42%" height={rV(22)} radius={10} />
+      <SkeletonBlock width="18%" height={rV(16)} radius={8} />
+    </View>
+  );
+}
+
+export function FlashSalesRowSkeleton() {
+  return (
+    <View style={styles.horizontalRow}>
+      <SkeletonBlock width={rS(220)} height={rV(168)} radius={26} />
+      <SkeletonBlock width={rS(220)} height={rV(168)} radius={26} />
+    </View>
+  );
+}
+
+export function PromoBannerSkeleton() {
+  return (
+    <SkeletonBlock
+      height={rV(166)}
+      radius={28}
+      style={{ marginHorizontal: rS(16), marginTop: rV(18) }}
+    />
+  );
+}
+
+export function HorizontalStoreRowSkeleton() {
+  return (
+    <View style={styles.horizontalRow}>
+      <StoreCardSkeleton compact />
+      <StoreCardSkeleton compact />
+    </View>
+  );
+}
+
+export function HorizontalProductRowSkeleton() {
+  return (
+    <View style={styles.horizontalRow}>
+      <SkeletonBlock width={rS(148)} height={rV(188)} radius={22} />
+      <SkeletonBlock width={rS(148)} height={rV(188)} radius={22} />
+      <SkeletonBlock width={rS(148)} height={rV(188)} radius={22} />
+    </View>
+  );
+}
+
+export function MarketsRowSkeleton() {
+  return (
+    <View style={styles.horizontalRow}>
+      <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
+      <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
+      <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
+    </View>
+  );
+}
 
 export function HomeFeedSkeleton() {
   return (
@@ -11,57 +93,30 @@ export function HomeFeedSkeleton() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.homeContainer}
     >
-      <SkeletonPulse>
-        <View style={styles.sectionGap}>
-          <SkeletonBlock height={rV(56)} radius={24} />
-        </View>
-
-        <View style={styles.sectionGap}>
-          <View style={styles.rowBetween}>
-            <SkeletonBlock width="36%" height={rV(24)} radius={12} />
-            <SkeletonBlock width="24%" height={rV(18)} radius={10} />
-          </View>
-          <View style={styles.rowGap}>
-            <SkeletonBlock width={rS(240)} height={rV(168)} radius={26} />
-            <SkeletonBlock width={rS(240)} height={rV(168)} radius={26} />
-          </View>
-        </View>
-
-        <SkeletonBlock height={rV(166)} radius={28} />
-
-        <View style={styles.sectionGap}>
-          <View style={styles.rowBetween}>
-            <SkeletonBlock width="42%" height={rV(24)} radius={12} />
-            <SkeletonBlock width="18%" height={rV(18)} radius={10} />
-          </View>
-          {[0, 1, 2].map((item) => (
-            <RecommendationSkeleton key={`home-rec-${item}`} />
-          ))}
-        </View>
-
-        <View style={styles.sectionGap}>
-          <View style={styles.rowBetween}>
-            <SkeletonBlock width="28%" height={rV(24)} radius={12} />
-            <SkeletonBlock width="18%" height={rV(18)} radius={10} />
-          </View>
-          <View style={styles.rowGap}>
-            <StoreCardSkeleton compact />
-            <StoreCardSkeleton compact />
-          </View>
-        </View>
-
-        <View style={styles.sectionGap}>
-          <View style={styles.rowBetween}>
-            <SkeletonBlock width="40%" height={rV(24)} radius={12} />
-            <SkeletonBlock width="20%" height={rV(18)} radius={10} />
-          </View>
-          <View style={styles.rowGap}>
-            <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
-            <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
-            <SkeletonBlock width={rS(120)} height={rV(132)} radius={22} />
-          </View>
-        </View>
-      </SkeletonPulse>
+      <HomeHeaderSkeleton />
+      <SearchLauncherSkeleton />
+      <View style={[styles.sectionBlock, styles.sectionGap]}>
+        <SectionTitleSkeleton />
+        <FlashSalesRowSkeleton />
+      </View>
+      <PromoBannerSkeleton />
+      <View style={[styles.sectionBlock, styles.sectionGap]}>
+        <SectionTitleSkeleton />
+        <RecommendationSkeleton />
+        <RecommendationSkeleton />
+      </View>
+      <View style={[styles.sectionBlock, styles.sectionGap]}>
+        <SectionTitleSkeleton />
+        <HorizontalStoreRowSkeleton />
+      </View>
+      <View style={[styles.sectionBlock, styles.sectionGap]}>
+        <SectionTitleSkeleton />
+        <HorizontalProductRowSkeleton />
+      </View>
+      <View style={[styles.sectionBlock, styles.sectionGap]}>
+        <SectionTitleSkeleton />
+        <MarketsRowSkeleton />
+      </View>
     </ScrollView>
   );
 }
@@ -69,84 +124,74 @@ export function HomeFeedSkeleton() {
 export function CategoryListSkeleton({ count = 6 }: { count?: number }) {
   return (
     <View style={styles.stackGap}>
-      <SkeletonPulse>
-        {Array.from({ length: count }).map((_, index) => (
-          <View key={`category-skeleton-${index}`} style={styles.categoryCard}>
-            <SkeletonBlock width={rS(76)} height={rS(76)} radius={24} />
-            <View style={styles.flexOne}>
-              <SkeletonBlock width="44%" height={rV(16)} radius={10} />
-              <SkeletonBlock width="68%" height={rV(12)} radius={8} style={styles.mt8} />
-              <SkeletonBlock width="30%" height={rV(12)} radius={8} style={styles.mt10} />
-            </View>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={`category-skeleton-${index}`} style={styles.categoryCard}>
+          <SkeletonBlock width={rS(76)} height={rS(76)} radius={24} />
+          <View style={styles.flexOne}>
+            <SkeletonBlock width="44%" height={rV(16)} radius={10} />
+            <SkeletonBlock width="68%" height={rV(12)} radius={8} style={styles.mt8} />
+            <SkeletonBlock width="30%" height={rV(12)} radius={8} style={styles.mt10} />
           </View>
-        ))}
-      </SkeletonPulse>
+        </View>
+      ))}
     </View>
   );
 }
 
 export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <SkeletonPulse>
-      <View style={styles.gridWrap}>
-        {Array.from({ length: count }).map((_, index) => (
-          <View key={`product-grid-${index}`} style={styles.gridCard}>
-            <SkeletonBlock height={rV(176)} radius={22} />
-            <SkeletonBlock width="72%" height={rV(14)} radius={8} style={styles.mt12} />
-            <SkeletonBlock width="48%" height={rV(12)} radius={8} style={styles.mt8} />
-            <SkeletonBlock width="38%" height={rV(16)} radius={10} style={styles.mt12} />
-          </View>
-        ))}
-      </View>
-    </SkeletonPulse>
+    <View style={styles.gridWrap}>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={`product-grid-${index}`} style={styles.gridCard}>
+          <SkeletonBlock height={rV(176)} radius={22} />
+          <SkeletonBlock width="72%" height={rV(14)} radius={8} style={styles.mt12} />
+          <SkeletonBlock width="48%" height={rV(12)} radius={8} style={styles.mt8} />
+          <SkeletonBlock width="38%" height={rV(16)} radius={10} style={styles.mt12} />
+        </View>
+      ))}
+    </View>
   );
 }
 
 export function ProductListSkeleton({ count = 4 }: { count?: number }) {
   return (
     <View style={styles.stackGap}>
-      <SkeletonPulse>
-        {Array.from({ length: count }).map((_, index) => (
-          <RecommendationSkeleton key={`product-list-${index}`} />
-        ))}
-      </SkeletonPulse>
+      {Array.from({ length: count }).map((_, index) => (
+        <RecommendationSkeleton key={`product-list-${index}`} />
+      ))}
     </View>
   );
 }
 
 export function StoreGridSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <SkeletonPulse>
-      <View style={styles.gridWrap}>
-        {Array.from({ length: count }).map((_, index) => (
-          <StoreCardSkeleton key={`store-grid-${index}`} />
-        ))}
-      </View>
-    </SkeletonPulse>
+    <View style={styles.gridWrap}>
+      {Array.from({ length: count }).map((_, index) => (
+        <StoreCardSkeleton key={`store-grid-${index}`} />
+      ))}
+    </View>
   );
 }
 
 export function StoreProfileSkeleton() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailContainer}>
-      <SkeletonPulse>
-        <SkeletonBlock height={rV(220)} radius={0} />
-        <View style={styles.storeProfileShell}>
-          <SkeletonBlock width={rS(94)} height={rS(94)} radius={28} style={styles.pullUpLogo} />
-          <SkeletonBlock width="58%" height={rV(24)} radius={12} />
-          <SkeletonBlock width="38%" height={rV(14)} radius={8} style={styles.mt10} />
-          <SkeletonBlock width="70%" height={rV(14)} radius={8} style={styles.mt8} />
-          <View style={styles.rowGapWrap}>
-            <SkeletonBlock width={rS(82)} height={rV(30)} radius={999} />
-            <SkeletonBlock width={rS(110)} height={rV(30)} radius={999} />
-            <SkeletonBlock width={rS(104)} height={rV(30)} radius={999} />
-          </View>
-          <View style={styles.sectionGap}>
-            <SkeletonBlock width="36%" height={rV(20)} radius={10} />
-            <ProductGridSkeleton count={4} />
-          </View>
+      <SkeletonBlock height={rV(220)} radius={0} />
+      <View style={styles.storeProfileShell}>
+        <SkeletonBlock width={rS(94)} height={rS(94)} radius={28} style={styles.pullUpLogo} />
+        <SkeletonBlock width="58%" height={rV(24)} radius={12} />
+        <SkeletonBlock width="38%" height={rV(14)} radius={8} style={styles.mt10} />
+        <SkeletonBlock width="70%" height={rV(14)} radius={8} style={styles.mt8} />
+        <View style={styles.rowGapWrap}>
+          <SkeletonBlock width={rS(82)} height={rV(30)} radius={999} />
+          <SkeletonBlock width={rS(110)} height={rV(30)} radius={999} />
+          <SkeletonBlock width={rS(104)} height={rV(30)} radius={999} />
         </View>
-      </SkeletonPulse>
+        <View style={styles.sectionGap}>
+          <SkeletonBlock width="36%" height={rV(20)} radius={10} />
+          <ProductGridSkeleton count={4} />
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -154,20 +199,18 @@ export function StoreProfileSkeleton() {
 export function ProductDetailSkeleton() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailContainer}>
-      <SkeletonPulse>
-        <SkeletonBlock height={rV(336)} radius={32} />
-        <View style={styles.sectionGap}>
-          <View style={styles.rowGapWrap}>
-            <SkeletonBlock width={rS(74)} height={rV(28)} radius={999} />
-            <SkeletonBlock width={rS(108)} height={rV(28)} radius={999} />
-          </View>
-          <SkeletonBlock width="72%" height={rV(30)} radius={12} style={styles.mt12} />
-          <SkeletonBlock width="90%" height={rV(16)} radius={10} style={styles.mt10} />
-          <SkeletonBlock width="100%" height={rV(120)} radius={28} style={styles.mt16} />
-          <SkeletonBlock width="100%" height={rV(138)} radius={28} style={styles.mt16} />
-          <SkeletonBlock width="100%" height={rV(160)} radius={28} style={styles.mt16} />
+      <SkeletonBlock height={rV(336)} radius={32} />
+      <View style={styles.sectionGap}>
+        <View style={styles.rowGapWrap}>
+          <SkeletonBlock width={rS(74)} height={rV(28)} radius={999} />
+          <SkeletonBlock width={rS(108)} height={rV(28)} radius={999} />
         </View>
-      </SkeletonPulse>
+        <SkeletonBlock width="72%" height={rV(30)} radius={12} style={styles.mt12} />
+        <SkeletonBlock width="90%" height={rV(16)} radius={10} style={styles.mt10} />
+        <SkeletonBlock width="100%" height={rV(120)} radius={28} style={styles.mt16} />
+        <SkeletonBlock width="100%" height={rV(138)} radius={28} style={styles.mt16} />
+        <SkeletonBlock width="100%" height={rV(160)} radius={28} style={styles.mt16} />
+      </View>
     </ScrollView>
   );
 }
@@ -208,10 +251,40 @@ function StoreCardSkeleton({ compact = false }: { compact?: boolean }) {
 
 const styles = StyleSheet.create({
   homeContainer: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
+    paddingTop: rV(8),
     paddingBottom: rV(80),
-    gap: rV(18),
+    gap: rV(4),
+    backgroundColor: "#F5F7FA",
+  },
+  homeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rS(16),
+    paddingTop: rV(10),
+  },
+  homeHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(12),
+  },
+  homeHeaderText: {
+    gap: rV(4),
+  },
+  sectionBlock: {
+    paddingHorizontal: rS(16),
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: rV(12),
+  },
+  horizontalRow: {
+    flexDirection: "row",
+    gap: rS(12),
+    paddingLeft: rS(16),
+    marginLeft: -rS(16),
   },
   detailContainer: {
     paddingBottom: rV(72),
@@ -219,6 +292,7 @@ const styles = StyleSheet.create({
   },
   sectionGap: {
     gap: rV(14),
+    marginTop: rV(18),
   },
   stackGap: {
     gap: rV(12),
@@ -233,10 +307,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  rowGap: {
-    flexDirection: "row",
-    gap: rS(12),
   },
   rowGapWrap: {
     flexDirection: "row",
@@ -315,3 +385,75 @@ const styles = StyleSheet.create({
     marginTop: rV(16),
   },
 });
+
+export function CartPageSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <View style={{ paddingHorizontal: rS(16), paddingTop: rV(14) }}>
+      <View
+        style={{
+          backgroundColor: AppColors.white,
+          borderRadius: rMS(20),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: "#E6EAF0",
+          overflow: "hidden",
+        }}
+      >
+        {Array.from({ length: count }).map((_, index) => (
+          <View
+            key={`cart-skeleton-${index}`}
+            style={{
+              padding: rS(12),
+              borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+              borderTopColor: "#F1F5F9",
+            }}
+          >
+            <View style={{ flexDirection: "row", gap: rS(10), alignItems: "center" }}>
+              <SkeletonBlock width={rS(58)} height={rS(58)} radius={14} />
+              <View style={{ flex: 1, gap: rV(6) }}>
+                <SkeletonBlock width="78%" height={rV(12)} radius={6} />
+                <SkeletonBlock width="40%" height={rV(10)} radius={6} />
+                <SkeletonBlock width="55%" height={rV(22)} radius={10} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+      <SkeletonBlock height={rV(120)} radius={18} style={{ marginTop: rV(12) }} />
+    </View>
+  );
+}
+
+export function WishlistGridSkeleton({
+  columns = 2,
+  count = 4,
+}: {
+  columns?: number;
+  count?: number;
+}) {
+  const cardWidth = gridCardWidth(
+    Dimensions.get("window").width,
+    columns,
+    rS(12),
+  );
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: rS(12),
+        paddingHorizontal: rS(16),
+        paddingTop: rV(18),
+      }}
+    >
+      {Array.from({ length: count }).map((_, index) => (
+        <SkeletonBlock
+          key={`wishlist-skeleton-${index}`}
+          width={cardWidth}
+          height={rV(168)}
+          radius={18}
+        />
+      ))}
+    </View>
+  );
+}

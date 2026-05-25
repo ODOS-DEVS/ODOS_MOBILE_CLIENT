@@ -23,6 +23,15 @@ type StoreProfileApi = {
   category?: string;
   market_id?: string | null;
   location?: string | null;
+  phone?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  tiktok_url?: string | null;
+  twitter_url?: string | null;
+  whatsapp_url?: string | null;
+  website_url?: string | null;
   region?: string;
   city?: string;
   banner_image_url?: string | null;
@@ -38,6 +47,7 @@ type VendorProductApi = {
   name?: string;
   description?: string;
   category?: string;
+  category_slug?: string | null;
   subcategory?: string | null;
   price?: number;
   old_price?: number | null;
@@ -130,6 +140,15 @@ function mapStore(payload: StoreProfileApi): ManagedStoreProfile {
     category: payload.category ?? "",
     marketId: payload.market_id ?? undefined,
     location: payload.location ?? undefined,
+    phone: payload.phone ?? undefined,
+    latitude: payload.latitude ?? undefined,
+    longitude: payload.longitude ?? undefined,
+    instagramUrl: payload.instagram_url ?? undefined,
+    facebookUrl: payload.facebook_url ?? undefined,
+    tiktokUrl: payload.tiktok_url ?? undefined,
+    twitterUrl: payload.twitter_url ?? undefined,
+    whatsappUrl: payload.whatsapp_url ?? undefined,
+    websiteUrl: payload.website_url ?? undefined,
     region: payload.region ?? "",
     city: payload.city ?? "",
     bannerImage: payload.banner_image_url ?? undefined,
@@ -150,6 +169,7 @@ function mapProduct(payload: VendorProductApi): VendorProduct {
     name: payload.name ?? "",
     description: payload.description ?? "",
     category: payload.category ?? "",
+    categorySlug: payload.category_slug ?? undefined,
     subcategory: payload.subcategory ?? undefined,
     price: payload.price ?? 0,
     oldPrice: payload.old_price ?? undefined,
@@ -226,6 +246,33 @@ export async function updateVendorStore(
   if (input.location?.trim()) {
     formData.append("location", input.location.trim());
   }
+  if (input.phone?.trim()) {
+    formData.append("phone", input.phone.trim());
+  }
+  if (typeof input.latitude === "number" && Number.isFinite(input.latitude)) {
+    formData.append("latitude", String(input.latitude));
+  }
+  if (typeof input.longitude === "number" && Number.isFinite(input.longitude)) {
+    formData.append("longitude", String(input.longitude));
+  }
+  if (input.instagramUrl?.trim()) {
+    formData.append("instagram_url", input.instagramUrl.trim());
+  }
+  if (input.facebookUrl?.trim()) {
+    formData.append("facebook_url", input.facebookUrl.trim());
+  }
+  if (input.tiktokUrl?.trim()) {
+    formData.append("tiktok_url", input.tiktokUrl.trim());
+  }
+  if (input.twitterUrl?.trim()) {
+    formData.append("twitter_url", input.twitterUrl.trim());
+  }
+  if (input.whatsappUrl?.trim()) {
+    formData.append("whatsapp_url", input.whatsappUrl.trim());
+  }
+  if (input.websiteUrl?.trim()) {
+    formData.append("website_url", input.websiteUrl.trim());
+  }
   if (input.audienceSlugs?.length) {
     formData.append("audience_slugs", input.audienceSlugs.join(", "));
   }
@@ -276,6 +323,9 @@ export async function createVendorProduct(
       formData.append("name", input.name);
       formData.append("description", input.description);
       formData.append("category", input.category);
+      if (input.categorySlug?.trim()) {
+        formData.append("category_slug", input.categorySlug.trim());
+      }
       formData.append("price", String(input.price));
       if (typeof input.oldPrice === "number" && Number.isFinite(input.oldPrice)) {
         formData.append("old_price", String(input.oldPrice));
@@ -331,6 +381,9 @@ export async function updateVendorProduct(
   formData.append("name", input.name);
   formData.append("description", input.description);
   formData.append("category", input.category);
+  if (input.categorySlug?.trim()) {
+    formData.append("category_slug", input.categorySlug.trim());
+  }
   formData.append(
     "price",
     String(input.price),

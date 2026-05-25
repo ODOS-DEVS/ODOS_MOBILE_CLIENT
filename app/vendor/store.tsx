@@ -1,7 +1,17 @@
+import StoreLocationPicker, {
+  type StoreLocationValue,
+} from "@/components/location/StoreLocationPicker";
+import StoreSocialLinksEditor from "@/components/store/StoreSocialLinksEditor";
 import TextInputField from "@/components/TextInputField";
-import ProfileHeader from "@/components/profile/ProfileHeader";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
+import {
+  AccountActionButton,
+  AccountSectionCard,
+  VendorEmptyState,
+  VendorPageIntro,
+  VendorScreenShell,
+  vendorStyles,
+} from "@/components/vendor/VendorUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useToast } from "@/context/ToastContext";
@@ -10,6 +20,8 @@ import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { ManagedStoreUpdateInput } from "@/types/store";
+import { getStoreLocationValidationError } from "@/utils/location";
+import { normalizeStoreSocialLinks } from "@/utils/social";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import React, { useEffect, useMemo, useState } from "react";
@@ -55,6 +67,15 @@ function validateStore(values: ManagedStoreUpdateInput) {
     errors.city = "Enter the operating city.";
   }
 
+  const locationError = getStoreLocationValidationError(
+    values.location,
+    values.latitude,
+    values.longitude,
+  );
+  if (locationError) {
+    errors.location = locationError;
+  }
+
   return errors;
 }
 
@@ -73,6 +94,15 @@ export default function VendorStoreScreen() {
     category: "",
     marketId: "",
     location: "",
+    phone: "",
+    latitude: null,
+    longitude: null,
+    instagramUrl: "",
+    facebookUrl: "",
+    tiktokUrl: "",
+    twitterUrl: "",
+    whatsappUrl: "",
+    websiteUrl: "",
     region: "",
     city: "",
     bannerImage: "",
@@ -100,6 +130,15 @@ export default function VendorStoreScreen() {
       category: storeProfile.category,
       marketId: storeProfile.marketId ?? "",
       location: storeProfile.location ?? "",
+      phone: storeProfile.phone ?? "",
+      latitude: storeProfile.latitude ?? null,
+      longitude: storeProfile.longitude ?? null,
+      instagramUrl: storeProfile.instagramUrl ?? "",
+      facebookUrl: storeProfile.facebookUrl ?? "",
+      tiktokUrl: storeProfile.tiktokUrl ?? "",
+      twitterUrl: storeProfile.twitterUrl ?? "",
+      whatsappUrl: storeProfile.whatsappUrl ?? "",
+      websiteUrl: storeProfile.websiteUrl ?? "",
       region: storeProfile.region,
       city: storeProfile.city,
       bannerImage: storeProfile.bannerImage ?? "",
@@ -112,10 +151,11 @@ export default function VendorStoreScreen() {
 
   if (isCheckingVendorAccess || isLoadingStore) {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Store Profile" />
-        <ScreenLoader label="Loading store profile..." />
-      </View>
+      <VendorScreenShell
+        title="Store Profile"
+        loading
+        loadingLabel="Loading store profile..."
+      />
     );
   }
 
@@ -141,7 +181,24 @@ export default function VendorStoreScreen() {
     }
 
     try {
-      await updateStoreProfile(session, form);
+      const socialLinks = normalizeStoreSocialLinks({
+        instagramUrl: form.instagramUrl,
+        facebookUrl: form.facebookUrl,
+        tiktokUrl: form.tiktokUrl,
+        twitterUrl: form.twitterUrl,
+        whatsappUrl: form.whatsappUrl,
+        websiteUrl: form.websiteUrl,
+      });
+
+      await updateStoreProfile(session, {
+        ...form,
+        instagramUrl: socialLinks.instagramUrl ?? "",
+        facebookUrl: socialLinks.facebookUrl ?? "",
+        tiktokUrl: socialLinks.tiktokUrl ?? "",
+        twitterUrl: socialLinks.twitterUrl ?? "",
+        whatsappUrl: socialLinks.whatsappUrl ?? "",
+        websiteUrl: socialLinks.websiteUrl ?? "",
+      });
       showToast("Store profile updated.");
     } catch (storeError) {
       showToast(
@@ -175,37 +232,39 @@ export default function VendorStoreScreen() {
 
   if (!canShowForm) {
     return (
-      <View style={styles.screen}>
-        <ProfileHeader title="Store Profile" />
+      <VendorScreenShell title="Store Profile">
         <View style={styles.emptyWrap}>
           <VendorEmptyState
             icon="storefront-outline"
             title="No managed store found"
-            message="The vendor profile is approved, but the store details haven’t been linked yet. This will usually be created during approval."
+            message="The vendor profile is approved, but the store details haven't been linked yet. This will usually be created during approval."
           />
         </View>
-      </View>
+      </VendorScreenShell>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <ProfileHeader title="Store Profile" />
+    <VendorScreenShell title="Store Profile">
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
-            styles.scrollContent,
+            vendorStyles.content,
             { paddingBottom: insets.bottom + rV(36) },
           ]}
         >
-          <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Customer-facing store details</Text>
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+            <VendorPageIntro
+              title="Store profile"
+              subtitle="Update the storefront details, visuals, and location shoppers see first."
+            />
+            <AccountSectionCard title="Customer-facing store details">
               <TextInputField
                 label="Store Name *"
                 icon="storefront-outline"
@@ -260,11 +319,50 @@ export default function VendorStoreScreen() {
                 })}
               </View>
               <TextInputField
-                label="Location"
-                icon="pin-outline"
-                placeholder="Optional market row or landmark"
-                value={form.location}
-                onChangeText={(text) => handleChange("location", text)}
+                label="Region *"
+                icon="map-outline"
+                placeholder="e.g. Greater Accra"
+                value={form.region}
+                onChangeText={(text) => handleChange("region", text)}
+                errorMessage={fieldErrors.region}
+              />
+              <TextInputField
+                label="City *"
+                icon="location-outline"
+                placeholder="e.g. Accra"
+                value={form.city}
+                onChangeText={(text) => handleChange("city", text)}
+                errorMessage={fieldErrors.city}
+              />
+              <TextInputField
+                label="Store phone"
+                icon="call-outline"
+                placeholder="Number customers can call"
+                value={form.phone ?? ""}
+                onChangeText={(text) => handleChange("phone", text)}
+                keyboardType="phone-pad"
+              />
+              <StoreLocationPicker
+                value={{
+                  address: form.location ?? "",
+                  latitude: form.latitude ?? null,
+                  longitude: form.longitude ?? null,
+                }}
+                onChange={(value: StoreLocationValue) => {
+                  setForm((current) => ({
+                    ...current,
+                    location: value.address,
+                    latitude: value.latitude,
+                    longitude: value.longitude,
+                  }));
+                  setFieldErrors((current) => ({
+                    ...current,
+                    location: undefined,
+                  }));
+                }}
+                errorMessage={fieldErrors.location}
+                city={form.city}
+                region={form.region}
               />
               <Text style={styles.fieldLabel}>Preferred Market</Text>
               <View style={styles.chipsRow}>
@@ -289,28 +387,35 @@ export default function VendorStoreScreen() {
                   );
                 })}
               </View>
-              <TextInputField
-                label="Region *"
-                icon="map-outline"
-                placeholder="e.g. Greater Accra"
-                value={form.region}
-                onChangeText={(text) => handleChange("region", text)}
-                errorMessage={fieldErrors.region}
-              />
-              <TextInputField
-                label="City *"
-                icon="location-outline"
-                placeholder="e.g. Accra"
-                value={form.city}
-                onChangeText={(text) => handleChange("city", text)}
-                errorMessage={fieldErrors.city}
-              />
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            </View>
+            </AccountSectionCard>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Store branding</Text>
+            <AccountSectionCard title="Social links">
+              <StoreSocialLinksEditor
+                value={{
+                  instagramUrl: form.instagramUrl,
+                  facebookUrl: form.facebookUrl,
+                  tiktokUrl: form.tiktokUrl,
+                  twitterUrl: form.twitterUrl,
+                  whatsappUrl: form.whatsappUrl,
+                  websiteUrl: form.websiteUrl,
+                }}
+                onChange={(socialLinks) =>
+                  setForm((current) => ({
+                    ...current,
+                    instagramUrl: socialLinks.instagramUrl ?? "",
+                    facebookUrl: socialLinks.facebookUrl ?? "",
+                    tiktokUrl: socialLinks.tiktokUrl ?? "",
+                    twitterUrl: socialLinks.twitterUrl ?? "",
+                    whatsappUrl: socialLinks.whatsappUrl ?? "",
+                    websiteUrl: socialLinks.websiteUrl ?? "",
+                  }))
+                }
+              />
+            </AccountSectionCard>
+
+            <AccountSectionCard title="Store branding">
               <Text style={styles.helperText}>
                 These images are shown on the customer side, so use a crisp logo and a banner that represents the storefront well.
               </Text>
@@ -349,22 +454,18 @@ export default function VendorStoreScreen() {
                   </View>
                 ))}
               </View>
-            </View>
+            </AccountSectionCard>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, isSavingStore && styles.buttonDisabled]}
+            <AccountActionButton
+              label={isSavingStore ? "Saving Store..." : "Save Store Profile"}
+              variant="primary"
               onPress={handleSave}
               disabled={isSavingStore}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryButtonLabel}>
-                {isSavingStore ? "Saving Store..." : "Save Store Profile"}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </VendorScreenShell>
   );
 }
 

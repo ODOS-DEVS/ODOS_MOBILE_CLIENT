@@ -6,7 +6,6 @@ import { ProfileProvider } from "@/context/ProfileContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
-import AppLoadingOverlay from "@/components/loaders/AppLoadingOverlay";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
@@ -49,21 +48,6 @@ function VendorStateBridge() {
   }, [clearStoreState, clearVendorState, hydrateFromSession, session, user]);
 
   return null;
-}
-
-function AppBootOverlay() {
-  const { isHydrating } = useAuth();
-
-  if (!isHydrating) {
-    return null;
-  }
-
-  return (
-    <AppLoadingOverlay
-      label="Preparing ODOS"
-      sublabel="We’re loading your saved session, storefront data, and account state."
-    />
-  );
 }
 
 function VendorRealtimeBridge() {
@@ -149,7 +133,6 @@ export default function RootLayout() {
                           headerShown: false,
                         }}
                       />
-                      <AppBootOverlay />
                     </View>
                   </WishlistProvider>
                 </CartProvider>

@@ -1,24 +1,21 @@
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
+import {
+  CommerceFilterChips,
+  CommerceSeeAllEmptyState,
+  CommerceSeeAllHero,
+  CommerceSeeAllSearch,
+  CommerceSeeAllSectionHeader,
+  commerceSeeAllScreenStyles,
+} from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { SearchBar } from "@/components/SearchBar";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
 import {
   type CatalogProductItem,
   useRecommendedProducts,
 } from "@/hooks/useCatalog";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
+import { rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
-import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, ScrollView, View } from "react-native";
 
 type RecommendationFilter = "all" | "fresh" | "topRated" | "deals" | "budget";
 
@@ -147,52 +144,33 @@ export default function RecommendationScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={commerceSeeAllScreenStyles.screen}>
       <ProfileHeader title="Recommendations" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: horizontalPadding,
-          paddingBottom: sectionSpacing,
-          paddingTop: rV(8),
-        }}
+        contentContainerStyle={[
+          commerceSeeAllScreenStyles.scrollContent,
+          {
+            paddingHorizontal: horizontalPadding,
+            paddingBottom: sectionSpacing,
+          },
+        ]}
       >
-        <View style={styles.heroCard}>
-          <View style={styles.heroBadge}>
-            <Ionicons
-              name="sparkles-outline"
-              size={rMS(14)}
-              color="#8A6A2E"
-            />
-            <Text style={styles.heroBadgeText}>Curated for you</Text>
-          </View>
+        <CommerceSeeAllHero
+          badgeIcon="sparkles-outline"
+          badgeLabel="Curated for you"
+          title="Smarter picks from across ODOS"
+          subtitle="Explore strong-rated items, live deals, and fresh products in one calmer shopping flow."
+          accent="gold"
+          stats={[
+            { value: allProducts.length, label: "live picks" },
+            { value: topRatedProducts.length, label: "top rated" },
+            { value: dealProducts.length, label: "deals now" },
+          ]}
+        />
 
-          <Text style={styles.heroTitle}>Smarter picks from across ODOS</Text>
-          <Text style={styles.heroSubtitle}>
-            Explore strong-rated items, live deals, and fresh products pulled
-            together into one calmer shopping flow.
-          </Text>
-
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{allProducts.length}</Text>
-              <Text style={styles.heroStatLabel}>live picks</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{topRatedProducts.length}</Text>
-              <Text style={styles.heroStatLabel}>top rated</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{dealProducts.length}</Text>
-              <Text style={styles.heroStatLabel}>deals now</Text>
-            </View>
-          </View>
-        </View>
-
-        <SearchBar
+        <CommerceSeeAllSearch
           data={allProducts}
           onQueryChange={(query) => {
             const hasQuery = query.length > 0;
@@ -204,7 +182,7 @@ export default function RecommendationScreen() {
           onResults={(results) => {
             setSearchResults(results as CatalogProductItem[]);
           }}
-          placeholder="Search recommended products, deals, categories..."
+          placeholder="Search recommendations, deals, or categories"
           searchKeys={[
             "title",
             "category",
@@ -212,80 +190,43 @@ export default function RecommendationScreen() {
             "reviews",
             "discount",
           ]}
-          containerStyle={{ marginTop: rV(14) }}
         />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {filterChips.map((chip) => {
-            const selected = chip.key === activeFilter;
-            return (
-              <TouchableOpacity
-                key={chip.key}
-                activeOpacity={0.9}
-                style={[
-                  styles.filterChip,
-                  selected ? styles.filterChipActive : null,
-                ]}
-                onPress={() => setActiveFilter(chip.key)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selected ? styles.filterChipTextActive : null,
-                  ]}
-                >
-                  {chip.label}
-                </Text>
-                <View
-                  style={[
-                    styles.filterCountPill,
-                    selected ? styles.filterCountPillActive : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterCountText,
-                      selected ? styles.filterCountTextActive : null,
-                    ]}
-                  >
-                    {chip.count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <CommerceFilterChips
+          chips={filterChips}
+          activeKey={activeFilter}
+          onChange={(key) => setActiveFilter(key as RecommendationFilter)}
+        />
 
-        <View style={{ marginTop: sectionSpacing }}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>{activeFilterLabel}</Text>
-              <Text style={styles.sectionSubtitle}>
-                {displayed.length} item{displayed.length === 1 ? "" : "s"} ready
-                to explore
-              </Text>
-            </View>
-          </View>
+        <View style={commerceSeeAllScreenStyles.contentBlock}>
+          <CommerceSeeAllSectionHeader
+            title={activeFilterLabel}
+            subtitle={
+              displayed.length > 0
+                ? `${displayed.length} item${displayed.length === 1 ? "" : "s"} ready to explore`
+                : isSearching
+                  ? "Try a broader search or switch filters"
+                  : "New picks appear as more products are curated"
+            }
+            count={displayed.length}
+          />
 
           {isLoading && allProducts.length === 0 ? (
             <ProductListSkeleton count={5} />
           ) : displayed.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>
-                {error ? "We couldn't load recommendations" : "Nothing here yet"}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {error
+            <CommerceSeeAllEmptyState
+              icon="sparkles-outline"
+              title={
+                error ? "We couldn't load recommendations" : "Nothing here yet"
+              }
+              subtitle={
+                error
                   ? "The live catalog is unavailable right now. Try again in a moment."
                   : isSearching
-                  ? "Try a broader search or switch to another recommendation view."
-                  : "New recommendation matches will appear here as more products are curated."}
-              </Text>
-            </View>
+                    ? "Try a broader search or switch to another recommendation view."
+                    : "New recommendation matches will appear here as more products are curated."
+              }
+            />
           ) : (
             <FlatList
               data={displayed}
@@ -293,7 +234,7 @@ export default function RecommendationScreen() {
               scrollEnabled={false}
               ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
               renderItem={({ item }) => <RecommendationCard {...item} />}
-              contentContainerStyle={{ paddingTop: rV(12), paddingBottom: rV(8) }}
+              contentContainerStyle={{ paddingTop: rV(4), paddingBottom: rV(8) }}
             />
           )}
         </View>
@@ -301,165 +242,3 @@ export default function RecommendationScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
-  },
-  heroBadge: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
-    borderRadius: rS(999),
-    backgroundColor: "#F6EFE1",
-  },
-  heroBadgeText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-    color: "#8A6A2E",
-    letterSpacing: 0.25,
-  },
-  heroTitle: {
-    marginTop: rV(12),
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroSubtitle: {
-    marginTop: rV(8),
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(19),
-  },
-  heroStatsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: rV(16),
-    gap: rS(10),
-  },
-  heroStat: {
-    flex: 1,
-  },
-  heroStatValue: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroStatLabel: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  heroDivider: {
-    width: 1,
-    height: rV(28),
-    backgroundColor: "#E2E8F0",
-  },
-  filterRow: {
-    paddingTop: rV(16),
-    paddingBottom: rV(2),
-    gap: rS(10),
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    borderRadius: rS(999),
-    backgroundColor: AppColors.white,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D9E0E8",
-  },
-  filterChipActive: {
-    backgroundColor: "#EEF2F6",
-    borderColor: "#B9C5D3",
-  },
-  filterChipText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-  },
-  filterChipTextActive: {
-    color: AppColors.text,
-  },
-  filterCountPill: {
-    minWidth: rS(24),
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: rS(999),
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(2),
-    backgroundColor: "#F3F5F8",
-  },
-  filterCountPillActive: {
-    backgroundColor: "#DCE4ED",
-  },
-  filterCountText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.secondary,
-  },
-  filterCountTextActive: {
-    color: AppColors.text,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  sectionSubtitle: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  emptyState: {
-    marginTop: rV(16),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    paddingVertical: rV(22),
-    paddingHorizontal: rS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-    alignItems: "center",
-  },
-  emptyTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  emptySubtitle: {
-    marginTop: rV(7),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-    lineHeight: rMS(18),
-  },
-});

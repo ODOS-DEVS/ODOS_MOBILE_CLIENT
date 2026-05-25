@@ -43,8 +43,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
   const isActiveRef = useRef(true);
+  const shouldReconnectRef = useRef(true);
   const latestTokenRef = useRef<string | null>(null);
   const latestAuthenticatedRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
   const listenersRef = useRef<Map<string, Set<(event: RealtimeEventEnvelope) => void>>>(
     new Map(),
   );
@@ -148,14 +150,19 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           socketRef.current = null;
         }
         setConnectionState("disconnected");
-        scheduleReconnect();
+        if (shouldReconnectRef.current) {
+          scheduleReconnect();
+        }
       };
     },
     [clearReconnectTimeout, handleSocketMessage, scheduleReconnect],
   );
 
+  const userId = user?.id ?? null;
+
   useEffect(() => {
-    const authenticatedToken = accessToken && user ? accessToken : null;
+    userIdRef.current = userId;
+    const authenticatedToken = accessToken && userId ? accessToken : null;
     latestTokenRef.current = authenticatedToken;
     latestAuthenticatedRef.current = Boolean(authenticatedToken);
 
@@ -163,35 +170,48 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    shouldReconnectRef.current = false;
+    clearReconnectTimeout();
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
+    shouldReconnectRef.current = true;
     connect(authenticatedToken);
 
     return () => {
+      shouldReconnectRef.current = false;
+      clearReconnectTimeout();
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
     };
-  }, [accessToken, connect, user]);
+  }, [accessToken, clearReconnectTimeout, connect, userId]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       isActiveRef.current = nextState === "active";
       if (nextState === "active") {
-        if (!socketRef.current) {
+        if (!socketRef.current && userIdRef.current) {
+          shouldReconnectRef.current = true;
           connect(latestTokenRef.current);
         }
       } else {
+        shouldReconnectRef.current = false;
+        clearReconnectTimeout();
         if (socketRef.current) {
           socketRef.current.close();
           socketRef.current = null;
         }
+        setConnectionState("disconnected");
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [connect]);
+  }, [clearReconnectTimeout, connect]);
 
   const subscribe = useCallback(
     (eventType: string, handler: (event: RealtimeEventEnvelope) => void) => {

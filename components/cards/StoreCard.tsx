@@ -39,7 +39,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
     <TouchableOpacity
       onPress={() =>
         router.push({
-          pathname: "/screens/stores/[id]" as any,
+          pathname: "/(root)/screens/stores/[id]" as any,
           params: {
             id,
             image: imageUrl ?? undefined,

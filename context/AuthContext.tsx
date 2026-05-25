@@ -934,15 +934,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateProfile = useCallback(
-    async ({
-      fullName,
-      phoneNumber,
-      dateOfBirth,
-      gender,
-      city,
-      region,
-      avatarUrl,
-    }: ProfileUpdatePayload) => {
+    async (payload: ProfileUpdatePayload) => {
+      const {
+        fullName,
+        phoneNumber,
+        dateOfBirth,
+        gender,
+        city,
+        region,
+        avatarUrl,
+        allowNotifications,
+        discountNotifications,
+        storeNotifications,
+        systemNotifications,
+        locationNotifications,
+        locationUpdates,
+      } = payload;
+
       if (!accessToken) {
         return {
           success: false,
@@ -963,6 +971,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           city: city?.trim() || null,
           region: region?.trim() || null,
           avatarUrl,
+          allowNotifications,
+          discountNotifications,
+          storeNotifications,
+          systemNotifications,
+          locationNotifications,
+          locationUpdates,
         });
 
         setUser(updatedUser);

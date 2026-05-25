@@ -1,92 +1,38 @@
-import Colors from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import {
+  ChatComposer,
+  ChatContextCard,
+  ChatLoadingCenter,
+  ChatMessagesEmpty,
+  chatStyles,
+  ChatScreenHeader,
+  ChatScreenShell,
+  ChatStatusBadge,
+  renderChatMessageItem,
+} from "@/components/chat/ChatUi";
+import { AppColors } from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useToast } from "@/context/ToastContext";
-import type { ChatMessage } from "@/types/chat";
+import { rMS } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
+import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StatusBar,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Image, StatusBar, Text, View } from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
-const isSameDay = (a: number, b: number) => {
-  const da = new Date(a);
-  const db = new Date(b);
-  return (
-    da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
-  );
-};
-
-const formatMessageTime = (time: number) =>
-  new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-const getConnectionMeta = (
-  connectionState: "disconnected" | "connecting" | "connected",
-) => {
-  if (connectionState === "connected") {
-    return {
-      label: "Live",
-      icon: "wifi-outline" as const,
-      tone: "#DCFCE7",
-      text: "#166534",
-    };
-  }
-  if (connectionState === "connecting") {
-    return {
-      label: "Reconnecting",
-      icon: "sync-outline" as const,
-      tone: "#FEF3C7",
-      text: "#92400E",
-    };
-  }
-  return {
-    label: "Offline",
-    icon: "cloud-offline-outline" as const,
-    tone: "#FEE2E2",
-    text: "#B91C1C",
-  };
-};
-
-const formatDayLabel = (time: number) => {
-  const d = new Date(time);
-  const now = new Date();
-  if (isSameDay(d.getTime(), now.getTime())) return "Today";
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (isSameDay(d.getTime(), yesterday.getTime())) return "Yesterday";
-  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-};
-
 export default function VendorChatScreen() {
   const params = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { showToast } = useToast();
   const { connectionState } = useRealtime();
   const {
     ensureThread,
     getThreadById,
-    isLoadingCustomerThreads,
     loadCustomerThreads,
     loadMessages,
     loadVendorThreads,
@@ -110,11 +56,14 @@ export default function VendorChatScreen() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   const listRef = useRef<FlatList>(null);
+  const messagesByThreadRef = useRef(messagesByThread);
+  messagesByThreadRef.current = messagesByThread;
   const thread = getThreadById(resolvedThreadId);
   const messages = resolvedThreadId ? messagesByThread[resolvedThreadId] ?? [] : [];
   const isSending = sendingThreadId === resolvedThreadId;
-  const isLoadingMessages = loadingThreadId === resolvedThreadId;
-  const connectionMeta = getConnectionMeta(connectionState);
+  const isLoadingMessages =
+    loadingThreadId === resolvedThreadId &&
+    (resolvedThreadId ? (messagesByThread[resolvedThreadId]?.length ?? 0) === 0 : true);
 
   useEffect(() => {
     if (initialThreadId && initialThreadId !== resolvedThreadId) {
@@ -123,11 +72,7 @@ export default function VendorChatScreen() {
   }, [initialThreadId, resolvedThreadId]);
 
   const bootstrapThread = useCallback(async () => {
-    if (viewer === "vendor") {
-      return;
-    }
-
-    if (resolvedThreadId || !storeId) {
+    if (viewer === "vendor" || resolvedThreadId || !storeId) {
       return;
     }
 
@@ -163,9 +108,9 @@ export default function VendorChatScreen() {
   useFocusEffect(
     useCallback(() => {
       if (viewer === "vendor") {
-        void loadVendorThreads();
+        void loadVendorThreads({ silent: true });
       } else {
-        void loadCustomerThreads();
+        void loadCustomerThreads({ silent: true });
       }
     }, [loadCustomerThreads, loadVendorThreads, viewer]),
   );
@@ -181,22 +126,24 @@ export default function VendorChatScreen() {
       }
 
       let isCancelled = false;
+      const hasCachedMessages =
+        (messagesByThreadRef.current[resolvedThreadId]?.length ?? 0) > 0;
+
       const syncMessages = async () => {
         try {
-          await loadMessages(resolvedThreadId);
+          await loadMessages(resolvedThreadId, { silent: hasCachedMessages });
         } catch (error) {
           if (!isCancelled) {
-            const message =
+            setBootstrapError(
               error instanceof Error
                 ? error.message
-                : "We couldn't load this conversation.";
-            setBootstrapError(message);
+                : "We couldn't load this conversation.",
+            );
           }
         }
       };
 
       void syncMessages();
-
       return () => {
         isCancelled = true;
       };
@@ -204,7 +151,9 @@ export default function VendorChatScreen() {
   );
 
   useEffect(() => {
-    if (!messages.length) return;
+    if (!messages.length) {
+      return;
+    }
     const timeoutId = setTimeout(
       () => listRef.current?.scrollToEnd({ animated: true }),
       50,
@@ -225,79 +174,10 @@ export default function VendorChatScreen() {
     }
   };
 
-  const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
-    const isUser = item.senderUserId === user?.id;
-    const itemTime = new Date(item.time).getTime();
-    const prev = messages[index - 1];
-    const next = messages[index + 1];
-    const prevTime = prev ? new Date(prev.time).getTime() : 0;
-    const nextTime = next ? new Date(next.time).getTime() : 0;
-
-    const showDay = !prev || !isSameDay(prevTime, itemTime);
-    const nextSameSender = next?.senderUserId === item.senderUserId;
-    const nextCloseInTime = next ? Math.abs(nextTime - itemTime) < 6 * 60 * 1000 : false;
-    const showMeta = !nextSameSender || !nextCloseInTime;
-
-    return (
-      <>
-        {showDay && (
-          <View className="items-center py-3">
-            <View className="bg-black/5 px-3 py-1 rounded-full">
-              <Text style={{ fontFamily: Fonts.text }} className="text-xs text-gray-700">
-                {formatDayLabel(itemTime)}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <View
-          className={`flex-row ${isUser ? "justify-end" : "justify-start"} px-4 py-1.5`}
-        >
-          <View
-            className={`${isUser ? "" : "border border-gray-200"} ${
-              isUser ? "shadow-sm" : ""
-            }`}
-            style={{
-              maxWidth: "79%",
-              backgroundColor: isUser ? Colors.primary : "#FFFFFF",
-              paddingVertical: 8,
-              paddingHorizontal: 10,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              borderBottomLeftRadius: isUser ? 16 : 6,
-              borderBottomRightRadius: isUser ? 6 : 16,
-            }}
-          >
-            <Text
-              style={{
-                color: isUser ? "#FFFFFF" : "#111827",
-                fontFamily: Fonts.text,
-                fontSize: 14,
-                lineHeight: 18,
-              }}
-            >
-              {item.text}
-            </Text>
-
-            {showMeta && (
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 10,
-                  color: isUser ? "rgba(255,255,255,0.85)" : "#9CA3AF",
-                  textAlign: "right",
-                  fontFamily: Fonts.textLight,
-                }}
-              >
-                {formatMessageTime(itemTime)}
-                {isUser && item.isRead ? " · Seen" : ""}
-              </Text>
-            )}
-          </View>
-        </View>
-      </>
-    );
-  };
+  const backFallback =
+    viewer === "vendor"
+      ? ("/vendor/chats" as const)
+      : ("/(root)/screens/profileScreens/Account/Chats" as const);
 
   const headerTitle = thread?.counterpart.name ?? fallbackName;
   const headerSubtitle =
@@ -309,132 +189,65 @@ export default function VendorChatScreen() {
         ? `${thread.store.title} on ODOS`
         : "Store chat";
 
-  const header = useMemo(() => {
-    const fallback =
-      viewer === "vendor"
-        ? ("/vendor/chats" as any)
-        : ("/(root)/screens/profileScreens/Account/Chats" as any);
-
-    return (
-      <View
-        className="bg-white border-b border-gray-200"
-        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
-      >
-        <View className="flex-row items-center px-4">
-          <TouchableOpacity
-            onPress={() =>
-              goBackOr(router, {
-                fallback,
-              })
-            }
-            className="w-10 h-10 bg-black/10 rounded-full items-center justify-center mr-3"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color="#111827" />
-          </TouchableOpacity>
-
-          {viewer === "vendor" && thread?.counterpart.avatarUrl ? (
-            <Image
-              source={{ uri: thread.counterpart.avatarUrl }}
-              style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
-            />
-          ) : !viewer || viewer === "customer" ? (
-            thread?.store.imageUrl ? (
-              <Image
-                source={{ uri: thread.store.imageUrl }}
-                style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
-              />
-            ) : (
-              <View className="w-10 h-10 rounded-full mr-3 bg-black/10 items-center justify-center">
-                <Ionicons name="storefront-outline" size={20} color="#111827" />
-              </View>
-            )
-          ) : (
-            <View className="w-10 h-10 rounded-full mr-3 bg-black/10 items-center justify-center">
-              <Ionicons name="person-outline" size={20} color="#111827" />
-            </View>
-          )}
-
-          <View className="flex-1">
-            <Text className="text-lg font-montserrat-semiBold text-gray-900">
-              {headerTitle}
-            </Text>
-            <Text className="text-xs text-gray-500 mt-0.5">{headerSubtitle}</Text>
-            <View
-              style={{
-                marginTop: 6,
-                alignSelf: "flex-start",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: connectionMeta.tone,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 999,
-              }}
-            >
-              <Ionicons name={connectionMeta.icon} size={12} color={connectionMeta.text} />
-              <Text style={{ color: connectionMeta.text, fontSize: 11, fontFamily: Fonts.textBold }}>
-                {connectionMeta.label}
-              </Text>
-            </View>
-          </View>
-        </View>
+  const headerAvatar =
+    viewer === "vendor" && thread?.counterpart.avatarUrl ? (
+      <Image
+        source={{ uri: thread.counterpart.avatarUrl }}
+        style={chatStyles.headerAvatar}
+        resizeMode="cover"
+      />
+    ) : thread?.store.imageUrl || thread?.store.imageKey ? (
+      <Image
+        source={resolveImageSource(thread?.store.imageUrl, thread?.store.imageKey)}
+        style={chatStyles.headerAvatar}
+        resizeMode="cover"
+      />
+    ) : (
+      <View style={chatStyles.avatarPlaceholder}>
+        <Ionicons
+          name={viewer === "vendor" ? "person-outline" : "storefront-outline"}
+          size={rMS(20)}
+          color={AppColors.primary}
+        />
       </View>
     );
-  }, [headerSubtitle, headerTitle, insets.top, viewer]);
 
   const emptyState = !resolvedThreadId || (isBootstrapping && !thread);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#F5F7FA]"
-    >
+    <ChatScreenShell>
       <StatusBar barStyle="dark-content" />
-      {header}
+
+      <ChatScreenHeader
+        title={headerTitle}
+        subtitle={headerSubtitle}
+        onBack={() => goBackOr(router, { fallback: backFallback })}
+        connectionState={connectionState}
+        avatar={headerAvatar}
+      />
 
       {thread?.product?.title ? (
-        <View className="px-4 pt-3">
-          <View className="bg-white border border-gray-200 rounded-3xl px-4 py-3 flex-row items-center">
-            {thread.product.imageUrl ? (
-              <Image
-                source={{ uri: thread.product.imageUrl }}
-                style={{ width: 46, height: 46, borderRadius: 14, marginRight: 10 }}
-              />
-            ) : null}
-            <View className="flex-1">
-              <Text className="text-[11px] uppercase tracking-[0.6px] text-gray-500 mb-1">
-                Chat context
-              </Text>
-              <Text className="text-[13px] font-semibold text-gray-900">
-                {thread.product.title}
-              </Text>
-              <Text className="text-xs text-gray-500 mt-1">
-                {thread.store.title}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <ChatContextCard
+          label="Chat context"
+          title={thread.product.title}
+          subtitle={thread.store.title}
+          imageUrl={thread.product.imageUrl}
+        />
       ) : null}
 
       {emptyState ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text className="text-base font-semibold text-gray-900 mt-4">
-            Opening conversation
-          </Text>
-          <Text className="text-gray-500 text-center mt-2">
-            {viewer === "vendor"
-              ? "We’re getting your latest shopper messages ready."
-              : "We’re preparing your store chat."}
-          </Text>
-        </View>
+        <ChatLoadingCenter
+          label={
+            viewer === "vendor"
+              ? "Getting your latest shopper messages ready..."
+              : "Preparing your store chat..."
+          }
+        />
       ) : null}
 
       {!emptyState && bootstrapError ? (
-        <View className="mx-4 mt-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <Text className="text-sm text-red-700">{bootstrapError}</Text>
+        <View style={chatStyles.errorBanner}>
+          <Text style={chatStyles.errorText}>{bootstrapError}</Text>
         </View>
       ) : null}
 
@@ -442,90 +255,53 @@ export default function VendorChatScreen() {
         <FlatList
           ref={listRef}
           data={messages}
-          renderItem={renderItem}
-          keyExtractor={(m) => m.id}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 16, flexGrow: 1 }}
+          keyExtractor={(message) => message.id}
+          contentContainerStyle={chatStyles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          renderItem={({ item, index }) =>
+            renderChatMessageItem({
+              item,
+              index,
+              messages,
+              currentUserId: user?.id,
+            })
+          }
           ListEmptyComponent={
             isLoadingMessages ? (
-              <View className="flex-1 items-center justify-center py-20">
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text className="text-sm text-gray-500 mt-3">
-                  Loading messages...
-                </Text>
+              <View style={chatStyles.loadingWrap}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+                <Text style={chatStyles.loadingText}>Loading messages...</Text>
               </View>
             ) : (
-              <View className="flex-1 items-center justify-center py-20 px-10">
-                <Text className="text-base font-semibold text-gray-900">
-                  No messages yet
-                </Text>
-                <Text className="text-sm text-gray-500 text-center mt-2">
-                  {viewer === "vendor"
+              <ChatMessagesEmpty
+                title="No messages yet"
+                description={
+                  viewer === "vendor"
                     ? "Reply here when a shopper reaches out."
-                    : "Say hello and ask anything about this store or product."}
-                </Text>
-              </View>
+                    : "Say hello and ask anything about this store or product."
+                }
+              />
             )
           }
         />
       ) : null}
 
-      <View
-        className="px-4 pt-3 border-t border-gray-200 bg-white"
-        style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-      >
-        <Text
-          style={{
-            fontFamily: Fonts.textLight,
-            color: "#6B7280",
-            fontSize: 11,
-            marginBottom: 6,
-            paddingHorizontal: 4,
-          }}
-        >
-          {viewer === "vendor"
+      <ChatComposer
+        hint={
+          viewer === "vendor"
             ? "Keep replies clear and helpful so shoppers can continue easily."
-            : "Ask about the product, delivery, or availability here."}
-        </Text>
-        <View className="flex-row items-end gap-3">
-          <View className="flex-1 bg-gray-100 rounded-[24px] px-3.5 py-2 border border-gray-200">
-            <TextInput
-              placeholder={
-                viewer === "vendor" ? "Reply to shopper..." : "Message store..."
-              }
-              value={input}
-              onChangeText={setInput}
-              style={{
-                maxHeight: 110,
-                padding: 0,
-                fontFamily: Fonts.text,
-                fontSize: 14,
-                lineHeight: 18,
-                color: "#111827",
-              }}
-              multiline
-              editable={Boolean(resolvedThreadId) && !isBootstrapping}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => {
-              void onSend();
-            }}
-            disabled={!input.trim() || !resolvedThreadId || isSending}
-            className={`w-11 h-11 rounded-full items-center justify-center ${
-              input.trim() && resolvedThreadId && !isSending ? "bg-black" : "bg-black/20"
-            }`}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={16} color="#fff" />
-            )}
-          </Pressable>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            : "Ask about the product, delivery, or availability here."
+        }
+        placeholder={viewer === "vendor" ? "Reply to shopper..." : "Message store..."}
+        value={input}
+        onChangeText={setInput}
+        onSend={() => {
+          void onSend();
+        }}
+        disabled={!resolvedThreadId || isBootstrapping}
+        isSending={isSending}
+      />
+    </ChatScreenShell>
   );
 }

@@ -1,118 +1,41 @@
-import Colors from "@/constants/Colors";
+import { AccountActionButton } from "@/components/account/AccountUi";
+import {
+  ChatComposer,
+  chatStyles,
+  ChatLoadingCenter,
+  ChatMessagesEmpty,
+  ChatScreenHeader,
+  ChatScreenShell,
+  ChatStatusBadge,
+  getSupportStatusMeta,
+  renderChatMessageItem,
+} from "@/components/chat/ChatUi";
+import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useToast } from "@/context/ToastContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import type { ChatMessage, SupportChatStatus } from "@/types/chat";
+import { rMS } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
   StatusBar,
+  StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
-const isSameDay = (a: number, b: number) => {
-  const da = new Date(a);
-  const db = new Date(b);
-  return (
-    da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
-  );
-};
-
-const formatMessageTime = (time: number) =>
-  new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-const formatDayLabel = (time: number) => {
-  const d = new Date(time);
-  const now = new Date();
-  if (isSameDay(d.getTime(), now.getTime())) return "Today";
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (isSameDay(d.getTime(), yesterday.getTime())) return "Yesterday";
-  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-};
-
-const getConnectionMeta = (
-  connectionState: "disconnected" | "connecting" | "connected",
-) => {
-  if (connectionState === "connected") {
-    return {
-      label: "Live",
-      icon: "wifi-outline" as const,
-      tone: "#DCFCE7",
-      text: "#166534",
-    };
-  }
-  if (connectionState === "connecting") {
-    return {
-      label: "Reconnecting",
-      icon: "sync-outline" as const,
-      tone: "#FEF3C7",
-      text: "#92400E",
-    };
-  }
-  return {
-    label: "Offline",
-    icon: "cloud-offline-outline" as const,
-    tone: "#FEE2E2",
-    text: "#B91C1C",
-  };
-};
-
-const getSupportStatusMeta = (
-  status: SupportChatStatus | null | undefined,
-  viewerRole: "vendor" | "customer",
-) => {
-  if (status === "resolved") {
-    return {
-      label: "Resolved",
-      icon: "checkmark-circle-outline" as const,
-      tone: "#DCFCE7",
-      text: "#166534",
-      helper: "Reply to this thread any time if you need it reopened.",
-    };
-  }
-
-  if (status === "waiting_on_customer") {
-    return {
-      label: viewerRole === "vendor" ? "Waiting on you" : "Waiting on you",
-      icon: "person-outline" as const,
-      tone: "#DBEAFE",
-      text: "#1D4ED8",
-      helper: "The ODOS team has responded. Send the next detail to continue.",
-    };
-  }
-
-  return {
-    label: "Waiting on admin",
-    icon: "time-outline" as const,
-    tone: "#FEF3C7",
-    text: "#92400E",
-    helper: "Your thread is in the admin queue. We’ll reply here when ready.",
-  };
-};
-
 export default function SupportChatScreen() {
   const params = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { requireAuth } = useRequireAuth();
   const { showToast } = useToast();
@@ -131,7 +54,7 @@ export default function SupportChatScreen() {
   } = useChat();
 
   const requestedSubject = getParam(params.subject) ?? "";
-  const fallback = (getParam(params.fallback) ?? "/(root)/(tabs)/profile") as any;
+  const fallback = (getParam(params.fallback) ?? "/(root)/(tabs)/profile") as const;
   const initialThreadId = getParam(params.threadId) ?? "";
 
   const [resolvedThreadId, setResolvedThreadId] = useState(initialThreadId);
@@ -140,26 +63,45 @@ export default function SupportChatScreen() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   const listRef = useRef<FlatList>(null);
+  const messagesByThreadRef = useRef(messagesByThread);
+  const bootstrapAttemptedRef = useRef(false);
+  const viewerRole = useMemo(
+    () => (user?.roles.includes("vendor") ? "vendor" : "customer"),
+    [user?.roles],
+  );
+
+  messagesByThreadRef.current = messagesByThread;
+
   const thread = getThreadById(resolvedThreadId) ?? supportThreads[0];
   const messages = resolvedThreadId ? messagesByThread[resolvedThreadId] ?? [] : [];
   const isSending = sendingThreadId === resolvedThreadId;
-  const isLoadingMessages = loadingThreadId === resolvedThreadId;
-  const viewerRole = user?.roles.includes("vendor") ? "vendor" : "customer";
-  const connectionMeta = getConnectionMeta(connectionState);
+  const isLoadingMessages =
+    loadingThreadId === resolvedThreadId && messages.length === 0;
   const statusMeta = getSupportStatusMeta(thread?.supportStatus, viewerRole);
+
+  const showBootstrapLoader =
+    !resolvedThreadId &&
+    (isBootstrapping || (isLoadingSupportThreads && supportThreads.length === 0));
 
   useEffect(() => {
     requireAuth({ title: "Sign in to contact support" });
   }, [requireAuth]);
 
   useEffect(() => {
-    if (initialThreadId && initialThreadId !== resolvedThreadId) {
+    if (initialThreadId) {
       setResolvedThreadId(initialThreadId);
     }
-  }, [initialThreadId, resolvedThreadId]);
+  }, [initialThreadId]);
+
+  useEffect(() => {
+    if (resolvedThreadId || !supportThreads[0]?.id) {
+      return;
+    }
+    setResolvedThreadId(supportThreads[0].id);
+  }, [resolvedThreadId, supportThreads]);
 
   const bootstrapThread = useCallback(async () => {
-    if (!user) {
+    if (!user || resolvedThreadId) {
       return;
     }
 
@@ -182,26 +124,28 @@ export default function SupportChatScreen() {
     } finally {
       setIsBootstrapping(false);
     }
-  }, [ensureSupportThread, requestedSubject, showToast, user, viewerRole]);
+  }, [ensureSupportThread, requestedSubject, resolvedThreadId, showToast, user, viewerRole]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadSupportThreads();
-    }, [loadSupportThreads]),
+      void loadSupportThreads({
+        silent: supportThreads.length > 0 || Boolean(resolvedThreadId),
+      });
+    }, [loadSupportThreads, resolvedThreadId, supportThreads.length]),
   );
 
   useEffect(() => {
-    if (!user || resolvedThreadId) {
+    if (!user || resolvedThreadId || bootstrapAttemptedRef.current) {
       return;
     }
-    void bootstrapThread();
-  }, [bootstrapThread, resolvedThreadId, user]);
 
-  useEffect(() => {
-    if (!resolvedThreadId && supportThreads[0]?.id) {
-      setResolvedThreadId(supportThreads[0].id);
+    if (supportThreads[0]?.id) {
+      return;
     }
-  }, [resolvedThreadId, supportThreads]);
+
+    bootstrapAttemptedRef.current = true;
+    void bootstrapThread();
+  }, [bootstrapThread, resolvedThreadId, supportThreads, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -210,9 +154,12 @@ export default function SupportChatScreen() {
       }
 
       let isCancelled = false;
+      const hasCachedMessages =
+        (messagesByThreadRef.current[resolvedThreadId]?.length ?? 0) > 0;
+
       const syncMessages = async () => {
         try {
-          await loadMessages(resolvedThreadId);
+          await loadMessages(resolvedThreadId, { silent: hasCachedMessages });
         } catch (error) {
           if (!isCancelled) {
             setBootstrapError(
@@ -225,7 +172,6 @@ export default function SupportChatScreen() {
       };
 
       void syncMessages();
-
       return () => {
         isCancelled = true;
       };
@@ -233,7 +179,9 @@ export default function SupportChatScreen() {
   );
 
   useEffect(() => {
-    if (!messages.length) return;
+    if (!messages.length) {
+      return;
+    }
     const timeoutId = setTimeout(
       () => listRef.current?.scrollToEnd({ animated: true }),
       50,
@@ -254,326 +202,173 @@ export default function SupportChatScreen() {
     }
   };
 
-  const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
-    const isUserMessage = item.senderUserId === user?.id;
-    const itemTime = new Date(item.time).getTime();
-    const prev = messages[index - 1];
-    const next = messages[index + 1];
-    const prevTime = prev ? new Date(prev.time).getTime() : 0;
-    const nextTime = next ? new Date(next.time).getTime() : 0;
-    const showDay = !prev || !isSameDay(prevTime, itemTime);
-    const nextSameSender = next?.senderUserId === item.senderUserId;
-    const nextCloseInTime = next ? Math.abs(nextTime - itemTime) < 6 * 60 * 1000 : false;
-    const showMeta = !nextSameSender || !nextCloseInTime;
-
-    return (
-      <>
-        {showDay ? (
-          <View className="items-center py-3">
-            <View className="bg-black/5 px-3 py-1 rounded-full">
-              <Text style={{ fontFamily: Fonts.text }} className="text-xs text-gray-700">
-                {formatDayLabel(itemTime)}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        <View className={`flex-row ${isUserMessage ? "justify-end" : "justify-start"} px-4 py-1.5`}>
-          <View
-            className={`${isUserMessage ? "shadow-sm" : "border border-gray-200"}`}
-            style={{
-              maxWidth: "79%",
-              backgroundColor: isUserMessage ? Colors.primary : "#FFFFFF",
-              paddingVertical: 8,
-              paddingHorizontal: 10,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              borderBottomLeftRadius: isUserMessage ? 16 : 6,
-              borderBottomRightRadius: isUserMessage ? 6 : 16,
-            }}
-          >
-            <Text
-              style={{
-                color: isUserMessage ? "#FFFFFF" : "#111827",
-                fontFamily: Fonts.text,
-                fontSize: 14,
-                lineHeight: 18,
-              }}
-            >
-              {item.text}
-            </Text>
-
-            {showMeta ? (
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 10,
-                  color: isUserMessage ? "rgba(255,255,255,0.85)" : "#9CA3AF",
-                  textAlign: "right",
-                  fontFamily: Fonts.textLight,
-                }}
-              >
-                {formatMessageTime(itemTime)}
-                {isUserMessage && item.isRead ? " · Seen" : ""}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </>
-    );
-  };
-
-  const headerTitle = "ODOS Support";
   const headerSubtitle =
     thread?.assignedAdminName
       ? `${thread.assignedAdminName} is handling this thread`
       : viewerRole === "vendor"
         ? "Admin help for stores, payouts, approvals, and operations"
         : "Admin help for orders, payments, account, and delivery";
+
   const subject = thread?.subject || requestedSubject;
-  const emptyState = !resolvedThreadId || isBootstrapping;
 
   if (!user) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F5F7FA] px-8">
-        <Ionicons name="lock-closed-outline" size={30} color="#6B7280" />
-        <Text className="mt-4 text-base font-semibold text-gray-900">
-          Sign in to continue
+      <View style={styles.authWrap}>
+        <Ionicons name="lock-closed-outline" size={rMS(30)} color="#6B7280" />
+        <Text style={styles.authTitle}>Sign in to continue</Text>
+        <Text style={styles.authText}>
+          Support conversations stay attached to your account so the admin team can follow up
+          properly.
         </Text>
-        <Text className="mt-2 text-center text-sm text-gray-500">
-          Support conversations stay attached to your account so the admin team can follow up properly.
-        </Text>
-        <TouchableOpacity
+        <AccountActionButton
+          label="Back"
+          variant="primary"
           onPress={() => goBackOr(router, { fallback })}
-          activeOpacity={0.8}
-          className="mt-6 rounded-full bg-black px-5 py-3"
-        >
-          <Text className="text-white" style={{ fontFamily: Fonts.textBold }}>
-            Back
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-[#F5F7FA]"
-    >
+    <ChatScreenShell>
       <StatusBar barStyle="dark-content" />
 
-      <View
-        className="bg-white border-b border-gray-200"
-        style={{ paddingTop: insets.top + 8, paddingBottom: 12 }}
-      >
-        <View className="flex-row items-center px-4">
-          <TouchableOpacity
-            onPress={() => goBackOr(router, { fallback })}
-            className="w-10 h-10 bg-black/10 rounded-full items-center justify-center mr-3"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color="#111827" />
-          </TouchableOpacity>
-
-          <View className="w-10 h-10 rounded-full mr-3 bg-black items-center justify-center">
-            <Ionicons name="headset-outline" size={20} color="#FFFFFF" />
+      <ChatScreenHeader
+        title="ODOS Support"
+        subtitle={headerSubtitle}
+        onBack={() => goBackOr(router, { fallback })}
+        connectionState={connectionState}
+        avatar={
+          <View style={chatStyles.headerAvatarSupport}>
+            <Ionicons name="headset-outline" size={rMS(20)} color="#FFFFFF" />
           </View>
+        }
+        badges={
+          thread ? (
+            <ChatStatusBadge
+              label={statusMeta.label}
+              icon={statusMeta.icon}
+              backgroundColor={statusMeta.backgroundColor}
+              color={statusMeta.color}
+            />
+          ) : null
+        }
+      />
 
-          <View className="flex-1">
-            <Text className="text-lg font-montserrat-semiBold text-gray-900">
-              {headerTitle}
+      <View style={chatStyles.contextWrap}>
+        <View style={chatStyles.contextCard}>
+          <View style={chatStyles.headerAvatarSupport}>
+            <Ionicons name="shield-checkmark-outline" size={rMS(20)} color="#FFFFFF" />
+          </View>
+          <View style={chatStyles.contextCopy}>
+            <Text style={chatStyles.contextLabel}>Support context</Text>
+            <Text style={chatStyles.contextTitle}>
+              {subject || "General support conversation"}
             </Text>
-            <Text className="text-xs text-gray-500 mt-0.5">{headerSubtitle}</Text>
-            <View className="flex-row items-center gap-2 mt-2">
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  backgroundColor: connectionMeta.tone,
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 999,
-                }}
-              >
-                <Ionicons
-                  name={connectionMeta.icon}
-                  size={12}
-                  color={connectionMeta.text}
-                />
-                <Text
-                  style={{
-                    color: connectionMeta.text,
-                    fontSize: 11,
-                    fontFamily: Fonts.textBold,
-                  }}
-                >
-                  {connectionMeta.label}
-                </Text>
-              </View>
-
-              {thread ? (
-                <View
-                  style={{
-                    alignSelf: "flex-start",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    backgroundColor: statusMeta.tone,
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 999,
-                  }}
-                >
-                  <Ionicons name={statusMeta.icon} size={12} color={statusMeta.text} />
-                  <Text
-                    style={{
-                      color: statusMeta.text,
-                      fontSize: 11,
-                      fontFamily: Fonts.textBold,
-                    }}
-                  >
-                    {statusMeta.label}
+            <Text style={chatStyles.contextSub}>{statusMeta.helper}</Text>
+            <View style={chatStyles.chipRow}>
+              {thread?.assignedAdminName ? (
+                <View style={chatStyles.chip}>
+                  <Text style={chatStyles.chipText}>
+                    Assigned to {thread.assignedAdminName}
                   </Text>
                 </View>
               ) : null}
-            </View>
-          </View>
-        </View>
-      </View>
-
-      <View className="px-4 pt-3">
-        <View className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
-          <Text className="text-[11px] uppercase tracking-[0.6px] text-gray-500 mb-1">
-            Support context
-          </Text>
-          <Text className="text-sm font-semibold text-gray-900">
-            {subject || "General support conversation"}
-          </Text>
-          <Text className="text-xs text-gray-500 mt-1">{statusMeta.helper}</Text>
-          <View className="flex-row flex-wrap gap-2 mt-3">
-            {thread?.assignedAdminName ? (
-              <View className="rounded-full bg-black/5 px-3 py-1.5">
-                <Text className="text-[11px] text-gray-700">
-                  Assigned to {thread.assignedAdminName}
+              <View style={chatStyles.chip}>
+                <Text style={chatStyles.chipText}>
+                  {isLoadingSupportThreads && !thread
+                    ? "Checking your latest thread"
+                    : thread?.resolvedAt
+                      ? "Previously resolved — reply to reopen"
+                      : "Conversation stays with your account"}
                 </Text>
               </View>
-            ) : null}
-            <View className="rounded-full bg-black/5 px-3 py-1.5">
-              <Text className="text-[11px] text-gray-700">
-                {isLoadingSupportThreads && !thread
-                  ? "Checking your latest thread"
-                  : thread?.resolvedAt
-                    ? `Resolved ${formatDayLabel(new Date(thread.resolvedAt).getTime())}`
-                    : "Conversation stays with your account"}
-              </Text>
             </View>
           </View>
         </View>
       </View>
 
-      {emptyState ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text className="text-base font-semibold text-gray-900 mt-4">
-            Opening support chat
-          </Text>
-          <Text className="text-gray-500 text-center mt-2">
-            We’re preparing your conversation with the ODOS admin team.
-          </Text>
+      {showBootstrapLoader ? (
+        <ChatLoadingCenter label="Opening support chat with the ODOS admin team..." />
+      ) : null}
+
+      {bootstrapError && !showBootstrapLoader ? (
+        <View style={chatStyles.errorBanner}>
+          <Text style={chatStyles.errorText}>{bootstrapError}</Text>
         </View>
       ) : null}
 
-      {!emptyState && bootstrapError ? (
-        <View className="mx-4 mt-4 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <Text className="text-sm text-red-700">{bootstrapError}</Text>
-        </View>
-      ) : null}
-
-      {!emptyState ? (
+      {resolvedThreadId ? (
         <FlatList
           ref={listRef}
           data={messages}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 16, flexGrow: 1 }}
+          keyExtractor={(message) => message.id}
+          contentContainerStyle={chatStyles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          renderItem={({ item, index }) =>
+            renderChatMessageItem({
+              item,
+              index,
+              messages,
+              currentUserId: user.id,
+            })
+          }
           ListEmptyComponent={
             isLoadingMessages ? (
-              <View className="flex-1 items-center justify-center py-20">
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text className="text-sm text-gray-500 mt-3">Loading messages...</Text>
+              <View style={chatStyles.loadingWrap}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+                <Text style={chatStyles.loadingText}>Loading messages...</Text>
               </View>
             ) : (
-              <View className="flex-1 items-center justify-center py-20 px-10">
-                <Text className="text-base font-semibold text-gray-900">
-                  You’re connected to support
-                </Text>
-                <Text className="text-sm text-gray-500 text-center mt-2">
-                  Share the issue clearly and we’ll keep the conversation here so it feels easy to pick up later.
-                </Text>
-              </View>
+              <ChatMessagesEmpty
+                title="You're connected to support"
+                description="Share the issue clearly and we'll keep the conversation here so it's easy to pick up later."
+              />
             )
           }
         />
       ) : null}
 
-      <View
-        className="px-4 pt-3 border-t border-gray-200 bg-white"
-        style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-      >
-        <Text
-          style={{
-            fontFamily: Fonts.textLight,
-            color: "#6B7280",
-            fontSize: 11,
-            marginBottom: 6,
-            paddingHorizontal: 4,
-          }}
-        >
-          {thread?.supportStatus === "resolved"
+      <ChatComposer
+        hint={
+          thread?.supportStatus === "resolved"
             ? "Reply to reopen this thread if you still need help."
-            : "Keep the message concise and include any detail the admin team may need next."}
-        </Text>
-        <View className="flex-row items-end gap-3">
-          <View className="flex-1 bg-gray-100 rounded-[24px] px-3.5 py-2 border border-gray-200">
-            <TextInput
-              placeholder="Write to admin support..."
-              value={input}
-              onChangeText={setInput}
-              style={{
-                maxHeight: 110,
-                padding: 0,
-                fontFamily: Fonts.text,
-                fontSize: 14,
-                lineHeight: 18,
-                color: "#111827",
-              }}
-              multiline
-              editable={Boolean(resolvedThreadId) && !isBootstrapping}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => {
-              void onSend();
-            }}
-            disabled={!input.trim() || !resolvedThreadId || isSending}
-            className={`w-11 h-11 rounded-full items-center justify-center ${
-              input.trim() && resolvedThreadId && !isSending ? "bg-black" : "bg-black/20"
-            }`}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={16} color="#fff" />
-            )}
-          </Pressable>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            : "Keep the message concise and include any detail the admin team may need next."
+        }
+        placeholder="Write to admin support..."
+        value={input}
+        onChangeText={setInput}
+        onSend={() => {
+          void onSend();
+        }}
+        disabled={!resolvedThreadId || showBootstrapLoader}
+        isSending={isSending}
+      />
+    </ChatScreenShell>
   );
 }
+
+const styles = StyleSheet.create({
+  authWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F7FA",
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  authTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(16),
+    color: AppColors.text,
+    textAlign: "center",
+  },
+  authText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: rMS(20),
+  },
+});

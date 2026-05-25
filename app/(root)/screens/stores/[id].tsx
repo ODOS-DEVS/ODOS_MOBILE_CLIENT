@@ -1,7 +1,9 @@
-import PrimaryButton from "@/components/buttons/PrimaryButton";
+import VerifiedSeal from "@/components/badges/VerifiedSeal";
+import StoreSocialLinksBar from "@/components/store/StoreSocialLinksBar";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import StoreOfferCard from "@/components/cards/StoreOfferCard";
+import EmptySection from "@/components/empty/EmptySection";
 import { ProductGridSkeleton, StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -10,12 +12,15 @@ import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useStore } from "@/hooks/useCommerce";
 import { type StoreVoucherOffer, useVouchers } from "@/hooks/useVouchers";
 import { rS, rV, useResponsive } from "@/styles/responsive";
-import { goBackOr } from "@/utils/navigation";
+import { formatStoreAddress, hasStoreCoordinates } from "@/utils/location";
+import { goBackOr, navigateToHome } from "@/utils/navigation";
 import { resolveApiMediaUrl } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   FlatList,
   Image,
   ScrollView,
@@ -27,12 +32,21 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PRODUCT_PREVIEW_LIMIT = 6;
+const COVER_HEIGHT = rV(232);
+const STICKY_BAR_HEIGHT = rV(52);
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const StoreDetailScreen = () => {
   const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [storeOffers, setStoreOffers] = useState<StoreVoucherOffer[]>([]);
   const [isClaimingOfferId, setIsClaimingOfferId] = useState<string | null>(null);
   const [showAllProducts, setShowAllProducts] = useState(false);
+  const [stickyThreshold, setStickyThreshold] = useState(COVER_HEIGHT + 180);
+  const [stickyActive, setStickyActive] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const contentRef = useRef<View>(null);
+  const nameAnchorRef = useRef<View>(null);
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -151,7 +165,17 @@ const StoreDetailScreen = () => {
 
   useEffect(() => {
     setShowAllProducts(false);
-  }, [storeId]);
+    scrollY.setValue(0);
+    setStickyActive(false);
+    setStickyThreshold(COVER_HEIGHT + 180);
+  }, [storeId, scrollY]);
+
+  useEffect(() => {
+    const listenerId = scrollY.addListener(({ value }) => {
+      setStickyActive(value >= stickyThreshold - 8);
+    });
+    return () => scrollY.removeListener(listenerId);
+  }, [scrollY, stickyThreshold]);
 
   const handleClaimOffer = async (offer: StoreVoucherOffer) => {
     if (!user) {
@@ -191,7 +215,8 @@ const StoreDetailScreen = () => {
   if (!store) {
     return (
       <View style={styles.screen}>
-        <View style={styles.emptyState}>
+        <StatusBar style="dark" />
+        <View style={[styles.emptyState, { paddingTop: insets.top }]}>
           <Text style={styles.emptyStateTitle}>
             {storeError ?? "We couldn't load this store"}
           </Text>
@@ -203,37 +228,101 @@ const StoreDetailScreen = () => {
     );
   }
 
-  const storeLocation = [store.address, store.city].filter(Boolean).join(", ");
+  const storeLocation = formatStoreAddress([store.address, store.city, store.region]);
   const audienceLabel =
     store.audienceSlugs && store.audienceSlugs.length > 0
       ? store.audienceSlugs.join(", ")
       : "All shoppers";
   const isVerified = store.status === "active";
+  const hasStoreProducts = storeProducts.length > 0;
+  const coverHeight = COVER_HEIGHT + insets.top;
+  const headerButtonTop = insets.top + rS(12);
+  const stickyBarTotalHeight = insets.top + STICKY_BAR_HEIGHT;
+
+  const measureStickyThreshold = () => {
+    if (!contentRef.current || !nameAnchorRef.current) {
+      return;
+    }
+
+    nameAnchorRef.current.measureLayout(
+      contentRef.current,
+      (_x, y) => {
+        setStickyThreshold(Math.max(0, y - stickyBarTotalHeight));
+      },
+      () => undefined,
+    );
+  };
+
+  const stickyHeaderOpacity = scrollY.interpolate({
+    inputRange: [
+      Math.max(0, stickyThreshold - 28),
+      Math.max(1, stickyThreshold),
+    ],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
+  const inlineNameOpacity = scrollY.interpolate({
+    inputRange: [
+      Math.max(0, stickyThreshold - 28),
+      Math.max(1, stickyThreshold),
+    ],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const stickyHeaderTranslateY = scrollY.interpolate({
+    inputRange: [
+      Math.max(0, stickyThreshold - 28),
+      Math.max(1, stickyThreshold),
+    ],
+    outputRange: [-rS(10), 0],
+    extrapolate: "clamp",
+  });
+  const hasVisitLocation = Boolean(
+    storeLocation ||
+      hasStoreCoordinates(store.latitude, store.longitude) ||
+      store.distanceKm ||
+      store.travelMinutes,
+  );
+  const visitLocationHint = [
+    storeLocation,
+    store.distanceKm ? `${store.distanceKm} away` : null,
+    store.travelMinutes ? store.travelMinutes : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const openStoreLocation = () => {
+    router.push({
+      pathname: "/(root)/screens/stores/map" as any,
+      params: {
+        storeId: store.id,
+        title: String(store.title ?? "Store"),
+      },
+    });
+  };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <ScrollView
+    <View style={styles.screen}>
+      <StatusBar style="light" translucent />
+      <AnimatedScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true },
+        )}
       >
-        <View style={[styles.heroSection, { width: shellWidth, alignSelf: "center" }]}>
-        <View style={styles.coverWrap}>
-          <TouchableOpacity
-            onPress={() =>
-              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
-            }
-            style={styles.backButton}
-          >
-            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.replace("/(root)/(tabs)" as any)}
-            style={[styles.backButton, styles.homeButton]}
-          >
-            <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-
+        <View
+          ref={contentRef}
+          collapsable={false}
+          style={{ width: shellWidth, alignSelf: "center" }}
+          onLayout={measureStickyThreshold}
+        >
+        <View style={styles.heroSection}>
+        <View style={[styles.coverWrap, { height: coverHeight }]}>
           {store.imageBanner ?? store.image ? (
             <Image
               source={(store.imageBanner ?? store.image) as any}
@@ -247,47 +336,59 @@ const StoreDetailScreen = () => {
             </View>
           )}
           <View style={styles.coverOverlay} />
+
+          <TouchableOpacity
+            onPress={() =>
+              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+            }
+            style={[styles.backButton, { top: headerButtonTop }]}
+          >
+            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigateToHome(router)}
+            style={[styles.backButton, styles.homeButton, { top: headerButtonTop }]}
+          >
+            <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.profileCard}>
           <View style={styles.logoShell}>
-            {store.image ? (
-              <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
-            ) : (
-              <View style={styles.logoPlaceholder}>
-                <Ionicons name="storefront-outline" size={rS(22)} color="#94A3B8" />
-              </View>
-            )}
+            <View style={styles.logoClip}>
+              {store.image ? (
+                <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Ionicons name="storefront-outline" size={rS(22)} color="#94A3B8" />
+                </View>
+              )}
+            </View>
+            {isVerified ? (
+              <VerifiedSeal size={rS(24)} style={styles.verifiedSeal} />
+            ) : null}
           </View>
 
           <View style={styles.profileHeaderRow}>
             <View style={styles.profileTextWrap}>
-              <View style={styles.nameRow}>
-                <Text style={styles.storeName} numberOfLines={2}>
+              <View
+                ref={nameAnchorRef}
+                collapsable={false}
+                onLayout={measureStickyThreshold}
+                style={styles.nameRow}
+              >
+                <Animated.Text
+                  style={[styles.storeName, { opacity: inlineNameOpacity }]}
+                  numberOfLines={2}
+                >
                   {store.title}
-                </Text>
-                {isVerified ? (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={rS(18)}
-                    color="#16A34A"
-                    style={styles.verifiedIcon}
-                  />
-                ) : null}
+                </Animated.Text>
               </View>
 
               <Text style={styles.storeMeta} numberOfLines={2}>
                 {[store.category, store.city].filter(Boolean).join(" · ")}
               </Text>
-
-              {storeLocation ? (
-                <View style={styles.locationRow}>
-                  <Ionicons name="location-outline" size={rS(14)} color="#6B7280" />
-                  <Text style={styles.locationText} numberOfLines={2}>
-                    {storeLocation}
-                  </Text>
-                </View>
-              ) : null}
 
               {store.description ? (
                 <Text style={styles.descriptionText} numberOfLines={2}>
@@ -306,16 +407,41 @@ const StoreDetailScreen = () => {
             <View style={styles.tagPill}>
               <Text style={styles.tagText}>{audienceLabel}</Text>
             </View>
-            {isVerified ? (
-              <View style={[styles.tagPill, styles.tagPillVerified]}>
-                <Text style={[styles.tagText, styles.tagTextVerified]}>Verified store</Text>
-              </View>
-            ) : null}
           </View>
+
+          {hasVisitLocation ? (
+            <TouchableOpacity
+              activeOpacity={0.86}
+              onPress={openStoreLocation}
+              style={styles.visitLocationCard}
+            >
+              <View style={styles.visitLocationIconWrap}>
+                <Ionicons name="navigate-circle" size={rS(22)} color="#696969" />
+              </View>
+              <View style={styles.visitLocationCopy}>
+                <Text style={styles.visitLocationTitle}>Visit store</Text>
+                <Text style={styles.visitLocationSubtitle} numberOfLines={2}>
+                  {visitLocationHint || "View exact store location on the map"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={rS(18)} color="#9CA3AF" />
+            </TouchableOpacity>
+          ) : null}
+
+          <StoreSocialLinksBar
+            links={{
+              instagramUrl: store.instagramUrl,
+              facebookUrl: store.facebookUrl,
+              tiktokUrl: store.tiktokUrl,
+              twitterUrl: store.twitterUrl,
+              whatsappUrl: store.whatsappUrl,
+              websiteUrl: store.websiteUrl,
+            }}
+          />
         </View>
         </View>
 
-        <View style={[styles.contentSection, { width: shellWidth, alignSelf: "center" }]}>
+        <View style={styles.contentSection}>
         {flashSaleProducts.length > 0 ? (
           <>
             <View style={styles.sectionHeaderRow}>
@@ -351,57 +477,67 @@ const StoreDetailScreen = () => {
           </>
         ) : null}
 
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionHeaderCopy}>
-            <Text style={styles.sectionTitle}>
-              Product line
-            </Text>
-            {canExpandProductLine ? (
-              <Text style={styles.sectionSubtextCompact}>
-                {showAllProducts
-                  ? `${storeProducts.length} products in this store`
-                  : `Showing ${PRODUCT_PREVIEW_LIMIT} of ${storeProducts.length} products`}
-              </Text>
+        <>
+            {hasStoreProducts ? (
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionHeaderCopy}>
+                  <Text style={styles.sectionTitle}>Product line</Text>
+                  {canExpandProductLine ? (
+                    <Text style={styles.sectionSubtextCompact}>
+                      {showAllProducts
+                        ? `${storeProducts.length} products in this store`
+                        : `Showing ${PRODUCT_PREVIEW_LIMIT} of ${storeProducts.length} products`}
+                    </Text>
+                  ) : null}
+                </View>
+                {canExpandProductLine ? (
+                  <TouchableOpacity
+                    onPress={() => setShowAllProducts((current) => !current)}
+                    style={styles.inlineActionPill}
+                  >
+                    <Text style={styles.inlineActionText}>
+                      {showAllProducts ? "Show less" : `See all (${storeProducts.length})`}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             ) : null}
-          </View>
-          {canExpandProductLine ? (
-            <TouchableOpacity
-              onPress={() => setShowAllProducts((current) => !current)}
-              style={styles.inlineActionPill}
-            >
-              <Text style={styles.inlineActionText}>
-                {showAllProducts ? "Show less" : `See all (${storeProducts.length})`}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
 
-        <View>
-          {isLoadingStoreProducts && visibleStoreProducts.length === 0 ? (
-            <View style={{ paddingHorizontal: gridPadding, paddingTop: 16 }}>
-              <ProductGridSkeleton count={4} />
-            </View>
-          ) : (
-            <FlatList
-              data={visibleStoreProducts}
-              numColumns={2}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.id}
-              columnWrapperStyle={{ columnGap: gridGap }}
-              renderItem={({ item }) => (
-                <ProductCard
-                  {...item}
-                  cardWidth={gridCardWidth(2, gridGap)}
-                  horizontalSpacing={7}
+            <View>
+              {isLoadingStoreProducts && visibleStoreProducts.length === 0 ? (
+                <View style={{ paddingHorizontal: gridPadding, paddingTop: 16 }}>
+                  <ProductGridSkeleton count={4} />
+                </View>
+              ) : hasStoreProducts ? (
+                <FlatList
+                  data={visibleStoreProducts}
+                  numColumns={2}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id}
+                  columnWrapperStyle={{ columnGap: gridGap }}
+                  renderItem={({ item }) => (
+                    <ProductCard
+                      {...item}
+                      cardWidth={gridCardWidth(2, gridGap)}
+                      horizontalSpacing={7}
+                    />
+                  )}
+                  contentContainerStyle={{
+                    paddingHorizontal: gridPadding,
+                    paddingTop: 16,
+                  }}
                 />
+              ) : (
+                <View style={{ paddingHorizontal: gridPadding }}>
+                  <EmptySection
+                    icon="shirt-outline"
+                    title="No products in this store yet"
+                    message="When the store owner adds items, they will show up here for shoppers to browse and buy."
+                  />
+                </View>
               )}
-              contentContainerStyle={{
-                paddingHorizontal: gridPadding,
-                paddingTop: 16,
-              }}
-            />
-          )}
-        </View>
+            </View>
+        </>
 
         {storeOffers.length > 0 ? (
           <>
@@ -433,29 +569,60 @@ const StoreDetailScreen = () => {
             </View>
           </>
         ) : null}
+        </View>
+        </View>
+      </AnimatedScrollView>
 
-        <View style={styles.ctaWrap}>
-          <PrimaryButton
-            title="Visit Store"
-            roundedFull
+      <Animated.View
+        pointerEvents={stickyActive ? "box-none" : "none"}
+        style={[
+          styles.stickyHeader,
+          {
+            height: stickyBarTotalHeight,
+            opacity: stickyHeaderOpacity,
+            transform: [{ translateY: stickyHeaderTranslateY }],
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.stickyHeaderInner,
+            { paddingTop: insets.top, height: stickyBarTotalHeight },
+          ]}
+        >
+          <TouchableOpacity
             onPress={() =>
-              router.push({
-                pathname: "/screens/stores/map",
-                params: {
-                  title: String(store.title ?? "Store"),
-                  address: store.address,
-                  phone: store.phone,
-                  email: store.email,
-                  city: store.city,
-                  distanceKm: store.distanceKm,
-                  travelMinutes: store.travelMinutes,
-                },
-              })
+              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
             }
-          />
+            style={styles.stickyIconButton}
+            activeOpacity={0.82}
+          >
+            <Ionicons name="chevron-back" size={22} color="#111827" />
+          </TouchableOpacity>
+
+          <View style={styles.stickyTitleWrap}>
+            {store.image ? (
+              <Image source={store.image} style={styles.stickyLogo} resizeMode="cover" />
+            ) : (
+              <View style={styles.stickyLogoPlaceholder}>
+                <Ionicons name="storefront-outline" size={rS(14)} color="#94A3B8" />
+              </View>
+            )}
+            <Text style={styles.stickyTitle} numberOfLines={1}>
+              {store.title}
+            </Text>
+            {isVerified ? <VerifiedSeal size={rS(16)} /> : null}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigateToHome(router)}
+            style={styles.stickyIconButton}
+            activeOpacity={0.82}
+          >
+            <Ionicons name="home-outline" size={20} color="#111827" />
+          </TouchableOpacity>
         </View>
-        </View>
-      </ScrollView>
+      </Animated.View>
     </View>
   );
 };
@@ -491,9 +658,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   coverWrap: {
-    height: rS(232),
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
     borderBottomLeftRadius: rS(30),
     borderBottomRightRadius: rS(30),
     overflow: "hidden",
@@ -522,7 +686,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: rS(16),
     left: rS(16),
     zIndex: 3,
     width: rS(40),
@@ -554,16 +717,26 @@ const styles = StyleSheet.create({
   logoShell: {
     width: rS(92),
     height: rS(92),
-    borderRadius: rS(28),
-    overflow: "hidden",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 4,
-    borderColor: "#FFFFFF",
     marginTop: -rS(66),
     shadowColor: "#0F172A",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
+  },
+  logoClip: {
+    width: "100%",
+    height: "100%",
+    borderRadius: rS(28),
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+  },
+  verifiedSeal: {
+    position: "absolute",
+    right: -rS(4),
+    bottom: -rS(4),
+    zIndex: 4,
   },
   logoImage: {
     width: "100%",
@@ -595,26 +768,11 @@ const styles = StyleSheet.create({
     fontSize: rS(22),
     lineHeight: rS(28),
   },
-  verifiedIcon: {
-    marginTop: rS(1),
-  },
   storeMeta: {
     color: "#4B5563",
     fontFamily: "Montserrat-SemiBold",
     fontSize: rS(12.5),
     lineHeight: rS(18),
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-  },
-  locationText: {
-    flex: 1,
-    color: "#6B7280",
-    fontFamily: "Montserrat-Regular",
-    fontSize: rS(11.5),
-    lineHeight: rS(17),
   },
   descriptionText: {
     color: "#667085",
@@ -635,16 +793,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(12),
     paddingVertical: rS(7),
   },
-  tagPillVerified: {
-    backgroundColor: "#E8F8EE",
-  },
   tagText: {
     color: "#4B5563",
     fontFamily: "Montserrat-SemiBold",
     fontSize: rS(10.75),
   },
-  tagTextVerified: {
-    color: "#15803D",
+  visitLocationCard: {
+    marginTop: rS(14),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(12),
+    paddingHorizontal: rS(14),
+    paddingVertical: rS(12),
+    borderRadius: rS(18),
+    backgroundColor: "#F8FAFC",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E2E8F0",
+  },
+  visitLocationIconWrap: {
+    width: rS(42),
+    height: rS(42),
+    borderRadius: rS(21),
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+  },
+  visitLocationCopy: {
+    flex: 1,
+    gap: rV(2),
+  },
+  visitLocationTitle: {
+    color: "#111827",
+    fontFamily: "Montserrat-Bold",
+    fontSize: rS(13),
+  },
+  visitLocationSubtitle: {
+    color: "#6B7280",
+    fontFamily: "Montserrat-Regular",
+    fontSize: rS(11.5),
+    lineHeight: rS(16),
   },
   contentSection: {
     marginTop: rS(10),
@@ -707,8 +896,67 @@ const styles = StyleSheet.create({
   singleFlashSaleWrap: {
     paddingHorizontal: rS(12),
   },
-  ctaWrap: {
-    paddingHorizontal: rS(30),
-    marginTop: rS(18),
+  stickyHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(15, 23, 42, 0.1)",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  stickyHeaderInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: rS(12),
+    gap: rS(8),
+  },
+  stickyIconButton: {
+    width: rS(40),
+    height: rS(40),
+    borderRadius: rS(20),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15, 23, 42, 0.08)",
+  },
+  stickyTitleWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rS(8),
+    paddingHorizontal: rS(4),
+  },
+  stickyLogo: {
+    width: rS(30),
+    height: rS(30),
+    borderRadius: rS(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15, 23, 42, 0.08)",
+  },
+  stickyLogoPlaceholder: {
+    width: rS(30),
+    height: rS(30),
+    borderRadius: rS(10),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(15, 23, 42, 0.08)",
+  },
+  stickyTitle: {
+    flexShrink: 1,
+    maxWidth: "72%",
+    color: "#111827",
+    fontFamily: "Montserrat-ExtraBold",
+    fontSize: rS(15),
   },
 });

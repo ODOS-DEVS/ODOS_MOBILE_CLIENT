@@ -3,7 +3,16 @@ import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
 import RecommendationCard from "@/components/cards/RecommendationCard";
-import { HomeFeedSkeleton } from "@/components/loaders/CommerceSkeletons";
+import {
+  FlashSalesRowSkeleton,
+  HorizontalProductRowSkeleton,
+  HorizontalStoreRowSkeleton,
+  HomeFeedSkeleton,
+  MarketsRowSkeleton,
+  ProductListSkeleton,
+  PromoBannerSkeleton,
+} from "@/components/loaders/CommerceSkeletons";
+import EmptySection from "@/components/empty/EmptySection";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -19,6 +28,74 @@ function buildShuffleScore(id: string, seed: number) {
   return Array.from(`${id}-${seed}`).reduce(
     (score, character) => (score * 31 + character.charCodeAt(0)) % 2147483647,
     7,
+  );
+}
+
+type HomeSectionProps = {
+  title: string;
+  onSeeAll?: () => void;
+  isLoading: boolean;
+  isEmpty: boolean;
+  skeleton: React.ReactNode;
+  children: React.ReactNode;
+  sectionSpacing: number;
+  horizontalPadding: number;
+};
+
+function HomeSection({
+  title,
+  onSeeAll,
+  isLoading,
+  isEmpty,
+  skeleton,
+  children,
+  sectionSpacing,
+  horizontalPadding,
+}: HomeSectionProps) {
+  if (!isLoading && isEmpty) {
+    return null;
+  }
+
+  const showHeader = !isEmpty;
+
+  return (
+    <>
+      {showHeader ? (
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingHorizontal: horizontalPadding,
+            marginTop: sectionSpacing,
+            marginBottom: rS(10),
+          }}
+        >
+          <Text className="text-xl font-montserrat-extraBold text-gray-800">
+            {title}
+          </Text>
+          {onSeeAll ? (
+            <TouchableOpacity onPress={onSeeAll}>
+              <Text className="text-base font-montserrat-extraBold text-gray-800">
+                See All
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+
+      {isLoading && isEmpty ? (
+        <View
+          style={{
+            paddingHorizontal: horizontalPadding,
+            marginTop: showHeader ? 0 : sectionSpacing,
+          }}
+        >
+          {skeleton}
+        </View>
+      ) : (
+        children
+      )}
+    </>
   );
 }
 
@@ -38,7 +115,8 @@ const HomeScreen = () => {
   });
   const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets();
   const { stores: storeItems, isLoading: isLoadingStores } = useStores({});
-  const isInitialLoading =
+
+  const isBootstrapping =
     flashSaleProducts.length === 0 &&
     recommendationProducts.length === 0 &&
     popularProducts.length === 0 &&
@@ -49,7 +127,7 @@ const HomeScreen = () => {
       isLoadingPopular ||
       isLoadingMarkets ||
       isLoadingStores);
-  // ---------------- TIMER (UNCHANGED) --------------------
+
   useEffect(() => {
     const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
 
@@ -68,7 +146,7 @@ const HomeScreen = () => {
         setTimeLeft(
           `${hours.toString().padStart(2, "0")}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
         );
       }
     }, 1000);
@@ -98,12 +176,34 @@ const HomeScreen = () => {
       .slice(0, 4);
   }, [recommendationProducts, recommendationSeed]);
 
+  const hasCatalogContent =
+    flashSaleProducts.length > 0 ||
+    homeRecommendationProducts.length > 0 ||
+    popularProducts.length > 0 ||
+    storeItems.length > 0 ||
+    marketItems.length > 0;
+
+  const isCatalogEmpty =
+    !isBootstrapping &&
+    !hasCatalogContent &&
+    !isLoadingFlashSales &&
+    !isLoadingRecommendations &&
+    !isLoadingPopular &&
+    !isLoadingStores &&
+    !isLoadingMarkets;
+
+  if (isBootstrapping) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
+        <StatusBar barStyle="dark-content" />
+        <HomeFeedSkeleton />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
-      <StatusBar barStyle={"dark-content"} />
-      {isInitialLoading ? (
-        <HomeFeedSkeleton />
-      ) : (
+      <StatusBar barStyle="dark-content" />
       <FlatList
         data={[]}
         keyExtractor={() => "dummy"}
@@ -113,27 +213,40 @@ const HomeScreen = () => {
         ListHeaderComponent={
           <View style={{ paddingBottom: 80 }}>
             <HomeHeader />
-
             <SearchLauncher />
 
-            {flashSaleProducts.length > 0 ? (
+            {isCatalogEmpty ? (
+              <View style={{ paddingHorizontal: horizontalPadding, marginTop: sectionSpacing }}>
+                <EmptySection
+                  icon="sparkles-outline"
+                  title="Nothing to browse yet"
+                  message="New products, stores, and markets will appear here once they are published on ODOS."
+                />
+              </View>
+            ) : null}
+
+            <HomeSection
+              title="Flash Sales"
+              isLoading={isLoadingFlashSales}
+              isEmpty={flashSaleProducts.length === 0}
+              skeleton={<FlashSalesRowSkeleton />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
+            >
               <>
                 <View
                   style={{
                     flexDirection: "row",
-                    justifyContent: "space-between",
-                    marginTop: sectionSpacing,
+                    justifyContent: "flex-end",
                     paddingHorizontal: horizontalPadding,
+                    marginTop: -rS(10),
+                    marginBottom: rS(6),
                   }}
                 >
-                  <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                    Flash Sales
-                  </Text>
                   <Text className="font-montserrat-semiBold text-primary">
                     {timeLeft}
                   </Text>
                 </View>
-
                 <View style={{ marginLeft: -horizontalPadding }}>
                   <FlatList
                     data={flashSaleProducts}
@@ -147,157 +260,116 @@ const HomeScreen = () => {
                   />
                 </View>
               </>
+            </HomeSection>
+
+            {hasCatalogContent ? (
+              isLoadingFlashSales && flashSaleProducts.length === 0 ? (
+                <PromoBannerSkeleton />
+              ) : (
+                <PromoBanner />
+              )
             ) : null}
 
-            <PromoBanner />
-
-            {/* Recommendations */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingHorizontal: horizontalPadding,
-                marginTop: sectionSpacing,
-                marginBottom: rV(10),
-              }}
+            <HomeSection
+              title="Recommendation"
+              onSeeAll={() => router.push("../screens/recommendation")}
+              isLoading={isLoadingRecommendations}
+              isEmpty={homeRecommendationProducts.length === 0}
+              skeleton={<ProductListSkeleton count={2} />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
             >
-              <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                Recommendation
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push("../screens/recommendation")}
-              >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={{ paddingHorizontal: horizontalPadding }}>
+                <FlatList
+                  data={homeRecommendationProducts}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <RecommendationCard
+                      {...item}
+                      reviews={
+                        item.reviews !== undefined
+                          ? Number(item.reviews)
+                          : undefined
+                      }
+                    />
+                  )}
+                  ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
+                  scrollEnabled={false}
+                  contentContainerStyle={{
+                    paddingHorizontal: horizontalPadding * 0.5,
+                  }}
+                />
+              </View>
+            </HomeSection>
 
-            <View style={{ paddingHorizontal: horizontalPadding }}>
-              <FlatList
-                data={homeRecommendationProducts}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <RecommendationCard
-                    {...item}
-                    reviews={
-                      item.reviews !== undefined
-                        ? Number(item.reviews)
-                        : undefined
-                    }
-                  />
-                )}
-                ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-                scrollEnabled={false}
-                contentContainerStyle={{
-                  paddingHorizontal: horizontalPadding * 0.5,
-                }}
-              />
-            </View>
-
-            {/* Stores */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingHorizontal: horizontalPadding,
-                marginTop: sectionSpacing,
-                marginBottom: rS(10),
-              }}
+            <HomeSection
+              title="Stores"
+              onSeeAll={() => router.push("../screens/stores/stores")}
+              isLoading={isLoadingStores}
+              isEmpty={storeItems.length === 0}
+              skeleton={<HorizontalStoreRowSkeleton />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
             >
-              <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                Stores
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push("../screens/stores/stores")}
-              >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={{ paddingHorizontal: horizontalPadding }}>
+                <FlatList
+                  data={storeItems}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <StoreCard {...item} />}
+                />
+              </View>
+            </HomeSection>
 
-            <View style={{ paddingHorizontal: horizontalPadding }}>
-              <FlatList
-                data={storeItems}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <StoreCard {...item} />}
-              />
-            </View>
-
-            {/* Popular Products */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingHorizontal: horizontalPadding,
-                marginTop: sectionSpacing,
-                marginBottom: rS(10),
-              }}
+            <HomeSection
+              title="Popular products"
+              onSeeAll={() => router.push("../screens/popular")}
+              isLoading={isLoadingPopular}
+              isEmpty={popularProducts.length === 0}
+              skeleton={<HorizontalProductRowSkeleton />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
             >
-              <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                Popular products
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push("../screens/popular")}
-              >
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={{ paddingHorizontal: horizontalPadding }}>
+                <FlatList
+                  data={popularProducts}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <ProductCard {...item} />}
+                  contentContainerStyle={{
+                    paddingRight: horizontalPadding,
+                  }}
+                />
+              </View>
+            </HomeSection>
 
-            <View style={{ paddingHorizontal: horizontalPadding }}>
-              <FlatList
-                data={popularProducts}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <ProductCard {...item} />}
-                contentContainerStyle={{
-                  paddingRight: horizontalPadding,
-                }}
-              />
-            </View>
-
-            {/* Market */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingHorizontal: horizontalPadding,
-                marginTop: sectionSpacing,
-                marginBottom: rS(10),
-              }}
+            <HomeSection
+              title="Market"
+              onSeeAll={() => router.push("../screens/market")}
+              isLoading={isLoadingMarkets}
+              isEmpty={marketItems.length === 0}
+              skeleton={<MarketsRowSkeleton />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
             >
-              <Text className="text-xl font-montserrat-extraBold text-gray-800">
-                Market
-              </Text>
-              <TouchableOpacity onPress={() => router.push("../screens/market")}>
-                <Text className="text-base font-montserrat-extraBold text-gray-800">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ paddingHorizontal: horizontalPadding }}>
-              <FlatList
-                data={marketItems}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <MarketCard {...item} />}
-                contentContainerStyle={{
-                  paddingRight: horizontalPadding,
-                }}
-              />
-            </View>
+              <View style={{ paddingHorizontal: horizontalPadding }}>
+                <FlatList
+                  data={marketItems}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <MarketCard {...item} />}
+                  contentContainerStyle={{
+                    paddingRight: horizontalPadding,
+                  }}
+                />
+              </View>
+            </HomeSection>
           </View>
         }
       />
-      )}
     </SafeAreaView>
   );
 };
