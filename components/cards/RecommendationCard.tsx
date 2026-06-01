@@ -1,9 +1,11 @@
 import { AppColors } from "@/constants/Colors";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Image,
   Platform,
@@ -70,6 +72,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   rating,
   reviews,
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createRecommendationStyles(colors), [colors]);
   const { width } = useResponsive();
   const hasPrice = typeof price === "number" || typeof oldPrice === "number";
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
@@ -116,7 +120,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <Image source={image} style={styles.image} resizeMode="cover" />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="image-outline" size={rMS(22)} color="#94A3B8" />
+              <Ionicons name="image-outline" size={rMS(22)} color={colors.iconMuted} />
               <Text style={styles.imagePlaceholderText}>Image pending</Text>
             </View>
           )}
@@ -252,16 +256,17 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+function createRecommendationStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "flex-start",
     borderRadius: rS(22),
-    backgroundColor: AppColors.white,
+    backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E4E8EE",
+    borderColor: colors.cardBorder,
     padding: rS(12),
-    shadowColor: "#0F172A",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.05,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
@@ -272,7 +277,7 @@ const styles = StyleSheet.create({
     height: rS(118),
     borderRadius: rS(18),
     overflow: "hidden",
-    backgroundColor: "#ECF0F4",
+    backgroundColor: colors.imagePlaceholder,
     position: "relative",
   },
   image: {
@@ -285,12 +290,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rV(6),
-    backgroundColor: "#EEF2F7",
+    backgroundColor: colors.imagePlaceholder,
   },
   imagePlaceholderText: {
     fontSize: rMS(11),
     fontFamily: Fonts.title,
-    color: "#64748B",
+    color: colors.textMuted,
   },
   offerBadge: {
     position: "absolute",
@@ -302,7 +307,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(17, 24, 39, 0.82)",
   },
   offerBadgeText: {
-    color: AppColors.white,
+    color: colors.onPrimary,
     fontFamily: Fonts.titleBold,
     fontSize: rMS(10),
     letterSpacing: 0.25,
@@ -343,18 +348,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(8),
     paddingVertical: rV(4),
     borderRadius: rS(999),
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.accentSoft,
   },
   ratingText: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(11),
-    color: AppColors.text,
+    color: colors.text,
   },
   title: {
     marginTop: rV(8),
     fontFamily: Fonts.titleBold,
     fontSize: rMS(14),
-    color: AppColors.text,
+    color: colors.text,
     lineHeight: rMS(19),
   },
   titleLargeAndroid: {
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
     marginTop: rV(4),
     fontFamily: Fonts.text,
     fontSize: rMS(12),
-    color: AppColors.secondary,
+    color: colors.textMuted,
   },
   metaLabelLargeAndroid: {
     marginTop: rV(2),
@@ -382,7 +387,7 @@ const styles = StyleSheet.create({
   },
   microChip: {
     borderRadius: rS(999),
-    backgroundColor: "#F5F7FA",
+    backgroundColor: colors.pill,
     paddingHorizontal: rS(8),
     paddingVertical: rV(4),
     maxWidth: "72%",
@@ -390,12 +395,12 @@ const styles = StyleSheet.create({
   microChipText: {
     fontFamily: Fonts.text,
     fontSize: rMS(10),
-    color: AppColors.secondary,
+    color: colors.textSecondary,
   },
   reviewText: {
     fontFamily: Fonts.text,
     fontSize: rMS(10),
-    color: "#7B8794",
+    color: colors.textMuted,
   },
   bottomRow: {
     flexDirection: "row",
@@ -414,19 +419,19 @@ const styles = StyleSheet.create({
   priceText: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(15),
-    color: AppColors.text,
+    color: colors.text,
   },
   oldPriceText: {
     marginTop: rV(3),
     fontFamily: Fonts.title,
     fontSize: rMS(11),
-    color: "#C24141",
+    color: "#F87171",
     textDecorationLine: "line-through",
   },
   noPriceText: {
     fontFamily: Fonts.text,
     fontSize: rMS(11),
-    color: AppColors.secondary,
+    color: colors.textMuted,
   },
   actionRow: {
     flexDirection: "row",
@@ -435,16 +440,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   actionButton: {
-    backgroundColor: "#F2F5F8",
+    backgroundColor: colors.pill,
     padding: rS(9),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D7DDE5",
+    borderColor: colors.border,
     elevation: 0,
   },
   imageShellLargeAndroid: {
     width: rS(96),
     height: rS(114),
   },
-});
+  });
+}
 
 export default RecommendationCard;

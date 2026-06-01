@@ -9,7 +9,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountIconShell,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
@@ -53,6 +53,7 @@ function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
 }
 
 export default function AddressScreen() {
+  const accountStyles = useAccountStyles();
   const {
     addresses,
     addAddress,

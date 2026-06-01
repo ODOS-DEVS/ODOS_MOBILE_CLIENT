@@ -5,7 +5,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountSegmentedTabs,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
@@ -72,6 +72,7 @@ function formatFriendlyDate(value?: string | null) {
 }
 
 export default function ReturnsScreen() {
+  const accountStyles = useAccountStyles();
   const { orders, isLoadingOrders, createReturnRequest, isMutatingOrder, refreshOrders } =
     useOrders();
   const { showToast } = useToast();

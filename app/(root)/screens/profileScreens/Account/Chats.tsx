@@ -2,7 +2,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountEmptyState,
   AccountInsightCard,
-  accountStyles,
+  useAccountStyles,
   ChatThreadRow,
 } from "@/components/chat/ChatUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -12,6 +12,7 @@ import React, { useCallback } from "react";
 import { FlatList, View } from "react-native";
 
 export default function ChatsScreen() {
+  const accountStyles = useAccountStyles();
   const { customerThreads, isLoadingCustomerThreads, loadCustomerThreads } = useChat();
 
   useFocusEffect(

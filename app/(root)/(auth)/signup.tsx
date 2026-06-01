@@ -4,6 +4,7 @@ import Divider from "@/components/Divider";
 import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
@@ -13,6 +14,7 @@ import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SignUpScreen = () => {
+  const { colors } = useTheme();
   const router = useRouter();
   const { showToast } = useToast();
   const { isSigningUp, signUp, user } = useAuth();
@@ -99,7 +101,7 @@ const SignUpScreen = () => {
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      className="bg-white flex-1"
+      style={{ flex: 1, backgroundColor: colors.screen }}
     >
       <AuthHeader
         title="Sign Up"

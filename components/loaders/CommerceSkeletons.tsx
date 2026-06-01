@@ -1,9 +1,13 @@
 import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { gridCardWidth, rMS, rS, rV } from "@/styles/responsive";
-import React from "react";
+import React, { useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SkeletonBlock } from "@/components/loaders/Skeleton";
+
+const SHEET_PEEK = rV(196);
 
 export function HomeHeaderSkeleton() {
   return (
@@ -88,10 +92,16 @@ export function MarketsRowSkeleton() {
 }
 
 export function HomeFeedSkeleton() {
+  const { colors } = useTheme();
+  const homeContainer = useMemo(
+    () => ({ ...styles.homeContainer, backgroundColor: colors.screen }),
+    [colors],
+  );
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.homeContainer}
+      contentContainerStyle={homeContainer}
     >
       <HomeHeaderSkeleton />
       <SearchLauncherSkeleton />
@@ -193,6 +203,145 @@ export function StoreProfileSkeleton() {
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+/** Matches StoreLocationExperience: full map canvas + bottom sheet peek. */
+export function StoreMapSkeleton() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const mapStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: colors.screen,
+        },
+        mapCanvas: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.imagePlaceholder,
+        },
+        mapGrid: {
+          ...StyleSheet.absoluteFillObject,
+          opacity: 0.35,
+          justifyContent: "space-evenly",
+          paddingHorizontal: rS(12),
+        },
+        mapGridRow: {
+          flexDirection: "row",
+          justifyContent: "space-evenly",
+        },
+        topChrome: {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: rS(16),
+          gap: rS(12),
+        },
+        topText: {
+          flex: 1,
+          gap: rV(6),
+        },
+        mapControl: {
+          position: "absolute",
+          right: rS(16),
+          bottom: SHEET_PEEK + insets.bottom + rV(36),
+        },
+        sheet: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          minHeight: SHEET_PEEK + insets.bottom,
+          paddingBottom: insets.bottom,
+          backgroundColor: colors.card,
+          borderTopLeftRadius: rMS(28),
+          borderTopRightRadius: rMS(28),
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
+          paddingHorizontal: rS(18),
+          paddingTop: rV(10),
+        },
+        sheetHandle: {
+          alignSelf: "center",
+          marginBottom: rV(14),
+        },
+        peekRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(12),
+        },
+        peekCopy: {
+          flex: 1,
+          gap: rV(6),
+        },
+        quickActions: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: rS(8),
+          marginTop: rV(14),
+        },
+      }),
+    [colors, insets.bottom],
+  );
+
+  return (
+    <View style={mapStyles.screen}>
+      <View style={mapStyles.mapCanvas}>
+        <View style={mapStyles.mapGrid}>
+          {Array.from({ length: 6 }).map((_, row) => (
+            <View key={`map-row-${row}`} style={mapStyles.mapGridRow}>
+              {Array.from({ length: 5 }).map((__, col) => (
+                <SkeletonBlock
+                  key={`map-cell-${row}-${col}`}
+                  width={rS(48)}
+                  height={rV(48)}
+                  radius={rS(6)}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={[mapStyles.topChrome, { paddingTop: insets.top + rV(10) }]}>
+        <SkeletonBlock width={rS(44)} height={rS(44)} radius={22} />
+        <View style={mapStyles.topText}>
+          <SkeletonBlock width={rS(96)} height={rV(10)} radius={6} />
+          <SkeletonBlock width={rS(148)} height={rV(18)} radius={10} />
+        </View>
+      </View>
+
+      <View style={mapStyles.mapControl}>
+        <SkeletonBlock width={rS(48)} height={rS(48)} radius={16} />
+      </View>
+
+      <View style={mapStyles.sheet}>
+        <SkeletonBlock
+          width={rS(46)}
+          height={rV(5)}
+          radius={999}
+          style={mapStyles.sheetHandle}
+        />
+        <View style={mapStyles.peekRow}>
+          <SkeletonBlock width={rS(54)} height={rS(54)} radius={18} />
+          <View style={mapStyles.peekCopy}>
+            <SkeletonBlock width="72%" height={rV(17)} radius={10} />
+            <SkeletonBlock width="48%" height={rV(12)} radius={8} />
+          </View>
+          <SkeletonBlock width={rS(20)} height={rS(20)} radius={10} />
+        </View>
+        <View style={mapStyles.quickActions}>
+          <SkeletonBlock width={rS(112)} height={rV(38)} radius={999} />
+          <SkeletonBlock width={rS(72)} height={rV(38)} radius={999} />
+          <SkeletonBlock width={rS(96)} height={rV(38)} radius={999} />
+        </View>
+      </View>
+    </View>
   );
 }
 

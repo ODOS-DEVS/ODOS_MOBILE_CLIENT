@@ -5,31 +5,43 @@ import {
   AccountSettingsGroup,
   AccountStickySaveBar,
   AccountTipBanner,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { rV } from "@/styles/responsive";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 export default function PreferenceScreen() {
+  const accountStyles = useAccountStyles();
+  const { darkMode, isReady, setDarkMode } = useTheme();
   const { showToast } = useToast();
   const [analytics, setAnalytics] = useState(true);
   const [personalization, setPersonalization] = useState(true);
   const [socialMedia, setSocialMedia] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkModeDraft, setDarkModeDraft] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (isReady) {
+      setDarkModeDraft(darkMode);
+    }
+  }, [darkMode, isReady]);
+
   const enabledCount = useMemo(
-    () => [analytics, personalization, socialMedia, darkMode].filter(Boolean).length,
-    [analytics, darkMode, personalization, socialMedia],
+    () => [analytics, personalization, socialMedia, darkModeDraft].filter(Boolean).length,
+    [analytics, darkModeDraft, personalization, socialMedia],
   );
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    setIsSaving(false);
-    showToast("Preferences saved on this device.");
+    try {
+      await setDarkMode(darkModeDraft);
+      showToast("Preferences saved on this device.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -45,7 +57,7 @@ export default function PreferenceScreen() {
           subtitle="Control recommendations, privacy-friendly analytics, and how ODOS personalizes what you see."
           stats={[
             { value: enabledCount, label: "Enabled" },
-            { value: darkMode ? "Dark" : "Light", label: "Theme" },
+            { value: darkModeDraft ? "Dark" : "Light", label: "Theme" },
           ]}
         />
 
@@ -84,9 +96,9 @@ export default function PreferenceScreen() {
         <AccountSettingsGroup title="Appearance">
           <AccountSettingToggle
             title="Dark mode"
-            description="Switch to a darker interface. Full app theme support is rolling out soon."
-            value={darkMode}
-            onValueChange={setDarkMode}
+            description="Use a darker interface across account screens, tabs, and headers."
+            value={darkModeDraft}
+            onValueChange={setDarkModeDraft}
             isLast
           />
         </AccountSettingsGroup>

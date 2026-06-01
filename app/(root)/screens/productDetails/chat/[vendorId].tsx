@@ -3,7 +3,7 @@ import {
   ChatContextCard,
   ChatLoadingCenter,
   ChatMessagesEmpty,
-  chatStyles,
+  useChatStyles,
   ChatScreenHeader,
   ChatScreenShell,
   ChatStatusBadge,
@@ -26,6 +26,7 @@ const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
 export default function VendorChatScreen() {
+  const chatStyles = useChatStyles();
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();

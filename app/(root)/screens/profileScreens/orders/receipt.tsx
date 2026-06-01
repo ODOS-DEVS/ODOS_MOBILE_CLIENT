@@ -5,7 +5,7 @@ import {
   AccountIconShell,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
   formatOrderDateTime,
   formatOrderMoney,
   OrderSummaryRow,
@@ -26,6 +26,7 @@ const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default function OrderReceiptScreen() {
+  const accountStyles = useAccountStyles();
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder } = useOrder(orderId);

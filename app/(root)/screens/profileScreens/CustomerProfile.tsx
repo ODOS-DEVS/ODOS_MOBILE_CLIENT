@@ -8,7 +8,7 @@ import {
   AccountPickerField,
   AccountProfileHero,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -69,6 +69,7 @@ function formatDateForApi(value: Date | null) {
 }
 
 const CustomerProfile = () => {
+  const accountStyles = useAccountStyles();
   const { showToast } = useToast();
   const { isUpdatingProfile, updateProfile, user } = useAuth();
   const [fullName, setFullName] = useState("");

@@ -1,6 +1,7 @@
 import UserAvatar from "@/components/UserAvatar";
 import VendorQuickAccessButton from "@/components/vendor/VendorQuickAccessButton";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rS, rV, useResponsive } from "@/styles/responsive";
@@ -10,12 +11,13 @@ import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
 export const HomeHeader = () => {
+  const { isDark, colors } = useTheme();
   const { horizontalPadding } = useResponsive();
   const { user } = useAuth();
   const { unreadCount } = useActivityFeed();
   const { requireAuth } = useRequireAuth();
 
-  const displayName = user?.full_name?.trim() || "Guest";
+  const displayName = user?.full_name?.trim().split(/\s+/)[0] || "Guest";
   const greeting = user ? "Welcome back" : "Hi! Good morning!";
   const handleProfilePress = () => {
     if (
@@ -54,7 +56,7 @@ export const HomeHeader = () => {
         />
         <View>
           <Text
-            className="font-montserrat-semiBold text-black"
+            className={`font-montserrat-semiBold ${isDark ? "text-gray-100" : "text-black"}`}
             style={{ fontSize: rS(16) }}
             numberOfLines={1}
           >
@@ -84,7 +86,7 @@ export const HomeHeader = () => {
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         style={{ position: "relative" }}
       >
-        <Ionicons name="notifications-outline" size={rS(22)} color="#000" />
+        <Ionicons name="notifications-outline" size={rS(22)} color={colors.text} />
         {user && unreadCount > 0 ? (
           <View
             style={{

@@ -3,9 +3,10 @@ import {
   AccountEmptyState,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
   formatOrderMoney,
   OrderSelectableRow,
+  estimateOrderStickyFooterHeight,
   OrderStickyFooter,
   OrderSummaryRow,
 } from "@/components/orders/OrderUi";
@@ -38,6 +39,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
@@ -64,6 +66,8 @@ function normalizeRouteParamsFromUrl(url: string) {
 }
 
 export default function CheckoutScreen() {
+  const accountStyles = useAccountStyles();
+  const insets = useSafeAreaInsets();
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
   const { cart } = useCart();
@@ -378,9 +382,19 @@ export default function CheckoutScreen() {
             : "Sign in to continue"
       : undefined;
 
+  const footerScrollPadding = useMemo(
+    () =>
+      estimateOrderStickyFooterHeight({
+        hasHint: Boolean(footerHint),
+        hasSplitAmount: true,
+        bottomInset: insets.bottom,
+      }),
+    [footerHint, insets.bottom],
+  );
+
   return (
     <View style={accountStyles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + rV(8) }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() =>
@@ -415,7 +429,11 @@ export default function CheckoutScreen() {
         <>
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={[accountStyles.content, styles.scrollContent]}
+            contentContainerStyle={[
+              accountStyles.content,
+              styles.scrollContent,
+              { paddingBottom: footerScrollPadding },
+            ]}
             showsVerticalScrollIndicator={false}
           >
             <AccountSectionCard
@@ -649,14 +667,12 @@ export default function CheckoutScreen() {
               <OrderSummaryRow label="Total" value={formatOrderMoney(total)} last />
             </AccountSectionCard>
 
-            <View style={styles.bottomSpacer} />
           </ScrollView>
 
           <OrderStickyFooter
             hint={footerHint}
-            primaryLabel={
-              isPlacingOrder ? "Placing order..." : `Place order · ${formatOrderMoney(total)}`
-            }
+            amountValue={formatOrderMoney(total)}
+            primaryLabel={isPlacingOrder ? "Placing..." : "Place order"}
             onPrimaryPress={handlePlaceOrder}
             disabled={!canPlaceOrder}
           />
@@ -675,7 +691,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: rS(16),
-    paddingTop: rV(36),
     paddingBottom: rV(12),
     backgroundColor: AppColors.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1082,9 +1097,6 @@ const styles = StyleSheet.create({
   },
   shippingFree: {
     color: "#15803D",
-  },
-  bottomSpacer: {
-    height: rV(120),
   },
   footer: {
     paddingHorizontal: rS(16),

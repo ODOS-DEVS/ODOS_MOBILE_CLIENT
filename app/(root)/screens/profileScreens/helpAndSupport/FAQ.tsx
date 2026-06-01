@@ -4,7 +4,7 @@ import {
   AccountEmptyState,
   AccountFilterChips,
   AccountInsightCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -64,6 +64,7 @@ const FILTERS = [
 type FilterKey = (typeof FILTERS)[number]["key"];
 
 export default function FAQScreen() {
+  const accountStyles = useAccountStyles();
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("All");
   const [query, setQuery] = useState("");
 

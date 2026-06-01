@@ -3,7 +3,7 @@ import {
   AccountIconShell,
   AccountInsightCard,
   AccountListCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 
 export {
@@ -13,11 +13,12 @@ export {
   AccountListCard,
   AccountSegmentedTabs,
 } from "@/components/account/AccountUi";
+import { useTheme } from "@/context/ThemeContext";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   StyleSheet,
   Switch,
@@ -58,6 +59,7 @@ export function AccountSettingsGroup({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const accountStyles = useAccountStyles();
   return (
     <AccountListCard style={style}>
       {title ? <Text style={accountStyles.sectionTitle}>{title}</Text> : null}
@@ -225,6 +227,24 @@ export function AccountStickySaveBar({
   disabled?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const saveBarStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingHorizontal: rS(16),
+          paddingTop: rV(12),
+          backgroundColor: colors.header,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.headerBorder,
+        },
+      }),
+    [colors],
+  );
 
   return (
     <View style={[saveBarStyles.wrap, { paddingBottom: insets.bottom + rV(12) }]}>
@@ -275,7 +295,7 @@ export function AccountMetaFooter({
   );
 }
 
-export { AccountInsightCard, accountStyles };
+export { AccountInsightCard, useAccountStyles };
 
 const tipStyles = StyleSheet.create({
   wrap: {

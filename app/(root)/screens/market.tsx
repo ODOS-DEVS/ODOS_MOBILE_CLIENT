@@ -6,7 +6,7 @@ import {
   CommerceSeeAllHero,
   CommerceSeeAllSearch,
   CommerceSeeAllSectionHeader,
-  commerceSeeAllScreenStyles,
+  useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
@@ -16,6 +16,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 
 const MarketScreen = () => {
+  const screenStyles = useCommerceSeeAllScreenStyles();
   const { activeMarket: initialMarketParam, activeMarketSlug: initialMarketSlugParam } =
     useLocalSearchParams();
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
@@ -85,13 +86,13 @@ const MarketScreen = () => {
     activeMarket === "All" ? "All market stores" : `Stores in ${activeMarket}`;
 
   return (
-    <View style={commerceSeeAllScreenStyles.screen}>
+    <View style={screenStyles.screen}>
       <ProfileHeader title="Markets" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          commerceSeeAllScreenStyles.scrollContent,
+          screenStyles.scrollContent,
           {
             paddingHorizontal: horizontalPadding,
             paddingBottom: sectionSpacing,
@@ -136,7 +137,7 @@ const MarketScreen = () => {
           trailingAction={{ label: "Reset", onPress: handleReset }}
         />
 
-        <View style={commerceSeeAllScreenStyles.contentBlock}>
+        <View style={screenStyles.contentBlock}>
           <CommerceSeeAllSectionHeader
             title={sectionTitle}
             subtitle={

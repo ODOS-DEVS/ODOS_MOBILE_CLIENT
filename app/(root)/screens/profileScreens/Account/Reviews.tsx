@@ -2,7 +2,7 @@ import {
   AccountEmptyState,
   AccountFilterChips,
   AccountInsightCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -111,6 +111,7 @@ function toListCardData(item: ReviewListItem): ReviewListItemData {
 }
 
 export default function ReviewsScreen() {
+  const accountStyles = useAccountStyles();
   const params = useLocalSearchParams<{
     orderId?: string;
     productId?: string;

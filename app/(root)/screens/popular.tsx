@@ -5,7 +5,7 @@ import {
   CommerceSeeAllHero,
   CommerceSeeAllSearch,
   CommerceSeeAllSectionHeader,
-  commerceSeeAllScreenStyles,
+  useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useCatalogProducts } from "@/hooks/useCatalog";
@@ -14,6 +14,7 @@ import React, { useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 
 export default function PopularProductsScreen() {
+  const commerceSeeAllScreenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [isSearching, setIsSearching] = useState(false);
   const { products: catalogProducts, isLoading, error } = useCatalogProducts({

@@ -1,4 +1,5 @@
 import { rS, rV } from "@/styles/responsive";
+import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -35,6 +36,8 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   cardSpacing,
   imageHeight,
 }) => {
+  const { cardShell, colors } = useCommerceTheme();
+  const textStyles = useCatalogCardTextStyles();
   const hasPrice = !!price || !!oldPrice;
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const formatCurrency = (value: number) => `₵${value.toFixed(2)}`;
@@ -68,16 +71,16 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
       }}
     >
       <View
-        className="bg-white shadow-sm"
         style={{
           borderRadius: rS(16),
+          ...cardShell,
         }}
       >
         {/* ---------- IMAGE ---------- */}
         <View
           style={{
             height: mediaHeight,
-            backgroundColor: "#f4f4f4",
+            backgroundColor: colors.imagePlaceholder,
             borderRadius: rS(16),
             overflow: "hidden",
           }}

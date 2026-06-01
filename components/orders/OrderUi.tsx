@@ -1,4 +1,25 @@
 import {
+  AccountActionButton as OrderActionButton,
+} from "@/components/account/AccountUi";
+import { AppColors } from "@/constants/Colors";
+import { resolveOrderItemImageSource } from "@/utils/orderImages";
+import Fonts from "@/constants/Fonts";
+import type { Order } from "@/hooks/useOrders";
+import { rMS, rS, rV } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useMemo } from "react";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "@/context/ThemeContext";
+
+export {
   AccountActionButton,
   AccountActionRow,
   AccountBadge,
@@ -8,23 +29,8 @@ import {
   AccountListCard,
   AccountSectionCard,
   AccountSegmentedTabs,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
-import { AppColors } from "@/constants/Colors";
-import { resolveOrderItemImageSource } from "@/utils/orderImages";
-import Fonts from "@/constants/Fonts";
-import type { Order } from "@/hooks/useOrders";
-import { rMS, rS, rV } from "@/styles/responsive";
-import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  type ImageSourcePropType,
-} from "react-native";
 
 export const orderStyles = StyleSheet.create({
   tabContent: {
@@ -283,19 +289,6 @@ export function getOrderStatusPresentation(order: Order) {
   };
 }
 
-export {
-  AccountActionButton,
-  AccountActionRow,
-  AccountBadge,
-  AccountEmptyState,
-  AccountInsightCard,
-  AccountIconShell,
-  AccountListCard,
-  AccountSectionCard,
-  AccountSegmentedTabs,
-  accountStyles,
-};
-
 type OrderThumbnailProps = {
   order: Order;
   size?: number;
@@ -392,6 +385,53 @@ export function OrderSelectableRow({
   );
 }
 
+function useOrderFooterShellStyles() {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        shell: {
+          backgroundColor: colors.bottomBar,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.bottomBarBorder,
+          paddingHorizontal: rS(16),
+          paddingTop: rV(12),
+          paddingBottom: Math.max(insets.bottom, rV(12)),
+          gap: rV(10),
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -4 },
+          elevation: 8,
+        },
+      }),
+    [colors, insets.bottom],
+  );
+}
+
+type OrderScreenFooterProps = {
+  children: React.ReactNode;
+};
+
+export function OrderScreenFooter({ children }: OrderScreenFooterProps) {
+  const footerStyles = useOrderFooterShellStyles();
+  return <View style={footerStyles.shell}>{children}</View>;
+}
+
+/** Approximate multi-row order footer height for scroll padding. */
+export function estimateOrderScreenFooterHeight(actionRows: number, bottomInset: number) {
+  if (actionRows <= 0) {
+    return rV(16);
+  }
+
+  const rowHeight = rV(48);
+  const gaps = Math.max(0, actionRows - 1) * rV(10);
+  const padding = rV(12) + Math.max(bottomInset, rV(12));
+  return actionRows * rowHeight + gaps + padding + rV(8);
+}
+
 type OrderStickyFooterProps = {
   hint?: string;
   primaryLabel: string;
@@ -399,6 +439,9 @@ type OrderStickyFooterProps = {
   disabled?: boolean;
   secondaryLabel?: string;
   onSecondaryPress?: () => void;
+  /** When set, shows total on the left and a compact action button on the right. */
+  amountLabel?: string;
+  amountValue?: string;
 };
 
 export function OrderStickyFooter({
@@ -408,19 +451,94 @@ export function OrderStickyFooter({
   disabled = false,
   secondaryLabel,
   onSecondaryPress,
+  amountLabel = "Total",
+  amountValue,
 }: OrderStickyFooterProps) {
+  const { colors } = useTheme();
+  const footerShellStyles = useOrderFooterShellStyles();
+
+  const footerStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        shell: footerShellStyles.shell,
+        hint: {
+          textAlign: "center",
+          fontFamily: Fonts.text,
+          fontSize: rMS(12),
+          color: colors.textMuted,
+        },
+        actionRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(12),
+        },
+        amountCopy: {
+          flex: 1,
+          minWidth: 0,
+          gap: rV(2),
+        },
+        amountLabel: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11.5),
+          color: colors.textMuted,
+        },
+        amountValue: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(20),
+          color: colors.text,
+        },
+        primaryButton: {
+          flexShrink: 0,
+          minWidth: rS(132),
+        },
+      }),
+    [colors, footerShellStyles.shell],
+  );
+
   return (
-    <View style={orderStyles.stickyFooter}>
-      {hint ? <Text style={orderStyles.footerHint}>{hint}</Text> : null}
-      <AccountActionButton
-        label={primaryLabel}
-        variant="primary"
-        onPress={onPrimaryPress}
-        disabled={disabled}
-      />
+    <View style={footerStyles.shell}>
+      {hint ? <Text style={footerStyles.hint}>{hint}</Text> : null}
+      {amountValue ? (
+        <View style={footerStyles.actionRow}>
+          <View style={footerStyles.amountCopy}>
+            <Text style={footerStyles.amountLabel}>{amountLabel}</Text>
+            <Text style={footerStyles.amountValue} numberOfLines={1} adjustsFontSizeToFit>
+              {amountValue}
+            </Text>
+          </View>
+          <View style={footerStyles.primaryButton}>
+            <OrderActionButton
+              label={primaryLabel}
+              variant="primary"
+              onPress={onPrimaryPress}
+              disabled={disabled}
+              flex={0}
+            />
+          </View>
+        </View>
+      ) : (
+        <OrderActionButton
+          label={primaryLabel}
+          variant="primary"
+          onPress={onPrimaryPress}
+          disabled={disabled}
+        />
+      )}
       {secondaryLabel && onSecondaryPress ? (
-        <AccountActionButton label={secondaryLabel} variant="secondary" onPress={onSecondaryPress} />
+        <OrderActionButton label={secondaryLabel} variant="secondary" onPress={onSecondaryPress} />
       ) : null}
     </View>
   );
+}
+
+/** Approximate sticky footer height for scroll content padding. */
+export function estimateOrderStickyFooterHeight(options: {
+  hasHint?: boolean;
+  hasSplitAmount?: boolean;
+  bottomInset: number;
+}) {
+  const hintHeight = options.hasHint ? rV(34) : 0;
+  const barHeight = options.hasSplitAmount ? rV(52) : rV(56);
+  const padding = rV(12) + Math.max(options.bottomInset, rV(12));
+  return hintHeight + barHeight + padding + rV(8);
 }

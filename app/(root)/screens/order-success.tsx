@@ -2,7 +2,7 @@ import {
   AccountActionButton,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
   formatOrderMoney,
   OrderSummaryRow,
   orderStyles,
@@ -21,6 +21,7 @@ const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default function OrderSuccessScreen() {
+  const accountStyles = useAccountStyles();
   const params = useLocalSearchParams();
   useBlockBackNavigation(true);
   const orderNumber = getParam(params.orderNumber) ?? "ORD-000000";

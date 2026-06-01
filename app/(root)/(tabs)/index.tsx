@@ -21,8 +21,9 @@ import { useCatalogProducts, useRecommendedProducts } from "@/hooks/useCatalog";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/context/ThemeContext";
 
 function buildShuffleScore(id: string, seed: number) {
   return Array.from(`${id}-${seed}`).reduce(
@@ -70,12 +71,12 @@ function HomeSection({
             marginBottom: rS(10),
           }}
         >
-          <Text className="text-xl font-montserrat-extraBold text-gray-800">
+          <Text className="text-xl font-montserrat-extraBold text-gray-800 dark:text-gray-100">
             {title}
           </Text>
           {onSeeAll ? (
             <TouchableOpacity onPress={onSeeAll}>
-              <Text className="text-base font-montserrat-extraBold text-gray-800">
+              <Text className="text-base font-montserrat-extraBold text-gray-800 dark:text-gray-100">
                 See All
               </Text>
             </TouchableOpacity>
@@ -100,6 +101,7 @@ function HomeSection({
 }
 
 const HomeScreen = () => {
+  const { colors } = useTheme();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [recommendationSeed, setRecommendationSeed] = useState(1);
@@ -194,16 +196,14 @@ const HomeScreen = () => {
 
   if (isBootstrapping) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
-        <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.screen }} edges={["top"]}>
         <HomeFeedSkeleton />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.screen }} edges={["top"]}>
       <FlatList
         data={[]}
         keyExtractor={() => "dummy"}

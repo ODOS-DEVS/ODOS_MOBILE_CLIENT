@@ -1,4 +1,5 @@
 import { rS, rV } from "@/styles/responsive";
+import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -26,6 +27,8 @@ const MarketCard: React.FC<MarketCardProps> = ({
   cardWidth,
   horizontalSpacing,
 }) => {
+  const { cardShell, colors } = useCommerceTheme();
+  const textStyles = useCatalogCardTextStyles();
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
   const spacingRight = horizontalSpacing ?? rS(12);
@@ -43,19 +46,19 @@ const MarketCard: React.FC<MarketCardProps> = ({
       }
     >
       <View
-        className="bg-white shadow-sm"
         style={{
           width,
           borderRadius: rS(16),
           marginRight: spacingRight,
           marginBottom: rV(16),
           marginTop: rV(4),
+          ...cardShell,
         }}
       >
         <View
           style={{
             height: imageHeight,
-            backgroundColor: "#f3f4f6",
+            backgroundColor: colors.imagePlaceholder,
             borderTopLeftRadius: rS(16),
             borderTopRightRadius: rS(16),
             borderBottomLeftRadius: rS(16),
@@ -77,14 +80,11 @@ const MarketCard: React.FC<MarketCardProps> = ({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: rV(6),
-                backgroundColor: "#EEF2F7",
+                backgroundColor: colors.imagePlaceholder,
               }}
             >
-              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
-              <Text
-                className="text-subtext"
-                style={{ fontSize: rS(11) }}
-              >
+              <Ionicons name="image-outline" size={rS(22)} color={colors.iconMuted} />
+              <Text style={{ fontSize: rS(11), ...textStyles.placeholderLabel }}>
                 Market image pending
               </Text>
             </View>
@@ -93,18 +93,16 @@ const MarketCard: React.FC<MarketCardProps> = ({
 
         <View style={{ padding: rS(12) }}>
           <Text
-            className="font-montserrat-bold text-text text-left"
-            style={{ fontSize: rS(13), marginBottom: rV(8) }}
+            style={{ ...textStyles.title, fontSize: rS(13), marginBottom: rV(8), textAlign: "left" }}
             numberOfLines={1}
           >
             {title}
           </Text>
 
-          <View className="flex-row justify-between">
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             {category && (
               <Text
-                className="text-subtext"
-                style={{ fontSize: rS(11), marginTop: 2 }}
+                style={{ ...textStyles.category, fontSize: rS(11), marginTop: 2 }}
                 numberOfLines={1}
               >
                 {category}

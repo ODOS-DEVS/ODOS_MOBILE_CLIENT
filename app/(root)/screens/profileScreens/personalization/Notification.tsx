@@ -6,7 +6,7 @@ import {
   AccountSettingsGroup,
   AccountStickySaveBar,
   AccountTipBanner,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -16,6 +16,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 export default function NotificationScreen() {
+  const accountStyles = useAccountStyles();
   const { user, updateProfile, isUpdatingProfile } = useAuth();
   const { showToast } = useToast();
   const [allowNotifications, setAllowNotifications] = useState(false);

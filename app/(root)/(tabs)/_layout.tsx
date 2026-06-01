@@ -1,14 +1,51 @@
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { Image, ImageSourcePropType, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 
 const TabsLayout = () => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        iconWrap: {
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: rS(58),
+          minHeight: rV(46),
+          paddingHorizontal: rS(8),
+          paddingVertical: rV(6),
+          marginTop: rV(3),
+          borderRadius: rMS(18),
+        },
+        iconWrapFocused: {
+          backgroundColor: colors.tabFocused,
+        },
+        label: {
+          marginTop: rV(4),
+          width: rS(58),
+          textAlign: "center",
+          fontSize: rMS(9.5),
+          letterSpacing: 0,
+        },
+        labelFocused: {
+          color: colors.text,
+          fontFamily: Fonts.titleBold,
+        },
+        labelDefault: {
+          color: AppColors.subtext[100],
+          fontFamily: Fonts.title,
+        },
+      }),
+    [colors],
+  );
 
   type TabIconProps = {
     focused: boolean;
@@ -24,17 +61,14 @@ const TabsLayout = () => {
           style={{
             width: focused ? rMS(23) : rMS(21),
             height: focused ? rMS(23) : rMS(21),
-            tintColor: focused ? AppColors.text : AppColors.subtext[100],
+            tintColor: focused ? colors.text : AppColors.subtext[100],
             transform: [{ scale: focused ? 1.02 : 1 }],
           }}
           resizeMode="contain"
         />
 
         <Text
-          style={[
-            styles.label,
-            focused ? styles.labelFocused : styles.labelDefault,
-          ]}
+          style={[styles.label, focused ? styles.labelFocused : styles.labelDefault]}
           numberOfLines={1}
         >
           {title}
@@ -57,7 +91,7 @@ const TabsLayout = () => {
           position: "absolute",
           left: rS(14),
           right: rS(14),
-          bottom: Math.max(insets.bottom * 0.00, rV(0)),
+          bottom: Math.max(insets.bottom * 0.0, rV(0)),
           height: rV(74) + insets.bottom * 0.18,
           paddingTop: rV(10),
           paddingBottom: Math.max(insets.bottom * 0.05, rV(6)),
@@ -65,9 +99,9 @@ const TabsLayout = () => {
           borderTopWidth: 0,
           borderRadius: rMS(24),
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "#E5E7EB",
-          backgroundColor: AppColors.white,
-          shadowColor: "#0F172A",
+          borderColor: colors.tabBarBorder,
+          backgroundColor: colors.tabBar,
+          shadowColor: colors.shadow,
           shadowOpacity: 0.08,
           shadowRadius: 22,
           shadowOffset: { width: 0, height: 10 },
@@ -145,34 +179,3 @@ const TabsLayout = () => {
 };
 
 export default TabsLayout;
-
-const styles = StyleSheet.create({
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: rS(58),
-    minHeight: rV(46),
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(6),
-    marginTop: rV(3),
-    borderRadius: rMS(18),
-  },
-  iconWrapFocused: {
-    backgroundColor: "#F3F4F6",
-  },
-  label: {
-    marginTop: rV(4),
-    width: rS(58),
-    textAlign: "center",
-    fontSize: rMS(9.5),
-    letterSpacing: 0,
-  },
-  labelFocused: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  labelDefault: {
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.title,
-  },
-});

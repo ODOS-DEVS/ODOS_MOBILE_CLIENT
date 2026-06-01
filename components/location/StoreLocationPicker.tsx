@@ -11,6 +11,7 @@ import {
   reverseGeocodeStoreLocation,
   type StoreCoordinates,
 } from "@/utils/location";
+import { odosGoogleMapProps } from "@/utils/mapViewConfig";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -257,6 +258,7 @@ export default function StoreLocationPicker({
       ) : (
         <View style={styles.mapShell}>
           <MapView
+            {...odosGoogleMapProps}
             style={styles.map}
             initialRegion={hasPin ? mapRegion : DEFAULT_MAP_REGION}
             region={hasPin ? mapRegion : undefined}

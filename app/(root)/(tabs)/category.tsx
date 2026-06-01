@@ -4,14 +4,16 @@ import { AccountEmptyState } from "@/components/account/AccountUi";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import { useCatalogCategories } from "@/hooks/useCatalog";
 import { buildCategoryRouteParams } from "@/utils/catalogLanes";
+import { useTheme } from "@/context/ThemeContext";
 import { rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { FlatList, RefreshControl, StatusBar, View } from "react-native";
+import { FlatList, RefreshControl, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppColors } from "@/constants/Colors";
 
 const CategoryScreen = () => {
+  const { colors } = useTheme();
   const { horizontalPadding } = useResponsive();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { categories: catalogCategories, isLoading, error, refresh } =
@@ -40,8 +42,7 @@ const CategoryScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F7FA" }} edges={["top"]}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.screen }} edges={["top"]}>
       <FlatList
         data={catalogCategories}
         keyExtractor={(item) => item.id}

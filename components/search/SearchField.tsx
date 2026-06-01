@@ -1,9 +1,10 @@
 import { AppColors } from "@/constants/Colors";
+import { useSearchFieldStyles } from "@/styles/themedCommerce";
 import { rMS, rS, useResponsive } from "@/styles/responsive";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Text, TextInput, TouchableOpacity, View, type ViewStyle } from "react-native";
-import { searchFieldStyles } from "./searchFieldStyles";
 
 type SearchFieldProps = {
   placeholder?: string;
@@ -31,6 +32,8 @@ export default function SearchField({
   showClear = true,
 }: SearchFieldProps) {
   const { horizontalPadding } = useResponsive();
+  const { colors } = useTheme();
+  const searchFieldStyles = useSearchFieldStyles();
   const isLauncher = Boolean(onPress && !onChangeText);
   const isLarge = size === "large";
 
@@ -74,7 +77,7 @@ export default function SearchField({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.placeholder}
             style={[
               searchFieldStyles.input,
               isLarge ? searchFieldStyles.inputLarge : null,
@@ -91,7 +94,7 @@ export default function SearchField({
               onPress={() => onChangeText?.("")}
               activeOpacity={0.8}
             >
-              <Ionicons name="close-circle" size={rMS(18)} color="#D1D5DB" />
+              <Ionicons name="close-circle" size={rMS(18)} color={colors.iconMuted} />
             </TouchableOpacity>
           ) : null}
         </>

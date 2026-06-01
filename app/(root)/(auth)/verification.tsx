@@ -1,6 +1,8 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import EmailVerificationSuccess from "@/components/auth/EmailVerificationSuccess";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -16,8 +18,10 @@ import {
 const OTP_LENGTH = 6;
 
 export default function VerificationScreen() {
+  const { colors, isDark } = useTheme();
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ""));
   const [generalError, setGeneralError] = useState("");
+  const [phase, setPhase] = useState<"input" | "success">("input");
   const inputs = useRef<(TextInput | null)[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -129,8 +133,7 @@ export default function VerificationScreen() {
 
     const result = await verifyEmail(joinedCode);
     if (result.success) {
-      showToast("Email verified successfully.");
-      router.replace("../(tabs)");
+      setPhase("success");
       return;
     }
 
@@ -173,12 +176,25 @@ export default function VerificationScreen() {
     );
   };
 
+  if (!isPasswordResetMode && phase === "success") {
+    return (
+      <EmailVerificationSuccess
+        email={displayEmail}
+        onContinue={() => router.replace("../(tabs)")}
+      />
+    );
+  }
+
   return (
     <View
-      className="flex-1 bg-white"
-      style={{ paddingHorizontal: rS(20), paddingTop: rV(50) }}
+      style={{
+        flex: 1,
+        backgroundColor: colors.screen,
+        paddingHorizontal: rS(20),
+        paddingTop: rV(50),
+      }}
     >
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <View style={{ marginTop: rV(18) }}>
         <Text
