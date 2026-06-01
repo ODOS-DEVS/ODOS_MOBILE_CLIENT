@@ -5,6 +5,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
@@ -23,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WishlistScreen = () => {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { requireAuth } = useRequireAuth();
@@ -34,6 +36,79 @@ const WishlistScreen = () => {
   const cardWidth = gridCardWidth(columns, gap);
   const isEmpty = wishlist.length === 0;
   const showInitialLoader = isSyncingWishlist && isEmpty;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.screen,
+        },
+        emptyWrap: {
+          paddingHorizontal: rS(16),
+          paddingTop: rV(8),
+        },
+        listContent: {
+          paddingTop: rV(10),
+        },
+        headerBlock: {
+          marginBottom: rV(12),
+          gap: rV(10),
+        },
+        heroPill: {
+          alignSelf: "flex-start",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(7),
+          borderRadius: rS(999),
+          backgroundColor: colors.dangerSoft,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
+        },
+        heroPillText: {
+          color: colors.dangerText,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(11.5),
+        },
+        toolbar: {
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: rS(10),
+        },
+        toolbarCopy: {
+          flex: 1,
+          gap: rV(3),
+        },
+        toolbarTitle: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(15),
+          color: colors.text,
+        },
+        toolbarMeta: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11.5),
+          lineHeight: rMS(16),
+          color: colors.textMuted,
+        },
+        clearButton: {
+          borderRadius: rS(999),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
+          backgroundColor: colors.dangerSoft,
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(7),
+        },
+        clearButtonText: {
+          color: colors.dangerText,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(11),
+        },
+      }),
+    [colors],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -85,7 +160,7 @@ const WishlistScreen = () => {
         </View>
       </View>
     );
-  }, [isEmpty, removeFromWishlist, wishlist.length]);
+  }, [isEmpty, removeFromWishlist, styles, wishlist.length]);
 
   const openWishlistGate = () => {
     requireAuth({
@@ -160,72 +235,3 @@ const WishlistScreen = () => {
 };
 
 export default WishlistScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FAFAFA",
-  },
-  emptyWrap: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(8),
-  },
-  listContent: {
-    paddingTop: rV(10),
-  },
-  headerBlock: {
-    marginBottom: rV(12),
-    gap: rV(10),
-  },
-  heroPill: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-    borderRadius: rS(999),
-    backgroundColor: "#FFF1F2",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FECDD3",
-  },
-  heroPillText: {
-    color: "#BE123C",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11.5),
-  },
-  toolbar: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  toolbarCopy: {
-    flex: 1,
-    gap: rV(3),
-  },
-  toolbarTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    color: AppColors.text,
-  },
-  toolbarMeta: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    lineHeight: rMS(16),
-    color: "#9CA3AF",
-  },
-  clearButton: {
-    borderRadius: rS(999),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FECDD3",
-    backgroundColor: "#FFF1F2",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-  },
-  clearButtonText: {
-    color: "#E11D48",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-  },
-});

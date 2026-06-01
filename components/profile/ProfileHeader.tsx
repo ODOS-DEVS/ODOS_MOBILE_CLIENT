@@ -1,5 +1,5 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -84,6 +84,51 @@ export default function ProfileHeader({
   const { width } = useWindowDimensions();
   const router = useRouter();
   const pathname = usePathname();
+  const { colors } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        header: {
+          width: "100%",
+          backgroundColor: colors.header,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.headerBorder,
+        },
+        headerContent: {
+          flexDirection: "row",
+          alignItems: "center",
+          width: "100%",
+          alignSelf: "center",
+        },
+        backButton: {
+          width: rMS(38),
+          height: rMS(38),
+          borderRadius: rMS(19),
+          backgroundColor: colors.surfaceMuted,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        leftSlot: {
+          width: rMS(38),
+          height: rMS(38),
+        },
+        headerTitle: {
+          flex: 1,
+          textAlign: "center",
+          marginHorizontal: rS(8),
+          fontSize: rMS(18),
+          fontFamily: Fonts.titleBold,
+          color: colors.text,
+        },
+        rightSlot: {
+          width: rMS(38),
+          alignItems: "center",
+          justifyContent: "center",
+        },
+      }),
+    [colors],
+  );
 
   const headerSizing = useMemo(() => {
     if (width >= 1200) {
@@ -110,7 +155,6 @@ export default function ProfileHeader({
         paddingBottom: rV(16),
       };
     }
-    // Phones and small tablets
     return {
       maxWidth: width,
       paddingX: 16,
@@ -155,7 +199,7 @@ export default function ProfileHeader({
             }
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color={AppColors.text} />
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
           </TouchableOpacity>
         ) : (
           <View style={styles.leftSlot} />
@@ -170,43 +214,3 @@ export default function ProfileHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    width: "100%",
-    backgroundColor: AppColors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-  },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    alignSelf: "center",
-  },
-  backButton: {
-    width: rMS(38),
-    height: rMS(38),
-    borderRadius: rMS(19),
-    backgroundColor: "#F1F3F5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  leftSlot: {
-    width: rMS(38),
-    height: rMS(38),
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    marginHorizontal: rS(8),
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  rightSlot: {
-    width: rMS(38),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

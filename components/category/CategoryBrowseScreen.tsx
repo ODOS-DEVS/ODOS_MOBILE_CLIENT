@@ -7,6 +7,7 @@ import {
 import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import SearchLauncher from "@/components/search/SearchLauncher";
+import { useTheme } from "@/context/ThemeContext";
 import { useCatalogCategories, useCategoryBrowseProducts } from "@/hooks/useCatalog";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { productMatchesCatalogSubcategory } from "@/utils/catalogTaxonomy";
@@ -50,6 +51,7 @@ export function CategoryBrowseScreen({
   title,
   subcategoriesParam,
 }: CategoryBrowseScreenProps) {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [selectedSubcategory, setSelectedSubcategory] = useState(DEFAULT_SUBCATEGORY);
   const { gridCardWidth, horizontalPadding, responsiveColumns } = useResponsive();
@@ -57,6 +59,22 @@ export function CategoryBrowseScreen({
   const gridGap = rS(10);
   const gridPadding = horizontalPadding;
   const cardWidth = gridCardWidth(numColumns, gridGap);
+
+  const detailStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: colors.screen,
+        },
+        header: {
+          gap: rV(10),
+          paddingTop: rV(6),
+          paddingBottom: rV(4),
+        },
+      }),
+    [colors],
+  );
 
   const { categories: catalogCategories } = useCatalogCategories();
   const parsedSubcategoriesFromParams = useMemo(
@@ -224,15 +242,3 @@ export function CategoryBrowseScreen({
     </View>
   );
 }
-
-const detailStyles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  header: {
-    gap: rV(10),
-    paddingTop: rV(6),
-    paddingBottom: rV(4),
-  },
-});

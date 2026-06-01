@@ -1,6 +1,6 @@
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -37,7 +37,18 @@ export function SkeletonBlock({
   radius = 16,
   style,
 }: SkeletonBlockProps) {
+  const { colors } = useTheme();
   const progress = useRef(new Animated.Value(0)).current;
+
+  const shimmerColors = useMemo(
+    () =>
+      [
+        "rgba(255,255,255,0)",
+        colors.skeletonHighlight,
+        "rgba(255,255,255,0)",
+      ] as const,
+    [colors.skeletonHighlight],
+  );
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -66,23 +77,17 @@ export function SkeletonBlock({
           width,
           height,
           borderRadius: radius,
+          backgroundColor: colors.skeleton,
         },
         style,
       ]}
     >
       <Animated.View
         pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          { transform: [{ translateX }] },
-        ]}
+        style={[StyleSheet.absoluteFillObject, { transform: [{ translateX }] }]}
       >
         <LinearGradient
-          colors={[
-            "rgba(255,255,255,0)",
-            "rgba(255,255,255,0.55)",
-            "rgba(255,255,255,0)",
-          ]}
+          colors={shimmerColors}
           locations={[0.35, 0.5, 0.65]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
@@ -95,7 +100,6 @@ export function SkeletonBlock({
 
 const styles = StyleSheet.create({
   block: {
-    backgroundColor: "#E8ECF1",
     overflow: "hidden",
   },
 });

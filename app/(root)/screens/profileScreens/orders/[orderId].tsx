@@ -1,15 +1,18 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountActionButton,
+  AccountActionRow,
   AccountBadge,
   AccountEmptyState,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
   formatOrderMoney,
   getOrderLineItemImage,
   OrderProgressBar,
   OrderSummaryRow,
+  OrderScreenFooter,
+  estimateOrderScreenFooterHeight,
   orderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -23,7 +26,7 @@ import { useReviews } from "@/hooks/useReviews";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Alert,
   Image,
@@ -34,6 +37,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -248,6 +252,8 @@ function getReturnStatusMeta(status: ReturnRequest["status"]) {
 }
 
 export default function OrderDetailScreen() {
+  const accountStyles = useAccountStyles();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder, refreshOrder } = useOrder(orderId);
@@ -266,6 +272,31 @@ export default function OrderDetailScreen() {
   const [returnReason, setReturnReason] = React.useState("");
   const [returnDetails, setReturnDetails] = React.useState("");
   const [isSubmittingReturn, setIsSubmittingReturn] = React.useState(false);
+
+  const footerActionRows = useMemo(() => {
+    if (!order) {
+      return 0;
+    }
+
+    if (
+      order.status === "processing" ||
+      order.status === "pending_payment" ||
+      order.status === "delivered"
+    ) {
+      return 1;
+    }
+
+    if (order.status === "cancelled") {
+      return 2;
+    }
+
+    return 0;
+  }, [order]);
+
+  const footerScrollPadding = useMemo(
+    () => estimateOrderScreenFooterHeight(footerActionRows, insets.bottom),
+    [footerActionRows, insets.bottom],
+  );
 
   const latestReturnRequestsByItem = React.useMemo(() => {
     if (!order) {
@@ -470,7 +501,11 @@ export default function OrderDetailScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[accountStyles.content, styles.scrollContent]}
+        contentContainerStyle={[
+          accountStyles.content,
+          styles.scrollContent,
+          footerActionRows > 0 ? { paddingBottom: footerScrollPadding } : null,
+        ]}
       >
         <AccountListCard>
           <View style={orderStyles.orderTopRow}>
@@ -775,31 +810,18 @@ export default function OrderDetailScreen() {
             }
           />
         </AccountSectionCard>
+
+        <AccountActionButton
+          label="Back to My Orders"
+          variant="secondary"
+          onPress={() => router.push("/(root)/screens/profileScreens/orders" as any)}
+        />
       </ScrollView>
 
-      <View style={orderStyles.stickyFooter}>
+      {footerActionRows > 0 ? (
+        <OrderScreenFooter>
         {order.status === "processing" ? (
-          <>
-            <AccountActionButton
-              label={isMutatingOrder ? "Updating..." : "Confirm Delivery"}
-              variant="primary"
-              disabled={isMutatingOrder}
-              onPress={() =>
-                Alert.alert(
-                  "Confirm delivery?",
-                  "Use this when the package has arrived and everything looks right.",
-                  [
-                    { text: "Not yet", style: "cancel" },
-                    {
-                      text: "Confirm",
-                      onPress: () => {
-                        void handleConfirmDelivery();
-                      },
-                    },
-                  ],
-                )
-              }
-            />
+          <AccountActionRow>
             <AccountActionButton
               label={isMutatingOrder ? "Updating..." : "Cancel Order"}
               variant="danger"
@@ -821,7 +843,27 @@ export default function OrderDetailScreen() {
                 )
               }
             />
-          </>
+            <AccountActionButton
+              label={isMutatingOrder ? "Updating..." : "Confirm Delivery"}
+              variant="primary"
+              disabled={isMutatingOrder}
+              onPress={() =>
+                Alert.alert(
+                  "Confirm delivery?",
+                  "Use this when the package has arrived and everything looks right.",
+                  [
+                    { text: "Not yet", style: "cancel" },
+                    {
+                      text: "Confirm",
+                      onPress: () => {
+                        void handleConfirmDelivery();
+                      },
+                    },
+                  ],
+                )
+              }
+            />
+          </AccountActionRow>
         ) : null}
 
         {order.status === "pending_payment" ? (
@@ -890,13 +932,8 @@ export default function OrderDetailScreen() {
             }}
           />
         ) : null}
-
-        <AccountActionButton
-          label="Back to My Orders"
-          variant="secondary"
-          onPress={() => router.push("/(root)/screens/profileScreens/orders" as any)}
-        />
-      </View>
+        </OrderScreenFooter>
+      ) : null}
 
       <Modal
         visible={Boolean(returnTargetItem)}
@@ -1039,7 +1076,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(16),
   },
   scrollContent: {
-    paddingBottom: rV(150),
+    paddingBottom: rV(16),
   },
   heroCard: {
     backgroundColor: AppColors.white,

@@ -6,7 +6,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountSegmentedTabs,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -94,6 +94,7 @@ function formatAvailabilityLabel(voucher: VoucherWalletItem) {
 }
 
 export default function VouchersScreen() {
+  const accountStyles = useAccountStyles();
   const { showToast } = useToast();
   const params = useLocalSearchParams();
   const fromCheckout = params.fromCheckout === "1";

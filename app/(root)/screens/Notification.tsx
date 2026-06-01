@@ -1,11 +1,11 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import UserAvatar from "@/components/UserAvatar";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { ActivityItem, useActivityFeed } from "@/hooks/useActivityFeed";
+import { activityKindUsesProductImage } from "@/utils/activityImages";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { useNotificationStyles, AppColors } from "@/styles/themedNotificationStyles";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -13,63 +13,86 @@ import {
   Image,
   RefreshControl,
   SectionList,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
+function activityAccentStyles(accent: ActivityItem["accent"]) {
+  if (accent === "success") {
+    return {
+      iconBg: "#ECFDF3",
+      iconColor: "#15803D",
+    };
+  }
+  if (accent === "warning") {
+    return {
+      iconBg: "#FFF7ED",
+      iconColor: "#B45309",
+    };
+  }
+  return {
+    iconBg: "#F3F4F6",
+    iconColor: AppColors.primary,
+  };
+}
+
 function NotificationRowItem({
   item,
   onOpen,
+  styles,
 }: {
   item: ActivityItem;
   onOpen: (item: ActivityItem) => void;
+  styles: ReturnType<typeof useNotificationStyles>;
 }) {
-  const openItem = () => {
-    onOpen(item);
-  };
-
-  const accentColor =
-    item.accent === "success"
-      ? "#15803D"
-      : item.accent === "warning"
-        ? "#B45309"
-        : AppColors.primary;
-  const iconBg =
-    item.accent === "success"
-      ? "#ECFDF3"
-      : item.accent === "warning"
-        ? "#FFF7ED"
-        : "#F2F4F7";
+  const accent = activityAccentStyles(item.accent);
+  const showProductThumb =
+    Boolean(item.productImage) && activityKindUsesProductImage(item.kind);
 
   return (
-    <TouchableOpacity style={styles.itemRow} activeOpacity={0.86} onPress={openItem}>
-      {!item.isRead ? <View style={styles.unreadDot} /> : null}
-      <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
-        {item.productImage ? (
-          <Image source={item.productImage} style={styles.productImage} resizeMode="cover" />
-        ) : (
-          <Ionicons name={item.icon} size={18} color={accentColor} />
-        )}
-      </View>
+    <TouchableOpacity
+      style={[styles.itemRow, !item.isRead ? styles.itemRowUnread : null]}
+      activeOpacity={0.86}
+      onPress={() => onOpen(item)}
+    >
+      {showProductThumb ? (
+        <View style={styles.productThumbWrap}>
+          <Image source={item.productImage} style={styles.productThumb} resizeMode="cover" />
+        </View>
+      ) : (
+        <View style={[styles.iconCircle, { backgroundColor: accent.iconBg }]}>
+          <Ionicons name={item.icon} size={rMS(20)} color={accent.iconColor} />
+        </View>
+      )}
 
       <View style={styles.middle}>
-        <Text style={styles.itemTitle}>{item.title}</Text>
-        <Text style={styles.itemBody}>{item.body}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.itemTitle, !item.isRead ? styles.itemTitleUnread : null]}>
+            {item.title}
+          </Text>
+          {!item.isRead ? <View style={styles.unreadPill} /> : null}
+        </View>
+        <Text style={styles.itemBody} numberOfLines={2}>
+          {item.body}
+        </Text>
         <Text style={styles.time}>{item.relativeTime}</Text>
       </View>
 
       {item.actionLabel ? (
         <View style={styles.actionPill}>
           <Text style={styles.actionText}>{item.actionLabel}</Text>
+          <Ionicons name="chevron-forward" size={rMS(14)} color={AppColors.text} />
         </View>
-      ) : null}
+      ) : (
+        <Ionicons name="chevron-forward" size={rMS(16)} color="#CBD5E1" />
+      )}
     </TouchableOpacity>
   );
 }
 
 export default function NotificationScreen() {
+  const styles = useNotificationStyles();
   const { user } = useAuth();
   const {
     sections,
@@ -136,12 +159,19 @@ export default function NotificationScreen() {
       <ProfileHeader title="Activity" />
 
       <View style={styles.topBanner}>
-        <Text style={styles.bannerTitle}>Recent activity</Text>
-        <Text style={styles.bannerText}>
-          {unreadCount > 0
-            ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"} across your account and orders.`
-            : "Your latest account and order updates will appear here. Pull down to refresh any time."}
-        </Text>
+        <View style={styles.bannerHeader}>
+          <View style={styles.bannerIcon}>
+            <Ionicons name="sparkles-outline" size={rMS(18)} color={AppColors.primary} />
+          </View>
+          <View style={styles.bannerCopy}>
+            <Text style={styles.bannerTitle}>Your ODOS timeline</Text>
+            <Text style={styles.bannerText}>
+              {unreadCount > 0
+                ? `${unreadCount} new update${unreadCount === 1 ? "" : "s"} waiting for you.`
+                : "Orders, account moments, and shopping updates land here."}
+            </Text>
+          </View>
+        </View>
         {unreadCount > 0 ? (
           <TouchableOpacity
             style={styles.markAllButton}
@@ -150,7 +180,7 @@ export default function NotificationScreen() {
               void markAsRead(sections.flatMap((section) => section.data.map((item) => item.id)));
             }}
           >
-            <Text style={styles.markAllButtonText}>Mark all as read</Text>
+            <Text style={styles.markAllButtonText}>Mark all read</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -159,10 +189,13 @@ export default function NotificationScreen() {
         <ScreenLoader label="Loading your activity..." />
       ) : sections.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="notifications-outline" size={rMS(30)} color={AppColors.secondary} />
-          <Text style={styles.emptyTitle}>Nothing to show just yet</Text>
+          <View style={styles.emptyIconWrap}>
+            <Ionicons name="notifications-outline" size={rMS(28)} color={AppColors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>Nothing here yet</Text>
           <Text style={styles.emptyText}>
-            Once you place orders or update your account, the important moments will show up here.
+            Place an order, verify your email, or update your profile — the important moments will
+            show up here.
           </Text>
         </View>
       ) : (
@@ -172,7 +205,9 @@ export default function NotificationScreen() {
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionTitle}>{section.title}</Text>
           )}
-          renderItem={({ item }) => <NotificationRowItem item={item} onOpen={openItem} />}
+          renderItem={({ item }) => (
+            <NotificationRowItem item={item} onOpen={openItem} styles={styles} />
+          )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
@@ -190,153 +225,3 @@ export default function NotificationScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  topBanner: {
-    marginHorizontal: rS(16),
-    marginTop: rV(14),
-    marginBottom: rV(6),
-    backgroundColor: "#EEF4FF",
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(14),
-  },
-  markAllButton: {
-    alignSelf: "flex-start",
-    marginTop: rV(10),
-    borderRadius: rMS(999),
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-  },
-  markAllButtonText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.primary,
-  },
-  bannerTitle: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  bannerText: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  listContent: {
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(28),
-  },
-  sectionTitle: {
-    marginTop: rV(16),
-    marginBottom: rV(10),
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.subtext[100],
-    textTransform: "uppercase",
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    marginBottom: rV(10),
-  },
-  unreadDot: {
-    position: "absolute",
-    top: rV(18),
-    left: rS(10),
-    width: rMS(8),
-    height: rMS(8),
-    borderRadius: rMS(4),
-    backgroundColor: "#2563EB",
-  },
-  iconCircle: {
-    width: rMS(46),
-    height: rMS(46),
-    borderRadius: rMS(23),
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  middle: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  itemBody: {
-    marginTop: rV(3),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  time: {
-    marginTop: rV(6),
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.subtext[100],
-  },
-  actionPill: {
-    borderRadius: rMS(999),
-    backgroundColor: "#F2F4F7",
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-  },
-  actionText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: rS(28),
-    gap: rV(10),
-  },
-  emptyTitle: {
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  emptyText: {
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-  },
-  primaryButton: {
-    marginTop: rV(8),
-    minHeight: rV(48),
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(18),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-});

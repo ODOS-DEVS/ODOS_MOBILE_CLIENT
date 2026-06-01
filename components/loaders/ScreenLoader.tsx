@@ -1,7 +1,7 @@
 import LoadingSpinner from "@/components/loaders/LoadingSpinner";
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { rS, rV } from "@/styles/responsive";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 type ScreenLoaderProps = {
@@ -13,21 +13,26 @@ export default function ScreenLoader({
   label = "Loading",
   sublabel,
 }: ScreenLoaderProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: rS(24),
+          paddingVertical: rV(40),
+          minHeight: rV(280),
+          backgroundColor: colors.screen,
+        },
+      }),
+    [colors],
+  );
+
   return (
     <View style={styles.container}>
       <LoadingSpinner label={label} sublabel={sublabel} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(40),
-    minHeight: rV(280),
-    backgroundColor: "#F5F7FA",
-  },
-});

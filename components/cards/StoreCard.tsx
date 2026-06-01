@@ -1,4 +1,5 @@
 import { rS, rV } from "@/styles/responsive";
+import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -30,6 +31,8 @@ const StoreCard: React.FC<StoreCardProps> = ({
   cardWidth,
   horizontalSpacing,
 }) => {
+  const { cardShell, colors } = useCommerceTheme();
+  const textStyles = useCatalogCardTextStyles();
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
   const spacingRight = horizontalSpacing ?? rS(12);
@@ -51,20 +54,20 @@ const StoreCard: React.FC<StoreCardProps> = ({
       }
     >
       <View
-        className="bg-white shadow-sm"
         style={{
           width,
           borderRadius: rS(16),
           marginRight: spacingRight,
           marginBottom: rV(16),
           marginTop: rV(4),
+          ...cardShell,
         }}
       >
         <View
           style={{
             position: "relative",
             height: imageHeight,
-            backgroundColor: "#f3f4f6",
+            backgroundColor: colors.imagePlaceholder,
             borderTopLeftRadius: rS(16),
             borderTopRightRadius: rS(16),
             borderBottomLeftRadius: rS(16),
@@ -87,11 +90,11 @@ const StoreCard: React.FC<StoreCardProps> = ({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: rV(6),
-                backgroundColor: "#EEF2F7",
+                backgroundColor: colors.imagePlaceholder,
               }}
             >
-              <Ionicons name="storefront-outline" size={rS(22)} color="#94A3B8" />
-              <Text style={{ fontSize: rS(11), color: "#64748B" }}>
+              <Ionicons name="storefront-outline" size={rS(22)} color={colors.iconMuted} />
+              <Text style={{ fontSize: rS(11), ...textStyles.placeholderLabel }}>
                 Store image pending
               </Text>
             </View>
@@ -108,8 +111,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
             }}
           >
             <Text
-              className="font-montserrat-bold text-text text-left"
-              style={{ fontSize: rS(13), flex: 1 }}
+              style={{ ...textStyles.title, fontSize: rS(13), flex: 1, textAlign: "left" }}
               numberOfLines={1}
             >
               {title}
@@ -137,8 +139,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
           <View style={{ flexDirection: "column", gap: 4, marginTop: rV(3), }}>
             {category && (
               <Text
-                className="text-subtext"
-                style={{ fontSize: rS(11) }}
+                style={{ ...textStyles.category, fontSize: rS(11) }}
                 numberOfLines={1}
               >
                 {category}

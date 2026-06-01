@@ -3,7 +3,7 @@ import {
   AccountInsightCard,
   AccountLinkRow,
   AccountListCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -42,6 +42,7 @@ const resources = [
 ];
 
 export default function ResourcesScreen() {
+  const accountStyles = useAccountStyles();
   const { requireAuth } = useRequireAuth();
 
   const openSupport = () => {

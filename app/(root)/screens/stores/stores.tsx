@@ -6,7 +6,7 @@ import {
   CommerceSeeAllHero,
   CommerceSeeAllSearch,
   CommerceSeeAllSectionHeader,
-  commerceSeeAllScreenStyles,
+  useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useStores } from "@/hooks/useCommerce";
@@ -25,6 +25,7 @@ const normalizeStoreCategory = (value?: string) => {
 };
 
 const StoreScreen = () => {
+  const screenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
   const [activeCategory, setActiveCategory] = useState("All");
   const [isSearching, setIsSearching] = useState(false);
@@ -89,13 +90,13 @@ const StoreScreen = () => {
   );
 
   return (
-    <View style={commerceSeeAllScreenStyles.screen}>
+    <View style={screenStyles.screen}>
       <ProfileHeader title="Stores" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          commerceSeeAllScreenStyles.scrollContent,
+          screenStyles.scrollContent,
           {
             paddingHorizontal: horizontalPadding,
             paddingBottom: sectionSpacing,
@@ -133,7 +134,7 @@ const StoreScreen = () => {
           onChange={handleCategoryPress}
         />
 
-        <View style={commerceSeeAllScreenStyles.contentBlock}>
+        <View style={screenStyles.contentBlock}>
           <CommerceSeeAllSectionHeader
             title="Browse stores"
             subtitle={

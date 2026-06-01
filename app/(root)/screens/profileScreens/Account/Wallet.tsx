@@ -9,7 +9,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountIconShell,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -71,6 +71,7 @@ function validateWalletForm(
 }
 
 export default function WalletScreen() {
+  const accountStyles = useAccountStyles();
   const {
     paymentMethods,
     addPayment,

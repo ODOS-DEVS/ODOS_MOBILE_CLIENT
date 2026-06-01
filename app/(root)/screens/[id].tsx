@@ -4,15 +4,18 @@ import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import ProductCard from "@/components/cards/ProductCard";
 import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useStore } from "@/hooks/useCommerce";
 import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useProductReviews } from "@/hooks/useReviews";
 import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { createProductDetailStyles } from "@/styles/productDetailStyles";
+import ProductShareSheet from "@/components/share/ProductShareSheet";
 import { goBackOr } from "@/utils/navigation";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import type { ProductSharePayload } from "@/utils/shareCatalog";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -22,8 +25,6 @@ import {
   Image,
   Modal,
   ScrollView,
-  Share,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -128,13 +129,17 @@ function formatReviewCountLabel(value?: string | number | null) {
 function ProductMetaChip({
   icon,
   label,
+  styles,
+  mutedColor,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  styles: ReturnType<typeof createProductDetailStyles>;
+  mutedColor: string;
 }) {
   return (
     <View style={styles.metaChip}>
-      <Ionicons name={icon} size={rMS(13)} color={AppColors.secondary} />
+      <Ionicons name={icon} size={rMS(13)} color={mutedColor} />
       <Text style={styles.metaChipText}>{label}</Text>
     </View>
   );
@@ -143,9 +148,11 @@ function ProductMetaChip({
 function InfoStat({
   label,
   value,
+  styles,
 }: {
   label: string;
   value: string;
+  styles: ReturnType<typeof createProductDetailStyles>;
 }) {
   return (
     <View style={styles.infoStat}>
@@ -156,6 +163,8 @@ function InfoStat({
 }
 
 export default function ProductDetail() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createProductDetailStyles(colors), [colors]);
   const { requireAuth } = useRequireAuth();
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useResponsive();
@@ -180,6 +189,7 @@ export default function ProductDetail() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
 
   const productFallback = useMemo(
     () => ({
@@ -417,15 +427,39 @@ export default function ProductDetail() {
     });
   };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        title: title || "ODOS product",
-        message: `${title}${category ? ` · ${category}` : ""} · ${formatPrice(price)} on ODOS`,
-      });
-    } catch {
-      // Native share dismissal or failure can stay quiet here.
-    }
+  const sharePayload = useMemo<ProductSharePayload>(
+    () => ({
+      id,
+      title,
+      price,
+      oldPrice: oldPrice > 0 ? oldPrice : undefined,
+      category,
+      subcategory,
+      rating: rating > 0 ? rating : undefined,
+      reviewsLabel: reviewsLabel,
+      discount,
+      storeName: store?.title,
+      imageUrl: product.imageUrl,
+      imageUrls: product.imageUrls,
+    }),
+    [
+      category,
+      discount,
+      id,
+      oldPrice,
+      price,
+      product.imageUrl,
+      product.imageUrls,
+      rating,
+      reviewsLabel,
+      store?.title,
+      subcategory,
+      title,
+    ],
+  );
+
+  const openShareSheet = () => {
+    setIsShareSheetOpen(true);
   };
 
   const shouldShowLoadingState = isLoading;
@@ -446,15 +480,16 @@ export default function ProductDetail() {
           onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color={AppColors.text} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Product Details</Text>
         <TouchableOpacity
           style={styles.headerButton}
           activeOpacity={0.7}
-          onPress={() => void handleShare()}
+          onPress={openShareSheet}
+          disabled={shouldShowLoadingState || !title}
         >
-          <AntDesign name="share-alt" size={18} color={AppColors.text} />
+          <AntDesign name="share-alt" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -565,6 +600,8 @@ export default function ProductDetail() {
                   {hasRatingsInfo ? (
                     <ProductMetaChip
                       icon="star"
+                      styles={styles}
+                      mutedColor={colors.textMuted}
                       label={
                         rating > 0 && reviewsLabel.trim()
                           ? `${rating.toFixed(1)} · ${reviewsLabel}`
@@ -576,6 +613,8 @@ export default function ProductDetail() {
                   ) : null}
                   <ProductMetaChip
                     icon={stock > 0 ? "checkmark-circle-outline" : "close-circle-outline"}
+                    styles={styles}
+                    mutedColor={colors.textMuted}
                     label={
                       stock > 0
                         ? isLowStock
@@ -585,7 +624,12 @@ export default function ProductDetail() {
                     }
                   />
                   {store?.title ? (
-                    <ProductMetaChip icon="storefront-outline" label={store.title} />
+                    <ProductMetaChip
+                      icon="storefront-outline"
+                      styles={styles}
+                      mutedColor={colors.textMuted}
+                      label={store.title}
+                    />
                   ) : null}
                 </View>
 
@@ -593,10 +637,12 @@ export default function ProductDetail() {
                   <InfoStat
                     label="Category"
                     value={subcategory ?? category ?? "General"}
+                    styles={styles}
                   />
                   <InfoStat
                     label="Market"
                     value={titleFromSlug(store?.marketSlug) ?? "Storefront"}
+                    styles={styles}
                   />
                   <InfoStat
                     label="Store rating"
@@ -605,6 +651,7 @@ export default function ProductDetail() {
                         ? `${store.rating.toFixed(1)} / 5`
                         : "Live seller"
                     }
+                    styles={styles}
                   />
                 </View>
               </View>
@@ -751,7 +798,7 @@ export default function ProductDetail() {
                           } as any)
                         }
                       >
-                        <Ionicons name="chatbubble-outline" size={rMS(16)} color={AppColors.text} />
+                        <Ionicons name="chatbubble-outline" size={rMS(16)} color={colors.onInverseSurface} />
                         <Text style={styles.storeSecondaryActionText}>Chat Store</Text>
                       </TouchableOpacity>
                     </>
@@ -887,7 +934,7 @@ export default function ProductDetail() {
                   reviews,
                 }}
                 size={18}
-                iconColor={AppColors.text}
+                iconColor={colors.text}
                 activeIconColor="#DC2626"
                 containerStyle={styles.bottomIconButton}
               />
@@ -945,7 +992,7 @@ export default function ProductDetail() {
                 <TouchableOpacity
                   style={styles.fullscreenHeaderButton}
                   activeOpacity={0.8}
-                  onPress={() => void handleShare()}
+                  onPress={openShareSheet}
                 >
                   <AntDesign name="share-alt" size={rMS(18)} color={AppColors.white} />
                 </TouchableOpacity>
@@ -1025,652 +1072,13 @@ export default function ProductDetail() {
           </Modal>
         </>
       )}
+
+      <ProductShareSheet
+        visible={isShareSheetOpen}
+        product={sharePayload}
+        previewImage={productImages[0]}
+        onClose={() => setIsShareSheetOpen(false)}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: AppColors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-    paddingBottom: rV(12),
-  },
-  headerButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    marginHorizontal: rS(12),
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  scroll: {
-    flex: 1,
-  },
-  heroSection: {
-    position: "relative",
-    paddingBottom: rV(10),
-  },
-  heroBackdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: rV(250),
-    backgroundColor: "#DCE5EC",
-    borderBottomLeftRadius: rMS(34),
-    borderBottomRightRadius: rMS(34),
-  },
-  galleryShell: {
-    position: "relative",
-    backgroundColor: "#EEF3F7",
-    marginHorizontal: rS(16),
-    marginTop: rV(12),
-    borderRadius: rMS(30),
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
-  },
-  imageSlide: {
-    width: screenWidth - rS(32),
-    height: rV(350),
-    backgroundColor: "#EEF2F5",
-  },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
-  galleryOverlayRow: {
-    position: "absolute",
-    top: rV(16),
-    left: rS(16),
-    right: rS(16),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  galleryCountBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: "rgba(15, 23, 42, 0.62)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  galleryCountText: {
-    color: AppColors.white,
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-  },
-  discountPill: {
-    backgroundColor: "rgba(15, 23, 42, 0.78)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  discountPillText: {
-    color: AppColors.white,
-    fontSize: rMS(11),
-    fontFamily: Fonts.titleBold,
-  },
-  expandHintWrap: {
-    position: "absolute",
-    right: rS(16),
-    bottom: rV(16),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: "rgba(15, 23, 42, 0.62)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  expandHintText: {
-    color: AppColors.white,
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-  },
-  thumbnailWrap: {
-    width: rMS(64),
-    height: rMS(64),
-    borderRadius: rMS(16),
-    marginRight: rS(10),
-    padding: 3,
-    backgroundColor: AppColors.white,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  thumbnailWrapActive: {
-    borderColor: AppColors.primary,
-    borderWidth: 2,
-  },
-  thumbnailImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: rMS(13),
-  },
-  content: {
-    paddingTop: rV(10),
-  },
-  infoShell: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(28),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 22,
-    elevation: 3,
-  },
-  taxonomyRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-  },
-  taxonomyPill: {
-    borderRadius: 999,
-    backgroundColor: "#E7EDF2",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-  },
-  taxonomyPillText: {
-    fontSize: rMS(11),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-  },
-  productTitle: {
-    marginTop: rV(14),
-    fontSize: rMS(26),
-    lineHeight: rMS(33),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  productLead: {
-    marginTop: rV(10),
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  metaRow: {
-    marginTop: rV(14),
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  infoStatsRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(16),
-  },
-  infoStat: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  infoStatLabel: {
-    fontSize: rMS(10.5),
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.text,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  infoStatValue: {
-    marginTop: rV(6),
-    fontSize: rMS(12),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-  },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: AppColors.white,
-    borderRadius: 999,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  metaChipText: {
-    fontSize: rMS(11),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  priceCard: {
-    marginTop: rV(18),
-    borderRadius: rMS(26),
-    backgroundColor: "#0F172A",
-    padding: rS(18),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.04)",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 26,
-    elevation: 4,
-  },
-  priceTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  priceLabel: {
-    fontSize: rMS(12),
-    color: "#CBD5E1",
-    fontFamily: Fonts.text,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: rV(6),
-    flexWrap: "wrap",
-  },
-  price: {
-    fontSize: rMS(24),
-    color: AppColors.white,
-    fontFamily: Fonts.titleBold,
-  },
-  oldPrice: {
-    marginLeft: rS(10),
-    fontSize: rMS(15),
-    color: "#94A3B8",
-    fontFamily: Fonts.text,
-    textDecorationLine: "line-through",
-  },
-  savingsPill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-  },
-  savingsPillText: {
-    fontSize: rMS(11),
-    color: "#E2E8F0",
-    fontFamily: Fonts.titleBold,
-  },
-  variantCard: {
-    marginTop: rV(18),
-    borderRadius: rMS(24),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    gap: rV(14),
-  },
-  variantHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  variantTitle: {
-    fontSize: rMS(14),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  variantValue: {
-    fontSize: rMS(12),
-    color: AppColors.secondary,
-    fontFamily: Fonts.title,
-  },
-  colorRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  colorBtn: {
-    minWidth: rMS(64),
-    minHeight: rMS(42),
-    borderRadius: rMS(16),
-    borderWidth: 1,
-    borderColor: "#DBDBDB",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-    gap: rS(8),
-    flexDirection: "row",
-  },
-  colorBtnActive: {
-    borderColor: AppColors.primary,
-    borderWidth: 2,
-    backgroundColor: "#F8FAFC",
-  },
-  colorDot: {
-    width: rMS(22),
-    height: rMS(22),
-    borderRadius: rMS(11),
-  },
-  colorLabel: {
-    fontSize: rMS(12),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-  },
-  sizeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-  },
-  sizeBtn: {
-    minWidth: rMS(48),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(13),
-    paddingVertical: rV(9),
-    borderRadius: rMS(12),
-    borderWidth: 1,
-    borderColor: "#D6D6D8",
-    backgroundColor: AppColors.white,
-  },
-  sizeBtnActive: {
-    borderColor: AppColors.primary,
-    backgroundColor: AppColors.primary,
-  },
-  sizeBtnText: {
-    fontSize: rMS(13),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-  },
-  sizeBtnTextActive: {
-    color: AppColors.white,
-  },
-  storeCard: {
-    marginTop: rV(18),
-    borderRadius: rMS(24),
-    backgroundColor: "#0F172A",
-    padding: rS(18),
-  },
-  storeHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  storeTitleWrap: {
-    flex: 1,
-    flexDirection: "row",
-    gap: rS(12),
-  },
-  storeIconWrap: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "rgba(255,255,255,0.14)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  storeEyebrow: {
-    fontSize: rMS(11),
-    color: "#CBD5E1",
-    fontFamily: Fonts.text,
-  },
-  storeTitle: {
-    marginTop: rV(2),
-    fontSize: rMS(16),
-    color: AppColors.white,
-    fontFamily: Fonts.titleBold,
-  },
-  storeMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    color: "#CBD5E1",
-    fontFamily: Fonts.text,
-  },
-  storeRatingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(7),
-    borderRadius: 999,
-  },
-  storeRatingText: {
-    color: AppColors.white,
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-  },
-  storeDescription: {
-    marginTop: rV(12),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#DDE5EE",
-    fontFamily: Fonts.text,
-  },
-  storeActionsRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(14),
-  },
-  storePrimaryAction: {
-    flex: 1,
-    backgroundColor: AppColors.white,
-    paddingVertical: rV(11),
-    borderRadius: rMS(14),
-    alignItems: "center",
-  },
-  storePrimaryActionText: {
-    color: "#0F172A",
-    fontSize: rMS(13),
-    fontFamily: Fonts.titleBold,
-  },
-  storeSecondaryAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    borderRadius: rMS(14),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    paddingHorizontal: rS(14),
-  },
-  storeSecondaryActionText: {
-    color: AppColors.white,
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-  },
-  reviewSectionWrap: {
-    marginTop: rV(18),
-  },
-  sectionStack: {
-    marginTop: rV(18),
-  },
-  relatedHeader: {
-    marginTop: rV(24),
-    marginBottom: rV(12),
-  },
-  relatedTitle: {
-    fontSize: rMS(18),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-  },
-  relatedSubtitle: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  relatedList: {
-    paddingBottom: rV(4),
-  },
-  fullscreenModal: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  fullscreenHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  fullscreenHeaderButton: {
-    width: rMS(42),
-    height: rMS(42),
-    borderRadius: rMS(21),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenCounter: {
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(9),
-  },
-  fullscreenCounterText: {
-    color: AppColors.white,
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-  },
-  fullscreenImageSlide: {
-    width: screenWidth,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenImage: {
-    width: "100%",
-    height: "100%",
-  },
-  fullscreenFooter: {
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(22),
-  },
-  fullscreenTitle: {
-    color: AppColors.white,
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-  },
-  fullscreenPrice: {
-    marginTop: rV(4),
-    color: "#CBD5E1",
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-  },
-  fullscreenThumbs: {
-    paddingTop: rV(14),
-  },
-  fullscreenThumbWrap: {
-    width: rMS(56),
-    height: rMS(56),
-    borderRadius: rMS(14),
-    overflow: "hidden",
-    marginRight: rS(10),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  fullscreenThumbWrapActive: {
-    borderWidth: 2,
-    borderColor: AppColors.white,
-  },
-  fullscreenThumbImage: {
-    width: "100%",
-    height: "100%",
-  },
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255,255,255,0.985)",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
-    paddingTop: rV(14),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: -6 },
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  bottomPriceWrap: {
-    flex: 1,
-    minWidth: rS(76),
-    paddingRight: rS(6),
-  },
-  bottomPriceLabel: {
-    fontSize: rMS(11),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-  },
-  bottomPriceValue: {
-    marginTop: rV(2),
-    fontSize: rMS(20),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    flexShrink: 0,
-  },
-  bottomVariantText: {
-    marginTop: rV(2),
-    fontSize: rMS(11),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    flexShrink: 1,
-  },
-  bottomActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    flex: 1,
-    flexShrink: 0,
-    justifyContent: "flex-end",
-  },
-  bottomIconButton: {
-    backgroundColor: "#F1F5F9",
-    padding: rS(12),
-    borderRadius: rMS(18),
-    elevation: 0,
-  },
-  bottomCartButton: {
-    backgroundColor: "#0F172A",
-    padding: rS(12),
-    borderRadius: rMS(18),
-  },
-  buyNowBtn: {
-    minWidth: rS(100),
-    maxWidth: rS(138),
-    flex: 1,
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(14),
-    borderRadius: rMS(20),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buyNowText: {
-    color: AppColors.white,
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-  },
-});

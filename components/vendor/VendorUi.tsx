@@ -5,7 +5,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -35,7 +35,7 @@ export {
   AccountInsightCard,
   AccountListCard,
   AccountSectionCard,
-  accountStyles,
+  useAccountStyles,
   StatCard,
   QuickActionCard,
   StatusBadge,

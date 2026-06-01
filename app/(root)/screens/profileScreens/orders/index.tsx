@@ -2,7 +2,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountInsightCard,
   AccountSegmentedTabs,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useOrders } from "@/hooks/useOrders";
@@ -24,6 +24,7 @@ const TAB_OPTIONS: Array<{ key: OrderTab; label: string }> = [
 ];
 
 export default function OrdersScreen() {
+  const accountStyles = useAccountStyles();
   const params = useLocalSearchParams();
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const initialTab: OrderTab =

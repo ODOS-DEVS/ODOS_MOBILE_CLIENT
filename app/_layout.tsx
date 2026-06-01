@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { PushNotificationsProvider } from "@/context/PushNotificationsProvider";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { useRealtime } from "@/context/RealtimeContext";
@@ -12,8 +13,9 @@ import { useVendorStore } from "@/stores/vendorStore";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./global.css";
 
 function VendorStateBridge() {
@@ -96,6 +98,11 @@ function VendorRealtimeBridge() {
   return null;
 }
 
+function ThemedAppShell({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
+  return <View style={{ flex: 1, backgroundColor: colors.screen }}>{children}</View>;
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     "Montserrat-Black": require("@/assets/fonts/Montserrat-Black.ttf"),
@@ -117,30 +124,34 @@ export default function RootLayout() {
   }
 
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <VendorStateBridge />
-        <PushNotificationsProvider>
-          <RealtimeProvider>
-            <VendorRealtimeBridge />
-            <ChatProvider>
-              <ProfileProvider>
-                <CartProvider>
-                  <WishlistProvider>
-                    <View style={{ flex: 1 }}>
-                      <Stack
-                        screenOptions={{
-                          headerShown: false,
-                        }}
-                      />
-                    </View>
-                  </WishlistProvider>
-                </CartProvider>
-              </ProfileProvider>
-            </ChatProvider>
-          </RealtimeProvider>
-        </PushNotificationsProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <VendorStateBridge />
+            <PushNotificationsProvider>
+              <RealtimeProvider>
+                <VendorRealtimeBridge />
+                <ChatProvider>
+                  <ProfileProvider>
+                    <CartProvider>
+                      <WishlistProvider>
+                        <ThemedAppShell>
+                          <Stack
+                            screenOptions={{
+                              headerShown: false,
+                            }}
+                          />
+                        </ThemedAppShell>
+                      </WishlistProvider>
+                    </CartProvider>
+                  </ProfileProvider>
+                </ChatProvider>
+              </RealtimeProvider>
+            </PushNotificationsProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

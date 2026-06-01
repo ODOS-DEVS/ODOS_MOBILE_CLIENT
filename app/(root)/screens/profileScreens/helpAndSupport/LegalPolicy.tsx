@@ -5,7 +5,7 @@ import {
   AccountListCard,
   AccountMetaFooter,
   AccountSegmentedTabs,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -52,6 +52,7 @@ const POLICY_TABS: Array<{ key: PolicyKey; label: string }> = [
 ];
 
 export default function LegalPoliciesScreen() {
+  const accountStyles = useAccountStyles();
   const [activePolicy, setActivePolicy] = useState<PolicyKey>("terms");
   const activeContent = useMemo(() => POLICY_CONTENT[activePolicy], [activePolicy]);
 

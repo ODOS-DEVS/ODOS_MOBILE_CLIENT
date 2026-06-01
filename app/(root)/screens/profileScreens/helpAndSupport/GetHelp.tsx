@@ -4,7 +4,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountTipBanner,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -43,6 +43,7 @@ const channels = [
 ];
 
 export default function GetHelp() {
+  const accountStyles = useAccountStyles();
   const { requireAuth } = useRequireAuth();
 
   const openSupportChat = () => {

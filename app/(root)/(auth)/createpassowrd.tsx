@@ -2,6 +2,7 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rV } from "@/styles/responsive";
 import { router, useLocalSearchParams } from "expo-router";
@@ -9,6 +10,7 @@ import React, { useState } from "react";
 import { StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 const CreatePasswordScreen = () => {
+  const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
     email?: string | string[];
     resetToken?: string | string[];
@@ -69,8 +71,15 @@ const CreatePasswordScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-white px-6 pt-24">
-      <StatusBar barStyle={"dark-content"} />
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.screen,
+        paddingHorizontal: 24,
+        paddingTop: 96,
+      }}
+    >
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Text className="text-primary text-2xl font-extrabold text-center mb-4">
         Create new password

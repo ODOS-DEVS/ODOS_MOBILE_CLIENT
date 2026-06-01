@@ -1,11 +1,12 @@
 import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { formatCurrency } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type WishlistTileCardProps = {
@@ -46,6 +47,141 @@ export default function WishlistTileCard({
   cardWidth,
   onRemove,
 }: WishlistTileCardProps) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          borderRadius: rMS(18),
+          backgroundColor: colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDark ? colors.cardBorder : "#FBCFE8",
+          overflow: "hidden",
+          marginBottom: rV(10),
+          ...(isDark
+            ? {}
+            : {
+                shadowColor: "#FB7185",
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 2,
+              }),
+        },
+        imageShell: {
+          height: rV(96),
+          backgroundColor: isDark ? colors.imagePlaceholder : "#FFF1F2",
+          position: "relative",
+        },
+        image: {
+          width: "100%",
+          height: "100%",
+        },
+        imageFallback: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        savedPill: {
+          position: "absolute",
+          top: rS(8),
+          right: rS(8),
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(4),
+          paddingHorizontal: rS(8),
+          paddingVertical: rV(4),
+          borderRadius: rS(999),
+          backgroundColor: "#F43F5E",
+        },
+        savedPillText: {
+          color: "#FFFFFF",
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(9),
+          letterSpacing: 0.2,
+        },
+        offerPill: {
+          position: "absolute",
+          top: rS(8),
+          left: rS(8),
+          paddingHorizontal: rS(7),
+          paddingVertical: rV(3),
+          borderRadius: rS(8),
+          backgroundColor: "rgba(17, 24, 39, 0.78)",
+        },
+        offerPillText: {
+          color: "#FFFFFF",
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(9),
+        },
+        body: {
+          paddingHorizontal: rS(10),
+          paddingTop: rV(8),
+          paddingBottom: rV(10),
+          gap: rV(3),
+        },
+        title: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(12),
+          lineHeight: rMS(16),
+          color: colors.text,
+          minHeight: rV(32),
+        },
+        category: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(10),
+          color: colors.textMuted,
+        },
+        priceRow: {
+          flexDirection: "row",
+          alignItems: "baseline",
+          gap: rS(6),
+          flexWrap: "wrap",
+          marginTop: rV(2),
+        },
+        price: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(13),
+          color: colors.text,
+        },
+        priceMuted: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11),
+          color: colors.textMuted,
+        },
+        oldPrice: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(10),
+          color: colors.placeholder,
+          textDecorationLine: "line-through",
+        },
+        actions: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: rV(6),
+        },
+        cartBtn: {
+          backgroundColor: colors.accentSoft,
+          padding: rS(8),
+          borderRadius: rS(999),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        removeBtn: {
+          width: rS(32),
+          height: rS(32),
+          borderRadius: rS(16),
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.dangerSoft,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: isDark ? colors.cardBorder : "#FECDD3",
+        },
+      }),
+    [colors, isDark],
+  );
+
   const offerLabel = buildDiscountLabel(oldPrice, price);
   const hasPrice = typeof price === "number";
 
@@ -130,129 +266,3 @@ export default function WishlistTileCard({
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: rMS(18),
-    backgroundColor: "#FFFFFF",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FBCFE8",
-    overflow: "hidden",
-    marginBottom: rV(10),
-    shadowColor: "#FB7185",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  imageShell: {
-    height: rV(96),
-    backgroundColor: "#FFF1F2",
-    position: "relative",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imageFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  savedPill: {
-    position: "absolute",
-    top: rS(8),
-    right: rS(8),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(4),
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(4),
-    borderRadius: rS(999),
-    backgroundColor: "#F43F5E",
-  },
-  savedPillText: {
-    color: "#FFFFFF",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(9),
-    letterSpacing: 0.2,
-  },
-  offerPill: {
-    position: "absolute",
-    top: rS(8),
-    left: rS(8),
-    paddingHorizontal: rS(7),
-    paddingVertical: rV(3),
-    borderRadius: rS(8),
-    backgroundColor: "rgba(17, 24, 39, 0.78)",
-  },
-  offerPillText: {
-    color: "#FFFFFF",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(9),
-  },
-  body: {
-    paddingHorizontal: rS(10),
-    paddingTop: rV(8),
-    paddingBottom: rV(10),
-    gap: rV(3),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    lineHeight: rMS(16),
-    color: AppColors.text,
-    minHeight: rV(32),
-  },
-  category: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(10),
-    color: "#9CA3AF",
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: rS(6),
-    flexWrap: "wrap",
-    marginTop: rV(2),
-  },
-  price: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-  },
-  priceMuted: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    color: "#9CA3AF",
-  },
-  oldPrice: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(10),
-    color: "#CBD5E1",
-    textDecorationLine: "line-through",
-  },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: rV(6),
-  },
-  cartBtn: {
-    backgroundColor: "#F8FAFC",
-    padding: rS(8),
-    borderRadius: rS(999),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  removeBtn: {
-    width: rS(32),
-    height: rS(32),
-    borderRadius: rS(16),
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF1F2",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FECDD3",
-  },
-});

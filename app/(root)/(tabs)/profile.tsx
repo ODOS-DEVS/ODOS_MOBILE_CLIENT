@@ -1,9 +1,10 @@
-import { AccountListCard, accountStyles } from "@/components/account/AccountUi";
+import { AccountListCard } from "@/components/account/AccountUi";
 import { MenuItem } from "@/components/MenuItem";
 import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
@@ -16,6 +17,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
   const {
     isSigningOut,
     refreshCurrentUser,
@@ -242,6 +244,142 @@ export default function ProfileScreen() {
   );
   const isVendorSectionLoading = Boolean(user) && isLoading && !hasResolvedVendorState;
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.screen,
+          paddingHorizontal: rS(16),
+        },
+        scroll: {
+          flex: 1,
+        },
+        scrollContent: {
+          paddingTop: rV(10),
+          paddingBottom: 90,
+        },
+        profileEntryCard: {
+          marginBottom: rV(14),
+        },
+        profileEntryRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: rS(10),
+        },
+        subHeader: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+        },
+        profileEntryCopy: {
+          flex: 1,
+        },
+        profileEntryHint: {
+          marginTop: rV(4),
+          fontSize: rMS(11.5),
+          fontFamily: Fonts.title,
+          color: colors.primary,
+        },
+        avatar: {
+          width: rS(52),
+          height: rS(52),
+          borderRadius: rMS(26),
+          marginRight: rS(12),
+        },
+        name: {
+          fontSize: rMS(16),
+          fontFamily: Fonts.titleBold,
+          color: colors.text,
+        },
+        email: {
+          fontSize: rMS(13),
+          color: colors.textMuted,
+          marginTop: rMS(2),
+          fontFamily: Fonts.text,
+        },
+        sectionTitle: {
+          fontSize: rMS(14),
+          color: colors.textMuted,
+          marginTop: rMS(20),
+          marginBottom: rMS(14),
+          marginLeft: rMS(4),
+          fontFamily: Fonts.textBold,
+          textTransform: "uppercase",
+          letterSpacing: 0.4,
+        },
+        vendorCard: {
+          backgroundColor: colors.card,
+          borderRadius: rMS(24),
+          padding: rMS(16),
+          marginBottom: rV(18),
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
+        },
+        vendorCardHeader: {
+          flexDirection: "row",
+          alignItems: "flex-start",
+        },
+        vendorIconWrap: {
+          width: rMS(40),
+          height: rMS(40),
+          borderRadius: rMS(20),
+          backgroundColor: colors.pill,
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: rS(12),
+        },
+        vendorTextWrap: {
+          flex: 1,
+        },
+        vendorTitle: {
+          color: colors.text,
+          fontFamily: Fonts.title,
+          fontSize: rMS(15),
+        },
+        vendorBody: {
+          marginTop: rV(6),
+          color: colors.textMuted,
+          fontFamily: Fonts.text,
+          fontSize: rMS(12.5),
+          lineHeight: rMS(18),
+        },
+        vendorButton: {
+          marginTop: rV(16),
+          backgroundColor: colors.text,
+          borderRadius: rMS(999),
+          alignItems: "center",
+          justifyContent: "center",
+          paddingVertical: rV(14),
+        },
+        vendorButtonLabel: {
+          color: colors.onPrimary,
+          fontFamily: Fonts.textBold,
+          fontSize: rMS(13),
+        },
+        vendorSecondaryButton: {
+          marginTop: rV(12),
+          alignItems: "center",
+          justifyContent: "center",
+          paddingVertical: rV(6),
+        },
+        vendorSecondaryButtonLabel: {
+          color: colors.primary,
+          fontFamily: Fonts.textBold,
+          fontSize: rMS(12.5),
+        },
+        menuCard: {
+          marginBottom: rV(20),
+        },
+        logoutWrap: {
+          marginTop: rV(8),
+          marginBottom: rV(24),
+        },
+      }),
+    [colors],
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
@@ -272,7 +410,7 @@ export default function ProfileScreen() {
                 <Text style={styles.profileEntryHint}>Tap to edit your profile</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={rMS(22)} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={rMS(22)} color={colors.iconMuted} />
           </View>
         </AccountListCard>
       </TouchableOpacity>
@@ -281,7 +419,7 @@ export default function ProfileScreen() {
       <View style={styles.vendorCard}>
         <View style={styles.vendorCardHeader}>
           <View style={styles.vendorIconWrap}>
-            <Ionicons name="briefcase-outline" size={rMS(18)} color={AppColors.text} />
+            <Ionicons name="briefcase-outline" size={rMS(18)} color={colors.text} />
           </View>
           <View style={styles.vendorTextWrap}>
             <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
@@ -315,7 +453,7 @@ export default function ProfileScreen() {
 
       {/* Account Section */}
       <Text style={styles.sectionTitle}>Account</Text>
-      <View className="bg-white rounded-3xl mb-5 shadow-sm">
+      <AccountListCard style={styles.menuCard}>
         <MenuItem
           icon="receipt-outline"
           label="Orders"
@@ -365,11 +503,11 @@ export default function ProfileScreen() {
             openProtectedRoute("../screens/profileScreens/Account/Vouchers");
           }}
         />
-      </View>
+      </AccountListCard>
 
       {/* Personalization */}
       <Text style={styles.sectionTitle}>Personalization</Text>
-      <View className="bg-white rounded-3xl mb-5 shadow-sm">
+      <AccountListCard style={styles.menuCard}>
         <MenuItem
           icon="notifications-outline"
           label="Activity"
@@ -414,11 +552,11 @@ export default function ProfileScreen() {
             );
           }}
         />
-      </View>
+      </AccountListCard>
 
       {/* Help & Support */}
       <Text style={styles.sectionTitle}>Help & Support</Text>
-      <View className="bg-white rounded-3xl mb-5 shadow-sm">
+      <AccountListCard style={styles.menuCard}>
         <MenuItem
           icon="help-circle-outline"
           label="Get Help"
@@ -447,144 +585,19 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/helpAndSupport/FAQ");
           }}
         />
-      </View>
+      </AccountListCard>
 
       {user ? (
-        <View className="bg-white rounded-3xl mb-5 shadow-sm">
+        <AccountListCard style={styles.menuCard}>
           <MenuItem
             icon="log-out-outline"
             label={isSigningOut ? "Logging out..." : "Log out"}
             onPress={handleLogout}
             textColor="#E53935"
           />
-        </View>
+        </AccountListCard>
       ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-    paddingHorizontal: rS(16),
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: rV(10),
-    paddingBottom: 90,
-  },
-  profileEntryCard: {
-    marginBottom: rV(14),
-  },
-  profileEntryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  subHeader: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  profileEntryCopy: {
-    flex: 1,
-  },
-  profileEntryHint: {
-    marginTop: rV(4),
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.title,
-    color: AppColors.primary,
-  },
-  avatar: {
-    width: rS(52),
-    height: rS(52),
-    borderRadius: rMS(26),
-    marginRight: rS(12),
-  },
-  name: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-
-  email: {
-    fontSize: rMS(13),
-    color: AppColors.subtext[100],
-    marginTop: rMS(2),
-    fontFamily: Fonts.text,
-  },
-
-  sectionTitle: {
-    fontSize: rMS(14),
-    color: AppColors.secondary,
-    marginTop: rMS(20),
-    marginBottom: rMS(14),
-    marginLeft: rMS(4),
-    fontFamily: Fonts.textBold,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  vendorCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    padding: rMS(16),
-    marginBottom: rV(18),
-  },
-  vendorCardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  vendorIconWrap: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(12),
-  },
-  vendorTextWrap: {
-    flex: 1,
-  },
-  vendorTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(15),
-  },
-  vendorBody: {
-    marginTop: rV(6),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-  },
-  vendorButton: {
-    marginTop: rV(16),
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(999),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(14),
-  },
-  vendorButtonLabel: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  vendorSecondaryButton: {
-    marginTop: rV(12),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(6),
-  },
-  vendorSecondaryButtonLabel: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-});

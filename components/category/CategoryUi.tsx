@@ -1,7 +1,7 @@
 import {
   AccountInsightCard,
   AccountListCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -10,7 +10,8 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
 import ProductCard from "@/components/cards/ProductCard";
-import React from "react";
+import React, { useMemo } from "react";
+import { useTheme } from "@/context/ThemeContext";
 import {
   Image,
   ScrollView,
@@ -25,7 +26,7 @@ export {
   AccountEmptyState,
   AccountFilterChips,
   AccountInsightCard,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/account/AccountUi";
 
 /** @deprecated Use SearchLauncher without containerStyle (same as home). Kept for cached bundles. */
@@ -664,6 +665,7 @@ export function CategorySubcategorySection({
 }
 
 export function CategoryInsightCard({ title, subtitle, stats }: CategoryInsightCardProps) {
+  const accountStyles = useAccountStyles();
   return (
     <View style={[accountStyles.insightCard, categoryStyles.insightCardExpanded]}>
       <Text style={[accountStyles.insightTitle, categoryStyles.insightTitleExpanded]}>
@@ -700,6 +702,18 @@ export function CategoryBrowseCard({
   subcategoryCount,
   onPress,
 }: CategoryBrowseCardProps) {
+  const { colors } = useTheme();
+  const browseStyles = useMemo(
+    () => ({
+      title: { ...categoryStyles.browseTitle, color: colors.text },
+      subtitle: { ...categoryStyles.browseSubtitle, color: colors.textMuted },
+      meta: { ...categoryStyles.browseMeta, color: colors.primary },
+      imageWrap: { ...categoryStyles.imageWrap, backgroundColor: colors.imagePlaceholder },
+      placeholderText: { ...categoryStyles.placeholderText, color: colors.textMuted },
+    }),
+    [colors],
+  );
+
   const actionLabel = subcategoryCount
     ? `Browse · ${subcategoryCount} subcategories`
     : "Browse category";
@@ -713,13 +727,13 @@ export function CategoryBrowseCard({
         disabled={!onPress}
       >
         <View style={categoryStyles.browseCopy}>
-          <Text style={categoryStyles.browseTitle} numberOfLines={2}>
+          <Text style={browseStyles.title} numberOfLines={2}>
             {title}
           </Text>
-          <Text style={categoryStyles.browseSubtitle} numberOfLines={3}>
+          <Text style={browseStyles.subtitle} numberOfLines={3}>
             {subtitle}
           </Text>
-          <Text style={categoryStyles.browseMeta}>{actionLabel}</Text>
+          <Text style={browseStyles.meta}>{actionLabel}</Text>
           <View style={categoryStyles.browseCta}>
             <Text style={categoryStyles.browseCtaText}>
               {subcategoryCount ? "Shop subcategories" : "Shop now"}
@@ -728,13 +742,13 @@ export function CategoryBrowseCard({
           </View>
         </View>
 
-        <View style={categoryStyles.imageWrap}>
+        <View style={browseStyles.imageWrap}>
           {image ? (
             <Image source={image} style={categoryStyles.image} resizeMode="cover" />
           ) : (
             <View style={categoryStyles.imagePlaceholder}>
-              <Ionicons name="grid-outline" size={rMS(24)} color="#94A3B8" />
-              <Text style={categoryStyles.placeholderText}>Image pending</Text>
+              <Ionicons name="grid-outline" size={rMS(24)} color={colors.iconMuted} />
+              <Text style={browseStyles.placeholderText}>Image pending</Text>
             </View>
           )}
         </View>

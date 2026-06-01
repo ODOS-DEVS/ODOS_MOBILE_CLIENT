@@ -1,4 +1,5 @@
 import { rS, rV } from "@/styles/responsive";
+import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -44,6 +45,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
   cardWidth,
   horizontalSpacing,
 }) => {
+  const { cardShell, imageArea, colors } = useCommerceTheme();
+  const textStyles = useCatalogCardTextStyles();
   const hasPrice = !!price || !!oldPrice;
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const width = cardWidth ?? rS(160);
@@ -72,13 +75,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       }
     >
       <View
-        className="bg-white shadow-sm"
         style={{
           width,
           borderRadius: rS(16),
           marginRight: spacingRight,
           marginBottom: rV(16),
           marginTop: rV(4),
+          ...cardShell,
         }}
       >
         {/* ---------- IMAGE SECTION ---------- */}
@@ -86,7 +89,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           style={{
             position: "relative",
             height: imageHeight,
-            backgroundColor: "#f3f4f6",
+            backgroundColor: colors.imagePlaceholder,
             borderTopLeftRadius: rS(16),
             borderTopRightRadius: rS(16),
             borderBottomLeftRadius: rS(16),
@@ -108,15 +111,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: rV(6),
-                backgroundColor: "#EEF2F7",
+                backgroundColor: colors.imagePlaceholder,
               }}
             >
-              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
+              <Ionicons name="image-outline" size={rS(22)} color={colors.iconMuted} />
               <Text
                 style={{
-                  color: "#64748B",
+                  ...textStyles.placeholderLabel,
                   fontSize: rS(11),
-                  fontWeight: "600",
                 }}
               >
                 Product image pending
@@ -196,8 +198,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             }}
           >
             <Text
-              className="font-montserrat-bold text-text"
-              style={{ fontSize: rS(13), flex: 1 }}
+              style={{ ...textStyles.title, fontSize: rS(13), flex: 1 }}
               numberOfLines={1}
             >
               {title}
@@ -213,8 +214,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
               >
                 <Ionicons name="star" size={rS(14)} color="#facc15" />
                 <Text
-                  className="ml-1 text-subtext-200 font-montserrat-extraBold"
-                  style={{ fontSize: rS(12), marginLeft: rS(4) }}
+                  style={{
+                    ...textStyles.rating,
+                    fontSize: rS(12),
+                    marginLeft: rS(4),
+                    fontFamily: "Montserrat-ExtraBold",
+                  }}
                 >
                   {rating!.toFixed(1)}
                 </Text>
@@ -222,11 +227,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
             ) : null}
           </View>
 
-          <View className="flex-row justify-between">
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
             {category && (
               <Text
-                className="text-subtext"
-                style={{ fontSize: rS(11), marginTop: 2 }}
+                style={{ ...textStyles.category, fontSize: rS(11), marginTop: 2 }}
                 numberOfLines={1}
               >
                 {category}
@@ -255,19 +259,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <>
                 {price && (
                   <Text
-                    className="font-montserrat-extraBold text-subtext-200"
-                    style={{ fontSize: rS(13), fontWeight: "700" }}
+                    style={{
+                      ...textStyles.price,
+                      fontSize: rS(13),
+                      fontWeight: "700",
+                    }}
                   >
                     {formatCurrency(price)}
                   </Text>
                 )}
                 {oldPrice && (
                   <Text
-                    className="text-red-500 font-montserrat-extraBold"
                     style={{
+                      ...textStyles.oldPrice,
                       fontSize: rS(12),
                       marginLeft: rS(8),
                       textDecorationLine: "line-through",
+                      fontFamily: "Montserrat-ExtraBold",
                     }}
                   >
                     {formatCurrency(oldPrice)}

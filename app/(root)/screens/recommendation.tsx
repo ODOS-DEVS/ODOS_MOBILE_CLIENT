@@ -6,7 +6,7 @@ import {
   CommerceSeeAllHero,
   CommerceSeeAllSearch,
   CommerceSeeAllSectionHeader,
-  commerceSeeAllScreenStyles,
+  useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import {
@@ -73,6 +73,7 @@ function filterProducts(
 }
 
 export default function RecommendationScreen() {
+  const screenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [activeFilter, setActiveFilter] =
     useState<RecommendationFilter>("all");
@@ -144,13 +145,13 @@ export default function RecommendationScreen() {
   );
 
   return (
-    <View style={commerceSeeAllScreenStyles.screen}>
+    <View style={screenStyles.screen}>
       <ProfileHeader title="Recommendations" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          commerceSeeAllScreenStyles.scrollContent,
+          screenStyles.scrollContent,
           {
             paddingHorizontal: horizontalPadding,
             paddingBottom: sectionSpacing,
@@ -198,7 +199,7 @@ export default function RecommendationScreen() {
           onChange={(key) => setActiveFilter(key as RecommendationFilter)}
         />
 
-        <View style={commerceSeeAllScreenStyles.contentBlock}>
+        <View style={screenStyles.contentBlock}>
           <CommerceSeeAllSectionHeader
             title={activeFilterLabel}
             subtitle={

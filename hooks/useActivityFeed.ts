@@ -1,7 +1,7 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
-import { resolveCatalogImage } from "@/constants/catalogImages";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtime } from "@/context/RealtimeContext";
+import { resolveActivityImageSource } from "@/utils/activityImages";
 import * as SecureStore from "expo-secure-store";
 import { useFocusEffect } from "expo-router";
 import { AppState } from "react-native";
@@ -15,6 +15,7 @@ export type ActivityRoute =
 
 export type ActivityItem = {
   id: string;
+  kind: string;
   title: string;
   body: string;
   occurredAt: string;
@@ -51,6 +52,7 @@ type NotificationEventPayload = {
   route_type: string | null;
   route_target_id: string | null;
   image_key: string | null;
+  image_url: string | null;
   created_at: string;
 };
 
@@ -134,12 +136,85 @@ function mapRoute(
   return undefined;
 }
 
+type OrderPreviewPayload = {
+  id: string;
+  items?: {
+    image_url?: string | null;
+    image_key?: string | null;
+  }[];
+};
+
+async function enrichNotificationsWithOrderImages(
+  notifications: NotificationEventPayload[],
+  token: string,
+): Promise<NotificationEventPayload[]> {
+  const needsPreview = notifications.some(
+    (item) =>
+      item.route_type === "order" &&
+      item.route_target_id &&
+      !item.image_url?.trim(),
+  );
+
+  if (!needsPreview) {
+    return notifications;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return notifications;
+    }
+
+    const orders = (await response.json()) as OrderPreviewPayload[];
+    const previewByOrderId = new Map<
+      string,
+      { image_url?: string | null; image_key?: string | null }
+    >();
+
+    for (const order of orders) {
+      const firstItem = order.items?.[0];
+      if (!firstItem) {
+        continue;
+      }
+      previewByOrderId.set(order.id, {
+        image_url: firstItem.image_url ?? null,
+        image_key: firstItem.image_key ?? null,
+      });
+    }
+
+    return notifications.map((item) => {
+      if (item.route_type !== "order" || !item.route_target_id || item.image_url?.trim()) {
+        return item;
+      }
+
+      const preview = previewByOrderId.get(item.route_target_id);
+      if (!preview) {
+        return item;
+      }
+
+      return {
+        ...item,
+        image_url: preview.image_url ?? item.image_url,
+        image_key: preview.image_key ?? item.image_key,
+      };
+    });
+  } catch {
+    return notifications;
+  }
+}
+
 function mapNotification(
   item: NotificationEventPayload,
   readKeySet: Set<string>,
 ): ActivityItem {
   return {
     id: item.id,
+    kind: item.kind,
     title: item.title,
     body: item.body,
     occurredAt: item.created_at,
@@ -147,7 +222,7 @@ function mapNotification(
     icon: item.icon,
     accent: item.accent,
     isRead: readKeySet.has(item.id),
-    productImage: item.image_key ? resolveCatalogImage(item.image_key) : undefined,
+    productImage: resolveActivityImageSource(item),
     actionLabel: item.action_label || undefined,
     route: mapRoute(item.route_type, item.route_target_id),
   };
@@ -194,7 +269,11 @@ export function useActivityFeed() {
 
       const notificationsPayload =
         (await notificationsResponse.json()) as NotificationEventPayload[];
-      setNotifications(notificationsPayload);
+      const enrichedNotifications = await enrichNotificationsWithOrderImages(
+        notificationsPayload,
+        token,
+      );
+      setNotifications(enrichedNotifications);
 
       try {
         const readStateResponse = await fetch(`${API_BASE_URL}/notifications/read-state`, {

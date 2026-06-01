@@ -5,7 +5,7 @@ import {
   AccountSettingsGroup,
   AccountStickySaveBar,
   AccountTipBanner,
-  accountStyles,
+  useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import { useToast } from "@/context/ToastContext";
 import { rV } from "@/styles/responsive";
@@ -28,6 +28,7 @@ const LANGUAGES: LanguageOption[] = [
 ];
 
 export default function LanguageScreen() {
+  const accountStyles = useAccountStyles();
   const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState("en-us");
   const [isSaving, setIsSaving] = useState(false);

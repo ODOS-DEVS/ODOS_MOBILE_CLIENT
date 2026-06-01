@@ -1,7 +1,7 @@
 import { AccountActionButton } from "@/components/account/AccountUi";
 import {
   ChatComposer,
-  chatStyles,
+  useChatStyles,
   ChatLoadingCenter,
   ChatMessagesEmpty,
   ChatScreenHeader,
@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useToast } from "@/context/ToastContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
@@ -35,6 +36,8 @@ const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default function SupportChatScreen() {
+  const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const { requireAuth } = useRequireAuth();
@@ -211,12 +214,40 @@ export default function SupportChatScreen() {
 
   const subject = thread?.subject || requestedSubject;
 
+  const authStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        authWrap: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.screen,
+          paddingHorizontal: 32,
+          gap: 12,
+        },
+        authTitle: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(16),
+          color: colors.text,
+          textAlign: "center",
+        },
+        authText: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(13),
+          lineHeight: rMS(20),
+          color: colors.textMuted,
+          textAlign: "center",
+        },
+      }),
+    [colors],
+  );
+
   if (!user) {
     return (
-      <View style={styles.authWrap}>
-        <Ionicons name="lock-closed-outline" size={rMS(30)} color="#6B7280" />
-        <Text style={styles.authTitle}>Sign in to continue</Text>
-        <Text style={styles.authText}>
+      <View style={authStyles.authWrap}>
+        <Ionicons name="lock-closed-outline" size={rMS(30)} color={colors.textMuted} />
+        <Text style={authStyles.authTitle}>Sign in to continue</Text>
+        <Text style={authStyles.authText}>
           Support conversations stay attached to your account so the admin team can follow up
           properly.
         </Text>
@@ -348,27 +379,3 @@ export default function SupportChatScreen() {
     </ChatScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  authWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F5F7FA",
-    paddingHorizontal: 32,
-    gap: 12,
-  },
-  authTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  authText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: rMS(20),
-  },
-});
