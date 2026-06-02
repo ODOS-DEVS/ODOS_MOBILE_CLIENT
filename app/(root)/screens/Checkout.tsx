@@ -18,7 +18,7 @@ import { useCart } from "@/context/CartContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
-import { createCheckoutSessionRequest } from "@/hooks/useOrders";
+import { createCheckoutSessionRequest, createWalletCheckoutRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -70,7 +70,7 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
-  const { cart } = useCart();
+  const { cart, clearCart } = useCart();
   const { showSuccessToast, showErrorToast, showInfoToast } = useToast();
   const { previewVoucher } = useVouchers();
   const params = useLocalSearchParams();
@@ -321,6 +321,45 @@ export default function CheckoutScreen() {
 
     setIsPlacingOrder(true);
     try {
+      if (selectedPayment.type === "wallet") {
+        const walletResult = await createWalletCheckoutRequest(accessToken, {
+          source: checkoutMode,
+          items: checkoutItems,
+          subtotal_amount: subtotal,
+          shipping_amount: shipping,
+          discount_amount: discountAmount,
+          total_amount: total,
+          voucher_code: appliedVoucher?.code ?? null,
+          address_full_name: selectedAddress.fullName,
+          address_phone: selectedAddress.phone,
+          address_street: selectedAddress.street,
+          address_city: selectedAddress.city,
+          address_region: selectedAddress.region,
+          payment_type: "wallet",
+          payment_label: "ODOS Wallet",
+          payment_network: null,
+          payment_phone: null,
+          payment_last4: null,
+        });
+        if (checkoutMode === "cart") {
+          await clearCart();
+        }
+        showSuccessToast(walletResult.message);
+        router.replace({
+          pathname: "/(root)/screens/order-success" as any,
+          params: {
+            orderId: walletResult.order.id,
+            orderNumber: walletResult.order.order_number,
+            total: String(walletResult.order.total_amount),
+            itemCount: String(
+              walletResult.order.items.reduce((sum, item) => sum + item.quantity, 0),
+            ),
+            eta: walletResult.order.tracking_eta ?? "Estimated delivery in 2–3 days",
+          },
+        });
+        return;
+      }
+
       const callbackUrl = Linking.createURL("/payments/return");
       const checkoutSession = await createCheckoutSessionRequest(accessToken, {
         source: checkoutMode,
@@ -556,10 +595,12 @@ export default function CheckoutScreen() {
                 title={selectedPayment?.label ?? "Add payment method"}
                 subtitle={
                   selectedPayment
-                    ? selectedPayment.type === "card"
+                    ? selectedPayment.type === "wallet"
+                      ? "Pay from wallet balance"
+                      : selectedPayment.type === "card"
                       ? "Debit / Credit Card"
                       : selectedPayment.network ?? "MoMo"
-                    : "Choose card or mobile money"
+                    : "Choose wallet, card, or mobile money"
                 }
                 onPress={openPaymentScreen}
               />

@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
+import { fetchCustomerWalletRequest, type CustomerWallet } from "@/hooks/useOrders";
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
@@ -21,7 +22,7 @@ export interface Address {
   isDefault?: boolean;
 }
 
-export type PaymentType = "card" | "momo";
+export type PaymentType = "card" | "momo" | "wallet";
 export type MomoNetwork = "MTN" | "Telecel" | "AT";
 
 export interface PaymentMethod {
@@ -53,6 +54,7 @@ type ProfileContextType = {
   checkoutAddressId: string | null;
   checkoutPaymentId: string | null;
   checkoutVoucherCode: string | null;
+  customerWallet: CustomerWallet | null;
   isSyncingProfileData: boolean;
   defaultAddress: Address | null;
   defaultPayment: PaymentMethod | null;
@@ -135,6 +137,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [checkoutAddressId, setCheckoutAddressId] = useState<string | null>(null);
   const [checkoutPaymentId, setCheckoutPaymentId] = useState<string | null>(null);
   const [checkoutVoucherCode, setCheckoutVoucherCode] = useState<string | null>(null);
+  const [customerWallet, setCustomerWallet] = useState<CustomerWallet | null>(null);
   const [isSyncingProfileData, setIsSyncingProfileData] = useState(false);
 
   const defaultAddress = useMemo(
@@ -142,8 +145,20 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     [addresses],
   );
   const defaultPayment = useMemo(
-    () => paymentMethods.find((payment) => payment.isDefault) ?? paymentMethods[0] ?? null,
-    [paymentMethods],
+    () => {
+      const walletPayment: PaymentMethod | null = customerWallet
+        ? {
+            id: "wallet",
+            type: "wallet",
+            label: `Wallet (${customerWallet.currency} ${customerWallet.available_balance.toFixed(2)})`,
+            isDefault: false,
+          }
+        : null;
+      const savedDefault =
+        paymentMethods.find((payment) => payment.isDefault) ?? paymentMethods[0] ?? null;
+      return savedDefault ?? walletPayment;
+    },
+    [customerWallet, paymentMethods],
   );
 
   const selectedAddress = useMemo(() => {
@@ -171,6 +186,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setCheckoutAddressId(null);
       setCheckoutPaymentId(null);
       setCheckoutVoucherCode(null);
+      setCustomerWallet(null);
       setIsSyncingProfileData(false);
       return;
     }
@@ -182,13 +198,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
     setIsSyncingProfileData(true);
     try {
-      const [addressesResponse, paymentMethodsResponse] = await Promise.all([
+      const [addressesResponse, paymentMethodsResponse, walletPayload] = await Promise.all([
         fetch(`${API_BASE_URL}/account/addresses`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_BASE_URL}/account/payment-methods`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetchCustomerWalletRequest(token).catch(() => null),
       ]);
 
       if (!addressesResponse.ok || !paymentMethodsResponse.ok) {
@@ -199,9 +216,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const paymentMethodsPayload = (await paymentMethodsResponse.json()) as PaymentMethodApiItem[];
       setAddresses(addressesPayload.map(mapAddress));
       setPaymentMethods(paymentMethodsPayload.map(mapPaymentMethod));
+      setCustomerWallet(walletPayload);
     } catch {
       setAddresses([]);
       setPaymentMethods([]);
+      setCustomerWallet(null);
     } finally {
       setIsSyncingProfileData(false);
     }
@@ -214,6 +233,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setCheckoutAddressId(null);
       setCheckoutPaymentId(null);
       setCheckoutVoucherCode(null);
+      setCustomerWallet(null);
       return;
     }
 
@@ -476,6 +496,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       checkoutAddressId,
       checkoutPaymentId,
       checkoutVoucherCode,
+      customerWallet,
       isSyncingProfileData,
       defaultAddress,
       defaultPayment,
@@ -500,6 +521,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       checkoutAddressId,
       checkoutPaymentId,
       checkoutVoucherCode,
+      customerWallet,
       isSyncingProfileData,
       defaultAddress,
       defaultPayment,
