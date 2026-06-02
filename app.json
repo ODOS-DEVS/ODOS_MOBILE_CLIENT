@@ -17,6 +17,7 @@
       }
     },
     "android": {
+      "package": "com.paul.odos",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {

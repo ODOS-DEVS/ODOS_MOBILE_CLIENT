@@ -25,6 +25,7 @@ export type AuthUser = {
   full_name: string;
   email: string;
   phone_number: string | null;
+  phone_verified: boolean;
   avatar_url: string | null;
   date_of_birth: string | null;
   gender: string | null;
@@ -102,6 +103,7 @@ type AuthContextType = {
   isHydrating: boolean;
   isRefreshingSession: boolean;
   isSigningIn: boolean;
+  isSigningInWithGoogle: boolean;
   isSigningUp: boolean;
   isSigningOut: boolean;
   isUpdatingProfile: boolean;
@@ -110,9 +112,14 @@ type AuthContextType = {
   isRequestingPasswordReset: boolean;
   isVerifyingResetCode: boolean;
   isResettingPassword: boolean;
+  isSendingPhoneVerificationCode: boolean;
+  isVerifyingPhoneNumber: boolean;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
+  signInWithGoogle: (idToken: string) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
+  sendPhoneVerificationCode: (phoneNumber: string) => Promise<AuthResult>;
+  verifyPhoneNumber: (phoneNumber: string, code: string) => Promise<AuthResult>;
   verifyEmail: (code: string) => Promise<AuthResult>;
   resendVerificationCode: () => Promise<AuthResult>;
   requestPasswordResetCode: (email: string) => Promise<AuthResult>;
@@ -147,6 +154,7 @@ function isSameAuthUser(currentUser: AuthUser | null, nextUser: AuthUser | null)
     currentUser.full_name === nextUser.full_name &&
     currentUser.email === nextUser.email &&
     currentUser.phone_number === nextUser.phone_number &&
+    currentUser.phone_verified === nextUser.phone_verified &&
     currentUser.avatar_url === nextUser.avatar_url &&
     currentUser.date_of_birth === nextUser.date_of_birth &&
     currentUser.gender === nextUser.gender &&
@@ -181,6 +189,9 @@ function normalizeAuthUser(payload: Record<string, unknown>) {
     email: String(payload.email ?? ""),
     phone_number:
       typeof payload.phone_number === "string" ? payload.phone_number : null,
+    phone_verified: Boolean(
+      payload.phone_verified ?? payload.phoneVerified ?? false,
+    ),
     avatar_url:
       typeof payload.avatar_url === "string" ? payload.avatar_url : null,
     date_of_birth:
@@ -448,6 +459,35 @@ async function fetchCurrentUser(token: string) {
   return normalizeAuthUser((await response.json()) as Record<string, unknown>);
 }
 
+async function googleAuthRequest(idToken: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  const responsePayload = (await response.json()) as {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user: Record<string, unknown>;
+  };
+
+  return {
+    access_token: responsePayload.access_token,
+    token_type: responsePayload.token_type,
+    expires_in: responsePayload.expires_in,
+    user: normalizeAuthUser(responsePayload.user),
+  };
+}
+
 async function loginRequest(payload: LoginPayload) {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
@@ -596,6 +636,46 @@ async function verifyPasswordResetCodeRequest(email: string, code: string) {
   return (await response.json()) as { message: string; reset_token: string };
 }
 
+async function sendPhoneVerificationCodeRequest(token: string, phoneNumber: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/phone/send-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phone_number: phoneNumber }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return (await response.json()) as { message: string };
+}
+
+async function verifyPhoneNumberRequest(
+  token: string,
+  phoneNumber: string,
+  code: string,
+) {
+  const response = await fetch(`${API_BASE_URL}/auth/phone/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phone_number: phoneNumber, code }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  return normalizeAuthUser((await response.json()) as Record<string, unknown>);
+}
+
 async function resetPasswordRequest(
   email: string,
   resetToken: string,
@@ -627,6 +707,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isHydrating, setIsHydrating] = useState(true);
   const [isRefreshingSession, setIsRefreshingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -637,6 +718,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useState(false);
   const [isVerifyingResetCode, setIsVerifyingResetCode] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isSendingPhoneVerificationCode, setIsSendingPhoneVerificationCode] =
+    useState(false);
+  const [isVerifyingPhoneNumber, setIsVerifyingPhoneNumber] = useState(false);
   const accessTokenRef = useRef<string | null>(null);
   const blockedAlertShownRef = useRef(false);
 
@@ -820,6 +904,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    setIsSigningInWithGoogle(true);
+
+    try {
+      const payload = await googleAuthRequest(idToken);
+
+      await SecureStore.setItemAsync(
+        ACCESS_TOKEN_STORAGE_KEY,
+        payload.access_token,
+      );
+
+      setAccessToken(payload.access_token);
+      setUser(payload.user);
+      return {
+        success: true,
+        requiresVerification: !payload.user.is_verified,
+        user: payload.user,
+      };
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        "detail" in error
+      ) {
+        const errorCode =
+          "code" in error && typeof error.code === "string" ? error.code : null;
+
+        return buildSignInError(
+          (error as { detail: unknown }).detail,
+          Number((error as { status: unknown }).status),
+          errorCode,
+        );
+      }
+
+      return {
+        success: false,
+        fieldErrors: {
+          general:
+            "We couldn't reach the server. Check your connection and try again.",
+        },
+      };
+    } finally {
+      setIsSigningInWithGoogle(false);
+      setIsHydrating(false);
+    }
+  }, []);
+
   const signUp = useCallback(
     async ({ fullName, email, password }: SignupPayload) => {
       setIsSigningUp(true);
@@ -932,6 +1064,111 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     });
   }, []);
+
+  const sendPhoneVerificationCode = useCallback(
+    async (phoneNumber: string) => {
+      if (!accessToken) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: "Sign in again to verify your phone number.",
+          },
+        };
+      }
+
+      setIsSendingPhoneVerificationCode(true);
+
+      try {
+        const result = await sendPhoneVerificationCodeRequest(
+          accessToken,
+          phoneNumber,
+        );
+        return {
+          success: true,
+          message: result.message,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              phoneNumber: normalizeMessage((error as { detail: unknown }).detail),
+              general: normalizeMessage((error as { detail: unknown }).detail),
+            },
+          };
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't send a verification code right now. Check your connection.",
+          },
+        };
+      } finally {
+        setIsSendingPhoneVerificationCode(false);
+      }
+    },
+    [accessToken],
+  );
+
+  const verifyPhoneNumber = useCallback(
+    async (phoneNumber: string, code: string) => {
+      if (!accessToken) {
+        return {
+          success: false,
+          fieldErrors: {
+            general: "Sign in again to verify your phone number.",
+          },
+        };
+      }
+
+      setIsVerifyingPhoneNumber(true);
+
+      try {
+        const updatedUser = await verifyPhoneNumberRequest(
+          accessToken,
+          phoneNumber,
+          code,
+        );
+        setUser(updatedUser);
+        return {
+          success: true,
+          user: updatedUser,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              general: normalizeMessage((error as { detail: unknown }).detail),
+            },
+          };
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't verify that code right now. Check your connection.",
+          },
+        };
+      } finally {
+        setIsVerifyingPhoneNumber(false);
+      }
+    },
+    [accessToken],
+  );
 
   const updateProfile = useCallback(
     async (payload: ProfileUpdatePayload) => {
@@ -1233,6 +1470,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isHydrating,
       isRefreshingSession,
       isSigningIn,
+      isSigningInWithGoogle,
       isSigningUp,
       isSigningOut,
       isUpdatingProfile,
@@ -1241,9 +1479,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRequestingPasswordReset,
       isVerifyingResetCode,
       isResettingPassword,
+      isSendingPhoneVerificationCode,
+      isVerifyingPhoneNumber,
       signIn,
+      signInWithGoogle,
       signUp,
       updateProfile,
+      sendPhoneVerificationCode,
+      verifyPhoneNumber,
       verifyEmail,
       resendVerificationCode,
       requestPasswordResetCode,
@@ -1259,6 +1502,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isHydrating,
       isRefreshingSession,
       isSigningIn,
+      isSigningInWithGoogle,
       isSigningOut,
       isSigningUp,
       isUpdatingProfile,
@@ -1267,12 +1511,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRequestingPasswordReset,
       isVerifyingResetCode,
       isResettingPassword,
+      isSendingPhoneVerificationCode,
+      isVerifyingPhoneNumber,
       resendVerificationCode,
+      sendPhoneVerificationCode,
+      verifyPhoneNumber,
       requestPasswordResetCode,
       verifyPasswordResetCode,
       resetPassword,
       refreshCurrentUser,
       signIn,
+      signInWithGoogle,
       signOut,
       signUp,
       updateProfile,

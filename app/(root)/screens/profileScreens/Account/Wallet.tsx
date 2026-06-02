@@ -270,10 +270,15 @@ export default function WalletScreen() {
         });
       }
     } catch (error) {
-      showErrorToast(
+      const rawMessage =
         error instanceof Error && error.message
           ? error.message
-          : "We couldn't complete this top-up.",
+          : "We couldn't complete this top-up.";
+      const friendlyMessage = rawMessage.toLowerCase().includes("channels")
+        ? "Your selected payment route couldn't be started. Please switch between Card and MoMo, then try again."
+        : rawMessage;
+      showErrorToast(
+        friendlyMessage,
       );
     } finally {
       setIsToppingUp(false);

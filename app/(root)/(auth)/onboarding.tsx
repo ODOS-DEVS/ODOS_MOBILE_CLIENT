@@ -1,16 +1,20 @@
-import Colors from "@/constants/Colors";
+import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
   Image,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -18,20 +22,20 @@ const slides = [
   {
     id: "1",
     image: require("@/assets/images/onboarding1.png"),
-    title: "Find a quality bag that fits your needs",
-    text: "Semper in cursus magna et eu varius nunc adipiscing. Elementum justo, laoreet id sem.",
+    title: "Discover stores around you",
+    text: "Browse groceries, fashion, and everyday essentials from vendors in your area — all in one app.",
   },
   {
     id: "2",
     image: require("@/assets/images/onboarding2.png"),
-    title: "Find a quality bag that fits your needs",
-    text: "Semper in cursus magna et eu varius nunc adipiscing. Elementum justo, laoreet id sem.",
+    title: "Order with confidence",
+    text: "Track deliveries, get updates, and pay your way — card, mobile money, or your ODOS wallet.",
   },
   {
     id: "3",
     image: require("@/assets/images/onboarding4.png"),
-    title: "Find a quality bag that fits your needs",
-    text: "Semper in cursus magna et eu varius nunc adipiscing. Elementum justo, laoreet id sem.",
+    title: "One tap to get started",
+    text: "Sign in with Google when you're ready. No long forms — your favourites and orders stay with you.",
   },
 ];
 
@@ -40,33 +44,55 @@ export default function Onboarding() {
   const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
   const { requireAuth, user } = useRequireAuth();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const gradientColors = isDark
+    ? (["#3F3F46", "#27272A"] as const)
+    : (["#6B7280", "#52525B"] as const);
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
-    } else {
-      if (user) {
-        router.replace("/(root)/(tabs)");
-        return;
-      }
-
-      requireAuth({
-        title: "Ready to keep going?",
-        message:
-          "Create an account or log in when you’re ready to save favorites, manage orders, and check out.",
-        cancelLabel: "Keep browsing",
-        onCancel: () => router.replace("/(root)/(tabs)"),
-      });
+      return;
     }
+
+    if (user) {
+      router.replace("/(root)/(tabs)");
+      return;
+    }
+
+    requireAuth({
+      title: "Ready to shop for real?",
+      message:
+        "Sign up or sign in to save favourites, track orders, and use your wallet at checkout.",
+      cancelLabel: "Keep browsing",
+      onCancel: () => router.replace("/(root)/(tabs)"),
+    });
   };
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: {
+    nativeEvent: { contentOffset: { x: number } };
+  }) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(index);
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.primary }}>
+    <View style={[styles.screen, { backgroundColor: colors.screen }]}>
+      <LinearGradient
+        colors={gradientColors}
+        style={[styles.topBar, { paddingTop: insets.top + rV(8) }]}
+      >
+        <Text style={styles.brand}>ODOS</Text>
+        <TouchableOpacity
+          onPress={() => router.replace("/(root)/(tabs)")}
+          hitSlop={12}
+        >
+          <Text style={styles.skip}>Skip</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+
       <FlatList
         ref={flatListRef}
         data={slides}
@@ -76,103 +102,44 @@ export default function Onboarding() {
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         renderItem={({ item }) => (
-          <View
-            style={{
-              width,
-              alignItems: "center",
-              justifyContent: "flex-start",
-              paddingTop: rV(80),
-            }}
-          >
-            {/* IMAGE */}
-            <View style={{ marginTop: rV(40) }}>
-              <Image
-                source={item.image}
-                style={{
-                  width: width * 0.95,
-                  height: rV(380),
-                  resizeMode: "contain",
-                }}
-              />
-            </View>
+          <View style={[styles.slide, { width }]}>
+            <Image source={item.image} style={styles.image} resizeMode="contain" />
 
-            {/* CARD */}
             <View
-              style={{
-                position: "absolute",
-                bottom: rV(60),
-                backgroundColor: Colors.white,
-                width: width * 0.8,
-                borderRadius: rS(20),
-                paddingVertical: rV(40),
-                paddingHorizontal: rS(30),
-                alignSelf: "center",
-                alignItems: "center",
-              }}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.cardBorder,
+                  shadowColor: colors.shadow,
+                },
+              ]}
             >
-              {/* TITLE */}
-              <Text
-                style={{
-                  fontSize: rMS(18),
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  marginBottom: rV(10),
-                  position: "relative",
-                  bottom: rV(25),
-                }}
-              >
-                {item.title}
-              </Text>
+              <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+              <Text style={[styles.body, { color: colors.textMuted }]}>{item.text}</Text>
 
-              {/* TEXT */}
-              <Text
-                style={{
-                  color: Colors.secondary,
-                  fontSize: rMS(14),
-                  position: "relative",
-                  bottom: rV(25),
-                  textAlign: "center",
-                  marginBottom: rV(10),
-                }}
-              >
-                {item.text}
-              </Text>
-
-              {/* DOTS */}
-              <View style={{ flexDirection: "row", marginBottom: rV(15) }}>
+              <View style={styles.dots}>
                 {slides.map((_, index) => (
                   <View
                     key={index}
-                    style={{
-                      height: rS(8),
-                      width: index === currentIndex ? rS(18) : rS(8),
-                      borderRadius: rS(4),
-                      backgroundColor:
-                        index === currentIndex ? "#66797F" : "#ddd",
-                      marginHorizontal: rS(4),
-                    }}
+                    style={[
+                      styles.dot,
+                      {
+                        width: index === currentIndex ? rS(20) : rS(8),
+                        backgroundColor:
+                          index === currentIndex ? colors.primary : colors.border,
+                      },
+                    ]}
                   />
                 ))}
               </View>
 
-              {/* BUTTON */}
               <TouchableOpacity
                 onPress={handleNext}
-                style={{
-                  backgroundColor: Colors.primary,
-                  borderRadius: rS(20),
-                  paddingVertical: rV(12),
-                  paddingHorizontal: rS(25),
-                }}
+                style={[styles.cta, { backgroundColor: colors.primary }]}
               >
-                <Text
-                  style={{
-                    color: "#ffffff",
-                    fontWeight: "600",
-                    fontSize: rMS(14),
-                  }}
-                >
-                  {currentIndex === slides.length - 1 ? "On my way!" : "Next"}
+                <Text style={[styles.ctaText, { color: colors.onPrimary }]}>
+                  {currentIndex === slides.length - 1 ? "Get started" : "Next"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -182,3 +149,83 @@ export default function Onboarding() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rS(22),
+    paddingBottom: rV(10),
+  },
+  brand: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(18),
+    color: "#FFFFFF",
+    letterSpacing: 1.2,
+  },
+  skip: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(14),
+    color: "rgba(255,255,255,0.9)",
+  },
+  slide: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: rV(8),
+  },
+  image: {
+    width: width * 0.92,
+    height: rV(360),
+  },
+  card: {
+    position: "absolute",
+    bottom: rV(48),
+    width: width * 0.86,
+    borderRadius: rMS(22),
+    paddingVertical: rV(28),
+    paddingHorizontal: rS(26),
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  title: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(19),
+    textAlign: "center",
+    marginBottom: rV(10),
+  },
+  body: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(14),
+    lineHeight: rMS(21),
+    textAlign: "center",
+    marginBottom: rV(18),
+  },
+  dots: {
+    flexDirection: "row",
+    marginBottom: rV(18),
+    gap: rS(6),
+  },
+  dot: {
+    height: rS(8),
+    borderRadius: rS(4),
+  },
+  cta: {
+    borderRadius: rMS(999),
+    paddingVertical: rV(14),
+    paddingHorizontal: rS(32),
+    minWidth: rS(200),
+    alignItems: "center",
+  },
+  ctaText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14.5),
+  },
+});

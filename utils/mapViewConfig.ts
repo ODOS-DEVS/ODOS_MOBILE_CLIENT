@@ -1,10 +1,13 @@
+import { isGoogleMapsEnabled } from "@/constants/maps";
 import { GOOGLE_MAP_LIGHT_STYLE } from "@/utils/googleMapStyle";
 import { PROVIDER_GOOGLE } from "react-native-maps";
 
-export const ODOS_MAP_PROVIDER = PROVIDER_GOOGLE;
+export { isGoogleMapsEnabled };
 
-export const odosGoogleMapProps = {
-  provider: ODOS_MAP_PROVIDER,
-  customMapStyle: GOOGLE_MAP_LIGHT_STYLE,
-  mapType: "standard" as const,
-};
+export const odosGoogleMapProps = isGoogleMapsEnabled
+  ? {
+      provider: PROVIDER_GOOGLE,
+      customMapStyle: GOOGLE_MAP_LIGHT_STYLE,
+      mapType: "standard" as const,
+    }
+  : {};

@@ -27,7 +27,7 @@ export function useRequireAuth() {
       Alert.alert(
         options?.title || "Sign in required",
         options?.message ||
-          "Create an account or log in to keep going with this part of ODOS.",
+          "Create an account or log in to save favourites, manage orders, and check out.",
         [
           {
             text: options?.cancelLabel || "Maybe later",
@@ -35,11 +35,11 @@ export function useRequireAuth() {
             onPress: options?.onCancel,
           },
           {
-            text: "Create account",
+            text: "Sign Up",
             onPress: () => router.push("/(root)/(auth)/signup"),
           },
           {
-            text: "Log in",
+            text: "Sign In",
             onPress: () => router.push("/(root)/(auth)/signin"),
           },
         ],

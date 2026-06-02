@@ -1,16 +1,20 @@
+import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
+import AuthFormCard from "@/components/auth/AuthFormCard";
+import AuthScreenLayout from "@/components/auth/AuthScreenLayout";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
+import Fonts from "@/constants/Fonts";
 import { rMS, rV } from "@/styles/responsive";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
-const CreatePasswordScreen = () => {
-  const { colors, isDark } = useTheme();
+export default function CreatePasswordScreen() {
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{
     email?: string | string[];
     resetToken?: string | string[];
@@ -22,6 +26,7 @@ const CreatePasswordScreen = () => {
     ? params.resetToken[0]
     : params.resetToken;
   useBlockBackNavigation(true);
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -34,7 +39,7 @@ const CreatePasswordScreen = () => {
     setGeneralError("");
 
     if (!routeEmail || !resetToken) {
-      setGeneralError("This password reset session is missing some details. Start again.");
+      setGeneralError("This reset session is incomplete. Please start again.");
       return;
     }
 
@@ -71,108 +76,87 @@ const CreatePasswordScreen = () => {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.screen,
-        paddingHorizontal: 24,
-        paddingTop: 96,
+    <AuthScreenLayout
+      mode="plain"
+      plain={{
+        title: "Create new password",
+        subtitle:
+          "Choose a strong password you haven't used on ODOS before. Finish here so your reset stays valid.",
+        onBack: () =>
+          router.replace({
+            pathname: "/forgotpassword",
+            params: routeEmail ? { email: routeEmail } : undefined,
+          }),
       }}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
-      <Text className="text-primary text-2xl font-extrabold text-center mb-4">
-        Create new password
-      </Text>
-
-      <Text className="text-center text-primary mb-10">
-        Enter your new password
-      </Text>
-      <Text
-        className="text-center text-secondary mb-6"
-        style={{ fontSize: rMS(13), lineHeight: rV(20) }}
-      >
-        Finish this password update here so the reset session stays valid from start to finish.
-      </Text>
-      <View className="px-4">
+      <AuthFormCard>
         <TextInputField
-          label="New Password"
-          placeholder="Enter your new password"
+          label="New password"
+          icon="lock-closed-outline"
+          placeholder="At least 8 characters"
           secureTextEntry
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            if (passwordError) {
-              setPasswordError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (passwordError) setPasswordError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={passwordError}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
         <TextInputField
-          label="Confirm Password"
-          placeholder="Confirm your new password"
+          label="Confirm password"
+          icon="shield-checkmark-outline"
+          placeholder="Re-enter your password"
           secureTextEntry
           value={confirmPassword}
           onChangeText={(text) => {
             setConfirmPassword(text);
-            if (confirmPasswordError) {
-              setConfirmPasswordError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (confirmPasswordError) setConfirmPasswordError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={confirmPasswordError}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-      </View>
-      {generalError ? (
-        <View
-          style={{
-            backgroundColor: "#FDF1F1",
-            borderColor: "#F2C7C7",
-            borderWidth: 1,
-            borderRadius: rV(16),
-            paddingHorizontal: rV(14),
-            paddingVertical: rV(12),
-            marginHorizontal: 16,
-            marginBottom: rV(12),
-          }}
-        >
-          <Text style={{ color: "#B93838", fontSize: rMS(13) }}>
-            {generalError}
-          </Text>
-        </View>
-      ) : null}
-      <View className="px-4">
+
+        <AuthErrorBanner message={generalError} />
+
         <PrimaryButton
-          title="Create new password"
+          title="Save new password"
           onPress={handleSubmit}
           isLoading={isResettingPassword}
           disabled={isResettingPassword || !password || !confirmPassword}
+          className="mt-2"
         />
-      </View>
-      <View className="items-center mt-5">
-        <TouchableOpacity
-          onPress={() =>
-            router.replace({
-              pathname: "/forgotpassword",
-              params: routeEmail ? { email: routeEmail } : undefined,
-            })
-          }
-        >
-          <Text
-            className="text-primary font-montserrat-extraBold"
-            style={{ fontSize: rMS(13.5) }}
-          >
-            Start password reset again
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
+      </AuthFormCard>
 
-export default CreatePasswordScreen;
+      <TouchableOpacity
+        onPress={() =>
+          router.replace({
+            pathname: "/forgotpassword",
+            params: routeEmail ? { email: routeEmail } : undefined,
+          })
+        }
+        style={styles.restart}
+      >
+        <Text style={[styles.link, { color: colors.primary }]}>
+          Start password reset again
+        </Text>
+      </TouchableOpacity>
+    </AuthScreenLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  restart: {
+    alignItems: "center",
+    marginTop: rV(22),
+    paddingVertical: rV(8),
+  },
+  link: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+});

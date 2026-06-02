@@ -1,6 +1,7 @@
 import UserAvatar from "@/components/UserAvatar";
 import {
   AccountActionButton,
+  AccountBadge,
   AccountChoiceOption,
   AccountChoiceSheet,
   AccountFormField,
@@ -10,6 +11,7 @@ import {
   AccountSectionCard,
   useAccountStyles,
 } from "@/components/account/AccountUi";
+import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import Fonts from "@/constants/Fonts";
@@ -17,6 +19,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { pickCroppedImage } from "@/utils/imagePicker";
+import {
+  formatPhoneInput,
+  isGhanaPhoneVerified,
+  normalizeGhanaPhone,
+  validateGhanaPhone,
+} from "@/utils/phone";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -28,7 +36,6 @@ import {
   View,
 } from "react-native";
 
-const PHONE_REGEX = /^[+0-9()\-\s]{7,30}$/;
 const GENDER_OPTIONS = ["Male", "Female"];
 
 function formatDateForInput(value?: string | null) {
@@ -71,7 +78,15 @@ function formatDateForApi(value: Date | null) {
 const CustomerProfile = () => {
   const accountStyles = useAccountStyles();
   const { showToast } = useToast();
-  const { isUpdatingProfile, updateProfile, user } = useAuth();
+  const {
+    isUpdatingProfile,
+    isSendingPhoneVerificationCode,
+    isVerifyingPhoneNumber,
+    updateProfile,
+    sendPhoneVerificationCode,
+    verifyPhoneNumber,
+    user,
+  } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
@@ -91,6 +106,8 @@ const CustomerProfile = () => {
   const [cityError, setCityError] = useState("");
   const [regionError, setRegionError] = useState("");
   const [generalError, setGeneralError] = useState("");
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
+  const [phoneVerifyError, setPhoneVerifyError] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -105,10 +122,38 @@ const CustomerProfile = () => {
     setCity(user.city || "");
     setRegion(user.region || "");
     setAvatarUri(user.avatar_url || null);
+    setPhoneCodeSent(false);
+    setPhoneVerifyError("");
   }, [user]);
 
+  const normalizedDraftPhone = useMemo(
+    () => normalizeGhanaPhone(phoneNumber),
+    [phoneNumber],
+  );
+
+  const isPhoneVerified = useMemo(
+    () =>
+      isGhanaPhoneVerified(
+        phoneNumber,
+        user?.phone_number,
+        user?.phone_verified ?? false,
+      ),
+    [phoneNumber, user?.phone_number, user?.phone_verified],
+  );
+
+  const showPhoneVerification = Boolean(
+    normalizedDraftPhone && !isPhoneVerified,
+  );
+
   const profileCompletion = useMemo(() => {
-    const fields = [fullName, phoneNumber, gender, city, region, dateOfBirth];
+    const fields = [
+      fullName,
+      isPhoneVerified ? phoneNumber : "",
+      gender,
+      city,
+      region,
+      dateOfBirth,
+    ];
     const filled = fields.filter((value) => {
       if (value instanceof Date) {
         return true;
@@ -116,7 +161,7 @@ const CustomerProfile = () => {
       return String(value ?? "").trim().length > 0;
     }).length;
     return Math.round((filled / fields.length) * 100);
-  }, [city, dateOfBirth, fullName, gender, phoneNumber, region]);
+  }, [city, dateOfBirth, fullName, gender, isPhoneVerified, phoneNumber, region]);
 
   const clearGeneralError = () => {
     if (generalError) {
@@ -150,8 +195,30 @@ const CustomerProfile = () => {
       hasError = true;
     }
 
-    if (trimmedPhoneNumber && !PHONE_REGEX.test(trimmedPhoneNumber)) {
-      setPhoneNumberError("Enter a valid phone number.");
+    const phoneValidationMessage = trimmedPhoneNumber
+      ? validateGhanaPhone(trimmedPhoneNumber)
+      : null;
+
+    if (phoneValidationMessage) {
+      setPhoneNumberError(phoneValidationMessage);
+      hasError = true;
+    } else if (trimmedPhoneNumber && !isPhoneVerified) {
+      setPhoneNumberError("Verify your phone number before saving.");
+      hasError = true;
+    }
+
+    if (trimmedGender && trimmedGender.length < 2) {
+      setGenderError("Select a valid gender.");
+      hasError = true;
+    }
+
+    if (trimmedCity && trimmedCity.length < 2) {
+      setCityError("City must be at least 2 characters.");
+      hasError = true;
+    }
+
+    if (trimmedRegion && trimmedRegion.length < 2) {
+      setRegionError("Region must be at least 2 characters.");
       hasError = true;
     }
 
@@ -166,7 +233,7 @@ const CustomerProfile = () => {
 
     const result = await updateProfile({
       fullName: trimmedFullName,
-      phoneNumber: trimmedPhoneNumber,
+      ...(trimmedPhoneNumber ? {} : { phoneNumber: "" }),
       dateOfBirth: formattedDateOfBirth,
       gender: trimmedGender,
       city: trimmedCity,
@@ -205,7 +272,6 @@ const CustomerProfile = () => {
 
       const updateResult = await updateProfile({
         fullName: fullName.trim(),
-        phoneNumber: phoneNumber.trim(),
         dateOfBirth: formatDateForApi(dateOfBirth),
         gender: gender.trim(),
         city: city.trim(),
@@ -297,21 +363,79 @@ const CustomerProfile = () => {
             }}
             onClear={() => setDateOfBirth(null)}
           />
-          <AccountFormField
-            label="Phone number"
-            icon="call-outline"
-            placeholder="+233 54 187 4005"
-            value={phoneNumber}
-            onChangeText={(text) => {
-              setPhoneNumber(text);
-              setPhoneNumberError("");
-              clearGeneralError();
-            }}
-            error={phoneNumberError}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View>
+            <AccountFormField
+              label="Phone number"
+              icon="call-outline"
+              placeholder="0541234567"
+              value={phoneNumber}
+              onChangeText={(text) => {
+                const formatted = formatPhoneInput(text);
+                setPhoneNumber(formatted);
+                setPhoneNumberError("");
+                setPhoneVerifyError("");
+                setPhoneCodeSent(false);
+                clearGeneralError();
+              }}
+              error={phoneNumberError}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={10}
+            />
+            {isPhoneVerified ? (
+              <View style={styles.phoneStatusRow}>
+                <AccountBadge label="Verified" tone="success" />
+              </View>
+            ) : null}
+            {showPhoneVerification && normalizedDraftPhone ? (
+              <PhoneVerificationPanel
+                phoneNumber={normalizedDraftPhone}
+                codeSent={phoneCodeSent}
+                isSendingCode={isSendingPhoneVerificationCode}
+                isVerifying={isVerifyingPhoneNumber}
+                error={phoneVerifyError}
+                onDismissError={() => setPhoneVerifyError("")}
+                onSendCode={async () => {
+                  const validation = validateGhanaPhone(phoneNumber);
+                  if (validation) {
+                    setPhoneNumberError(validation);
+                    return;
+                  }
+
+                  const result = await sendPhoneVerificationCode(normalizedDraftPhone);
+                  if (!result.success) {
+                    setPhoneVerifyError(
+                      result.fieldErrors?.general ||
+                        result.fieldErrors?.phoneNumber ||
+                        "We couldn't send a code.",
+                    );
+                    return;
+                  }
+
+                  setPhoneCodeSent(true);
+                  showToast(result.message || "Verification code sent.");
+                }}
+                onVerify={async (code) => {
+                  const result = await verifyPhoneNumber(normalizedDraftPhone, code);
+                  if (!result.success) {
+                    setPhoneVerifyError(
+                      result.fieldErrors?.general || "That code could not be verified.",
+                    );
+                    return;
+                  }
+
+                  setPhoneCodeSent(false);
+                  setPhoneVerifyError("");
+                  setPhoneNumberError("");
+                  if (result.user?.phone_number) {
+                    setPhoneNumber(result.user.phone_number);
+                  }
+                  showToast("Phone number verified.");
+                }}
+              />
+            ) : null}
+          </View>
           <AccountPickerField
             label="Gender"
             value={gender}
@@ -455,5 +579,11 @@ const styles = StyleSheet.create({
   },
   datePicker: {
     alignSelf: "center",
+  },
+  phoneStatusRow: {
+    flexDirection: "row",
+    marginTop: -rV(8),
+    marginBottom: rV(8),
+    paddingLeft: rS(4),
   },
 });
