@@ -11,7 +11,8 @@ import {
   reverseGeocodeStoreLocation,
   type StoreCoordinates,
 } from "@/utils/location";
-import { odosGoogleMapProps } from "@/utils/mapViewConfig";
+import MapUnavailablePlaceholder from "@/components/location/MapUnavailablePlaceholder";
+import { isGoogleMapsEnabled, odosGoogleMapProps } from "@/utils/mapViewConfig";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -246,15 +247,19 @@ export default function StoreLocationPicker({
         </View>
       ) : null}
 
-      {Platform.OS === "web" ? (
-        <View style={styles.webMapFallback}>
-          <Ionicons name="phone-portrait-outline" size={rS(28)} color={AppColors.primary} />
-          <Text style={styles.webMapTitle}>Open in Expo Go on your phone</Text>
-          <Text style={styles.webMapText}>
-            The live map pin works in Expo Go on iOS and Android. Paste your GPS code above, then
-            use “Find on map” or “I&apos;m at my store”.
-          </Text>
-        </View>
+      {Platform.OS === "web" || !isGoogleMapsEnabled ? (
+        Platform.OS === "web" ? (
+          <View style={styles.webMapFallback}>
+            <Ionicons name="phone-portrait-outline" size={rS(28)} color={AppColors.primary} />
+            <Text style={styles.webMapTitle}>Open in Expo Go on your phone</Text>
+            <Text style={styles.webMapText}>
+              The live map pin works in Expo Go on iOS and Android. Paste your GPS code above, then
+              use “Find on map” or “I&apos;m at my store”.
+            </Text>
+          </View>
+        ) : (
+          <MapUnavailablePlaceholder height={rV(240)} />
+        )
       ) : (
         <View style={styles.mapShell}>
           <MapView

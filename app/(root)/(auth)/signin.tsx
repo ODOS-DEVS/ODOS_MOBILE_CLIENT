@@ -1,34 +1,33 @@
-import AuthHeader from "@/components/AuthHeader";
+import AuthDivider from "@/components/auth/AuthDivider";
+import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
+import AuthFormCard from "@/components/auth/AuthFormCard";
+import AuthGoogleSignInBlock from "@/components/auth/AuthGoogleSignInBlock";
+import AuthLegalFooter from "@/components/auth/AuthLegalFooter";
+import AuthScreenLayout from "@/components/auth/AuthScreenLayout";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import Divider from "@/components/Divider";
-import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
+import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useToast } from "@/context/ToastContext";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { useAuthScreenRedirect } from "@/hooks/useAuthScreenRedirect";
+import { rMS, rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const SignInScreen = () => {
+export default function SignInScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { showToast } = useToast();
-  const { isSigningIn, signIn, user } = useAuth();
+  const { isSigningIn, signIn } = useAuth();
+  useAuthScreenRedirect();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
-
-  useEffect(() => {
-    if (user?.is_verified) {
-      router.replace("../(tabs)");
-    }
-  }, [router, user]);
 
   const handleSignIn = async () => {
     let hasError = false;
@@ -55,10 +54,7 @@ const SignInScreen = () => {
       return;
     }
 
-    const result = await signIn({
-      email,
-      password,
-    });
+    const result = await signIn({ email, password });
 
     if (result.success) {
       if (result.requiresVerification) {
@@ -66,8 +62,6 @@ const SignInScreen = () => {
           pathname: "/verification",
           params: { email: email.trim().toLowerCase() },
         });
-      } else {
-        router.replace("../(tabs)");
       }
       return;
     }
@@ -77,36 +71,27 @@ const SignInScreen = () => {
     setGeneralError(result.fieldErrors?.general || result.message || "");
   };
 
-  const handleGooglePress = () => {
-    showToast("Google sign-in is not active in Expo Go right now.");
-  };
-
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      style={{ flex: 1, backgroundColor: colors.screen }}
-      contentContainerStyle={{ paddingBottom: rV(30) }}
+    <AuthScreenLayout
+      hero={{
+        title: "Sign in",
+        header: "Welcome back",
+        subtitle:
+          "Shop local stores, track orders, and use your wallet — all in one place.",
+      }}
+      footer={<AuthLegalFooter action="signin" />}
     >
-      <AuthHeader
-        title="Sign In"
-        header="Hi, Welcome Back! 👋"
-        subtitle="Lorem ipsum dolor sit amet, consectetur"
-      />
-
-      <View style={{ padding: rS(20) }}>
+      <AuthFormCard>
         <TextInputField
-          label="Email Address"
-          placeholder="Enter your email address"
+          label="Email"
+          icon="mail-outline"
+          placeholder="you@example.com"
           keyboardType="email-address"
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            if (emailError) {
-              setEmailError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (emailError) setEmailError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={emailError}
           autoCapitalize="none"
@@ -114,117 +99,108 @@ const SignInScreen = () => {
         />
         <TextInputField
           label="Password"
+          icon="lock-closed-outline"
           placeholder="Enter your password"
           secureTextEntry
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            if (passwordError) {
-              setPasswordError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (passwordError) setPasswordError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={passwordError}
           autoCapitalize="none"
           autoCorrect={false}
         />
 
-        {generalError ? (
-          <View
-            style={{
-              backgroundColor: "#FDF1F1",
-              borderColor: "#F2C7C7",
-              borderWidth: 1,
-              borderRadius: rV(16),
-              paddingHorizontal: rV(14),
-              paddingVertical: rV(12),
-              marginTop: rV(4),
-            }}
-          >
-            <Text
-              style={{
-                color: "#B93838",
-                fontSize: rMS(13),
-              }}
-            >
-              {generalError}
-            </Text>
-          </View>
-        ) : null}
+        <AuthErrorBanner message={generalError} />
 
-        <View
-          className="flex flex-row justify-between"
-          style={{ marginTop: rV(2) }}
-        >
-          <TouchableOpacity>
-            <Text
-              className="text-secondary font-montserrat"
-              style={{ fontSize: rMS(13), paddingLeft: rS(10) }}
-            >
-              Remember Me
+        <View style={styles.row}>
+          <TouchableOpacity hitSlop={8}>
+            <Text style={[styles.rowLink, { color: colors.textMuted }]}>
+              Remember me
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
-            onPress={() => {
-              router.push("/forgotpassword");
-            }}
+            hitSlop={8}
+            onPress={() => router.push("/forgotpassword")}
           >
-            <Text
-              className="text-secondary font-montserrat"
-              style={{ fontSize: rMS(13) }}
-            >
-              Forgot Password
+            <Text style={[styles.rowLinkBold, { color: colors.primary }]}>
+              Forgot password?
             </Text>
           </TouchableOpacity>
         </View>
 
         <PrimaryButton
-          title="Sign In"
+          title="Sign in"
           onPress={handleSignIn}
           isLoading={isSigningIn}
           disabled={isSigningIn || !email.trim() || !password}
+          className="mt-2"
         />
+      </AuthFormCard>
 
-        <View
-          className="flex flex-row justify-center"
-          style={{ marginTop: rV(15) }}
-        >
-          <Text className="font-montserrat-light" style={{ fontSize: rMS(14) }}>
-            Dont have an account?{" "}
-          </Text>
-
-          <TouchableOpacity onPress={() => router.replace("/signup")}>
-            <Text
-              className="text-primary font-montserrat-extraBold"
-              style={{ fontSize: rMS(14) }}
-            >
-              Sign Up
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View
-          className="items-center"
-          style={{ marginTop: rV(20), marginBottom: rV(12) }}
-        >
-          <Divider />
-          <SocialLoginButtons onGooglePress={handleGooglePress} />
-        </View>
-
-        <Text
-          className="text-center text-primary"
-          style={{ fontSize: rMS(15), lineHeight: rV(22), marginTop: rV(30) }}
-        >
-          By continuing you agree to our{" "}
-          <Text className="font-bold text-primary">Terms</Text> and{" "}
-          <Text className="font-bold text-primary">Conditions of Use</Text>
+      <View style={styles.switchRow}>
+        <Text style={[styles.switchMuted, { color: colors.textMuted }]}>
+          {"Don't have an account? "}
         </Text>
+        <TouchableOpacity onPress={() => router.replace("/signup")}>
+          <Text style={[styles.switchAction, { color: colors.primary }]}>Sign up</Text>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
-  );
-};
 
-export default SignInScreen;
+      <AuthDivider />
+      <AuthGoogleSignInBlock variant="signin" />
+
+      <TouchableOpacity
+        onPress={() => router.replace("/(root)/(tabs)")}
+        style={styles.browseLink}
+      >
+        <Text style={[styles.browseText, { color: colors.primary }]}>
+          Browse without signing in
+        </Text>
+      </TouchableOpacity>
+    </AuthScreenLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: rV(4),
+    paddingHorizontal: rMS(2),
+  },
+  rowLink: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+  },
+  rowLinkBold: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(13),
+  },
+  switchRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginTop: rV(20),
+  },
+  switchMuted: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(14),
+  },
+  switchAction: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  browseLink: {
+    alignItems: "center",
+    marginTop: rV(18),
+    paddingVertical: rV(6),
+  },
+  browseText: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(14),
+  },
+});

@@ -1,28 +1,24 @@
-import PrimaryButton from "@/components/buttons/PrimaryButton";
+import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
+import AuthFormCard from "@/components/auth/AuthFormCard";
 import EmailVerificationSuccess from "@/components/auth/EmailVerificationSuccess";
+import AuthScreenLayout from "@/components/auth/AuthScreenLayout";
+import OtpCodeInput, { OTP_LENGTH } from "@/components/auth/OtpCodeInput";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
+import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  StatusBar,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-const OTP_LENGTH = 6;
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function VerificationScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ""));
   const [generalError, setGeneralError] = useState("");
   const [phase, setPhase] = useState<"input" | "success">("input");
-  const inputs = useRef<(TextInput | null)[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams<{
     email?: string | string[];
@@ -44,65 +40,18 @@ export default function VerificationScreen() {
   const routeMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const isPasswordResetMode = routeMode === "password-reset";
   useBlockBackNavigation(true);
-  const displayEmail = routeEmail || user?.email || "your email address";
+  const displayEmail = routeEmail || user?.email || "your email";
   const joinedCode = otp.join("");
 
   useEffect(() => {
     if (!isPasswordResetMode && user?.is_verified) {
-      router.replace("../(tabs)");
+      router.replace("/(root)/(tabs)");
     }
   }, [isPasswordResetMode, router, user?.is_verified]);
 
-  const handleChange = (text: string, index: number) => {
-    const sanitized = text.replace(/\D/g, "");
-    const newOtp = [...otp];
-
-    if (!sanitized) {
-      newOtp[index] = "";
-      setOtp(newOtp);
-      setGeneralError("");
-      return;
-    }
-
-    if (sanitized.length > 1) {
-      const merged = [...otp];
-      sanitized
-        .slice(0, OTP_LENGTH)
-        .split("")
-        .forEach((char, offset) => {
-          const targetIndex = index + offset;
-          if (targetIndex < OTP_LENGTH) {
-            merged[targetIndex] = char;
-          }
-        });
-      setOtp(merged);
-      const nextIndex = Math.min(index + sanitized.length, OTP_LENGTH - 1);
-      inputs.current[nextIndex]?.focus();
-      setGeneralError("");
-      return;
-    }
-
-    newOtp[index] = sanitized;
-    setOtp(newOtp);
-    setGeneralError("");
-
-    if (index < OTP_LENGTH - 1) {
-      inputs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (
-    event: { nativeEvent: { key: string } },
-    index: number,
-  ) => {
-    if (event.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
-    }
-  };
-
   const handleContinue = async () => {
     if (joinedCode.length !== OTP_LENGTH) {
-      setGeneralError("Enter the full 6-digit verification code.");
+      setGeneralError("Enter the full 6-digit code.");
       return;
     }
 
@@ -153,7 +102,6 @@ export default function VerificationScreen() {
       if (result.success) {
         showToast(result.message || "A new reset code is on the way.");
         setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
-        inputs.current[0]?.focus();
         return;
       }
 
@@ -167,7 +115,6 @@ export default function VerificationScreen() {
     if (result.success) {
       showToast(result.message || "A new code is on the way.");
       setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
-      inputs.current[0]?.focus();
       return;
     }
 
@@ -180,118 +127,62 @@ export default function VerificationScreen() {
     return (
       <EmailVerificationSuccess
         email={displayEmail}
-        onContinue={() => router.replace("../(tabs)")}
+        onContinue={() => router.replace("/(root)/(tabs)")}
       />
     );
   }
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.screen,
-        paddingHorizontal: rS(20),
-        paddingTop: rV(50),
+    <AuthScreenLayout
+      mode="plain"
+      plain={{
+        title: isPasswordResetMode ? "Check your email" : "Verify your email",
+        subtitle: isPasswordResetMode
+          ? `Enter the 6-digit reset code we sent to ${displayEmail}.`
+          : `Enter the 6-digit code we sent to ${displayEmail} to activate your account.`,
+        onBack: () => {
+          if (isPasswordResetMode) {
+            router.replace({
+              pathname: "/forgotpassword",
+              params: routeEmail ? { email: routeEmail } : undefined,
+            });
+            return;
+          }
+          router.replace("/signin");
+        },
       }}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
-      <View style={{ marginTop: rV(18) }}>
-        <Text
-          className="text-primary text-center font-montserrat-extraBold"
-          style={{ fontSize: rMS(26), marginBottom: rV(14) }}
-        >
-          {isPasswordResetMode ? "Enter reset code" : "Verify your email"}
+      <AuthFormCard>
+        <Text style={[styles.hint, { color: colors.textMuted }]}>
+          Codes expire after a few minutes. Keep this screen open until you're done.
         </Text>
 
-        <Text
-          className="text-center text-primary font-montserrat"
-          style={{ fontSize: rMS(14), lineHeight: rV(22), marginBottom: rV(26) }}
-        >
-          {isPasswordResetMode
-            ? "We sent a 6-digit password reset code to "
-            : "We sent a 6-digit verification code to "}
-          <Text className="font-montserrat-extraBold text-primary">
-            {displayEmail}
-          </Text>
-        </Text>
-      </View>
-
-      <Text
-        className="text-center text-secondary font-montserrat"
-        style={{ fontSize: rMS(13), lineHeight: rV(20), marginBottom: rV(16) }}
-      >
-        Stay on this screen until the code is confirmed so the verification flow is not interrupted.
-      </Text>
-
-      <View
-        className="flex-row justify-center"
-        style={{ gap: rS(8), marginBottom: rV(22) }}
-      >
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            ref={(el) => {
-              inputs.current[index] = el;
-            }}
-            value={digit}
-            onChangeText={(text) => handleChange(text, index)}
-            onKeyPress={(event) => handleKeyPress(event, index)}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            maxLength={index === 0 ? OTP_LENGTH : 1}
-            className="border border-primary rounded-2xl text-center font-montserrat-extraBold text-primary"
-            style={{
-              width: rS(44),
-              height: rV(52),
-              fontSize: rMS(22),
-              backgroundColor: "#F5F5F5",
-            }}
-          />
-        ))}
-      </View>
-
-      {generalError ? (
-        <View
-          style={{
-            backgroundColor: "#FDF1F1",
-            borderColor: "#F2C7C7",
-            borderWidth: 1,
-            borderRadius: rV(16),
-            paddingHorizontal: rV(14),
-            paddingVertical: rV(12),
-            marginBottom: rV(18),
+        <OtpCodeInput
+          value={otp}
+          onChange={(next) => {
+            setOtp(next);
+            if (generalError) setGeneralError("");
           }}
-        >
-          <Text
-            style={{
-              color: "#B93838",
-              fontSize: rMS(13),
-            }}
-          >
-            {generalError}
-          </Text>
-        </View>
-      ) : null}
+        />
 
-      <PrimaryButton
-        title={isPasswordResetMode ? "Continue" : "Verify Email"}
-        onPress={handleContinue}
-        isLoading={isPasswordResetMode ? isVerifyingResetCode : isVerifyingEmail}
-        disabled={
-          isVerifyingEmail || isVerifyingResetCode || joinedCode.length !== OTP_LENGTH
-        }
-      />
+        <AuthErrorBanner message={generalError} />
 
-      <View
-        className="items-center"
-        style={{ marginTop: rV(20), gap: rV(10) }}
-      >
-        <Text
-          className="text-center text-primary font-montserrat"
-          style={{ fontSize: rMS(14), lineHeight: rV(22) }}
-        >
-          Didn’t receive the code?
+        <PrimaryButton
+          title={isPasswordResetMode ? "Continue" : "Verify email"}
+          onPress={handleContinue}
+          isLoading={isPasswordResetMode ? isVerifyingResetCode : isVerifyingEmail}
+          disabled={
+            isVerifyingEmail ||
+            isVerifyingResetCode ||
+            joinedCode.length !== OTP_LENGTH
+          }
+          className="mt-0"
+        />
+      </AuthFormCard>
+
+      <View style={styles.resendBlock}>
+        <Text style={[styles.resendLabel, { color: colors.textMuted }]}>
+          Didn&apos;t receive the code?
         </Text>
         <TouchableOpacity
           onPress={handleResend}
@@ -302,52 +193,82 @@ export default function VerificationScreen() {
           }
         >
           <Text
-            className="text-primary font-montserrat-extraBold"
-            style={{
-              fontSize: rMS(14),
-              opacity:
-                isPasswordResetMode
-                  ? isRequestingPasswordReset
-                    ? 0.6
-                    : 1
-                  : isResendingVerificationCode
-                    ? 0.6
-                    : 1,
-            }}
+            style={[
+              styles.resendAction,
+              {
+                color: colors.primary,
+                opacity:
+                  isPasswordResetMode
+                    ? isRequestingPasswordReset
+                      ? 0.5
+                      : 1
+                    : isResendingVerificationCode
+                      ? 0.5
+                      : 1,
+              },
+            ]}
           >
             {isPasswordResetMode
               ? isRequestingPasswordReset
-                ? "Sending new code..."
-                : "Resend Code"
+                ? "Sending…"
+                : "Resend code"
               : isResendingVerificationCode
-                ? "Sending new code..."
-                : "Resend Code"}
+                ? "Sending…"
+                : "Resend code"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View className="items-center" style={{ marginTop: rV(14) }}>
-        <TouchableOpacity
-          onPress={() => {
-            if (isPasswordResetMode) {
-              router.replace({
-                pathname: "/forgotpassword",
-                params: routeEmail ? { email: routeEmail } : undefined,
-              });
-              return;
-            }
-
-            router.replace("/signin");
-          }}
-        >
-          <Text
-            className="text-primary font-montserrat-extraBold"
-            style={{ fontSize: rMS(13.5) }}
-          >
-            {isPasswordResetMode ? "Use another email" : "Use a different account"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      <TouchableOpacity
+        onPress={() => {
+          if (isPasswordResetMode) {
+            router.replace({
+              pathname: "/forgotpassword",
+              params: routeEmail ? { email: routeEmail } : undefined,
+            });
+            return;
+          }
+          router.replace("/signin");
+        }}
+        style={styles.altAction}
+      >
+        <Text style={[styles.altActionText, { color: colors.primary }]}>
+          {isPasswordResetMode ? "Use another email" : "Use a different account"}
+        </Text>
+      </TouchableOpacity>
+    </AuthScreenLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  hint: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    lineHeight: rMS(20),
+    marginBottom: rV(18),
+    textAlign: "center",
+    paddingHorizontal: rS(4),
+  },
+  resendBlock: {
+    alignItems: "center",
+    marginTop: rV(22),
+    gap: rV(8),
+  },
+  resendLabel: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(14),
+  },
+  resendAction: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  altAction: {
+    alignItems: "center",
+    marginTop: rV(14),
+    paddingVertical: rV(8),
+  },
+  altActionText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(13.5),
+  },
+});

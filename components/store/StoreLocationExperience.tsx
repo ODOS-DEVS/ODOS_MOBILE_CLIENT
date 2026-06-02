@@ -8,7 +8,7 @@ import {
   formatStoreAddress,
   hasStoreCoordinates,
 } from "@/utils/location";
-import { odosGoogleMapProps } from "@/utils/mapViewConfig";
+import { isGoogleMapsEnabled, odosGoogleMapProps } from "@/utils/mapViewConfig";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -173,7 +173,8 @@ export default function StoreLocationExperience({
   const mapRegion = buildMapRegion(store?.latitude, store?.longitude, 0.012);
   const mapsUrl = buildMapsSearchUrl(fullAddress, store?.latitude, store?.longitude);
   const storeTitle = store?.title || fallbackTitle;
-  const showNativeMap = Platform.OS !== "web" && hasLiveMap;
+  const showNativeMap =
+    Platform.OS !== "web" && hasLiveMap && isGoogleMapsEnabled;
 
   const logoSource =
     store?.image != null || store?.imageUrl || store?.imageKey

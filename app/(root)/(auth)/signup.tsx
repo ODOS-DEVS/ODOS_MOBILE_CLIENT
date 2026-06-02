@@ -1,36 +1,46 @@
-import AuthHeader from "@/components/AuthHeader";
+import AuthConsentCheckbox from "@/components/auth/AuthConsentCheckbox";
+import AuthDivider from "@/components/auth/AuthDivider";
+import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
+import AuthFormCard from "@/components/auth/AuthFormCard";
+import AuthGoogleSignInBlock from "@/components/auth/AuthGoogleSignInBlock";
+import AuthScreenLayout from "@/components/auth/AuthScreenLayout";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import Divider from "@/components/Divider";
-import SocialLoginButtons from "@/components/SocialLoginButtons";
 import TextInputField from "@/components/TextInputField";
+import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useToast } from "@/context/ToastContext";
-import { rV } from "@/styles/responsive";
+import { useAuthScreenRedirect } from "@/hooks/useAuthScreenRedirect";
+import { rMS, rV } from "@/styles/responsive";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const SignUpScreen = () => {
+export default function SignUpScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { showToast } = useToast();
-  const { isSigningUp, signUp, user } = useAuth();
+  const { isSigningUp, signUp } = useAuth();
+  useAuthScreenRedirect();
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [hasConsented, setHasConsented] = useState(false);
   const [fullNameError, setFullNameError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [consentError, setConsentError] = useState("");
   const [generalError, setGeneralError] = useState("");
 
-  useEffect(() => {
-    if (user?.is_verified) {
-      router.replace("../(tabs)");
-    }
-  }, [router, user]);
+  const canSubmitForm =
+    fullName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    hasConsented;
 
   const handleSignUp = async () => {
     let hasError = false;
@@ -40,6 +50,8 @@ const SignUpScreen = () => {
     setFullNameError("");
     setEmailError("");
     setPasswordError("");
+    setConfirmPasswordError("");
+    setConsentError("");
     setGeneralError("");
 
     if (!trimmedFullName) {
@@ -66,15 +78,24 @@ const SignUpScreen = () => {
       hasError = true;
     }
 
+    if (!confirmPassword) {
+      setConfirmPasswordError("Confirm your password.");
+      hasError = true;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match.");
+      hasError = true;
+    }
+
+    if (!hasConsented) {
+      setConsentError("Please accept the Terms and Privacy Policy to continue.");
+      hasError = true;
+    }
+
     if (hasError) {
       return;
     }
 
-    const result = await signUp({
-      fullName,
-      email,
-      password,
-    });
+    const result = await signUp({ fullName, email, password });
 
     if (result.success) {
       if (result.requiresVerification) {
@@ -82,8 +103,6 @@ const SignUpScreen = () => {
           pathname: "/verification",
           params: { email: email.trim().toLowerCase() },
         });
-      } else {
-        router.replace("../(tabs)");
       }
       return;
     }
@@ -94,51 +113,39 @@ const SignUpScreen = () => {
     setGeneralError(result.fieldErrors?.general || result.message || "");
   };
 
-  const handleGooglePress = () => {
-    showToast("Google sign-in is not active in Expo Go right now.");
-  };
-
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      style={{ flex: 1, backgroundColor: colors.screen }}
+    <AuthScreenLayout
+      hero={{
+        title: "Sign up",
+        header: "Create your account",
+        subtitle:
+          "Join ODOS to save favourites, track deliveries, and pay with your in-app wallet.",
+      }}
     >
-      <AuthHeader
-        title="Sign Up"
-        header="Create an account"
-        subtitle="Lorem ipsum dolor sit amet, consectetur"
-      />
-
-      <View className="p-5">
+      <AuthFormCard>
         <TextInputField
           label="Full name"
-          placeholder="Enter your full name"
+          icon="person-outline"
+          placeholder="How should we greet you?"
           value={fullName}
           onChangeText={(text) => {
             setFullName(text);
-            if (fullNameError) {
-              setFullNameError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (fullNameError) setFullNameError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={fullNameError}
           autoCapitalize="words"
         />
         <TextInputField
-          label="Email Address"
-          placeholder="Enter your email"
+          label="Email"
+          icon="mail-outline"
+          placeholder="you@example.com"
           keyboardType="email-address"
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            if (emailError) {
-              setEmailError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (emailError) setEmailError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={emailError}
           autoCapitalize="none"
@@ -146,86 +153,85 @@ const SignUpScreen = () => {
         />
         <TextInputField
           label="Password"
-          placeholder="Enter your password"
+          icon="lock-closed-outline"
+          placeholder="At least 8 characters"
           secureTextEntry
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            if (passwordError) {
-              setPasswordError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (passwordError) setPasswordError("");
+            if (confirmPasswordError && confirmPassword) setConfirmPasswordError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={passwordError}
+          helperText="Use 8+ characters with a mix you will remember."
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TextInputField
+          label="Confirm password"
+          icon="shield-checkmark-outline"
+          placeholder="Re-enter your password"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (confirmPasswordError) setConfirmPasswordError("");
+            if (generalError) setGeneralError("");
+          }}
+          errorMessage={confirmPasswordError}
           autoCapitalize="none"
           autoCorrect={false}
         />
 
-        {generalError ? (
-          <View
-            style={{
-              backgroundColor: "#FDF1F1",
-              borderColor: "#F2C7C7",
-              borderWidth: 1,
-              borderRadius: rV(16),
-              paddingHorizontal: rV(14),
-              paddingVertical: rV(12),
-              marginTop: rV(4),
-            }}
-          >
-            <Text
-              style={{
-                color: "#B93838",
-                fontSize: 13,
-              }}
-            >
-              {generalError}
-            </Text>
-          </View>
-        ) : null}
-
-        <PrimaryButton
-          title="Create Account"
-          onPress={handleSignUp}
-          isLoading={isSigningUp}
-          disabled={
-            isSigningUp || !fullName.trim() || !email.trim() || !password
-          }
+        <AuthConsentCheckbox
+          checked={hasConsented}
+          onToggle={(next) => {
+            setHasConsented(next);
+            if (consentError) setConsentError("");
+          }}
+          error={consentError}
         />
 
-        <View
-          className="flex flex-row justify-center"
-          style={{ marginTop: rV(18) }}
-        >
-          <Text className="font-montserrat-light">Have an account? </Text>
-          <TouchableOpacity onPress={() => router.replace("/signin")}>
-            <Text className="text-primary font-montserrat-extraBold">
-              Sign In
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <AuthErrorBanner message={generalError} />
 
-        <View
-          className="items-center"
-          style={{ marginTop: rV(10), marginBottom: rV(18) }}
-        >
-          <Divider />
-          <SocialLoginButtons onGooglePress={handleGooglePress} />
-        </View>
+        <PrimaryButton
+          title="Create account"
+          onPress={handleSignUp}
+          isLoading={isSigningUp}
+          disabled={isSigningUp || !canSubmitForm}
+          className="mt-2"
+        />
+      </AuthFormCard>
 
-        <Text
-          className="text-center text-lg text-primary"
-          style={{ marginTop: rV(24) }}
-        >
-          By signing up you agree to our{" "}
-          <Text className="font-bold text-primary">Terms</Text> and{" "}
-          <Text className="text-primary font-bold">Conditions of Use</Text>
+      <View style={styles.switchRow}>
+        <Text style={[styles.switchMuted, { color: colors.textMuted }]}>
+          Already have an account?{" "}
         </Text>
+        <TouchableOpacity onPress={() => router.replace("/signin")}>
+          <Text style={[styles.switchAction, { color: colors.primary }]}>Sign in</Text>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
-  );
-};
 
-export default SignUpScreen;
+      <AuthDivider />
+      <AuthGoogleSignInBlock variant="signup" disabled={!hasConsented} />
+    </AuthScreenLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  switchRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginTop: rV(20),
+  },
+  switchMuted: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(14),
+  },
+  switchAction: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+});

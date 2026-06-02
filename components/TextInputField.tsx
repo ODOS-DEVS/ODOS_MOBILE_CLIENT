@@ -1,5 +1,5 @@
-import  { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -45,33 +45,41 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   multiline = false,
   numberOfLines = 1,
 }) => {
+  const { colors } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
 
       <View
         style={[
           styles.inputWrapper,
-          errorMessage ? styles.inputWrapperError : null,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: errorMessage ? colors.dangerText : colors.inputBorder,
+          },
         ]}
       >
-        {icon && (
+        {icon ? (
           <Ionicons
             name={icon}
             size={18}
-            color={AppColors.secondary}
+            color={colors.iconMuted}
             style={styles.icon}
           />
-        )}
+        ) : null}
 
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor={AppColors.secondary}
+          placeholderTextColor={colors.placeholder}
           value={value}
           onChangeText={onChangeText}
-          style={[styles.input, multiline ? styles.inputMultiline : null]}
+          style={[
+            styles.input,
+            { color: colors.text },
+            multiline ? styles.inputMultiline : null,
+          ]}
           secureTextEntry={secureTextEntry && !isVisible}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -80,9 +88,10 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           multiline={multiline}
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? "top" : "center"}
+          selectionColor={colors.primary}
         />
 
-        {secureTextEntry && (
+        {secureTextEntry ? (
           <TouchableOpacity
             onPress={() => setIsVisible(!isVisible)}
             disabled={!editable}
@@ -90,14 +99,22 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
             <Ionicons
               name={isVisible ? "eye" : "eye-off"}
               size={20}
-              color={AppColors.secondary}
+              color={colors.iconMuted}
             />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-      {!errorMessage && helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
+      {errorMessage ? (
+        <Text style={[styles.errorText, { color: colors.dangerText }]}>
+          {errorMessage}
+        </Text>
+      ) : null}
+      {!errorMessage && helperText ? (
+        <Text style={[styles.helperText, { color: colors.textMuted }]}>
+          {helperText}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -108,60 +125,43 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: rV(16),
   },
-
   label: {
     marginBottom: rV(6),
-    paddingLeft: rS(8),
-    fontFamily: Fonts.textBold,
+    paddingLeft: rS(4),
+    fontFamily: Fonts.title,
     fontSize: rMS(13),
-    color: AppColors.primary,
   },
-
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
     borderWidth: 1,
-    borderColor: "#D1D1D1",
-    borderRadius: rMS(22),
+    borderRadius: rMS(16),
     paddingHorizontal: rS(14),
     paddingVertical: rV(14),
   },
-
-  inputWrapperError: {
-    borderColor: "#D64545",
-  },
-
   icon: {
     marginRight: rS(8),
   },
-
   input: {
     flex: 1,
     fontFamily: Fonts.text,
     fontSize: rMS(14),
-    color: AppColors.text,
     margin: 0,
-    padding: 0
+    padding: 0,
   },
-
   inputMultiline: {
     minHeight: rV(90),
     paddingTop: rV(2),
   },
-
   errorText: {
     marginTop: rV(6),
-    paddingLeft: rS(8),
-    color: "#D64545",
+    paddingLeft: rS(4),
     fontFamily: Fonts.text,
     fontSize: rMS(12),
   },
-
   helperText: {
     marginTop: rV(6),
-    paddingLeft: rS(8),
-    color: AppColors.secondary,
+    paddingLeft: rS(4),
     fontFamily: Fonts.text,
     fontSize: rMS(12),
     lineHeight: rMS(18),

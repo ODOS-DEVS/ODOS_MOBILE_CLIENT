@@ -1,17 +1,22 @@
+import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
+import AuthFormCard from "@/components/auth/AuthFormCard";
+import AuthScreenLayout from "@/components/auth/AuthScreenLayout";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import TextInputField from "@/components/TextInputField";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
+import Fonts from "@/constants/Fonts";
 import { rMS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
-import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
-const ForgotPasswordScreen = () => {
-  const { colors, isDark } = useTheme();
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function ForgotPasswordScreen() {
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{ email?: string | string[] }>();
   const { requestPasswordResetCode, isRequestingPasswordReset } = useAuth();
   const { showToast } = useToast();
@@ -36,8 +41,7 @@ const ForgotPasswordScreen = () => {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
       setEmailError("Enter a valid email address.");
       return;
     }
@@ -59,78 +63,61 @@ const ForgotPasswordScreen = () => {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.screen,
-        paddingHorizontal: 24,
-        paddingTop: 96,
+    <AuthScreenLayout
+      mode="plain"
+      plain={{
+        title: "Forgot password?",
+        subtitle:
+          "Enter the email on your account. We'll send a 6-digit code to reset your password.",
+        onBack: () => goBackOr(router, { fallback: "/signin" }),
       }}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <TouchableOpacity
-        onPress={() => {
-          goBackOr(router, { fallback: "/signin" });
-        }}
-      >
-        <Ionicons name="arrow-back" size={20} className="" />
-      </TouchableOpacity>
-
-      <Text className="text-primary text-2xl font-extrabold text-center mb-4">
-        Forgot Password
-      </Text>
-
-      <Text className="text-center text-primary mb-10">
-        Recover your account password
-      </Text>
-      <View className="px-4">
+      <AuthFormCard>
         <TextInputField
           label="Email"
-          placeholder="Enter your email address"
+          icon="mail-outline"
+          placeholder="you@example.com"
           keyboardType="email-address"
           value={email}
           onChangeText={(text) => {
             setEmail(text);
-            if (emailError) {
-              setEmailError("");
-            }
-            if (generalError) {
-              setGeneralError("");
-            }
+            if (emailError) setEmailError("");
+            if (generalError) setGeneralError("");
           }}
           errorMessage={emailError}
           autoCapitalize="none"
           autoCorrect={false}
         />
-      </View>
-      {generalError ? (
-        <View
-          style={{
-            backgroundColor: "#FDF1F1",
-            borderColor: "#F2C7C7",
-            borderWidth: 1,
-            borderRadius: rV(16),
-            paddingHorizontal: rV(14),
-            paddingVertical: rV(12),
-            marginHorizontal: 16,
-            marginBottom: rV(12),
-          }}
-        >
-          <Text style={{ color: "#B93838", fontSize: rMS(13) }}>
-            {generalError}
-          </Text>
-        </View>
-      ) : null}
-      <View className="px-4">
+
+        <AuthErrorBanner message={generalError} />
+
         <PrimaryButton
-          title="Next"
+          title="Send reset code"
           onPress={handleNext}
           isLoading={isRequestingPasswordReset}
           disabled={isRequestingPasswordReset || !email.trim()}
+          className="mt-2"
         />
-      </View>
-    </View>
-  );
-};
+      </AuthFormCard>
 
-export default ForgotPasswordScreen;
+      <TouchableOpacity
+        onPress={() => router.replace("/signin")}
+        style={styles.backToSignIn}
+      >
+        <Text style={[styles.link, { color: colors.primary }]}>Back to sign in</Text>
+      </TouchableOpacity>
+    </AuthScreenLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  backToSignIn: {
+    alignItems: "center",
+    marginTop: rV(22),
+    paddingVertical: rV(8),
+  },
+  link: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+});

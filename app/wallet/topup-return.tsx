@@ -36,6 +36,11 @@ export default function WalletTopupReturnScreen() {
   const { showSuccessToast } = useToast();
   const [state, setState] = useState<TopupState>("verifying");
   const [errorMessage, setErrorMessage] = useState("");
+  const [resultMeta, setResultMeta] = useState<{
+    amount: number;
+    currency: string;
+    paymentLabel: string | null;
+  } | null>(null);
 
   const reference = getParam(params.reference) ?? getParam(params.trxref) ?? "";
   const isCancelled = getParam(params.cancelled) === "1";
@@ -44,7 +49,8 @@ export default function WalletTopupReturnScreen() {
     if (state === "success") {
       return {
         title: "Wallet funded successfully",
-        body: "Your balance has been updated and is ready to use for checkout.",
+        body:
+          "Payment confirmed. Your wallet balance is updated and ready for checkout.",
       };
     }
     if (state === "cancelled") {
@@ -98,6 +104,11 @@ export default function WalletTopupReturnScreen() {
           return;
         }
         await refreshProfileData();
+        setResultMeta({
+          amount: result.amount,
+          currency: result.currency,
+          paymentLabel: result.payment_label,
+        });
         if (result.status === "paid") {
           setState("success");
           showSuccessToast("Wallet funded successfully.");
@@ -112,7 +123,7 @@ export default function WalletTopupReturnScreen() {
           return;
         }
         setState("failed");
-        setErrorMessage(result.message);
+        setErrorMessage(result.message || "Top-up was not successful.");
       } catch (error) {
         if (!isMounted) {
           return;
@@ -142,6 +153,16 @@ export default function WalletTopupReturnScreen() {
         </View>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
+
+        {resultMeta ? (
+          <View style={styles.metaCard}>
+            <Text style={styles.metaLabel}>Top-up details</Text>
+            <Text style={styles.metaValue}>
+              {resultMeta.currency} {resultMeta.amount.toFixed(2)}
+              {resultMeta.paymentLabel ? ` via ${resultMeta.paymentLabel}` : ""}
+            </Text>
+          </View>
+        ) : null}
 
         {reference ? (
           <View style={styles.metaCard}>

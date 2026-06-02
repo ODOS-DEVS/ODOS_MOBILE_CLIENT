@@ -197,6 +197,10 @@ export type WalletTopupVerification = {
   reference: string;
   status: "paid" | "pending" | "cancelled" | "failed" | string;
   message: string;
+  amount: number;
+  currency: string;
+  payment_label: string | null;
+  payment_type: string | null;
   wallet: CustomerWallet;
 };
 

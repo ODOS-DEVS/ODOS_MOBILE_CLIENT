@@ -1,12 +1,14 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { AppColors } from "@/constants/Colors";
+import AuthFormCard from "@/components/auth/AuthFormCard";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type EmailVerificationSuccessProps = {
   email: string;
@@ -17,9 +19,15 @@ export default function EmailVerificationSuccess({
   email,
   onContinue,
 }: EmailVerificationSuccessProps) {
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const scale = useRef(new Animated.Value(0.82)).current;
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(rV(18))).current;
+
+  const gradientColors = isDark
+    ? (["#151C2B", "#0B1220", "#151C2B"] as const)
+    : (["#F8FAFC", "#FFFFFF", "#F3F4F6"] as const);
 
   useEffect(() => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -45,11 +53,8 @@ export default function EmailVerificationSuccess({
   }, [fade, scale, slide]);
 
   return (
-    <View style={styles.screen}>
-      <LinearGradient
-        colors={["#F8FAFC", "#FFFFFF", "#F3F4F6"]}
-        style={StyleSheet.absoluteFillObject}
-      />
+    <View style={[styles.screen, { backgroundColor: colors.screen }]}>
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFillObject} />
 
       <Animated.View
         style={[
@@ -57,6 +62,8 @@ export default function EmailVerificationSuccess({
           {
             opacity: fade,
             transform: [{ translateY: slide }],
+            paddingTop: insets.top + rV(48),
+            paddingBottom: insets.bottom + rV(28),
           },
         ]}
       >
@@ -67,43 +74,62 @@ export default function EmailVerificationSuccess({
           >
             <Ionicons name="mail-open-outline" size={rMS(34)} color="#FFFFFF" />
           </LinearGradient>
-          <View style={styles.checkBadge}>
+          <View style={[styles.checkBadge, { borderColor: colors.card }]}>
             <Ionicons name="checkmark" size={rMS(16)} color="#FFFFFF" />
           </View>
         </Animated.View>
 
-        <Text style={styles.title}>You&apos;re in!</Text>
-        <Text style={styles.subtitle}>
-          Your email is verified and your ODOS account is ready to go.
+        <Text style={[styles.title, { color: colors.text }]}>You're in!</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+          Your email is verified and your ODOS account is ready.
         </Text>
 
-        <View style={styles.emailCard}>
-          <Ionicons name="shield-checkmark-outline" size={rMS(18)} color="#15803D" />
-          <View style={styles.emailCopy}>
-            <Text style={styles.emailLabel}>Verified email</Text>
-            <Text style={styles.emailValue} numberOfLines={1}>
-              {email}
-            </Text>
+        <AuthFormCard>
+          <View
+            style={[
+              styles.emailRow,
+              {
+                backgroundColor: colors.accentSoft,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="shield-checkmark-outline" size={rMS(18)} color={colors.successText} />
+            <View style={styles.emailCopy}>
+              <Text style={[styles.emailLabel, { color: colors.successText }]}>
+                Verified email
+              </Text>
+              <Text style={[styles.emailValue, { color: colors.text }]} numberOfLines={1}>
+                {email}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.perksRow}>
-          <View style={styles.perkChip}>
-            <Ionicons name="bag-handle-outline" size={rMS(16)} color={AppColors.primary} />
-            <Text style={styles.perkText}>Shop securely</Text>
+          <View style={styles.perksRow}>
+            {[
+              { icon: "bag-handle-outline" as const, text: "Shop securely" },
+              { icon: "notifications-outline" as const, text: "Order updates" },
+              { icon: "heart-outline" as const, text: "Save favourites" },
+            ].map((perk) => (
+              <View
+                key={perk.text}
+                style={[
+                  styles.perkChip,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons name={perk.icon} size={rMS(15)} color={colors.primary} />
+                <Text style={[styles.perkText, { color: colors.textBody }]}>{perk.text}</Text>
+              </View>
+            ))}
           </View>
-          <View style={styles.perkChip}>
-            <Ionicons name="notifications-outline" size={rMS(16)} color={AppColors.primary} />
-            <Text style={styles.perkText}>Get order updates</Text>
-          </View>
-          <View style={styles.perkChip}>
-            <Ionicons name="heart-outline" size={rMS(16)} color={AppColors.primary} />
-            <Text style={styles.perkText}>Save favourites</Text>
-          </View>
-        </View>
+        </AuthFormCard>
 
-        <Text style={styles.footerCopy}>
-          From here you can browse stores, track orders, and build your wishlist — all in one place.
+        <Text style={[styles.footerCopy, { color: colors.textMuted }]}>
+          Browse stores, track orders, and build your wishlist — all in one place.
         </Text>
 
         <PrimaryButton title="Start exploring" onPress={onContinue} />
@@ -115,10 +141,7 @@ export default function EmailVerificationSuccess({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     paddingHorizontal: rS(24),
-    paddingTop: rV(72),
-    paddingBottom: rV(28),
   },
   content: {
     flex: 1,
@@ -152,12 +175,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#FFFFFF",
   },
   title: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(28),
-    color: "#111827",
     textAlign: "center",
   },
   subtitle: {
@@ -165,22 +186,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     fontSize: rMS(14.5),
     lineHeight: rMS(22),
-    color: AppColors.secondary,
     textAlign: "center",
     maxWidth: rS(320),
+    marginBottom: rV(22),
   },
-  emailCard: {
-    marginTop: rV(24),
-    width: "100%",
+  emailRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(12),
-    backgroundColor: "#F0FDF4",
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(14),
+    borderRadius: rMS(14),
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(12),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#BBF7D0",
+    marginBottom: rV(14),
   },
   emailCopy: {
     flex: 1,
@@ -189,18 +207,14 @@ const styles = StyleSheet.create({
   emailLabel: {
     fontFamily: Fonts.title,
     fontSize: rMS(11),
-    color: "#15803D",
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },
   emailValue: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(14),
-    color: "#14532D",
   },
   perksRow: {
-    marginTop: rV(20),
-    width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: rS(8),
@@ -210,25 +224,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: rS(6),
-    backgroundColor: "#F8FAFC",
     borderRadius: rMS(999),
     paddingHorizontal: rS(12),
     paddingVertical: rV(8),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
   },
   perkText: {
     fontFamily: Fonts.title,
     fontSize: rMS(12),
-    color: AppColors.text,
   },
   footerCopy: {
-    marginTop: rV(18),
-    marginBottom: rV(24),
+    marginTop: rV(20),
+    marginBottom: rV(22),
     fontFamily: Fonts.text,
     fontSize: rMS(13),
     lineHeight: rMS(20),
-    color: AppColors.secondary,
     textAlign: "center",
+    paddingHorizontal: rS(8),
   },
 });
