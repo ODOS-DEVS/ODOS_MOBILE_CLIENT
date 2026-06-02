@@ -42,6 +42,8 @@ export type CheckoutSessionPayload = OrderPayload & {
   cancel_url?: string | null;
 };
 
+export type WalletCheckoutPayload = OrderPayload;
+
 export type OrderItem = {
   id: string;
   product_id: string;
@@ -160,6 +162,50 @@ export type PaymentVerification = {
   message: string;
 };
 
+export type WalletTransaction = {
+  id: string;
+  kind: string;
+  title: string;
+  amount: number;
+  balance_after: number;
+  order_id: string | null;
+  topup_id: string | null;
+  created_at: string;
+};
+
+export type CustomerWallet = {
+  id: string;
+  user_id: string;
+  currency: string;
+  available_balance: number;
+  lifetime_topups: number;
+  lifetime_spend: number;
+  lifetime_refunds: number;
+  recent_transactions: WalletTransaction[];
+};
+
+export type WalletTopUpSession = {
+  reference: string;
+  authorization_url: string;
+  access_code: string;
+  amount: number;
+  currency: string;
+  status: string;
+};
+
+export type WalletTopupVerification = {
+  reference: string;
+  status: "paid" | "pending" | "cancelled" | "failed" | string;
+  message: string;
+  wallet: CustomerWallet;
+};
+
+export type WalletCheckoutResult = {
+  order: Order;
+  wallet_balance_after: number;
+  message: string;
+};
+
 async function getStoredAccessToken() {
   return SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
 }
@@ -237,6 +283,79 @@ export async function verifyCheckoutSessionRequest(
   }
 
   return (await response.json()) as PaymentVerification;
+}
+
+export async function fetchCustomerWalletRequest(accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/wallet/customer`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as CustomerWallet;
+}
+
+export async function createWalletTopupSessionRequest(
+  accessToken: string,
+  payload: {
+    amount: number;
+    payment_type?: "card" | "momo";
+    payment_label?: string | null;
+    payment_network?: string | null;
+    payment_phone?: string | null;
+    payment_last4?: string | null;
+    callback_url?: string | null;
+    cancel_url?: string | null;
+  },
+) {
+  const response = await fetch(`${API_BASE_URL}/wallet/customer/topups/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as WalletTopUpSession;
+}
+
+export async function verifyWalletTopupRequest(accessToken: string, reference: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/wallet/customer/topups/${encodeURIComponent(reference)}/verify`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as WalletTopupVerification;
+}
+
+export async function createWalletCheckoutRequest(
+  accessToken: string,
+  payload: WalletCheckoutPayload,
+) {
+  const response = await fetch(`${API_BASE_URL}/wallet/customer/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as WalletCheckoutResult;
 }
 
 async function fetchOrderRequest(accessToken: string, orderId: string) {
