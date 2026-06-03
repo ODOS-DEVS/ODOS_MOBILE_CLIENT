@@ -11,8 +11,12 @@ import {
   AccountIconShell,
   useAccountStyles,
 } from "@/components/account/AccountUi";
+import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/context/ToastContext";
+import { usePhoneVerification } from "@/hooks/usePhoneVerification";
+import { formatPhoneInput, validateGhanaPhone } from "@/utils/phone";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
@@ -28,7 +32,6 @@ type AddressFieldErrors = Partial<
 
 function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
   const errors: AddressFieldErrors = {};
-  const phoneDigits = form.phone.replace(/\D/g, "");
 
   if (form.label && form.label.trim().length < 2) {
     errors.label = "Nickname should be at least 2 characters.";
@@ -36,8 +39,9 @@ function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
   if (!form.fullName.trim() || form.fullName.trim().length < 2) {
     errors.fullName = "Enter the full recipient name.";
   }
-  if (phoneDigits.length < 10) {
-    errors.phone = "Enter a valid phone number.";
+  const phoneError = validateGhanaPhone(form.phone);
+  if (phoneError) {
+    errors.phone = phoneError;
   }
   if (!form.street.trim() || form.street.trim().length < 3) {
     errors.street = "Enter a delivery street address.";
@@ -64,6 +68,7 @@ export default function AddressScreen() {
     setDefaultAddress,
     setCheckoutAddressId,
   } = useProfile();
+  const { showInfoToast } = useToast();
 
   const params = useLocalSearchParams();
   const fromCheckout = getParam(params.fromCheckout) === "1";
@@ -72,6 +77,7 @@ export default function AddressScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<AddressFieldErrors>({});
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [form, setForm] = useState<Omit<Address, "id">>({
     label: "",
     fullName: "",
@@ -94,14 +100,22 @@ export default function AddressScreen() {
     });
     setEditingId(null);
     setFieldErrors({});
+    setPhoneCodeSent(false);
   };
 
   useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
 
+  useEffect(() => {
+    setPhoneCodeSent(false);
+  }, [form.phone, editingId]);
+
   const handleSave = async () => {
     const validationErrors = validateAddressForm(form);
+    if (!addressPhoneVerification.isVerified) {
+      validationErrors.phone = "Verify this phone number before saving.";
+    }
     setFieldErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) {
       return;
@@ -298,15 +312,46 @@ export default function AddressScreen() {
         />
         <AccountFormField
           label="Phone number"
-          placeholder="Mobile number"
+          placeholder="0541234567"
           value={form.phone}
           keyboardType="phone-pad"
           onChangeText={(value) => {
-            setForm({ ...form, phone: value });
+            setForm({ ...form, phone: formatPhoneInput(value) });
             setFieldErrors((current) => ({ ...current, phone: undefined }));
+            addressPhoneVerification.setVerificationError("");
           }}
           error={fieldErrors.phone}
         />
+        {addressPhoneVerification.isVerified && addressPhoneVerification.normalizedPhone ? (
+          <Text style={{ fontSize: 12, color: "#15803D", marginTop: -4 }}>
+            Number verified
+          </Text>
+        ) : null}
+        {addressPhoneVerification.showVerificationPanel &&
+        addressPhoneVerification.normalizedPhone ? (
+          <PhoneVerificationPanel
+            phoneNumber={addressPhoneVerification.normalizedPhone}
+            codeSent={phoneCodeSent}
+            isSendingCode={addressPhoneVerification.isSendingCode}
+            isVerifying={addressPhoneVerification.isVerifying}
+            error={addressPhoneVerification.verificationError}
+            onDismissError={() => addressPhoneVerification.setVerificationError("")}
+            onSendCode={async () => {
+              const result = await addressPhoneVerification.handleSendCode();
+              if (result.success) {
+                setPhoneCodeSent(true);
+                showInfoToast(result.message || "Verification code sent.");
+              }
+            }}
+            onVerify={async (code) => {
+              const result = await addressPhoneVerification.handleVerify(code);
+              if (result.success) {
+                setPhoneCodeSent(false);
+                showInfoToast("Phone number verified.");
+              }
+            }}
+          />
+        ) : null}
         <AccountFormField
           label="Street address"
           placeholder="House number and street"

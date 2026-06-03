@@ -114,12 +114,21 @@ type AuthContextType = {
   isResettingPassword: boolean;
   isSendingPhoneVerificationCode: boolean;
   isVerifyingPhoneNumber: boolean;
+  verifiedPhones: string[];
+  fetchVerifiedPhones: () => Promise<void>;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
   signInWithGoogle: (idToken: string) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
-  sendPhoneVerificationCode: (phoneNumber: string) => Promise<AuthResult>;
-  verifyPhoneNumber: (phoneNumber: string, code: string) => Promise<AuthResult>;
+  sendPhoneVerificationCode: (
+    phoneNumber: string,
+    options?: { linkToProfile?: boolean },
+  ) => Promise<AuthResult>;
+  verifyPhoneNumber: (
+    phoneNumber: string,
+    code: string,
+    options?: { linkToProfile?: boolean },
+  ) => Promise<AuthResult>;
   verifyEmail: (code: string) => Promise<AuthResult>;
   resendVerificationCode: () => Promise<AuthResult>;
   requestPasswordResetCode: (email: string) => Promise<AuthResult>;
@@ -636,14 +645,21 @@ async function verifyPasswordResetCodeRequest(email: string, code: string) {
   return (await response.json()) as { message: string; reset_token: string };
 }
 
-async function sendPhoneVerificationCodeRequest(token: string, phoneNumber: string) {
+async function sendPhoneVerificationCodeRequest(
+  token: string,
+  phoneNumber: string,
+  options?: { linkToProfile?: boolean },
+) {
   const response = await fetch(`${API_BASE_URL}/auth/phone/send-code`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ phone_number: phoneNumber }),
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      link_to_profile: options?.linkToProfile ?? true,
+    }),
   });
 
   if (!response.ok) {
@@ -658,6 +674,7 @@ async function verifyPhoneNumberRequest(
   token: string,
   phoneNumber: string,
   code: string,
+  options?: { linkToProfile?: boolean },
 ) {
   const response = await fetch(`${API_BASE_URL}/auth/phone/verify`, {
     method: "POST",
@@ -665,7 +682,11 @@ async function verifyPhoneNumberRequest(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ phone_number: phoneNumber, code }),
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      code,
+      link_to_profile: options?.linkToProfile ?? true,
+    }),
   });
 
   if (!response.ok) {
@@ -674,6 +695,21 @@ async function verifyPhoneNumberRequest(
   }
 
   return normalizeAuthUser((await response.json()) as Record<string, unknown>);
+}
+
+async function fetchVerifiedPhonesRequest(token: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/phone/verified`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    return [] as string[];
+  }
+
+  const payload = (await response.json()) as { phones?: string[] };
+  return Array.isArray(payload.phones) ? payload.phones : [];
 }
 
 async function resetPasswordRequest(
@@ -721,6 +757,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSendingPhoneVerificationCode, setIsSendingPhoneVerificationCode] =
     useState(false);
   const [isVerifyingPhoneNumber, setIsVerifyingPhoneNumber] = useState(false);
+  const [verifiedPhones, setVerifiedPhones] = useState<string[]>([]);
   const accessTokenRef = useRef<string | null>(null);
   const blockedAlertShownRef = useRef(false);
 
@@ -1065,8 +1102,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const fetchVerifiedPhones = useCallback(async () => {
+    if (!accessToken) {
+      setVerifiedPhones([]);
+      return;
+    }
+
+    const phones = await fetchVerifiedPhonesRequest(accessToken);
+    setVerifiedPhones(phones);
+  }, [accessToken]);
+
   const sendPhoneVerificationCode = useCallback(
-    async (phoneNumber: string) => {
+    async (phoneNumber: string, options?: { linkToProfile?: boolean }) => {
       if (!accessToken) {
         return {
           success: false,
@@ -1082,6 +1129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const result = await sendPhoneVerificationCodeRequest(
           accessToken,
           phoneNumber,
+          options,
         );
         return {
           success: true,
@@ -1117,8 +1165,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [accessToken],
   );
 
+  useEffect(() => {
+    if (accessToken) {
+      void fetchVerifiedPhones();
+    } else {
+      setVerifiedPhones([]);
+    }
+  }, [accessToken, fetchVerifiedPhones]);
+
   const verifyPhoneNumber = useCallback(
-    async (phoneNumber: string, code: string) => {
+    async (
+      phoneNumber: string,
+      code: string,
+      options?: { linkToProfile?: boolean },
+    ) => {
       if (!accessToken) {
         return {
           success: false,
@@ -1135,8 +1195,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           accessToken,
           phoneNumber,
           code,
+          options,
         );
-        setUser(updatedUser);
+        if (options?.linkToProfile ?? true) {
+          setUser(updatedUser);
+        }
+        await fetchVerifiedPhonesRequest(accessToken).then(setVerifiedPhones);
         return {
           success: true,
           user: updatedUser,
@@ -1242,7 +1306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsUpdatingProfile(false);
       }
     },
-    [accessToken],
+    [accessToken, fetchVerifiedPhones],
   );
 
   const verifyEmail = useCallback(
@@ -1481,6 +1545,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isResettingPassword,
       isSendingPhoneVerificationCode,
       isVerifyingPhoneNumber,
+      verifiedPhones,
+      fetchVerifiedPhones,
       signIn,
       signInWithGoogle,
       signUp,
@@ -1513,6 +1579,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isResettingPassword,
       isSendingPhoneVerificationCode,
       isVerifyingPhoneNumber,
+      verifiedPhones,
+      fetchVerifiedPhones,
       resendVerificationCode,
       sendPhoneVerificationCode,
       verifyPhoneNumber,

@@ -11,6 +11,7 @@ import {
   AccountIconShell,
   useAccountStyles,
 } from "@/components/account/AccountUi";
+import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -21,6 +22,8 @@ import {
 } from "@/context/ProfileContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { usePhoneVerification } from "@/hooks/usePhoneVerification";
+import { formatPhoneInput, validateGhanaPhone } from "@/utils/phone";
 import {
   createWalletTopupSessionRequest,
 } from "@/hooks/useOrders";
@@ -123,19 +126,32 @@ export default function WalletScreen() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<WalletFieldErrors>({});
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
+
+  const momoPhoneVerification = usePhoneVerification(form.phone ?? "", {
+    linkToProfile: false,
+  });
 
   const resetForm = () => {
     setForm({});
     setType("card");
     setFieldErrors({});
+    setPhoneCodeSent(false);
   };
 
   useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
 
+  useEffect(() => {
+    setPhoneCodeSent(false);
+  }, [form.phone, type]);
+
   const handleSave = async () => {
     const validationErrors = validateWalletForm(type, form);
+    if (type === "momo" && !momoPhoneVerification.isVerified) {
+      validationErrors.phone = "Verify this MoMo number before saving.";
+    }
     setFieldErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) {
       return;
@@ -699,15 +715,44 @@ export default function WalletScreen() {
             ) : null}
             <AccountFormField
               label="MoMo number"
-              placeholder="Phone number"
+              placeholder="0541234567"
               keyboardType="phone-pad"
               value={form.phone ?? ""}
               onChangeText={(value) => {
-                setForm({ ...form, phone: value });
+                setForm({ ...form, phone: formatPhoneInput(value) });
                 setFieldErrors((current) => ({ ...current, phone: undefined }));
+                momoPhoneVerification.setVerificationError("");
               }}
               error={fieldErrors.phone}
             />
+            {momoPhoneVerification.isVerified && momoPhoneVerification.normalizedPhone ? (
+              <Text style={walletStyles.verifiedHint}>Number verified</Text>
+            ) : null}
+            {momoPhoneVerification.showVerificationPanel &&
+            momoPhoneVerification.normalizedPhone ? (
+              <PhoneVerificationPanel
+                phoneNumber={momoPhoneVerification.normalizedPhone}
+                codeSent={phoneCodeSent}
+                isSendingCode={momoPhoneVerification.isSendingCode}
+                isVerifying={momoPhoneVerification.isVerifying}
+                error={momoPhoneVerification.verificationError}
+                onDismissError={() => momoPhoneVerification.setVerificationError("")}
+                onSendCode={async () => {
+                  const result = await momoPhoneVerification.handleSendCode();
+                  if (result.success) {
+                    setPhoneCodeSent(true);
+                    showInfoToast(result.message || "Verification code sent.");
+                  }
+                }}
+                onVerify={async (code) => {
+                  const result = await momoPhoneVerification.handleVerify(code);
+                  if (result.success) {
+                    setPhoneCodeSent(false);
+                    showInfoToast("MoMo number verified.");
+                  }
+                }}
+              />
+            ) : null}
           </>
         )}
       </AccountFormSheet>
@@ -907,6 +952,12 @@ const walletStyles = StyleSheet.create({
   },
   networkTextActive: {
     color: "#FFFFFF",
+  },
+  verifiedHint: {
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(12),
+    color: "#15803D",
+    marginTop: rV(-4),
   },
   error: {
     marginBottom: rV(10),
