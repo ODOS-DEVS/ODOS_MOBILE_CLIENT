@@ -88,6 +88,15 @@ export default function AddressScreen() {
     isDefault: false,
   });
 
+  const editingAddress = editingId
+    ? addresses.find((item) => item.id === editingId) ?? null
+    : null;
+
+  const addressPhoneVerification = usePhoneVerification(form.phone, {
+    linkToProfile: false,
+    treatAsVerifiedIf: editingAddress?.phone ?? null,
+  });
+
   const resetForm = () => {
     setForm({
       label: "",
