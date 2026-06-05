@@ -5,7 +5,7 @@ import { resolveActivityImageSource } from "@/utils/activityImages";
 import * as SecureStore from "expo-secure-store";
 import { useFocusEffect } from "expo-router";
 import { AppState } from "react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type ActivityRoute =
   | { type: "order"; orderId: string }
@@ -54,6 +54,13 @@ type NotificationEventPayload = {
   image_key: string | null;
   image_url: string | null;
   created_at: string;
+};
+
+type RefreshOptions = {
+  /** Skip full-screen loader; update list in place */
+  silent?: boolean;
+  /** Pull-to-refresh spinner only */
+  pull?: boolean;
 };
 
 function formatRelativeTime(value: string) {
@@ -112,7 +119,7 @@ function buildSections(items: ActivityItem[]): ActivitySection[] {
 
   return [
     { title: "Today", data: today },
-    { title: "This Week", data: thisWeek },
+    { title: "This week", data: thisWeek },
     { title: "Earlier", data: earlier },
   ].filter((section) => section.data.length > 0);
 }
@@ -233,89 +240,117 @@ export function useActivityFeed() {
   const { subscribe } = useRealtime();
   const [notifications, setNotifications] = useState<NotificationEventPayload[]>([]);
   const [readKeys, setReadKeys] = useState<string[]>([]);
-  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
 
   const getToken = useCallback(async () => {
     return accessToken || (await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY));
   }, [accessToken]);
 
-  const refreshActivity = useCallback(async () => {
-    if (!user) {
-      setNotifications([]);
-      setReadKeys([]);
-      setIsLoadingActivity(false);
-      return;
-    }
-
-    const token = await getToken();
-    if (!token) {
-      setNotifications([]);
-      setReadKeys([]);
-      setIsLoadingActivity(false);
-      return;
-    }
-
-    setIsLoadingActivity(true);
-    try {
-      const notificationsResponse = await fetch(`${API_BASE_URL}/notifications`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!notificationsResponse.ok) {
-        throw new Error("Failed to load activity.");
+  const refreshActivity = useCallback(
+    async (options?: RefreshOptions) => {
+      if (!user) {
+        setNotifications([]);
+        setReadKeys([]);
+        setIsInitialLoading(false);
+        setIsPullRefreshing(false);
+        hasLoadedOnceRef.current = false;
+        setHasLoadedOnce(false);
+        return;
       }
 
-      const notificationsPayload =
-        (await notificationsResponse.json()) as NotificationEventPayload[];
-      const enrichedNotifications = await enrichNotificationsWithOrderImages(
-        notificationsPayload,
-        token,
-      );
-      setNotifications(enrichedNotifications);
+      if (refreshInFlightRef.current) {
+        return;
+      }
+
+      const silent = options?.silent ?? hasLoadedOnceRef.current;
+      const pull = options?.pull ?? false;
+
+      if (pull) {
+        setIsPullRefreshing(true);
+      } else if (!silent) {
+        setIsInitialLoading(true);
+      }
+
+      refreshInFlightRef.current = true;
+
+      const token = await getToken();
+      if (!token) {
+        setNotifications([]);
+        setReadKeys([]);
+        setIsInitialLoading(false);
+        setIsPullRefreshing(false);
+        refreshInFlightRef.current = false;
+        return;
+      }
 
       try {
-        const readStateResponse = await fetch(`${API_BASE_URL}/notifications/read-state`, {
+        const notificationsResponse = await fetch(`${API_BASE_URL}/notifications`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        if (!readStateResponse.ok) {
-          throw new Error("Failed to load read state.");
+        if (!notificationsResponse.ok) {
+          throw new Error("Failed to load activity.");
         }
 
-        const readStatePayload = (await readStateResponse.json()) as {
-          read_keys: string[];
-        };
+        const notificationsPayload =
+          (await notificationsResponse.json()) as NotificationEventPayload[];
+        const enrichedNotifications = await enrichNotificationsWithOrderImages(
+          notificationsPayload,
+          token,
+        );
+        setNotifications(enrichedNotifications);
 
-        setReadKeys(readStatePayload.read_keys || []);
+        try {
+          const readStateResponse = await fetch(`${API_BASE_URL}/notifications/read-state`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!readStateResponse.ok) {
+            throw new Error("Failed to load read state.");
+          }
+
+          const readStatePayload = (await readStateResponse.json()) as {
+            read_keys: string[];
+          };
+
+          setReadKeys(readStatePayload.read_keys || []);
+        } catch {
+          setReadKeys([]);
+        }
       } catch {
-        setReadKeys([]);
+        if (!hasLoadedOnceRef.current) {
+          setNotifications([]);
+          setReadKeys([]);
+        }
+      } finally {
+        hasLoadedOnceRef.current = true;
+        setHasLoadedOnce(true);
+        setIsInitialLoading(false);
+        setIsPullRefreshing(false);
+        refreshInFlightRef.current = false;
       }
-    } catch {
-      setNotifications([]);
-      setReadKeys([]);
-    } finally {
-      setIsLoadingActivity(false);
-    }
-  }, [getToken, user]);
-
-  useEffect(() => {
-    void refreshActivity();
-  }, [refreshActivity]);
+    },
+    [getToken, user],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      void refreshActivity();
+      void refreshActivity({ silent: hasLoadedOnceRef.current });
     }, [refreshActivity]),
   );
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") {
-        void refreshActivity();
+      if (nextState === "active" && hasLoadedOnceRef.current) {
+        void refreshActivity({ silent: true });
       }
     });
 
@@ -389,12 +424,21 @@ export function useActivityFeed() {
     [getToken, user],
   );
 
+  const pullToRefresh = useCallback(() => {
+    void refreshActivity({ silent: true, pull: true });
+  }, [refreshActivity]);
+
   return {
     sections,
     items,
     unreadCount,
     markAsRead,
     refreshActivity,
-    isLoadingActivity,
+    pullToRefresh,
+    hasLoadedOnce,
+    isInitialLoading,
+    isPullRefreshing,
+    /** @deprecated use isInitialLoading */
+    isLoadingActivity: isInitialLoading,
   };
 }

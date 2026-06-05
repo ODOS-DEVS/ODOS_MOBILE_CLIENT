@@ -1,5 +1,4 @@
 import UserAvatar from "@/components/UserAvatar";
-import VendorQuickAccessButton from "@/components/vendor/VendorQuickAccessButton";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
@@ -68,7 +67,6 @@ export const HomeHeader = () => {
         </View>
       </TouchableOpacity>
       <View style={{ flexDirection: "row", alignItems: "center", gap: rS(10) }}>
-        <VendorQuickAccessButton compact />
         <TouchableOpacity
         onPress={() => {
           if (

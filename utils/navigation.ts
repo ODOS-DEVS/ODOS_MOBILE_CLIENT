@@ -8,6 +8,7 @@ export type RouterLike = {
   canGoBack?: () => boolean;
   canDismiss?: () => boolean;
   dismiss?: (count?: number) => void;
+  dismissAll?: () => void;
   dismissTo?: (href: Href) => void;
   push?: (href: Href) => void;
   navigate?: (href: Href) => void;

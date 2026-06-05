@@ -9,6 +9,10 @@ import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import Fonts from "@/constants/Fonts";
 import { rMS, rV } from "@/styles/responsive";
+import {
+  openForgotPassword,
+  resetAuthStackToSignIn,
+} from "@/utils/authNavigation";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
@@ -72,7 +76,7 @@ export default function CreatePasswordScreen() {
     }
 
     showToast(result.message || "Password updated successfully.");
-    router.replace("/signin");
+    resetAuthStackToSignIn(router);
   };
 
   return (
@@ -82,11 +86,7 @@ export default function CreatePasswordScreen() {
         title: "Create new password",
         subtitle:
           "Choose a strong password you haven't used on ODOS before. Finish here so your reset stays valid.",
-        onBack: () =>
-          router.replace({
-            pathname: "/forgotpassword",
-            params: routeEmail ? { email: routeEmail } : undefined,
-          }),
+        onBack: () => openForgotPassword(router, routeEmail),
       }}
     >
       <AuthFormCard>
@@ -133,12 +133,7 @@ export default function CreatePasswordScreen() {
       </AuthFormCard>
 
       <TouchableOpacity
-        onPress={() =>
-          router.replace({
-            pathname: "/forgotpassword",
-            params: routeEmail ? { email: routeEmail } : undefined,
-          })
-        }
+        onPress={() => openForgotPassword(router, routeEmail)}
         style={styles.restart}
       >
         <Text style={[styles.link, { color: colors.primary }]}>

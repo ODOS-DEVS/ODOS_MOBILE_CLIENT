@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { openSignInFromApp, openSignUpFromApp } from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 import { Alert } from "react-native";
@@ -36,11 +37,11 @@ export function useRequireAuth() {
           },
           {
             text: "Sign Up",
-            onPress: () => router.push("/(root)/(auth)/signup"),
+            onPress: () => openSignUpFromApp(router),
           },
           {
             text: "Sign In",
-            onPress: () => router.push("/(root)/(auth)/signin"),
+            onPress: () => openSignInFromApp(router),
           },
         ],
       );

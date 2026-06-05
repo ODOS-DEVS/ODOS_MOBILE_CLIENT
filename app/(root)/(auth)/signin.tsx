@@ -10,7 +10,14 @@ import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuthScreenRedirect } from "@/hooks/useAuthScreenRedirect";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rV } from "@/styles/responsive";
+import {
+  exitAuthToHome,
+  goToEmailVerification,
+  goToSignUp,
+  openForgotPassword,
+} from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -22,6 +29,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { isSigningIn, signIn } = useAuth();
   useAuthScreenRedirect();
+  useBlockBackNavigation(true);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,10 +66,7 @@ export default function SignInScreen() {
 
     if (result.success) {
       if (result.requiresVerification) {
-        router.replace({
-          pathname: "/verification",
-          params: { email: email.trim().toLowerCase() },
-        });
+        goToEmailVerification(router, email.trim().toLowerCase());
       }
       return;
     }
@@ -123,7 +128,7 @@ export default function SignInScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             hitSlop={8}
-            onPress={() => router.push("/forgotpassword")}
+            onPress={() => openForgotPassword(router)}
           >
             <Text style={[styles.rowLinkBold, { color: colors.primary }]}>
               Forgot password?
@@ -144,7 +149,7 @@ export default function SignInScreen() {
         <Text style={[styles.switchMuted, { color: colors.textMuted }]}>
           {"Don't have an account? "}
         </Text>
-        <TouchableOpacity onPress={() => router.replace("/signup")}>
+        <TouchableOpacity onPress={() => goToSignUp(router)}>
           <Text style={[styles.switchAction, { color: colors.primary }]}>Sign up</Text>
         </TouchableOpacity>
       </View>
@@ -153,7 +158,7 @@ export default function SignInScreen() {
       <AuthGoogleSignInBlock variant="signin" />
 
       <TouchableOpacity
-        onPress={() => router.replace("/(root)/(tabs)")}
+        onPress={() => exitAuthToHome(router)}
         style={styles.browseLink}
       >
         <Text style={[styles.browseText, { color: colors.primary }]}>

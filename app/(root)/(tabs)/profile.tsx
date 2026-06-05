@@ -5,11 +5,12 @@ import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { normalizeVendorStatus } from "@/types/vendor";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { resetAuthStackToSignIn } from "@/utils/authNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef } from "react";
@@ -46,21 +47,6 @@ export default function ProfileScreen() {
         : null,
     [user],
   );
-  const openProtectedRoute = useCallback(
-    (
-      pathname: string,
-      title = "Sign in to continue",
-      message = "Log in or create an account to access your account features.",
-    ) => {
-      if (!requireAuth({ title, message })) {
-        return;
-      }
-
-      router.push(pathname as any);
-    },
-    [requireAuth],
-  );
-
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
       {
@@ -72,7 +58,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace("/(root)/(tabs)");
+          resetAuthStackToSignIn(router);
         },
       },
     ]);
@@ -149,21 +135,6 @@ export default function ProfileScreen() {
   }, [user, vendorStatus]);
 
   const vendorSection = useMemo(() => {
-    if (!user) {
-      return {
-        title: "Become a Vendor",
-        body: "Apply once and manage your store from the same ODOS account after approval.",
-        cta: "Apply to Become a Vendor",
-        onPress: () =>
-          openProtectedRoute(
-            "/vendor/apply" as any,
-            "Sign in to become a vendor",
-            "Create an account or log in before starting a vendor application.",
-          ),
-        secondaryAction: null as null | { label: string; onPress: () => void },
-      };
-    }
-
     if (resolvedVendorStatus === "approved") {
       return {
         title: "Vendor Dashboard",
@@ -226,9 +197,7 @@ export default function ProfileScreen() {
       secondaryAction: null,
     };
   }, [
-    openProtectedRoute,
     resolvedVendorStatus,
-    user,
     vendorApplication?.rejectionReason,
     vendorApplication?.storeName,
   ]);
@@ -391,11 +360,16 @@ export default function ProfileScreen() {
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => {
-          openProtectedRoute(
-            "../screens/profileScreens/CustomerProfile",
-            "Sign in to manage your profile",
-            "Create an account or log in to update your personal details and preferences.",
-          );
+          if (user) {
+            router.push("../screens/profileScreens/CustomerProfile" as any);
+            return;
+          }
+
+          requireAuth({
+            title: "Sign in to manage your profile",
+            message:
+              "Create an account or log in to update your personal details and preferences.",
+          });
         }}
       >
         <AccountListCard style={styles.profileEntryCard}>
@@ -403,11 +377,15 @@ export default function ProfileScreen() {
             <View style={styles.subHeader}>
               <UserAvatar avatarUrl={user?.avatar_url} size={rS(52)} style={styles.avatar} />
               <View style={styles.profileEntryCopy}>
-                <Text style={styles.name}>{user?.full_name || "ODOS User"}</Text>
+                <Text style={styles.name}>
+                  {user ? user.full_name || "ODOS User" : "Guest"}
+                </Text>
                 <Text style={styles.email}>
                   {user?.email || "Sign in to view account details"}
                 </Text>
-                <Text style={styles.profileEntryHint}>Tap to edit your profile</Text>
+                <Text style={styles.profileEntryHint}>
+                  {user ? "Tap to edit your profile" : "Tap to sign in"}
+                </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={rMS(22)} color={colors.iconMuted} />
@@ -415,146 +393,141 @@ export default function ProfileScreen() {
         </AccountListCard>
       </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>Vendor</Text>
-      <View style={styles.vendorCard}>
-        <View style={styles.vendorCardHeader}>
-          <View style={styles.vendorIconWrap}>
-            <Ionicons name="briefcase-outline" size={rMS(18)} color={colors.text} />
+      {user ? (
+        <>
+          <Text style={styles.sectionTitle}>Vendor</Text>
+          <View style={styles.vendorCard}>
+            <View style={styles.vendorCardHeader}>
+              <View style={styles.vendorIconWrap}>
+                <Ionicons
+                  name="briefcase-outline"
+                  size={rMS(18)}
+                  color={colors.text}
+                />
+              </View>
+              <View style={styles.vendorTextWrap}>
+                <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
+                <Text style={styles.vendorBody}>{vendorSection.body}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.vendorButton}
+              onPress={vendorSection.onPress}
+              activeOpacity={0.85}
+              disabled={isVendorSectionLoading}
+            >
+              <Text style={styles.vendorButtonLabel}>
+                {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
+              </Text>
+            </TouchableOpacity>
+
+            {vendorSection.secondaryAction ? (
+              <TouchableOpacity
+                onPress={vendorSection.secondaryAction.onPress}
+                activeOpacity={0.75}
+                style={styles.vendorSecondaryButton}
+              >
+                <Text style={styles.vendorSecondaryButtonLabel}>
+                  {vendorSection.secondaryAction.label}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
-          <View style={styles.vendorTextWrap}>
-            <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
-            <Text style={styles.vendorBody}>{vendorSection.body}</Text>
-          </View>
-        </View>
 
-        <TouchableOpacity
-          style={styles.vendorButton}
-          onPress={vendorSection.onPress}
-          activeOpacity={0.85}
-          disabled={isVendorSectionLoading}
-        >
-          <Text style={styles.vendorButtonLabel}>
-            {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
-          </Text>
-        </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <AccountListCard style={styles.menuCard}>
+            <MenuItem
+              icon="receipt-outline"
+              label="Orders"
+              onPress={() => {
+                router.push("../screens/profileScreens/orders" as any);
+              }}
+            />
+            <MenuItem
+              icon="return-up-back-outline"
+              label="Returns"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Returns" as any);
+              }}
+            />
+            <MenuItem
+              icon="location-outline"
+              label="Addresses"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Addresses" as any);
+              }}
+            />
+            <MenuItem
+              icon="chatbubble-outline"
+              label="Chats"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Chats" as any);
+              }}
+            />
+            <MenuItem
+              icon="card-outline"
+              label="Payment Method"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Wallet" as any);
+              }}
+            />
+            <MenuItem
+              icon="star-outline"
+              label="Reviews"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Reviews" as any);
+              }}
+            />
+            <MenuItem
+              icon="ticket-outline"
+              label="Vouchers"
+              onPress={() => {
+                router.push("../screens/profileScreens/Account/Vouchers" as any);
+              }}
+            />
+          </AccountListCard>
 
-        {vendorSection.secondaryAction ? (
-          <TouchableOpacity
-            onPress={vendorSection.secondaryAction.onPress}
-            activeOpacity={0.75}
-            style={styles.vendorSecondaryButton}
-          >
-            <Text style={styles.vendorSecondaryButtonLabel}>
-              {vendorSection.secondaryAction.label}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+          <Text style={styles.sectionTitle}>Personalization</Text>
+          <AccountListCard style={styles.menuCard}>
+            <MenuItem
+              icon="notifications-outline"
+              label="Activity"
+              onPress={() => {
+                router.push("../screens/Notification" as any);
+              }}
+            />
+            <MenuItem
+              icon="options-outline"
+              label="Notification Settings"
+              onPress={() => {
+                router.push(
+                  "../screens/profileScreens/personalization/Notification" as any,
+                );
+              }}
+            />
+            <MenuItem
+              icon="sparkles-outline"
+              label="Preferences"
+              onPress={() => {
+                router.push(
+                  "../screens/profileScreens/personalization/Preferences" as any,
+                );
+              }}
+            />
+            <MenuItem
+              icon="language-outline"
+              label="Language"
+              onPress={() => {
+                router.push(
+                  "../screens/profileScreens/personalization/Language" as any,
+                );
+              }}
+            />
+          </AccountListCard>
+        </>
+      ) : null}
 
-      {/* Account Section */}
-      <Text style={styles.sectionTitle}>Account</Text>
-      <AccountListCard style={styles.menuCard}>
-        <MenuItem
-          icon="receipt-outline"
-          label="Orders"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/orders");
-          }}
-        />
-        <MenuItem
-          icon="return-up-back-outline"
-          label="Returns"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Returns");
-          }}
-        />
-        <MenuItem
-          icon="location-outline"
-          label="Addresses"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Addresses");
-          }}
-        />
-        <MenuItem
-          icon="chatbubble-outline"
-          label="Chats"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Chats");
-          }}
-        />
-        <MenuItem
-          icon="card-outline"
-          label="Payment Method"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Wallet");
-          }}
-        />
-        <MenuItem
-          icon="star-outline"
-          label="Reviews"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Reviews");
-          }}
-        />
-        <MenuItem
-          icon="ticket-outline"
-          label="Vouchers"
-          onPress={() => {
-            openProtectedRoute("../screens/profileScreens/Account/Vouchers");
-          }}
-        />
-      </AccountListCard>
-
-      {/* Personalization */}
-      <Text style={styles.sectionTitle}>Personalization</Text>
-      <AccountListCard style={styles.menuCard}>
-        <MenuItem
-          icon="notifications-outline"
-          label="Activity"
-          onPress={() => {
-            openProtectedRoute(
-              "../screens/Notification",
-              "Sign in to view activity",
-              "Log in or create an account to see order updates, milestones, and account activity.",
-            );
-          }}
-        />
-        <MenuItem
-          icon="options-outline"
-          label="Notification Settings"
-          onPress={() => {
-            openProtectedRoute(
-              "../screens/profileScreens/personalization/Notification",
-              "Sign in to manage notifications",
-              "Log in or create an account to save notification preferences.",
-            );
-          }}
-        />
-        <MenuItem
-          icon="sparkles-outline"
-          label="Preferences"
-          onPress={() => {
-            openProtectedRoute(
-              "../screens/profileScreens/personalization/Preferences",
-              "Sign in to manage preferences",
-              "Log in or create an account to save your shopping preferences.",
-            );
-          }}
-        />
-        <MenuItem
-          icon="language-outline"
-          label="Language"
-          onPress={() => {
-            openProtectedRoute(
-              "../screens/profileScreens/personalization/Language",
-              "Sign in to manage language settings",
-              "Log in or create an account to keep your language settings synced.",
-            );
-          }}
-        />
-      </AccountListCard>
-
-      {/* Help & Support */}
       <Text style={styles.sectionTitle}>Help & Support</Text>
       <AccountListCard style={styles.menuCard}>
         <MenuItem

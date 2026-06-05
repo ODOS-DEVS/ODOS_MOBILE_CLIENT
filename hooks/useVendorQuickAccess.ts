@@ -35,10 +35,14 @@ export function useVendorQuickAccess() {
     router.push("/vendor/settings" as any);
   }, []);
 
+  const pendingOrders = vendorDashboardStats?.pendingOrders ?? 0;
+
   return {
     vendorStatus,
     isApprovedVendor,
     storeLabel,
+    pendingOrders,
+    vendorDashboardStats,
     openDashboard,
     openSettings,
   };

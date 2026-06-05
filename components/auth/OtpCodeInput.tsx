@@ -1,115 +1,162 @@
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
-import React, { useRef } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 export const OTP_LENGTH = 6;
 
 type OtpCodeInputProps = {
   value: string[];
   onChange: (next: string[]) => void;
-  onComplete?: () => void;
+  onComplete?: (code: string) => void;
+  /** Compact cells for inline phone verification panels. */
+  compact?: boolean;
+  autoFocus?: boolean;
+  editable?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
-export default function OtpCodeInput({ value, onChange, onComplete }: OtpCodeInputProps) {
+function digitsToArray(code: string) {
+  const chars = code.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
+  return Array.from({ length: OTP_LENGTH }, (_, index) => chars[index] ?? "");
+}
+
+export default function OtpCodeInput({
+  value,
+  onChange,
+  onComplete,
+  compact = false,
+  autoFocus = false,
+  editable = true,
+  containerStyle,
+}: OtpCodeInputProps) {
   const { colors } = useTheme();
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const inputRef = useRef<TextInput | null>(null);
+  const joined = value.join("");
+  const cellStyles = compact ? compactStyles : defaultStyles;
 
-  const handleChange = (text: string, index: number) => {
-    const sanitized = text.replace(/\D/g, "");
-    const next = [...value];
-
-    if (!sanitized) {
-      next[index] = "";
-      onChange(next);
-      return;
+  useEffect(() => {
+    if (autoFocus && editable) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 120);
+      return () => clearTimeout(timer);
     }
+  }, [autoFocus, editable]);
 
-    if (sanitized.length > 1) {
-      const merged = [...value];
-      sanitized
-        .slice(0, OTP_LENGTH)
-        .split("")
-        .forEach((char, offset) => {
-          const targetIndex = index + offset;
-          if (targetIndex < OTP_LENGTH) {
-            merged[targetIndex] = char;
-          }
-        });
-      onChange(merged);
-      const nextIndex = Math.min(index + sanitized.length, OTP_LENGTH - 1);
-      inputs.current[nextIndex]?.focus();
-      if (merged.every((digit) => digit.length === 1)) {
-        onComplete?.();
-      }
-      return;
-    }
-
-    next[index] = sanitized;
+  const updateFromString = (text: string) => {
+    const sanitized = text.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    const next = digitsToArray(sanitized);
     onChange(next);
-
-    if (index < OTP_LENGTH - 1) {
-      inputs.current[index + 1]?.focus();
-    }
-
-    if (next.every((digit) => digit.length === 1)) {
-      onComplete?.();
-    }
-  };
-
-  const handleKeyPress = (
-    event: { nativeEvent: { key: string } },
-    index: number,
-  ) => {
-    if (event.nativeEvent.key === "Backspace" && !value[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
+    if (sanitized.length === OTP_LENGTH) {
+      onComplete?.(sanitized);
     }
   };
 
   return (
-    <View style={styles.row}>
+    <Pressable
+      style={[cellStyles.row, containerStyle]}
+      onPress={() => editable && inputRef.current?.focus()}
+    >
+      <TextInput
+        ref={inputRef}
+        value={joined}
+        onChangeText={updateFromString}
+        keyboardType="number-pad"
+        textContentType="oneTimeCode"
+        autoComplete="sms-otp"
+        maxLength={OTP_LENGTH}
+        editable={editable}
+        caretHidden
+        style={cellStyles.hiddenInput}
+        selectionColor={colors.primary}
+        blurOnSubmit={false}
+      />
       {value.map((digit, index) => (
-        <TextInput
+        <View
           key={index}
-          ref={(el) => {
-            inputs.current[index] = el;
-          }}
-          value={digit}
-          onChangeText={(text) => handleChange(text, index)}
-          onKeyPress={(event) => handleKeyPress(event, index)}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          maxLength={index === 0 ? OTP_LENGTH : 1}
           style={[
-            styles.cell,
+            cellStyles.cell,
             {
               backgroundColor: colors.inputBg,
               borderColor: digit ? colors.primary : colors.inputBorder,
-              color: colors.text,
             },
+            !editable && cellStyles.cellDisabled,
           ]}
-          selectionColor={colors.primary}
-        />
+        >
+          <Text style={[cellStyles.cellText, { color: colors.text }]}>{digit || " "}</Text>
+        </View>
       ))}
-    </View>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const defaultStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "center",
     gap: rS(8),
-    marginBottom: rV(22),
+    marginBottom: rV(18),
+    position: "relative",
+  },
+  hiddenInput: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.02,
+    fontSize: 1,
   },
   cell: {
-    width: rS(46),
-    height: rV(54),
-    borderRadius: rMS(14),
+    width: rS(44),
+    height: rV(50),
+    borderRadius: rMS(12),
     borderWidth: 1.5,
-    textAlign: "center",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cellDisabled: {
+    opacity: 0.85,
+  },
+  cellText: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(22),
+    fontSize: rMS(20),
+    lineHeight: rMS(24),
+  },
+});
+
+const compactStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: rS(5),
+    marginBottom: rV(8),
+    position: "relative",
+    minHeight: rV(40),
+  },
+  hiddenInput: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.02,
+    fontSize: 1,
+  },
+  cell: {
+    width: rS(32),
+    height: rV(38),
+    borderRadius: rMS(10),
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cellDisabled: {
+    opacity: 0.85,
+  },
+  cellText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(16),
+    lineHeight: rMS(20),
   },
 });

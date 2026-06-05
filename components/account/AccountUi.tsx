@@ -6,7 +6,9 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -304,13 +306,28 @@ export function AccountFormSheet({
   const insets = useSafeAreaInsets();
   const { sheetStyles, colors } = useAccountUiStyles();
 
+  const dismissKeyboard = () => Keyboard.dismiss();
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={sheetStyles.backdrop}>
-        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(16) }]}>
+        <Pressable
+          style={sheetStyles.backdropTap}
+          onPress={dismissKeyboard}
+          accessibilityLabel="Dismiss keyboard"
+          accessibilityRole="button"
+        />
+        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
           <View style={sheetStyles.handle} />
           <View style={sheetStyles.header}>
-            <TouchableOpacity style={sheetStyles.closeBtn} onPress={onClose} activeOpacity={0.82}>
+            <TouchableOpacity
+              style={sheetStyles.closeBtn}
+              onPress={() => {
+                dismissKeyboard();
+                onClose();
+              }}
+              activeOpacity={0.82}
+            >
               <Ionicons name="close" size={rMS(22)} color={colors.text} />
             </TouchableOpacity>
             <View style={sheetStyles.headerCopy}>
@@ -322,6 +339,8 @@ export function AccountFormSheet({
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            automaticallyAdjustKeyboardInsets
             contentContainerStyle={sheetStyles.body}
           >
             {children}
@@ -332,7 +351,10 @@ export function AccountFormSheet({
               sheetStyles.saveBtn,
               (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
             ]}
-            onPress={onSave}
+            onPress={() => {
+              dismissKeyboard();
+              onSave();
+            }}
             disabled={isSaving || saveDisabled}
             activeOpacity={0.9}
           >

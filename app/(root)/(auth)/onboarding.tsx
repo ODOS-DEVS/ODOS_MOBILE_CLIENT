@@ -3,6 +3,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { LinearGradient } from "expo-linear-gradient";
+import { exitAuthToHome } from "@/utils/authNavigation";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -43,6 +45,7 @@ export default function Onboarding() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
+  useBlockBackNavigation(true);
   const { requireAuth, user } = useRequireAuth();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -58,7 +61,7 @@ export default function Onboarding() {
     }
 
     if (user) {
-      router.replace("/(root)/(tabs)");
+      exitAuthToHome(router);
       return;
     }
 
@@ -67,7 +70,7 @@ export default function Onboarding() {
       message:
         "Sign up or sign in to save favourites, track orders, and use your wallet at checkout.",
       cancelLabel: "Keep browsing",
-      onCancel: () => router.replace("/(root)/(tabs)"),
+      onCancel: () => exitAuthToHome(router),
     });
   };
 
@@ -86,7 +89,7 @@ export default function Onboarding() {
       >
         <Text style={styles.brand}>ODOS</Text>
         <TouchableOpacity
-          onPress={() => router.replace("/(root)/(tabs)")}
+          onPress={() => exitAuthToHome(router)}
           hitSlop={12}
         >
           <Text style={styles.skip}>Skip</Text>

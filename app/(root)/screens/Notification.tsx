@@ -2,13 +2,15 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { ActivityItem, useActivityFeed } from "@/hooks/useActivityFeed";
 import { activityKindUsesProductImage } from "@/utils/activityImages";
+import { openSignInFromApp } from "@/utils/authNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { useNotificationStyles, AppColors } from "@/styles/themedNotificationStyles";
+import { useNotificationStyles } from "@/styles/themedNotificationStyles";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Image,
   RefreshControl,
@@ -18,35 +20,40 @@ import {
   View,
 } from "react-native";
 
-function activityAccentStyles(accent: ActivityItem["accent"]) {
+function activityAccentStyles(
+  accent: ActivityItem["accent"],
+  isDark: boolean,
+) {
   if (accent === "success") {
     return {
-      iconBg: "#ECFDF3",
-      iconColor: "#15803D",
+      iconBg: isDark ? "#14532D" : "#ECFDF3",
+      iconColor: isDark ? "#86EFAC" : "#15803D",
     };
   }
   if (accent === "warning") {
     return {
-      iconBg: "#FFF7ED",
-      iconColor: "#B45309",
+      iconBg: isDark ? "#422006" : "#FFF7ED",
+      iconColor: isDark ? "#FCD34D" : "#B45309",
     };
   }
   return {
-    iconBg: "#F3F4F6",
-    iconColor: AppColors.primary,
+    iconBg: isDark ? "#1E293B" : "#F3F4F6",
+    iconColor: isDark ? "#93C5FD" : "#4F46E5",
   };
 }
 
-function NotificationRowItem({
+const ActivityRow = React.memo(function ActivityRow({
   item,
   onOpen,
   styles,
+  isDark,
 }: {
   item: ActivityItem;
   onOpen: (item: ActivityItem) => void;
   styles: ReturnType<typeof useNotificationStyles>;
+  isDark: boolean;
 }) {
-  const accent = activityAccentStyles(item.accent);
+  const accent = activityAccentStyles(item.accent, isDark);
   const showProductThumb =
     Boolean(item.productImage) && activityKindUsesProductImage(item.kind);
 
@@ -62,16 +69,19 @@ function NotificationRowItem({
         </View>
       ) : (
         <View style={[styles.iconCircle, { backgroundColor: accent.iconBg }]}>
-          <Ionicons name={item.icon} size={rMS(20)} color={accent.iconColor} />
+          <Ionicons name={item.icon} size={rMS(18)} color={accent.iconColor} />
         </View>
       )}
 
       <View style={styles.middle}>
         <View style={styles.titleRow}>
-          <Text style={[styles.itemTitle, !item.isRead ? styles.itemTitleUnread : null]}>
+          <Text
+            style={[styles.itemTitle, !item.isRead ? styles.itemTitleUnread : null]}
+            numberOfLines={1}
+          >
             {item.title}
           </Text>
-          {!item.isRead ? <View style={styles.unreadPill} /> : null}
+          {!item.isRead ? <View style={styles.unreadDot} /> : null}
         </View>
         <Text style={styles.itemBody} numberOfLines={2}>
           {item.body}
@@ -79,58 +89,69 @@ function NotificationRowItem({
         <Text style={styles.time}>{item.relativeTime}</Text>
       </View>
 
-      {item.actionLabel ? (
-        <View style={styles.actionPill}>
-          <Text style={styles.actionText}>{item.actionLabel}</Text>
-          <Ionicons name="chevron-forward" size={rMS(14)} color={AppColors.text} />
-        </View>
-      ) : (
-        <Ionicons name="chevron-forward" size={rMS(16)} color="#CBD5E1" />
-      )}
+      <Ionicons name="chevron-forward" size={rMS(16)} color={styles.chevronColor} />
     </TouchableOpacity>
   );
-}
+});
 
 export default function NotificationScreen() {
   const styles = useNotificationStyles();
+  const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const {
     sections,
     unreadCount,
-    isLoadingActivity,
+    hasLoadedOnce,
+    isInitialLoading,
+    isPullRefreshing,
     markAsRead,
-    refreshActivity,
+    pullToRefresh,
   } = useActivityFeed();
 
-  const openItem = async (item: ActivityItem) => {
-    if (!item.isRead) {
-      await markAsRead([item.id]);
-    }
+  const openItem = useCallback(
+    async (item: ActivityItem) => {
+      if (!item.isRead) {
+        await markAsRead([item.id]);
+      }
 
-    if (!item.route) {
-      return;
-    }
+      if (!item.route) {
+        return;
+      }
 
-    if (item.route.type === "order") {
-      router.push({
-        pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
-        params: { orderId: item.route.orderId },
-      });
-      return;
-    }
+      if (item.route.type === "order") {
+        router.push({
+          pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
+          params: { orderId: item.route.orderId },
+        });
+        return;
+      }
 
-    if (item.route.type === "profile") {
-      router.push("/(root)/screens/profileScreens/CustomerProfile" as any);
-      return;
-    }
+      if (item.route.type === "profile") {
+        router.push("/(root)/screens/profileScreens/CustomerProfile" as any);
+        return;
+      }
 
-    if (item.route.type === "vendor_wallet") {
-      router.push("/vendor/wallet" as any);
-      return;
-    }
+      if (item.route.type === "vendor_wallet") {
+        router.push("/vendor/wallet" as any);
+        return;
+      }
 
-    router.push("/(root)/screens/profileScreens/orders" as any);
-  };
+      router.push("/(root)/screens/profileScreens/orders" as any);
+    },
+    [markAsRead],
+  );
+
+  const markAllRead = useCallback(() => {
+    const ids = sections.flatMap((section) => section.data.map((item) => item.id));
+    void markAsRead(ids);
+  }, [markAsRead, sections]);
+
+  const headerRight =
+    unreadCount > 0 ? (
+      <TouchableOpacity onPress={markAllRead} activeOpacity={0.85} hitSlop={8}>
+        <Text style={[styles.headerAction, { color: colors.primary }]}>Mark all read</Text>
+      </TouchableOpacity>
+    ) : null;
 
   if (!user) {
     return (
@@ -138,64 +159,39 @@ export default function NotificationScreen() {
         <ProfileHeader title="Activity" />
         <View style={styles.emptyState}>
           <UserAvatar size={rS(56)} />
-          <Text style={styles.emptyTitle}>Your activity will show up here</Text>
+          <Text style={styles.emptyTitle}>Sign in to see activity</Text>
           <Text style={styles.emptyText}>
-            Sign in to keep track of orders, account updates, and important shopping moments.
+            Orders, account updates, and shopping moments appear here once you are logged in.
           </Text>
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.88}
-            onPress={() => router.replace("/(root)/(auth)/onboarding" as any)}
+            onPress={() => openSignInFromApp(router)}
           >
-            <Text style={styles.primaryButtonText}>Create Account or Log In</Text>
+            <Text style={styles.primaryButtonText}>Sign in</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  const showInitialLoader = isInitialLoading && !hasLoadedOnce;
+  const showEmpty = hasLoadedOnce && sections.length === 0;
+
   return (
     <View style={styles.container}>
-      <ProfileHeader title="Activity" />
+      <ProfileHeader title="Activity" rightNode={headerRight} />
 
-      <View style={styles.topBanner}>
-        <View style={styles.bannerHeader}>
-          <View style={styles.bannerIcon}>
-            <Ionicons name="sparkles-outline" size={rMS(18)} color={AppColors.primary} />
-          </View>
-          <View style={styles.bannerCopy}>
-            <Text style={styles.bannerTitle}>Your ODOS timeline</Text>
-            <Text style={styles.bannerText}>
-              {unreadCount > 0
-                ? `${unreadCount} new update${unreadCount === 1 ? "" : "s"} waiting for you.`
-                : "Orders, account moments, and shopping updates land here."}
-            </Text>
-          </View>
-        </View>
-        {unreadCount > 0 ? (
-          <TouchableOpacity
-            style={styles.markAllButton}
-            activeOpacity={0.85}
-            onPress={() => {
-              void markAsRead(sections.flatMap((section) => section.data.map((item) => item.id)));
-            }}
-          >
-            <Text style={styles.markAllButtonText}>Mark all read</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {isLoadingActivity ? (
-        <ScreenLoader label="Loading your activity..." />
-      ) : sections.length === 0 ? (
+      {showInitialLoader ? (
+        <ScreenLoader label="Loading activity…" />
+      ) : showEmpty ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <Ionicons name="notifications-outline" size={rMS(28)} color={AppColors.primary} />
+            <Ionicons name="notifications-outline" size={rMS(26)} color={colors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
+          <Text style={styles.emptyTitle}>No activity yet</Text>
           <Text style={styles.emptyText}>
-            Place an order, verify your email, or update your profile — the important moments will
-            show up here.
+            When you place orders or update your account, updates will show up here.
           </Text>
         </View>
       ) : (
@@ -206,18 +202,26 @@ export default function NotificationScreen() {
             <Text style={styles.sectionTitle}>{section.title}</Text>
           )}
           renderItem={({ item }) => (
-            <NotificationRowItem item={item} onOpen={openItem} styles={styles} />
+            <ActivityRow item={item} onOpen={openItem} styles={styles} isDark={isDark} />
           )}
+          ListHeaderComponent={
+            unreadCount > 0 ? (
+              <Text style={styles.listIntro}>
+                {unreadCount} unread update{unreadCount === 1 ? "" : "s"}
+              </Text>
+            ) : (
+              <Text style={styles.listIntro}>Orders and account updates</Text>
+            )
+          }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
+          removeClippedSubviews={false}
           refreshControl={
             <RefreshControl
-              refreshing={isLoadingActivity}
-              onRefresh={() => {
-                void refreshActivity();
-              }}
-              tintColor={AppColors.primary}
+              refreshing={isPullRefreshing}
+              onRefresh={pullToRefresh}
+              tintColor={colors.primary}
             />
           }
         />
