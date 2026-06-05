@@ -363,7 +363,11 @@ function buildSheetStyles(c: ThemeColors) {
       justifyContent: "flex-end",
       backgroundColor: c.backdrop,
     },
+    backdropTap: {
+      ...StyleSheet.absoluteFillObject,
+    },
     sheet: {
+      width: "100%",
       maxHeight: "92%",
       backgroundColor: c.card,
       borderTopLeftRadius: rMS(24),

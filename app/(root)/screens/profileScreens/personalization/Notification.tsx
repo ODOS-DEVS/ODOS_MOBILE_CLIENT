@@ -1,22 +1,23 @@
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import {
-  AccountInsightCard,
   AccountLinkRow,
   AccountSettingToggle,
   AccountSettingsGroup,
   AccountStickySaveBar,
-  AccountTipBanner,
   useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
+import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
-import { rV } from "@/styles/responsive";
+import { rMS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 
-export default function NotificationScreen() {
+export default function NotificationSettingsScreen() {
   const accountStyles = useAccountStyles();
+  const { colors } = useTheme();
   const { user, updateProfile, isUpdatingProfile } = useAuth();
   const { showToast } = useToast();
   const [allowNotifications, setAllowNotifications] = useState(false);
@@ -38,12 +39,6 @@ export default function NotificationScreen() {
     setLocation(user.location_notifications);
     setLocationUpdates(user.location_updates);
   }, [user]);
-
-  const enabledCount = useMemo(
-    () =>
-      [discounts, store, system, location, locationUpdates].filter(Boolean).length,
-    [discounts, location, locationUpdates, store, system],
-  );
 
   const handleSave = async () => {
     const result = await updateProfile({
@@ -67,31 +62,21 @@ export default function NotificationScreen() {
 
   return (
     <View style={accountStyles.screen}>
-      <ProfileHeader title="Notification Settings" />
+      <ProfileHeader title="Notifications" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[accountStyles.content, { paddingBottom: rV(100) }]}
       >
-        <AccountInsightCard
-          title="Stay in the loop"
-          subtitle="Order and account updates always appear in Activity. Choose which push alerts you want on this device."
-          stats={[
-            { value: allowNotifications ? "On" : "Off", label: "Master" },
-            { value: enabledCount, label: "Channels" },
-          ]}
-        />
+        <Text style={[introStyles.text, { color: colors.textMuted }]}>
+          Order and account events always appear in Activity. These toggles control push alerts on
+          this device.
+        </Text>
 
-        <AccountTipBanner
-          title="Activity vs push alerts"
-          message="Your order timeline in Activity is separate from these notification toggles."
-          icon="notifications-outline"
-        />
-
-        <AccountSettingsGroup title="Master control">
+        <AccountSettingsGroup title="Push alerts">
           <AccountSettingToggle
             title="Allow notifications"
-            description="Turn off to pause every push alert from ODOS on this device."
+            description="Master switch for ODOS push alerts."
             value={allowNotifications}
             onValueChange={(value) => {
               setAllowNotifications(value);
@@ -103,54 +88,50 @@ export default function NotificationScreen() {
                 setLocationUpdates(false);
               }
             }}
-            isLast
+            isLast={!allowNotifications}
           />
-        </AccountSettingsGroup>
-
-        <AccountSettingsGroup title="Alert types">
-          <AccountSettingToggle
-            title="Deals & vouchers"
-            description="Sales, voucher drops, and limited-time offers."
-            value={discounts}
-            onValueChange={setDiscounts}
-            disabled={!allowNotifications}
-          />
-          <AccountSettingToggle
-            title="Store messages"
-            description="Replies and updates from vendors you chat with."
-            value={store}
-            onValueChange={setStore}
-            disabled={!allowNotifications}
-          />
-          <AccountSettingToggle
-            title="System updates"
-            description="Security, policy, and account notices."
-            value={system}
-            onValueChange={setSystem}
-            disabled={!allowNotifications}
-          />
-          <AccountSettingToggle
-            title="Location alerts"
-            description="Delivery proximity and location-based reminders."
-            value={location}
-            onValueChange={setLocation}
-            disabled={!allowNotifications}
-          />
-          <AccountSettingToggle
-            title="Live location updates"
-            description="Share location updates for smoother delivery tracking."
-            value={locationUpdates}
-            onValueChange={setLocationUpdates}
-            disabled={!allowNotifications}
-            isLast
-          />
+          {allowNotifications ? (
+            <>
+              <AccountSettingToggle
+                title="Deals & vouchers"
+                description="Sales and limited-time offers."
+                value={discounts}
+                onValueChange={setDiscounts}
+              />
+              <AccountSettingToggle
+                title="Store messages"
+                description="Vendor chat and store updates."
+                value={store}
+                onValueChange={setStore}
+              />
+              <AccountSettingToggle
+                title="System updates"
+                description="Security and account notices."
+                value={system}
+                onValueChange={setSystem}
+              />
+              <AccountSettingToggle
+                title="Location alerts"
+                description="Delivery and location reminders."
+                value={location}
+                onValueChange={setLocation}
+              />
+              <AccountSettingToggle
+                title="Live location updates"
+                description="Smoother delivery tracking when enabled."
+                value={locationUpdates}
+                onValueChange={setLocationUpdates}
+                isLast
+              />
+            </>
+          ) : null}
         </AccountSettingsGroup>
 
         <AccountSettingsGroup>
           <AccountLinkRow
-            icon="list-outline"
-            title="View activity feed"
-            subtitle="See order milestones and account events in one timeline."
+            icon="time-outline"
+            title="View activity"
+            subtitle="Order milestones and account events."
             onPress={() => router.push("/(root)/screens/Notification" as any)}
             isLast
           />
@@ -158,10 +139,19 @@ export default function NotificationScreen() {
       </ScrollView>
 
       <AccountStickySaveBar
-        label="Save notification settings"
+        label="Save settings"
         onPress={() => void handleSave()}
         loading={isUpdatingProfile}
       />
     </View>
   );
 }
+
+const introStyles = {
+  text: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    lineHeight: rMS(20),
+    marginBottom: rV(2),
+  },
+};

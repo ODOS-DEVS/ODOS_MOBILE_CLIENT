@@ -8,7 +8,10 @@ import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rV } from "@/styles/responsive";
-import { goBackOr } from "@/utils/navigation";
+import {
+  goToPasswordResetVerification,
+  goToSignIn,
+} from "@/utils/authNavigation";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
@@ -53,13 +56,7 @@ export default function ForgotPasswordScreen() {
     }
 
     showToast(result.message || "Reset code sent.");
-    router.replace({
-      pathname: "/verification",
-      params: {
-        email: trimmedEmail,
-        mode: "password-reset",
-      },
-    });
+    goToPasswordResetVerification(router, trimmedEmail);
   };
 
   return (
@@ -69,7 +66,7 @@ export default function ForgotPasswordScreen() {
         title: "Forgot password?",
         subtitle:
           "Enter the email on your account. We'll send a 6-digit code to reset your password.",
-        onBack: () => goBackOr(router, { fallback: "/signin" }),
+        onBack: () => goToSignIn(router),
       }}
     >
       <AuthFormCard>
@@ -101,7 +98,7 @@ export default function ForgotPasswordScreen() {
       </AuthFormCard>
 
       <TouchableOpacity
-        onPress={() => router.replace("/signin")}
+        onPress={() => goToSignIn(router)}
         style={styles.backToSignIn}
       >
         <Text style={[styles.link, { color: colors.primary }]}>Back to sign in</Text>

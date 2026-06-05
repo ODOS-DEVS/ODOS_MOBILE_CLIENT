@@ -302,8 +302,8 @@ const CustomerProfile = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="none"
         automaticallyAdjustKeyboardInsets
       >
         <AccountProfileHero
@@ -425,7 +425,6 @@ const CustomerProfile = () => {
                     return;
                   }
 
-                  setPhoneCodeSent(false);
                   setPhoneVerifyError("");
                   setPhoneNumberError("");
                   if (result.user?.phone_number) {

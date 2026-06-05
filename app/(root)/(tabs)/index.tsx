@@ -35,6 +35,7 @@ function buildShuffleScore(id: string, seed: number) {
 type HomeSectionProps = {
   title: string;
   onSeeAll?: () => void;
+  headerRight?: React.ReactNode;
   isLoading: boolean;
   isEmpty: boolean;
   skeleton: React.ReactNode;
@@ -46,6 +47,7 @@ type HomeSectionProps = {
 function HomeSection({
   title,
   onSeeAll,
+  headerRight,
   isLoading,
   isEmpty,
   skeleton,
@@ -65,22 +67,28 @@ function HomeSection({
         <View
           style={{
             flexDirection: "row",
+            alignItems: "center",
             justifyContent: "space-between",
+            gap: rS(12),
             paddingHorizontal: horizontalPadding,
             marginTop: sectionSpacing,
             marginBottom: rS(10),
           }}
         >
-          <Text className="text-xl font-montserrat-extraBold text-gray-800 dark:text-gray-100">
+          <Text
+            className="flex-1 text-xl font-montserrat-extraBold text-gray-800 dark:text-gray-100"
+            numberOfLines={1}
+          >
             {title}
           </Text>
-          {onSeeAll ? (
-            <TouchableOpacity onPress={onSeeAll}>
-              <Text className="text-base font-montserrat-extraBold text-gray-800 dark:text-gray-100">
-                See All
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+          {headerRight ??
+            (onSeeAll ? (
+              <TouchableOpacity onPress={onSeeAll} hitSlop={8}>
+                <Text className="text-base font-montserrat-extraBold text-gray-800 dark:text-gray-100">
+                  See All
+                </Text>
+              </TouchableOpacity>
+            ) : null)}
         </View>
       ) : null}
 
@@ -227,39 +235,29 @@ const HomeScreen = () => {
 
             <HomeSection
               title="Flash Sales"
+              headerRight={
+                <Text className="font-montserrat-semiBold text-base text-primary tabular-nums">
+                  {timeLeft}
+                </Text>
+              }
               isLoading={isLoadingFlashSales}
               isEmpty={flashSaleProducts.length === 0}
               skeleton={<FlashSalesRowSkeleton />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
-              <>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
+              <View style={{ marginLeft: -horizontalPadding }}>
+                <FlatList
+                  data={flashSaleProducts}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => <FlashSalesCard {...item} />}
+                  contentContainerStyle={{
                     paddingHorizontal: horizontalPadding,
-                    marginTop: -rS(10),
-                    marginBottom: rS(6),
                   }}
-                >
-                  <Text className="font-montserrat-semiBold text-primary">
-                    {timeLeft}
-                  </Text>
-                </View>
-                <View style={{ marginLeft: -horizontalPadding }}>
-                  <FlatList
-                    data={flashSaleProducts}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <FlashSalesCard {...item} />}
-                    contentContainerStyle={{
-                      paddingHorizontal: horizontalPadding,
-                    }}
-                  />
-                </View>
-              </>
+                />
+              </View>
             </HomeSection>
 
             {hasCatalogContent ? (

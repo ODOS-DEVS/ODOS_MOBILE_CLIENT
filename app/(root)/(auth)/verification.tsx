@@ -10,6 +10,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
+import {
+  exitAuthToHome,
+  goToCreatePassword,
+  goToSignIn,
+  openForgotPassword,
+} from "@/utils/authNavigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -45,7 +51,7 @@ export default function VerificationScreen() {
 
   useEffect(() => {
     if (!isPasswordResetMode && user?.is_verified) {
-      router.replace("/(root)/(tabs)");
+      exitAuthToHome(router);
     }
   }, [isPasswordResetMode, router, user?.is_verified]);
 
@@ -64,13 +70,7 @@ export default function VerificationScreen() {
       const result = await verifyPasswordResetCode(routeEmail, joinedCode);
       if (result.success && result.resetToken) {
         showToast("Reset code confirmed.");
-        router.replace({
-          pathname: "/createpassowrd",
-          params: {
-            email: routeEmail,
-            resetToken: result.resetToken,
-          },
-        });
+        goToCreatePassword(router, routeEmail, result.resetToken);
         return;
       }
 
@@ -127,7 +127,7 @@ export default function VerificationScreen() {
     return (
       <EmailVerificationSuccess
         email={displayEmail}
-        onContinue={() => router.replace("/(root)/(tabs)")}
+        onContinue={() => exitAuthToHome(router)}
       />
     );
   }
@@ -142,13 +142,10 @@ export default function VerificationScreen() {
           : `Enter the 6-digit code we sent to ${displayEmail} to activate your account.`,
         onBack: () => {
           if (isPasswordResetMode) {
-            router.replace({
-              pathname: "/forgotpassword",
-              params: routeEmail ? { email: routeEmail } : undefined,
-            });
+            openForgotPassword(router, routeEmail);
             return;
           }
-          router.replace("/signin");
+          goToSignIn(router);
         },
       }}
     >
@@ -222,13 +219,10 @@ export default function VerificationScreen() {
       <TouchableOpacity
         onPress={() => {
           if (isPasswordResetMode) {
-            router.replace({
-              pathname: "/forgotpassword",
-              params: routeEmail ? { email: routeEmail } : undefined,
-            });
+            openForgotPassword(router, routeEmail);
             return;
           }
-          router.replace("/signin");
+          goToSignIn(router);
         }}
         style={styles.altAction}
       >

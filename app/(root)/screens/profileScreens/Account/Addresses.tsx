@@ -77,7 +77,6 @@ export default function AddressScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<AddressFieldErrors>({});
-  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [form, setForm] = useState<Omit<Address, "id">>({
     label: "",
     fullName: "",
@@ -109,16 +108,11 @@ export default function AddressScreen() {
     });
     setEditingId(null);
     setFieldErrors({});
-    setPhoneCodeSent(false);
   };
 
   useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
-
-  useEffect(() => {
-    setPhoneCodeSent(false);
-  }, [form.phone, editingId]);
 
   const handleSave = async () => {
     const validationErrors = validateAddressForm(form);
@@ -340,7 +334,7 @@ export default function AddressScreen() {
         addressPhoneVerification.normalizedPhone ? (
           <PhoneVerificationPanel
             phoneNumber={addressPhoneVerification.normalizedPhone}
-            codeSent={phoneCodeSent}
+            codeSent={addressPhoneVerification.codeSent}
             isSendingCode={addressPhoneVerification.isSendingCode}
             isVerifying={addressPhoneVerification.isVerifying}
             error={addressPhoneVerification.verificationError}
@@ -348,14 +342,12 @@ export default function AddressScreen() {
             onSendCode={async () => {
               const result = await addressPhoneVerification.handleSendCode();
               if (result.success) {
-                setPhoneCodeSent(true);
                 showInfoToast(result.message || "Verification code sent.");
               }
             }}
             onVerify={async (code) => {
               const result = await addressPhoneVerification.handleVerify(code);
               if (result.success) {
-                setPhoneCodeSent(false);
                 showInfoToast("Phone number verified.");
               }
             }}

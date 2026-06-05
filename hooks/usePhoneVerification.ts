@@ -152,7 +152,6 @@ export function usePhoneVerification(
           result.fieldErrors?.general || "That code could not be verified.",
         );
       } else {
-        setCodeSent(false);
         await fetchVerifiedPhones();
       }
       return result;

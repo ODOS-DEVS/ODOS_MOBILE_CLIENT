@@ -126,8 +126,6 @@ export default function WalletScreen() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<WalletFieldErrors>({});
-  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
-
   const momoPhoneVerification = usePhoneVerification(form.phone ?? "", {
     linkToProfile: false,
   });
@@ -136,16 +134,11 @@ export default function WalletScreen() {
     setForm({});
     setType("card");
     setFieldErrors({});
-    setPhoneCodeSent(false);
   };
 
   useEffect(() => {
     void refreshProfileData();
   }, [refreshProfileData]);
-
-  useEffect(() => {
-    setPhoneCodeSent(false);
-  }, [form.phone, type]);
 
   const handleSave = async () => {
     const validationErrors = validateWalletForm(type, form);
@@ -732,7 +725,7 @@ export default function WalletScreen() {
             momoPhoneVerification.normalizedPhone ? (
               <PhoneVerificationPanel
                 phoneNumber={momoPhoneVerification.normalizedPhone}
-                codeSent={phoneCodeSent}
+                codeSent={momoPhoneVerification.codeSent}
                 isSendingCode={momoPhoneVerification.isSendingCode}
                 isVerifying={momoPhoneVerification.isVerifying}
                 error={momoPhoneVerification.verificationError}
@@ -740,14 +733,12 @@ export default function WalletScreen() {
                 onSendCode={async () => {
                   const result = await momoPhoneVerification.handleSendCode();
                   if (result.success) {
-                    setPhoneCodeSent(true);
                     showInfoToast(result.message || "Verification code sent.");
                   }
                 }}
                 onVerify={async (code) => {
                   const result = await momoPhoneVerification.handleVerify(code);
                   if (result.success) {
-                    setPhoneCodeSent(false);
                     showInfoToast("MoMo number verified.");
                   }
                 }}

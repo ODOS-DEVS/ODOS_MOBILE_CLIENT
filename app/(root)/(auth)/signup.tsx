@@ -10,7 +10,9 @@ import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuthScreenRedirect } from "@/hooks/useAuthScreenRedirect";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rV } from "@/styles/responsive";
+import { goToEmailVerification, goToSignIn } from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -22,6 +24,7 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { isSigningUp, signUp } = useAuth();
   useAuthScreenRedirect();
+  useBlockBackNavigation(true);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -99,10 +102,7 @@ export default function SignUpScreen() {
 
     if (result.success) {
       if (result.requiresVerification) {
-        router.replace({
-          pathname: "/verification",
-          params: { email: email.trim().toLowerCase() },
-        });
+        goToEmailVerification(router, email.trim().toLowerCase());
       }
       return;
     }
@@ -208,7 +208,7 @@ export default function SignUpScreen() {
         <Text style={[styles.switchMuted, { color: colors.textMuted }]}>
           Already have an account?{" "}
         </Text>
-        <TouchableOpacity onPress={() => router.replace("/signin")}>
+        <TouchableOpacity onPress={() => goToSignIn(router)}>
           <Text style={[styles.switchAction, { color: colors.primary }]}>Sign in</Text>
         </TouchableOpacity>
       </View>

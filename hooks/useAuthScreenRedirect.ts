@@ -1,4 +1,8 @@
 import { useAuth } from "@/context/AuthContext";
+import {
+  exitAuthToHome,
+  goToEmailVerification,
+} from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 
@@ -13,13 +17,10 @@ export function useAuthScreenRedirect() {
     }
 
     if (!user.is_verified) {
-      router.replace({
-        pathname: "/verification",
-        params: { email: user.email },
-      });
+      goToEmailVerification(router, user.email);
       return;
     }
 
-    router.replace("/(root)/(tabs)");
+    exitAuthToHome(router);
   }, [router, user]);
 }
