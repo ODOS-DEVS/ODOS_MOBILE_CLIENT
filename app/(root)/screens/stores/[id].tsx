@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
@@ -9,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useStore } from "@/hooks/useCommerce";
 import { type StoreVoucherOffer, useVouchers } from "@/hooks/useVouchers";
 import { rS, rV, useResponsive } from "@/styles/responsive";
@@ -31,7 +33,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const PRODUCT_PREVIEW_LIMIT = 6;
 const COVER_HEIGHT = rV(232);
 const STICKY_BAR_HEIGHT = rV(52);
 
@@ -40,7 +41,6 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 const StoreDetailScreen = () => {
   const [storeOffers, setStoreOffers] = useState<StoreVoucherOffer[]>([]);
   const [isClaimingOfferId, setIsClaimingOfferId] = useState<string | null>(null);
-  const [showAllProducts, setShowAllProducts] = useState(false);
   const [stickyThreshold, setStickyThreshold] = useState(COVER_HEIGHT + 180);
   const [stickyActive, setStickyActive] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -92,8 +92,14 @@ const StoreDetailScreen = () => {
     storeId,
     fallback: fallbackStore,
   });
-  const { products: storeProducts, isLoading: isLoadingStoreProducts } = useCatalogProducts({
+  const {
+    products: storeProducts,
+    isLoading: isLoadingStoreProducts,
+    isLoadingMore: isLoadingMoreStoreProducts,
+    loadMore: loadMoreStoreProducts,
+  } = useInfiniteCatalogProducts({
     storeId,
+    enabled: Boolean(storeId),
   });
   const { products: flashSaleProducts } = useCatalogProducts({
     storeId,
@@ -104,11 +110,30 @@ const StoreDetailScreen = () => {
   const gridGap = rS(6);
   const gridPadding = horizontalPadding;
   const shellWidth = width;
-  const canExpandProductLine = storeProducts.length > PRODUCT_PREVIEW_LIMIT;
-  const visibleStoreProducts = showAllProducts
-    ? storeProducts
-    : storeProducts.slice(0, PRODUCT_PREVIEW_LIMIT);
   const singleFlashSaleCardWidth = Math.max(shellWidth - horizontalPadding * 2, rS(200));
+
+  const handleStoreScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: true,
+      listener: (event: {
+        nativeEvent: {
+          layoutMeasurement: { height: number };
+          contentOffset: { y: number };
+          contentSize: { height: number };
+        };
+      }) => {
+        const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+        const paddingToBottom = rV(280);
+        if (
+          layoutMeasurement.height + contentOffset.y >=
+          contentSize.height - paddingToBottom
+        ) {
+          void loadMoreStoreProducts();
+        }
+      },
+    },
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -137,7 +162,6 @@ const StoreDetailScreen = () => {
   }, [fetchStoreVouchers, storeId]);
 
   useEffect(() => {
-    setShowAllProducts(false);
     scrollY.setValue(0);
     setStickyActive(false);
     setStickyThreshold(COVER_HEIGHT + 180);
@@ -283,10 +307,7 @@ const StoreDetailScreen = () => {
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true },
-        )}
+        onScroll={handleStoreScroll}
       >
         <View
           ref={contentRef}
@@ -442,51 +463,40 @@ const StoreDetailScreen = () => {
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionHeaderCopy}>
                   <Text style={styles.sectionTitle}>Product line</Text>
-                  {canExpandProductLine ? (
-                    <Text style={styles.sectionSubtextCompact}>
-                      {showAllProducts
-                        ? `${storeProducts.length} products in this store`
-                        : `Showing ${PRODUCT_PREVIEW_LIMIT} of ${storeProducts.length} products`}
-                    </Text>
-                  ) : null}
+                  <Text style={styles.sectionSubtextCompact}>
+                    {storeProducts.length} product{storeProducts.length === 1 ? "" : "s"} loaded
+                  </Text>
                 </View>
-                {canExpandProductLine ? (
-                  <TouchableOpacity
-                    onPress={() => setShowAllProducts((current) => !current)}
-                    style={styles.inlineActionPill}
-                  >
-                    <Text style={styles.inlineActionText}>
-                      {showAllProducts ? "Show less" : `See all (${storeProducts.length})`}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
               </View>
             ) : null}
 
             <View>
-              {isLoadingStoreProducts && visibleStoreProducts.length === 0 ? (
+              {isLoadingStoreProducts && storeProducts.length === 0 ? (
                 <View style={{ paddingHorizontal: gridPadding, paddingTop: 16 }}>
                   <ProductGridSkeleton count={4} />
                 </View>
               ) : hasStoreProducts ? (
-                <FlatList
-                  data={visibleStoreProducts}
-                  numColumns={2}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id}
-                  columnWrapperStyle={{ columnGap: gridGap }}
-                  renderItem={({ item }) => (
-                    <ProductCard
-                      {...item}
-                      cardWidth={gridCardWidth(2, gridGap)}
-                      horizontalSpacing={7}
-                    />
-                  )}
-                  contentContainerStyle={{
-                    paddingHorizontal: gridPadding,
-                    paddingTop: 16,
-                  }}
-                />
+                <>
+                  <FlatList
+                    data={storeProducts}
+                    numColumns={2}
+                    scrollEnabled={false}
+                    keyExtractor={(item) => item.id}
+                    columnWrapperStyle={{ columnGap: gridGap }}
+                    renderItem={({ item }) => (
+                      <ProductCard
+                        {...item}
+                        cardWidth={gridCardWidth(2, gridGap)}
+                        horizontalSpacing={7}
+                      />
+                    )}
+                    contentContainerStyle={{
+                      paddingHorizontal: gridPadding,
+                      paddingTop: 16,
+                    }}
+                  />
+                  <CatalogScrollFooter isLoadingMore={isLoadingMoreStoreProducts} />
+                </>
               ) : (
                 <View style={{ paddingHorizontal: gridPadding }}>
                   <EmptySection

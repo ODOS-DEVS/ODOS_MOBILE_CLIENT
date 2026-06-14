@@ -760,9 +760,11 @@ export function CategoryBrowseCard({
 export function CategoryDetailMetaLine({
   productCount,
   subcategoryCount,
+  hasMore = false,
 }: {
   productCount: number;
   subcategoryCount: number;
+  hasMore?: boolean;
 }) {
   if (productCount <= 0 && subcategoryCount <= 0) {
     return null;
@@ -770,7 +772,8 @@ export function CategoryDetailMetaLine({
 
   const parts: string[] = [];
   if (productCount > 0) {
-    parts.push(`${productCount} ${productCount === 1 ? "product" : "products"}`);
+    const countLabel = hasMore ? `${productCount}+` : String(productCount);
+    parts.push(`${countLabel} ${productCount === 1 && !hasMore ? "product" : "products"}`);
   }
   if (subcategoryCount > 0) {
     parts.push(

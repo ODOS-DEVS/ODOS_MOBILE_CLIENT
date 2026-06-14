@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import ProductCard from "@/components/cards/ProductCard";
 import {
   AccountEmptyState,
@@ -8,18 +9,21 @@ import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import { useTheme } from "@/context/ThemeContext";
-import { useCatalogCategories, useCategoryBrowseProducts } from "@/hooks/useCatalog";
+import { useCatalogCategories } from "@/hooks/useCatalog";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { productMatchesCatalogSubcategory } from "@/utils/catalogTaxonomy";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppColors } from "@/constants/Colors";
 
 const DEFAULT_SUBCATEGORY = "All";
 
@@ -95,7 +99,20 @@ export function CategoryBrowseScreen({
     return parsedSubcategoriesFromParams;
   }, [catalogCategory?.subcategories, parsedSubcategoriesFromParams]);
 
-  const { products: categoryProducts, isLoading } = useCategoryBrowseProducts(slug);
+  const apiSubcategory =
+    selectedSubcategory === DEFAULT_SUBCATEGORY ? undefined : selectedSubcategory;
+
+  const {
+    products: categoryProducts,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useInfiniteCatalogProducts({
+    category: slug,
+    subcategory: apiSubcategory,
+  });
 
   useEffect(() => {
     setSelectedSubcategory(DEFAULT_SUBCATEGORY);
@@ -121,15 +138,7 @@ export function CategoryBrowseScreen({
 
   const resolvedTitle = catalogCategory?.title ?? title ?? "Category";
 
-  const filteredProducts = useMemo(() => {
-    if (selectedSubcategory === DEFAULT_SUBCATEGORY) {
-      return categoryProducts;
-    }
-
-    return categoryProducts.filter((product) =>
-      productMatchesCatalogSubcategory(product, selectedSubcategory),
-    );
-  }, [categoryProducts, selectedSubcategory]);
+  const filteredProducts = categoryProducts;
 
   const listHeader = (
     <View style={detailStyles.header}>
@@ -139,12 +148,9 @@ export function CategoryBrowseScreen({
       />
       <View style={{ paddingHorizontal: horizontalPadding, gap: rV(8) }}>
         <CategoryDetailMetaLine
-          productCount={
-            selectedSubcategory === DEFAULT_SUBCATEGORY
-              ? categoryProducts.length
-              : filteredProducts.length
-          }
+          productCount={filteredProducts.length}
           subcategoryCount={resolvedSubcategories.length}
+          hasMore={hasMore}
         />
         {filterOptions.length > 1 ? (
           <CategorySubcategoryChips
@@ -188,6 +194,16 @@ export function CategoryBrowseScreen({
         numColumns={numColumns}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={listHeader}
+        onEndReached={() => void loadMore()}
+        onEndReachedThreshold={0.45}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading && categoryProducts.length > 0}
+            onRefresh={() => void refresh()}
+            tintColor={AppColors.primary}
+          />
+        }
+        ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
         columnWrapperStyle={
           numColumns > 1
             ? {

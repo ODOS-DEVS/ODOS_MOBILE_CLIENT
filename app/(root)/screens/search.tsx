@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import ProductCard from "@/components/cards/ProductCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
 import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
@@ -11,7 +12,8 @@ import SearchFilterSheet, {
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
-import { CatalogProductItem, useCatalogCategories, useCatalogProducts } from "@/hooks/useCatalog";
+import { CatalogProductItem, useCatalogCategories } from "@/hooks/useCatalog";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -111,7 +113,46 @@ export default function SearchScreen() {
   const [selectedPriceRange, setSelectedPriceRange] = useState<SearchPriceRange>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const { products, isLoading: isLoadingProducts } = useCatalogProducts({});
+  const catalogFilters = useMemo(() => {
+    const filters: {
+      category?: string;
+      subcategory?: string;
+      storeId?: string;
+      section?: string;
+      placement?: string;
+    } = {};
+
+    if (selectedCategory) {
+      filters.category = selectedCategory;
+    }
+    if (selectedSubcategory) {
+      filters.subcategory = selectedSubcategory;
+    }
+    if (selectedStore) {
+      filters.storeId = selectedStore;
+    }
+    if (selectedMode === "flash-sale") {
+      filters.placement = "flash-sale";
+    }
+    if (selectedMode === "popular") {
+      filters.section = "popular";
+    }
+
+    return filters;
+  }, [
+    selectedCategory,
+    selectedMode,
+    selectedStore,
+    selectedSubcategory,
+  ]);
+
+  const {
+    products,
+    isLoading: isLoadingProducts,
+    isLoadingMore,
+    loadMore,
+    refresh,
+  } = useInfiniteCatalogProducts(catalogFilters);
   const { categories, isLoading: isLoadingCategories } = useCatalogCategories();
   const { stores, isLoading: isLoadingStores } = useStores({});
   const { markets, isLoading: isLoadingMarkets } = useMarkets();
@@ -534,6 +575,11 @@ export default function SearchScreen() {
           numColumns={numColumns}
           key={numColumns}
           ListHeaderComponent={listHeader}
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.45}
+          ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
+          refreshing={isLoadingProducts && products.length > 0}
+          onRefresh={() => void refresh()}
           columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
           contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
