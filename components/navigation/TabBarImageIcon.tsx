@@ -1,6 +1,5 @@
 import TabBarIconShell from "@/components/navigation/TabBarIconShell";
 import { useTabBarMetricsContext } from "@/components/navigation/TabBarMetricsContext";
-import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import { Image, type ImageSourcePropType } from "react-native";
@@ -26,7 +25,7 @@ export default function TabBarImageIcon({
         style={{
           width: iconSize,
           height: iconSize,
-          tintColor: focused ? colors.text : AppColors.subtext[100],
+          tintColor: focused ? colors.onInverseSurface : colors.iconMuted,
         }}
         resizeMode="contain"
       />

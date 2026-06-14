@@ -1,5 +1,8 @@
 import { rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
+import { formatDealBadge, formatCurrency, formatSavingsAmount } from "@/utils/deals";
+import { getSecondsRemaining } from "@/utils/countdown";
+import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -17,6 +20,8 @@ interface FlashSalesCardProps {
   discount?: string;
   rating?: number;
   reviews?: any;
+  stock?: number;
+  flashSaleEndsAt?: string;
   cardWidth?: number;
   cardSpacing?: number;
   imageHeight?: number;
@@ -32,6 +37,8 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   discount,
   rating,
   reviews,
+  stock,
+  flashSaleEndsAt,
   cardWidth,
   cardSpacing,
   imageHeight,
@@ -40,10 +47,13 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   const textStyles = useCatalogCardTextStyles();
   const hasPrice = !!price || !!oldPrice;
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
-  const formatCurrency = (value: number) => `₵${value.toFixed(2)}`;
+  const dealBadge = formatDealBadge({ discount, oldPrice, price });
+  const savingsAmount = formatSavingsAmount(price, oldPrice);
   const width = cardWidth ?? rS(160);
   const spacingRight = cardSpacing ?? rS(10);
   const mediaHeight = imageHeight ?? rV(180);
+  const isLowStock = typeof stock === "number" && stock > 0 && stock <= 5;
+  const hasLiveFlashCountdown = getSecondsRemaining(flashSaleEndsAt) > 0;
 
   return (
     <TouchableOpacity
@@ -76,7 +86,6 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
           ...cardShell,
         }}
       >
-        {/* ---------- IMAGE ---------- */}
         <View
           style={{
             height: mediaHeight,
@@ -92,7 +101,6 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               style={{
                 width: "100%",
                 height: "100%",
-                borderRadius: rS(12),
               }}
             />
           ) : (
@@ -103,15 +111,16 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: rV(6),
-                backgroundColor: "#EEF2F7",
+                backgroundColor: colors.imagePlaceholder,
               }}
             >
-              <Ionicons name="image-outline" size={rS(22)} color="#94A3B8" />
-              <Text style={{ fontSize: rS(11), color: "#64748B", fontWeight: "600" }}>
+              <Ionicons name="image-outline" size={rS(22)} color={colors.iconMuted} />
+              <Text style={[textStyles.placeholderLabel, { fontSize: rS(11) }]}>
                 Image pending
               </Text>
             </View>
           )}
+
           <View className="absolute top-2 bottom-2 right-2 flex-col gap-5 py-2">
             <AddToWishList
               product={{
@@ -136,29 +145,44 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             />
           </View>
 
-          {/* Discount */}
-          {discount && (
+          {dealBadge ? (
             <View
               style={{
                 position: "absolute",
                 top: rS(8),
                 left: rS(8),
-                backgroundColor: "rgba(0,0,0,0.7)",
-                paddingVertical: rV(3),
-                paddingHorizontal: rS(6),
-                borderRadius: rS(6),
+                backgroundColor: "rgba(17, 24, 39, 0.88)",
+                paddingVertical: rV(4),
+                paddingHorizontal: rS(8),
+                borderRadius: rS(999),
               }}
             >
               <Text
-                style={{ color: "#fff", fontSize: rS(10), fontWeight: "700" }}
+                style={{
+                  color: "#FCD34D",
+                  fontSize: rS(10),
+                  fontWeight: "700",
+                  letterSpacing: 0.2,
+                }}
               >
-                {discount}
+                {dealBadge}
               </Text>
             </View>
-          )}
+          ) : null}
+
+          {hasLiveFlashCountdown ? (
+            <View
+              style={{
+                position: "absolute",
+                bottom: rS(8),
+                left: rS(8),
+              }}
+            >
+              <FlashSaleCountdown endsAt={flashSaleEndsAt} tone="gold" />
+            </View>
+          ) : null}
         </View>
 
-        {/* ---------- TEXT ---------- */}
         <View style={{ padding: rS(10) }}>
           <View
             style={{
@@ -168,19 +192,10 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               gap: rS(6),
             }}
           >
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: rS(13),
-                fontWeight: "700",
-                color: "#222",
-                flex: 1,
-              }}
-            >
+            <Text numberOfLines={1} style={[textStyles.title, { flex: 1 }]}>
               {title}
             </Text>
 
-            {/* Rating */}
             {hasRating ? (
               <View
                 style={{
@@ -190,111 +205,58 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                 }}
               >
                 <Ionicons name="star" size={rS(14)} color="#facc15" />
-                <Text
-                  style={{
-                    marginLeft: rS(2),
-                    fontSize: rS(11),
-                    fontWeight: "700",
-                    color: "#444",
-                  }}
-                >
+                <Text style={[textStyles.rating, { marginLeft: rS(2), fontWeight: "700", fontSize: rS(11) }]}>
                   {rating!.toFixed(1)}
                 </Text>
               </View>
             ) : null}
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: rV(3),
-              gap: rS(6),
-            }}
-          >
-            {category && (
-              <Text
-                style={{ fontSize: rS(11), color: "#777", flex: 1 }}
-                numberOfLines={1}
-              >
-                {category}
-              </Text>
-            )}
-            {/* {reviews && (
-              <Text
-                style={{ fontSize: rS(11), color: "#777" }}
-                numberOfLines={1}
-              >
-                {reviews}
-              </Text>
-            )} */}
-          </View>
+          {category ? (
+            <Text
+              style={[textStyles.category, { marginTop: rV(3), fontSize: rS(11) }]}
+              numberOfLines={1}
+            >
+              {category}
+            </Text>
+          ) : null}
 
-          {/* ---------- PRICE + RATING ---------- */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginTop: rV(5),
-            }}
-          >
-            {/* Price Section */}
-            {hasPrice && (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {price && (
-                  <Text
-                    style={{
-                      fontSize: rS(13),
-                      fontWeight: "800",
-                      color: "#222",
-                    }}
-                  >
+          {hasPrice ? (
+            <View style={{ marginTop: rV(8), gap: rV(3) }}>
+              <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                {price != null ? (
+                  <Text style={[textStyles.price, { fontSize: rS(14) }]}>
                     {formatCurrency(price)}
                   </Text>
-                )}
-
-                {oldPrice && (
+                ) : null}
+                {oldPrice != null ? (
                   <Text
-                    style={{
-                      fontSize: rS(11),
-                      marginLeft: rS(6),
-                      color: "red",
-                      textDecorationLine: "line-through",
-                      fontWeight: "700",
-                    }}
+                    style={[
+                      textStyles.oldPrice,
+                      {
+                        marginLeft: rS(6),
+                        textDecorationLine: "line-through",
+                        fontSize: rS(11),
+                      },
+                    ]}
                   >
                     {formatCurrency(oldPrice)}
                   </Text>
-                )}
+                ) : null}
               </View>
-            )}
-
-            {/* Rating
-            {rating && (
-              <View
-                style={{
-                  marginLeft: "auto",
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Ionicons name="star" size={rS(14)} color="#facc15" />
-                <Text
-                  style={{
-                    marginLeft: rS(3),
-                    fontSize: rS(11),
-                    fontWeight: "700",
-                    color: "#444",
-                  }}
-                >
-                  {rating.toFixed(1)}
+              {savingsAmount ? (
+                <Text style={{ color: "#059669", fontWeight: "700", fontSize: rS(11) }}>
+                  Save {savingsAmount}
                 </Text>
-              </View>
-            )} */}
-          </View>
+              ) : null}
+              {isLowStock ? (
+                <Text style={{ color: "#B45309", fontWeight: "700", fontSize: rS(11) }}>
+                  Only {stock} left
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
-
-        <View style={{ paddingHorizontal: rS(4) }}></View>
       </View>
     </TouchableOpacity>
   );

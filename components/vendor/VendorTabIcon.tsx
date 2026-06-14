@@ -1,6 +1,5 @@
 import TabBarIconShell from "@/components/navigation/TabBarIconShell";
 import { useTabBarMetricsContext } from "@/components/navigation/TabBarMetricsContext";
-import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -19,7 +18,7 @@ export default function VendorTabIcon({ focused, pendingOrders = 0 }: VendorTabI
       <Ionicons
         name={focused ? "storefront" : "storefront-outline"}
         size={iconSize}
-        color={focused ? colors.text : AppColors.subtext[100]}
+        color={focused ? colors.onPrimary : colors.iconMuted}
       />
     </TabBarIconShell>
   );

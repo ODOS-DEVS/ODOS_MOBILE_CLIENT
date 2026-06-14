@@ -2,6 +2,7 @@ import WishlistTileCard from "@/components/cards/WishlistTileCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
 import { WishlistGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WishlistScreen = () => {
   const { colors } = useTheme();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { requireAuth } = useRequireAuth();
@@ -176,7 +178,7 @@ const WishlistScreen = () => {
       {showInitialLoader ? (
         <WishlistGridSkeleton columns={columns} count={columns * 2} />
       ) : isEmpty ? (
-        <View style={[styles.emptyWrap, { paddingBottom: insets.bottom + rV(100) }]}>
+        <View style={[styles.emptyWrap, { paddingBottom: tabBarInset }]}>
           <CommerceEmptyState
             icon="heart-outline"
             title="Nothing saved yet"
@@ -203,7 +205,7 @@ const WishlistScreen = () => {
             styles.listContent,
             {
               paddingHorizontal: horizontalPadding,
-              paddingBottom: insets.bottom + rV(100),
+              paddingBottom: tabBarInset,
             },
           ]}
           columnWrapperStyle={columns > 1 ? { gap } : undefined}

@@ -2,6 +2,7 @@ import { CategoryBrowseCardFromItem } from "@/components/category/CategoryUi";
 import { CategoryListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AccountEmptyState } from "@/components/account/AccountUi";
 import SearchLauncher from "@/components/search/SearchLauncher";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import { useCatalogCategories } from "@/hooks/useCatalog";
 import { buildCategoryRouteParams } from "@/utils/catalogLanes";
 import { useTheme } from "@/context/ThemeContext";
@@ -14,6 +15,7 @@ import { AppColors } from "@/constants/Colors";
 
 const CategoryScreen = () => {
   const { colors } = useTheme();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const { horizontalPadding } = useResponsive();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { categories: catalogCategories, isLoading, error, refresh } =
@@ -59,7 +61,7 @@ const CategoryScreen = () => {
           </View>
         }
         contentContainerStyle={{
-          paddingBottom: rV(118),
+          paddingBottom: tabBarInset,
           gap: rV(12),
         }}
         showsVerticalScrollIndicator={false}

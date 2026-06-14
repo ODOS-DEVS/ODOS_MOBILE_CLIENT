@@ -255,24 +255,12 @@ export async function updateVendorStore(
   if (typeof input.longitude === "number" && Number.isFinite(input.longitude)) {
     formData.append("longitude", String(input.longitude));
   }
-  if (input.instagramUrl?.trim()) {
-    formData.append("instagram_url", input.instagramUrl.trim());
-  }
-  if (input.facebookUrl?.trim()) {
-    formData.append("facebook_url", input.facebookUrl.trim());
-  }
-  if (input.tiktokUrl?.trim()) {
-    formData.append("tiktok_url", input.tiktokUrl.trim());
-  }
-  if (input.twitterUrl?.trim()) {
-    formData.append("twitter_url", input.twitterUrl.trim());
-  }
-  if (input.whatsappUrl?.trim()) {
-    formData.append("whatsapp_url", input.whatsappUrl.trim());
-  }
-  if (input.websiteUrl?.trim()) {
-    formData.append("website_url", input.websiteUrl.trim());
-  }
+  formData.append("instagram_url", input.instagramUrl?.trim() ?? "");
+  formData.append("facebook_url", input.facebookUrl?.trim() ?? "");
+  formData.append("tiktok_url", input.tiktokUrl?.trim() ?? "");
+  formData.append("twitter_url", input.twitterUrl?.trim() ?? "");
+  formData.append("whatsapp_url", input.whatsappUrl?.trim() ?? "");
+  formData.append("website_url", input.websiteUrl?.trim() ?? "");
   if (input.audienceSlugs?.length) {
     formData.append("audience_slugs", input.audienceSlugs.join(", "));
   }

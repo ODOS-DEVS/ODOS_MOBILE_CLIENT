@@ -1,7 +1,6 @@
 import StoreLocationPicker, {
   type StoreLocationValue,
 } from "@/components/location/StoreLocationPicker";
-import StoreSocialLinksEditor from "@/components/store/StoreSocialLinksEditor";
 import TextInputField from "@/components/TextInputField";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
@@ -21,7 +20,6 @@ import { useStoreStore } from "@/stores/storeStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { ManagedStoreUpdateInput } from "@/types/store";
 import { getStoreLocationValidationError } from "@/utils/location";
-import { normalizeStoreSocialLinks } from "@/utils/social";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import React, { useEffect, useMemo, useState } from "react";
@@ -133,12 +131,6 @@ export default function VendorStoreScreen() {
       phone: storeProfile.phone ?? "",
       latitude: storeProfile.latitude ?? null,
       longitude: storeProfile.longitude ?? null,
-      instagramUrl: storeProfile.instagramUrl ?? "",
-      facebookUrl: storeProfile.facebookUrl ?? "",
-      tiktokUrl: storeProfile.tiktokUrl ?? "",
-      twitterUrl: storeProfile.twitterUrl ?? "",
-      whatsappUrl: storeProfile.whatsappUrl ?? "",
-      websiteUrl: storeProfile.websiteUrl ?? "",
       region: storeProfile.region,
       city: storeProfile.city,
       bannerImage: storeProfile.bannerImage ?? "",
@@ -389,30 +381,6 @@ export default function VendorStoreScreen() {
               </View>
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            </AccountSectionCard>
-
-            <AccountSectionCard title="Social links">
-              <StoreSocialLinksEditor
-                value={{
-                  instagramUrl: form.instagramUrl,
-                  facebookUrl: form.facebookUrl,
-                  tiktokUrl: form.tiktokUrl,
-                  twitterUrl: form.twitterUrl,
-                  whatsappUrl: form.whatsappUrl,
-                  websiteUrl: form.websiteUrl,
-                }}
-                onChange={(socialLinks) =>
-                  setForm((current) => ({
-                    ...current,
-                    instagramUrl: socialLinks.instagramUrl ?? "",
-                    facebookUrl: socialLinks.facebookUrl ?? "",
-                    tiktokUrl: socialLinks.tiktokUrl ?? "",
-                    twitterUrl: socialLinks.twitterUrl ?? "",
-                    whatsappUrl: socialLinks.whatsappUrl ?? "",
-                    websiteUrl: socialLinks.websiteUrl ?? "",
-                  }))
-                }
-              />
             </AccountSectionCard>
 
             <AccountSectionCard title="Store branding">

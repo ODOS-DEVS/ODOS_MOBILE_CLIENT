@@ -1,10 +1,9 @@
 import { useTabBarMetricsContext } from "@/components/navigation/TabBarMetricsContext";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
-import { rMS, rS, rV } from "@/styles/responsive";
-import React, { type ReactNode, useMemo } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { rMS, rS } from "@/styles/responsive";
+import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 
 type TabBarIconShellProps = {
   focused: boolean;
@@ -13,19 +12,40 @@ type TabBarIconShellProps = {
   badgeCount?: number;
 };
 
-/**
- * Custom tab item: fixed footprint per slot (no jump on change), full titles,
- * active pill only changes fill — not size.
- */
 export default function TabBarIconShell({
   focused,
   title,
   children,
   badgeCount = 0,
 }: TabBarIconShellProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const metrics = useTabBarMetricsContext();
   const showBadge = badgeCount > 0;
+  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.spring(progress, {
+      toValue: focused ? 1 : 0,
+      damping: 20,
+      mass: 0.85,
+      stiffness: 260,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, progress]);
+
+  const animatedSurfaceStyle = useMemo(
+    () => ({
+      transform: [
+        {
+          scale: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.04],
+          }),
+        },
+      ],
+    }),
+    [progress],
+  );
 
   const styles = useMemo(
     () =>
@@ -34,88 +54,93 @@ export default function TabBarIconShell({
           width: metrics.slotWidth,
           alignItems: "center",
           justifyContent: "center",
-          marginTop: rV(5),
         },
-        pill: {
-          width: metrics.pillWidth,
+        stack: {
           alignItems: "center",
           justifyContent: "center",
-          paddingHorizontal: metrics.pillPaddingHorizontal,
-          paddingVertical: metrics.pillPaddingVertical,
+        },
+        iconWrap: {
+          width: metrics.iconSurfaceSize,
+          height: metrics.iconSurfaceSize,
           borderRadius: metrics.pillBorderRadius,
-        },
-        pillFocused: {
-          backgroundColor: colors.tabFocused,
-          borderWidth: 1,
-          borderColor: colors.borderStrong,
-          shadowColor: colors.shadow,
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 3,
-        },
-        iconBox: {
-          width: metrics.iconBoxSize,
-          height: metrics.iconBoxSize,
           alignItems: "center",
           justifyContent: "center",
+          marginBottom: metrics.showLabels ? metrics.labelGap : 0,
+        },
+        iconWrapIdle: {
+          backgroundColor: "transparent",
+        },
+        iconWrapFocused: {
+          backgroundColor: colors.primary,
+          shadowColor: colors.shadow,
+          shadowOpacity: isDark ? 0.3 : 0.14,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: Platform.OS === "android" ? 4 : 0,
         },
         label: {
-          marginTop: rV(2),
           width: metrics.labelWidth,
           textAlign: "center",
           fontSize: metrics.labelFontSize,
           lineHeight: metrics.labelLineHeight,
           fontFamily: Fonts.title,
-          color: AppColors.subtext[100],
+          color: colors.iconMuted,
         },
         labelFocused: {
           fontFamily: Fonts.titleBold,
-          color: colors.text,
+          color: colors.primary,
         },
         badge: {
           position: "absolute",
-          top: rMS(1),
-          right: rS(4),
-          minWidth: rS(14),
-          height: rS(14),
-          borderRadius: rS(7),
+          top: 0,
+          right: rS(1),
+          minWidth: rS(15),
+          height: rS(15),
+          borderRadius: rS(7.5),
           backgroundColor: "#E53935",
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: rS(2),
           borderWidth: 1.5,
-          borderColor: colors.tabBar,
+          borderColor: isDark ? colors.card : colors.bottomBar,
         },
         badgeText: {
           color: "#FFFFFF",
-          fontSize: rMS(8),
+          fontSize: rMS(7.5),
           fontFamily: Fonts.titleBold,
         },
       }),
-    [colors, metrics],
+    [colors, isDark, metrics],
   );
 
   return (
-    <View style={styles.slot}>
-      <View style={[styles.pill, focused && styles.pillFocused]}>
-        <View style={styles.iconBox}>{children}</View>
-
-        <Text
-          style={[styles.label, focused && styles.labelFocused]}
-          numberOfLines={1}
-          allowFontScaling={false}
-          {...(Platform.OS === "android" ? { includeFontPadding: false } : {})}
+    <View style={styles.slot} accessibilityRole="tab" accessibilityState={{ selected: focused }}>
+      <View style={styles.stack}>
+        <Animated.View
+          style={[
+            styles.iconWrap,
+            focused ? styles.iconWrapFocused : styles.iconWrapIdle,
+            animatedSurfaceStyle,
+          ]}
         >
-          {title}
-        </Text>
+          {children}
 
-        {showBadge ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {badgeCount > 9 ? "9+" : badgeCount}
-            </Text>
-          </View>
+          {showBadge ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badgeCount > 9 ? "9+" : badgeCount}</Text>
+            </View>
+          ) : null}
+        </Animated.View>
+
+        {metrics.showLabels ? (
+          <Text
+            style={[styles.label, focused && styles.labelFocused]}
+            numberOfLines={1}
+            allowFontScaling={false}
+            {...(Platform.OS === "android" ? { includeFontPadding: false } : {})}
+          >
+            {title}
+          </Text>
         ) : null}
       </View>
     </View>

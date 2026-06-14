@@ -14,7 +14,8 @@ import {
   useRecommendedProducts,
 } from "@/hooks/useCatalog";
 import { rV, useResponsive } from "@/styles/responsive";
-import React, { useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 
 type RecommendationFilter = "all" | "fresh" | "topRated" | "deals" | "budget";
@@ -75,6 +76,7 @@ function filterProducts(
 export default function RecommendationScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const [activeFilter, setActiveFilter] =
     useState<RecommendationFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
@@ -143,6 +145,19 @@ export default function RecommendationScreen() {
       topRatedProducts.length,
     ],
   );
+
+  useEffect(() => {
+    const requestedFilter = params.filter;
+    if (
+      requestedFilter === "all" ||
+      requestedFilter === "fresh" ||
+      requestedFilter === "topRated" ||
+      requestedFilter === "deals" ||
+      requestedFilter === "budget"
+    ) {
+      setActiveFilter(requestedFilter);
+    }
+  }, [params.filter]);
 
   return (
     <View style={screenStyles.screen}>

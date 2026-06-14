@@ -13,6 +13,8 @@ import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { createProductDetailStyles } from "@/styles/productDetailStyles";
 import ProductShareSheet from "@/components/share/ProductShareSheet";
+import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import { getSecondsRemaining } from "@/utils/countdown";
 import { goBackOr } from "@/utils/navigation";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import type { ProductSharePayload } from "@/utils/shareCatalog";
@@ -254,7 +256,9 @@ export default function ProductDetail() {
   const baseReviews = product.reviews;
   const discount = product.discount;
   const stock = product.stock ?? 0;
+  const flashSaleEndsAt = product.flashSaleEndsAt;
   const isLowStock = stock > 0 && stock <= 5;
+  const hasLiveFlashSale = Boolean(flashSaleEndsAt && getSecondsRemaining(flashSaleEndsAt) > 0);
   const hasDiscount = oldPrice > 0 && oldPrice > price;
   const savingsAmount = hasDiscount ? oldPrice - price : 0;
   const localReviewCount = productReviews.length;
@@ -623,6 +627,9 @@ export default function ProductDetail() {
                         : "Currently unavailable"
                     }
                   />
+                  {hasLiveFlashSale ? (
+                    <FlashSaleCountdown endsAt={flashSaleEndsAt} tone="dark" />
+                  ) : null}
                   {store?.title ? (
                     <ProductMetaChip
                       icon="storefront-outline"

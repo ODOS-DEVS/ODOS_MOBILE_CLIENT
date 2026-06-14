@@ -2,6 +2,7 @@ import CartItemCard from "@/components/cards/CartItemCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
 import { CartPageSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { CartItem, useCart } from "@/context/CartContext";
@@ -25,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MyCart = () => {
   const { colors } = useTheme();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const insets = useSafeAreaInsets();
   const { cart, increaseQty, decreaseQty, removeItem, clearCart, isSyncingCart, refreshCart } =
     useCart();
@@ -325,7 +327,7 @@ const MyCart = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.emptyContent,
-            { paddingBottom: insets.bottom + rV(100) },
+            { paddingBottom: tabBarInset },
           ]}
         >
           <CommerceEmptyState
