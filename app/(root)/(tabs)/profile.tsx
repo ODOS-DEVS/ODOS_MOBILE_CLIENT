@@ -1,5 +1,6 @@
 import { AccountListCard } from "@/components/account/AccountUi";
 import { MenuItem } from "@/components/MenuItem";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const {
     isSigningOut,
     refreshCurrentUser,
@@ -226,7 +228,7 @@ export default function ProfileScreen() {
         },
         scrollContent: {
           paddingTop: rV(10),
-          paddingBottom: 90,
+          paddingBottom: tabBarInset,
         },
         profileEntryCard: {
           marginBottom: rV(14),
@@ -346,7 +348,7 @@ export default function ProfileScreen() {
           marginBottom: rV(24),
         },
       }),
-    [colors],
+    [colors, tabBarInset],
   );
 
   return (

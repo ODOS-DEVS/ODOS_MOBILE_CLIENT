@@ -4,6 +4,7 @@ import {
   AccountListCard,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import VendorStoreActionRow from "@/components/vendor/VendorStoreActionRow";
 import VendorStorefrontPreview from "@/components/vendor/VendorStorefrontPreview";
 import Fonts from "@/constants/Fonts";
@@ -49,6 +50,7 @@ export default function VendorTabHub({
   onOpenDashboard,
 }: VendorTabHubProps) {
   const { colors, isDark } = useTheme();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const { contentMaxWidth, horizontalPadding } = useResponsive();
 
   const pendingOrders = stats?.pendingOrders ?? 0;
@@ -140,7 +142,7 @@ export default function VendorTabHub({
           styles.scroll,
           {
             paddingHorizontal: horizontalPadding,
-            paddingBottom: rV(108),
+            paddingBottom: tabBarInset,
           },
         ]}
       >

@@ -1,22 +1,24 @@
-import TabBarImageIcon from "@/components/navigation/TabBarImageIcon";
+import TabBarBackground from "@/components/navigation/TabBarBackground";
+import TabBarButton from "@/components/navigation/TabBarButton";
+import TabBarVectorIcon from "@/components/navigation/TabBarVectorIcon";
 import { TabBarMetricsProvider } from "@/components/navigation/TabBarMetricsContext";
 import { useTabBarMetrics } from "@/components/navigation/tabBarMetrics";
 import VendorTabIcon from "@/components/vendor/VendorTabIcon";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
+import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
 import React, { useMemo } from "react";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/ThemeContext";
-import { rMS, rS, rV } from "@/styles/responsive";
 
 const TabsLayout = () => {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { isApprovedVendor, pendingOrders } = useVendorQuickAccess();
   const tabCount = isApprovedVendor ? 6 : 5;
-  const tabMetrics = useTabBarMetrics(tabCount);
+  const tabMetrics = useTabBarMetrics(tabCount, insets.bottom);
 
   const tabBarStyles = useMemo(
     () =>
@@ -24,6 +26,7 @@ const TabsLayout = () => {
         item: {
           flex: 1,
           minWidth: 0,
+          alignSelf: "stretch",
           justifyContent: "center",
           alignItems: "center",
           paddingVertical: 0,
@@ -37,71 +40,74 @@ const TabsLayout = () => {
     () => ({
       headerShown: false as const,
       tabBarShowLabel: false as const,
+      tabBarHideOnKeyboard: true as const,
+      tabBarAllowFontScaling: false as const,
+      tabBarActiveTintColor: colors.primary,
+      tabBarInactiveTintColor: colors.iconMuted,
       tabBarItemStyle: tabBarStyles.item,
+      tabBarButton: (props: BottomTabBarButtonProps) => <TabBarButton {...props} />,
+      tabBarBackground: () => <TabBarBackground />,
       tabBarStyle: {
         position: "absolute" as const,
-        left: tabMetrics.barSideMargin,
-        right: tabMetrics.barSideMargin,
-        bottom: Math.max(insets.bottom * 0.0, rV(0)),
-        height: rV(78) + insets.bottom * 0.18,
-        paddingTop: rV(10),
-        paddingBottom: Math.max(insets.bottom * 0.05, rV(4)),
+        left: 0,
+        right: 0,
+        bottom: tabMetrics.barBottomOffset,
+        height: tabMetrics.barTotalHeight,
+        paddingTop: 0,
+        paddingBottom: tabMetrics.barPaddingBottom,
         paddingHorizontal: tabMetrics.barInnerPaddingH,
-        borderTopWidth: 0,
-        borderRadius: rMS(24),
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: colors.tabBarBorder,
-        backgroundColor: colors.tabBar,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.bottomBarBorder,
+        borderRadius: 0,
+        borderWidth: 0,
+        backgroundColor: isDark ? colors.card : colors.bottomBar,
         shadowColor: colors.shadow,
-        shadowOpacity: 0.08,
-        shadowRadius: 22,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 14,
+        shadowOpacity: isDark ? 0.18 : 0.06,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: -4 },
+        elevation: Platform.OS === "android" ? 12 : 0,
+        overflow: "hidden" as const,
+        alignItems: "center" as const,
       },
     }),
-    [colors, insets.bottom, tabBarStyles.item, tabMetrics.barInnerPaddingH, tabMetrics.barSideMargin],
+    [
+      colors.bottomBar,
+      colors.card,
+      colors.iconMuted,
+      colors.primary,
+      colors.bottomBarBorder,
+      colors.shadow,
+      tabBarStyles.item,
+      tabMetrics.barBottomOffset,
+      tabMetrics.barPaddingBottom,
+      tabMetrics.barTotalHeight,
+      tabMetrics.barInnerPaddingH,
+      isDark,
+    ],
   );
 
   return (
-    <TabBarMetricsProvider tabCount={tabCount}>
+    <TabBarMetricsProvider tabCount={tabCount} bottomInset={insets.bottom}>
       <Tabs screenOptions={screenOptions}>
         <Tabs.Screen
           name="index"
           options={{
             title: "Home",
-            tabBarIcon: ({ focused }) => (
-              <TabBarImageIcon
-                source={require("../../../assets/images/home.png")}
-                focused={focused}
-                title="Home"
-              />
-            ),
+            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="home" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="category"
           options={{
             title: "Category",
-            tabBarIcon: ({ focused }) => (
-              <TabBarImageIcon
-                source={require("../../../assets/images/Category.png")}
-                focused={focused}
-                title="Category"
-              />
-            ),
+            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="category" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="cart"
           options={{
             title: "Cart",
-            tabBarIcon: ({ focused }) => (
-              <TabBarImageIcon
-                source={require("../../../assets/images/bag.png")}
-                focused={focused}
-                title="Cart"
-              />
-            ),
+            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="cart" focused={focused} />,
           }}
         />
         <Tabs.Screen
@@ -118,26 +124,14 @@ const TabsLayout = () => {
           name="wishlist"
           options={{
             title: "Wishlist",
-            tabBarIcon: ({ focused }) => (
-              <TabBarImageIcon
-                source={require("../../../assets/images/Heart.png")}
-                focused={focused}
-                title="Wishlist"
-              />
-            ),
+            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="wishlist" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
             title: "Profile",
-            tabBarIcon: ({ focused }) => (
-              <TabBarImageIcon
-                source={require("../../../assets/images/Profile.png")}
-                focused={focused}
-                title="Profile"
-              />
-            ),
+            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="profile" focused={focused} />,
           }}
         />
       </Tabs>

@@ -248,7 +248,7 @@ export default function VendorDashboardScreen() {
               vendorDashboardStats.availableBalance,
               currency,
             )}
-            body="This balance is what ODOS has already settled for withdrawal after delivered orders and commission deductions."
+            body="This balance is what ODOS has already settled for withdrawal after delivered orders are processed."
             metrics={[
               {
                 label: "Pending withdrawals",
@@ -261,13 +261,6 @@ export default function VendorDashboardScreen() {
                 label: "Lifetime earnings",
                 value: formatVendorCurrency(
                   vendorDashboardStats.lifetimeEarnings,
-                  currency,
-                ),
-              },
-              {
-                label: "ODOS commission",
-                value: formatVendorCurrency(
-                  vendorDashboardStats.totalCommission,
                   currency,
                 ),
               },

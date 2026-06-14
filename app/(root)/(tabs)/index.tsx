@@ -2,6 +2,7 @@ import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
+import PromoOfferCard from "@/components/cards/PromoOfferCard";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import {
   FlashSalesRowSkeleton,
@@ -12,16 +13,27 @@ import {
   ProductListSkeleton,
   PromoBannerSkeleton,
 } from "@/components/loaders/CommerceSkeletons";
+import { ViewAllButton } from "@/components/browse/ViewAllButton";
+import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
+import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import EmptySection from "@/components/empty/EmptySection";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
+import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { useCatalogProducts, useRecommendedProducts } from "@/hooks/useCatalog";
+import { usePromotions } from "@/hooks/usePromotions";
+import { usePromoBanners } from "@/hooks/usePromoBanners";
+import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
+import { useVouchers } from "@/hooks/useVouchers";
+import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -59,46 +71,42 @@ function HomeSection({
     return null;
   }
 
-  const showHeader = !isEmpty;
-
   return (
     <>
-      {showHeader ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: rS(12),
-            paddingHorizontal: horizontalPadding,
-            marginTop: sectionSpacing,
-            marginBottom: rS(10),
-          }}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: rS(12),
+          paddingHorizontal: horizontalPadding,
+          marginTop: sectionSpacing,
+          marginBottom: rS(10),
+        }}
+      >
+        <Text
+          className="flex-1 shrink text-xl font-montserrat-extraBold text-gray-800 dark:text-gray-100"
+          numberOfLines={1}
         >
-          <Text
-            className="flex-1 text-xl font-montserrat-extraBold text-gray-800 dark:text-gray-100"
-            numberOfLines={1}
+          {title}
+        </Text>
+        {headerRight || onSeeAll ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: rS(8),
+              flexShrink: 0,
+            }}
           >
-            {title}
-          </Text>
-          {headerRight ??
-            (onSeeAll ? (
-              <TouchableOpacity onPress={onSeeAll} hitSlop={8}>
-                <Text className="text-base font-montserrat-extraBold text-gray-800 dark:text-gray-100">
-                  See All
-                </Text>
-              </TouchableOpacity>
-            ) : null)}
-        </View>
-      ) : null}
+            {headerRight}
+            {onSeeAll ? <ViewAllButton onPress={onSeeAll} /> : null}
+          </View>
+        ) : null}
+      </View>
 
       {isLoading && isEmpty ? (
-        <View
-          style={{
-            paddingHorizontal: horizontalPadding,
-            marginTop: showHeader ? 0 : sectionSpacing,
-          }}
-        >
+        <View style={{ paddingHorizontal: horizontalPadding }}>
           {skeleton}
         </View>
       ) : (
@@ -110,12 +118,19 @@ function HomeSection({
 
 const HomeScreen = () => {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const tabBarInset = useTabBarContentInsetFromContext();
   const { horizontalPadding, sectionSpacing } = useResponsive();
-  const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [recommendationSeed, setRecommendationSeed] = useState(1);
+  const [claimingPromotionId, setClaimingPromotionId] = useState<string | null>(null);
   const { products: flashSaleProducts, isLoading: isLoadingFlashSales } = useCatalogProducts({
     placement: "flash-sale",
   });
+  const { primaryEvent: primaryFlashSaleEvent } = useFlashSaleEvents();
+  const { promotions, isLoading: isLoadingPromotions } = usePromotions();
+  const { banners: promoBanners, isLoading: isLoadingPromoBanners } = usePromoBanners();
+  const { claimVoucher, vouchers } = useVouchers();
   const { products: recommendationProducts, isLoading: isLoadingRecommendations } =
     useRecommendedProducts({
       limit: 12,
@@ -132,36 +147,69 @@ const HomeScreen = () => {
     popularProducts.length === 0 &&
     marketItems.length === 0 &&
     storeItems.length === 0 &&
+    promotions.length === 0 &&
+    promoBanners.length === 0 &&
     (isLoadingFlashSales ||
       isLoadingRecommendations ||
       isLoadingPopular ||
       isLoadingMarkets ||
-      isLoadingStores);
+      isLoadingStores ||
+      isLoadingPromotions ||
+      isLoadingPromoBanners);
 
-  useEffect(() => {
-    const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
+  const savedPromotionIds = useMemo(
+    () => new Set(vouchers.map((item) => item.id)),
+    [vouchers],
+  );
 
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = saleEnd - now;
+  const promotionsWithSavedState = useMemo(
+    () =>
+      promotions.map((promotion) => ({
+        ...promotion,
+        claimed: promotion.claimed || savedPromotionIds.has(promotion.id),
+      })),
+    [promotions, savedPromotionIds],
+  );
 
-      if (distance <= 0) {
-        clearInterval(timer);
-        setTimeLeft("00:00:00");
-      } else {
-        const hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((distance / (1000 * 60)) % 60);
-        const seconds = Math.floor((distance / 1000) % 60);
+  const dealProducts = useMemo(
+    () =>
+      dedupeProductsById([
+        ...flashSaleProducts.filter(isDealProduct),
+        ...popularProducts.filter(isDealProduct),
+        ...recommendationProducts.filter(isDealProduct),
+      ]),
+    [flashSaleProducts, popularProducts, recommendationProducts],
+  );
 
-        setTimeLeft(
-          `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
-        );
+  const featuredPromotion = promotionsWithSavedState[0] ?? null;
+  const totalLiveOffers = dealProducts.length + promotionsWithSavedState.length;
+
+  const handleClaimPromotion = useCallback(
+    async (promotionId: string) => {
+      if (!user) {
+        showToast("Sign in to save promotions to your wallet.", "info");
+        router.push("/(root)/(auth)/signin");
+        return;
       }
-    }, 1000);
 
-    return () => clearInterval(timer);
+      setClaimingPromotionId(promotionId);
+      try {
+        await claimVoucher(promotionId);
+        showToast("Promotion saved to your wallet.", "success");
+      } catch (error) {
+        showToast(
+          error instanceof Error ? error.message : "Unable to save this promotion.",
+          "error",
+        );
+      } finally {
+        setClaimingPromotionId(null);
+      }
+    },
+    [claimVoucher, showToast, user],
+  );
+
+  const handleOpenDeals = useCallback(() => {
+    router.push("../screens/deals");
   }, []);
 
   useFocusEffect(
@@ -219,7 +267,7 @@ const HomeScreen = () => {
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={
-          <View style={{ paddingBottom: 80 }}>
+          <View style={{ paddingBottom: tabBarInset }}>
             <HomeHeader />
             <SearchLauncher />
 
@@ -235,10 +283,16 @@ const HomeScreen = () => {
 
             <HomeSection
               title="Flash Sales"
+              onSeeAll={() => router.push("../screens/flash-sales")}
               headerRight={
-                <Text className="font-montserrat-semiBold text-base text-primary tabular-nums">
-                  {timeLeft}
-                </Text>
+                primaryFlashSaleEvent ? (
+                  <FlashSaleCountdown
+                    endsAt={primaryFlashSaleEvent.endsAt}
+                    serverSecondsRemaining={primaryFlashSaleEvent.secondsRemaining}
+                  />
+                ) : flashSaleProducts.length > 0 ? (
+                  <OffersCountBadge count={flashSaleProducts.length} label="live" />
+                ) : undefined
               }
               isLoading={isLoadingFlashSales}
               isEmpty={flashSaleProducts.length === 0}
@@ -260,13 +314,92 @@ const HomeScreen = () => {
               </View>
             </HomeSection>
 
-            {hasCatalogContent ? (
-              isLoadingFlashSales && flashSaleProducts.length === 0 ? (
+            {hasCatalogContent ||
+            promotionsWithSavedState.length > 0 ||
+            promoBanners.length > 0 ? (
+              isLoadingPromotions &&
+              promotionsWithSavedState.length === 0 &&
+              isLoadingPromoBanners &&
+              promoBanners.length === 0 &&
+              isLoadingFlashSales &&
+              flashSaleProducts.length === 0 ? (
                 <PromoBannerSkeleton />
               ) : (
-                <PromoBanner />
+                <PromoBanner
+                  banners={promoBanners}
+                  featuredPromotion={featuredPromotion}
+                  dealCount={totalLiveOffers}
+                  onPress={handleOpenDeals}
+                />
               )
             ) : null}
+
+            <HomeSection
+              title="Promo codes"
+              onSeeAll={handleOpenDeals}
+              isLoading={isLoadingPromotions}
+              isEmpty={promotionsWithSavedState.length === 0}
+              skeleton={<HorizontalProductRowSkeleton />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
+            >
+              <View style={{ marginLeft: -horizontalPadding }}>
+                <FlatList
+                  data={promotionsWithSavedState}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <PromoOfferCard
+                      offer={item}
+                      compact
+                      isBusy={claimingPromotionId === item.id}
+                      onClaim={() => handleClaimPromotion(item.id)}
+                      onUse={() =>
+                        router.push("/(root)/screens/profileScreens/Account/Vouchers")
+                      }
+                    />
+                  )}
+                  contentContainerStyle={{
+                    paddingHorizontal: horizontalPadding,
+                  }}
+                />
+              </View>
+            </HomeSection>
+
+            <HomeSection
+              title="Top deals"
+              onSeeAll={() =>
+                router.push({
+                  pathname: "../screens/recommendation",
+                  params: { filter: "deals" },
+                })
+              }
+              isLoading={isLoadingRecommendations || isLoadingPopular}
+              isEmpty={dealProducts.length === 0}
+              skeleton={<ProductListSkeleton count={2} />}
+              sectionSpacing={sectionSpacing}
+              horizontalPadding={horizontalPadding}
+            >
+              <View style={{ paddingHorizontal: horizontalPadding }}>
+                <FlatList
+                  data={dealProducts.slice(0, 4)}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <RecommendationCard
+                      {...item}
+                      reviews={
+                        item.reviews !== undefined
+                          ? Number(item.reviews)
+                          : undefined
+                      }
+                    />
+                  )}
+                  ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
+                  scrollEnabled={false}
+                />
+              </View>
+            </HomeSection>
 
             <HomeSection
               title="Recommendation"

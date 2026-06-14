@@ -260,11 +260,6 @@ export default function VendorWalletScreen() {
         value: formatVendorCurrency(wallet.lifetimeEarnings, wallet.currency),
         helper: "Net vendor earnings settled so far",
       },
-      {
-        label: "ODOS commission",
-        value: formatVendorCurrency(wallet.totalCommission, wallet.currency),
-        helper: "Marketplace fee deducted before payout",
-      },
     ];
   }, [wallet]);
 
@@ -396,7 +391,7 @@ export default function VendorWalletScreen() {
         <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
           <VendorPageIntro
             title="Vendor wallet"
-            subtitle="Settled earnings land here after ODOS deducts marketplace commission. Withdraw when you are ready for payout review."
+            subtitle="Settled earnings land here after delivered orders are processed. Withdraw when you are ready for payout review."
             stats={[
               {
                 value: formatVendorCurrency(wallet?.availableBalance ?? 0, walletCurrency),
@@ -744,13 +739,6 @@ export default function VendorWalletScreen() {
                     transaction.grossAmount !== undefined ? (
                       <Text style={styles.listMeta}>
                         Gross: {formatVendorCurrency(transaction.grossAmount, wallet.currency)}
-                        {transaction.commissionAmount !== null &&
-                        transaction.commissionAmount !== undefined
-                          ? ` · Commission: ${formatVendorCurrency(
-                              transaction.commissionAmount,
-                              wallet.currency,
-                            )}`
-                          : ""}
                       </Text>
                     ) : null}
                   </View>

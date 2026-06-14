@@ -6,14 +6,16 @@ const TabBarMetricsContext = createContext<TabBarMetrics | null>(null);
 
 type TabBarMetricsProviderProps = {
   tabCount: number;
+  bottomInset?: number;
   children: ReactNode;
 };
 
 export function TabBarMetricsProvider({
   tabCount,
+  bottomInset = 0,
   children,
 }: TabBarMetricsProviderProps) {
-  const metrics = useTabBarMetrics(tabCount);
+  const metrics = useTabBarMetrics(tabCount, bottomInset);
 
   return (
     <TabBarMetricsContext.Provider value={metrics}>
@@ -30,4 +32,8 @@ export function useTabBarMetricsContext(): TabBarMetrics {
   }
 
   return metrics;
+}
+
+export function useTabBarContentInsetFromContext(): number {
+  return useTabBarMetricsContext().contentBottomInset;
 }

@@ -1,7 +1,6 @@
 import StoreLocationPicker, {
   type StoreLocationValue,
 } from "@/components/location/StoreLocationPicker";
-import StoreSocialLinksEditor from "@/components/store/StoreSocialLinksEditor";
 import TextInputField from "@/components/TextInputField";
 import {
   AccountActionButton,
@@ -21,7 +20,6 @@ import { useVendorStore } from "@/stores/vendorStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { VendorApplicationInput } from "@/types/vendor";
 import { getStoreLocationValidationError } from "@/utils/location";
-import { normalizeStoreSocialLinks } from "@/utils/social";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import { router } from "expo-router";
@@ -52,12 +50,6 @@ const initialForm = (phoneNumber?: string | null): VendorApplicationInput => ({
   storeLocation: "",
   storeLatitude: null,
   storeLongitude: null,
-  storeInstagramUrl: "",
-  storeFacebookUrl: "",
-  storeTiktokUrl: "",
-  storeTwitterUrl: "",
-  storeWhatsappUrl: "",
-  storeWebsiteUrl: "",
   storeName: "",
   storeDescription: "",
 });
@@ -159,12 +151,6 @@ export default function VendorApplyScreen() {
       storeLocation: vendorApplication.storeLocation ?? "",
       storeLatitude: vendorApplication.storeLatitude ?? null,
       storeLongitude: vendorApplication.storeLongitude ?? null,
-      storeInstagramUrl: vendorApplication.storeInstagramUrl ?? "",
-      storeFacebookUrl: vendorApplication.storeFacebookUrl ?? "",
-      storeTiktokUrl: vendorApplication.storeTiktokUrl ?? "",
-      storeTwitterUrl: vendorApplication.storeTwitterUrl ?? "",
-      storeWhatsappUrl: vendorApplication.storeWhatsappUrl ?? "",
-      storeWebsiteUrl: vendorApplication.storeWebsiteUrl ?? "",
       storeName: vendorApplication.storeName,
       storeDescription: vendorApplication.storeDescription ?? "",
       ghanaCardNumber: vendorApplication.ghanaCardNumber ?? "",
@@ -229,27 +215,12 @@ export default function VendorApplyScreen() {
     }
 
     try {
-      const socialLinks = normalizeStoreSocialLinks({
-        instagramUrl: form.storeInstagramUrl,
-        facebookUrl: form.storeFacebookUrl,
-        tiktokUrl: form.storeTiktokUrl,
-        twitterUrl: form.storeTwitterUrl,
-        whatsappUrl: form.storeWhatsappUrl,
-        websiteUrl: form.storeWebsiteUrl,
-      });
-
       await submitVendorApplication(session, {
         ...form,
         marketId: form.marketId?.trim() || undefined,
         storeLocation: form.storeLocation?.trim() || undefined,
         storeLatitude: form.storeLatitude ?? undefined,
         storeLongitude: form.storeLongitude ?? undefined,
-        storeInstagramUrl: socialLinks.instagramUrl ?? undefined,
-        storeFacebookUrl: socialLinks.facebookUrl ?? undefined,
-        storeTiktokUrl: socialLinks.tiktokUrl ?? undefined,
-        storeTwitterUrl: socialLinks.twitterUrl ?? undefined,
-        storeWhatsappUrl: socialLinks.whatsappUrl ?? undefined,
-        storeWebsiteUrl: socialLinks.websiteUrl ?? undefined,
         storeDescription: form.storeDescription?.trim() || undefined,
         whatsappNumber: form.whatsappNumber?.trim() || undefined,
       });
@@ -487,28 +458,6 @@ export default function VendorApplyScreen() {
                 errorMessage={fieldErrors.storeLocation}
                 city={form.city}
                 region={form.region}
-              />
-
-              <StoreSocialLinksEditor
-                value={{
-                  instagramUrl: form.storeInstagramUrl,
-                  facebookUrl: form.storeFacebookUrl,
-                  tiktokUrl: form.storeTiktokUrl,
-                  twitterUrl: form.storeTwitterUrl,
-                  whatsappUrl: form.storeWhatsappUrl,
-                  websiteUrl: form.storeWebsiteUrl,
-                }}
-                onChange={(socialLinks) =>
-                  setForm((current) => ({
-                    ...current,
-                    storeInstagramUrl: socialLinks.instagramUrl ?? "",
-                    storeFacebookUrl: socialLinks.facebookUrl ?? "",
-                    storeTiktokUrl: socialLinks.tiktokUrl ?? "",
-                    storeTwitterUrl: socialLinks.twitterUrl ?? "",
-                    storeWhatsappUrl: socialLinks.whatsappUrl ?? "",
-                    storeWebsiteUrl: socialLinks.websiteUrl ?? "",
-                  }))
-                }
               />
 
               <Text style={styles.fieldLabel}>Preferred Market</Text>

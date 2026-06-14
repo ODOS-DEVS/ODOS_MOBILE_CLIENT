@@ -3,6 +3,16 @@ import { API_BASE_URL } from "@/constants/auth";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import {
+  buildCatalogProductsUrl,
+  CACHE_STALE,
+  fetchJsonCached,
+  hasCachedJson,
+  invalidateCachedUrl,
+  peekCachedJson,
+  productsStaleTimeMs,
+  subscribeCacheUpdates,
+} from "@/utils/fetchCache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CatalogCategoryItem = {
@@ -33,6 +43,9 @@ export type CatalogProductItem = ProductCardProps & {
   storeId?: string;
   stock?: number;
   status?: string;
+  flashSaleEndsAt?: string;
+  flashSaleEventSlug?: string;
+  flashSaleEventTitle?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -72,6 +85,9 @@ type ProductApiItem = {
   store_id?: string | null;
   stock?: number;
   status?: string;
+  flash_sale_ends_at?: string | null;
+  flash_sale_event_slug?: string | null;
+  flash_sale_event_title?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -121,6 +137,9 @@ function mapProduct(item: ProductApiItem): CatalogProductItem {
     storeId: item.store_id ?? undefined,
     stock: item.stock ?? undefined,
     status: item.status ?? undefined,
+    flashSaleEndsAt: item.flash_sale_ends_at ?? undefined,
+    flashSaleEventSlug: item.flash_sale_event_slug ?? undefined,
+    flashSaleEventTitle: item.flash_sale_event_title ?? undefined,
     createdAt: item.created_at ?? undefined,
     updatedAt: item.updated_at ?? undefined,
     image: resolveImageSource(item.image_url, item.image_key),
@@ -368,9 +387,13 @@ function curateRecommendedProducts({
 }
 
 export function useCatalogCategories() {
+  const categoriesUrl = `${API_BASE_URL}/catalog/categories`;
   const { subscribe } = useRealtime();
-  const [categories, setCategories] = useState<CatalogCategoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<CatalogCategoryItem[]>(() => {
+    const cached = peekCachedJson<CategoryApiItem[]>(categoriesUrl);
+    return cached ? cached.map(mapCategory) : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !hasCachedJson(categoriesUrl));
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -383,18 +406,16 @@ export function useCatalogCategories() {
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(categoriesUrl)) {
         setIsLoading(true);
         setError(null);
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/catalog/categories`);
-        if (!response.ok) {
-          throw new Error("Failed to load categories.");
-        }
-
-        const payload = (await response.json()) as CategoryApiItem[];
+        const payload = await fetchJsonCached<CategoryApiItem[]>(categoriesUrl, {
+          staleTimeMs: CACHE_STALE.categories,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -407,7 +428,7 @@ export function useCatalogCategories() {
           setError(null);
         }
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(categoriesUrl)) {
           setError("We couldn't load categories right now.");
         }
       } finally {
@@ -417,7 +438,7 @@ export function useCatalogCategories() {
         isFetchingRef.current = false;
       }
     },
-    [],
+    [categoriesUrl],
   );
 
   useEffect(() => {
@@ -432,10 +453,26 @@ export function useCatalogCategories() {
   useLiveRefresh(() => loadCategories({ background: true }));
 
   useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (url !== categoriesUrl) {
+        return;
+      }
+
+      const nextCategories = (data as CategoryApiItem[]).map(mapCategory);
+      setCategories((current) =>
+        areCategoriesEqual(current, nextCategories) ? current : nextCategories,
+      );
+      setIsLoading(false);
+      setError(null);
+    });
+  }, [categoriesUrl]);
+
+  useEffect(() => {
     return subscribe("catalog.category.changed", () => {
+      invalidateCachedUrl(categoriesUrl);
       void loadCategories({ background: true });
     });
-  }, [loadCategories, subscribe]);
+  }, [categoriesUrl, loadCategories, subscribe]);
 
   return { categories, isLoading, error, refresh: loadCategories };
 }
@@ -445,6 +482,7 @@ export function useCatalogProducts({
   category,
   section,
   placement,
+  flashEvent,
   subcategory,
   storeId,
 }: {
@@ -452,15 +490,43 @@ export function useCatalogProducts({
   category?: string;
   section?: string;
   placement?: string;
+  flashEvent?: string;
   subcategory?: string;
   storeId?: string;
 }) {
-  const [products, setProducts] = useState<CatalogProductItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const productsUrl = useMemo(
+    () =>
+      buildCatalogProductsUrl({
+        audience,
+        category,
+        section,
+        placement,
+        flashEvent,
+        subcategory,
+        storeId,
+      }),
+    [audience, category, flashEvent, placement, section, storeId, subcategory],
+  );
+  const staleTimeMs = useMemo(
+    () => productsStaleTimeMs({ section, placement }),
+    [placement, section],
+  );
+  const [products, setProducts] = useState<CatalogProductItem[]>(() => {
+    const cached = peekCachedJson<ProductApiItem[]>(productsUrl);
+    return cached ? cached.map(mapProduct) : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !hasCachedJson(productsUrl));
   const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
+
+  useEffect(() => {
+    const cached = peekCachedJson<ProductApiItem[]>(productsUrl);
+    setProducts(cached ? cached.map(mapProduct) : []);
+    setIsLoading(!cached);
+    setError(null);
+  }, [productsUrl]);
 
   const loadProducts = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -470,41 +536,16 @@ export function useCatalogProducts({
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(productsUrl)) {
         setIsLoading(true);
         setError(null);
       }
 
       try {
-        const query = new URLSearchParams();
-        if (audience) {
-          query.set("audience", audience);
-        }
-        if (category) {
-          query.set("category", category);
-        }
-        if (section) {
-          query.set("section", section);
-        }
-        if (placement) {
-          query.set("placement", placement);
-        }
-        if (subcategory) {
-          query.set("subcategory", subcategory);
-        }
-        if (storeId) {
-          query.set("store_id", storeId);
-        }
-
-        const response = await fetch(
-          `${API_BASE_URL}/catalog/products${query.toString() ? `?${query.toString()}` : ""}`,
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load products.");
-        }
-
-        const payload = (await response.json()) as ProductApiItem[];
+        const payload = await fetchJsonCached<ProductApiItem[]>(productsUrl, {
+          staleTimeMs,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -517,7 +558,7 @@ export function useCatalogProducts({
           setError(null);
         }
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(productsUrl)) {
           setError("We couldn't load products right now.");
         }
       } finally {
@@ -527,7 +568,7 @@ export function useCatalogProducts({
         isFetchingRef.current = false;
       }
     },
-    [audience, category, placement, section, storeId, subcategory],
+    [productsUrl, staleTimeMs],
   );
 
   useEffect(() => {
@@ -540,10 +581,26 @@ export function useCatalogProducts({
   }, [loadProducts]);
 
   useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (url !== productsUrl) {
+        return;
+      }
+
+      const nextProducts = (data as ProductApiItem[]).map(mapProduct);
+      setProducts((current) =>
+        areProductsEqual(current, nextProducts) ? current : nextProducts,
+      );
+      setIsLoading(false);
+      setError(null);
+    });
+  }, [productsUrl]);
+
+  useEffect(() => {
     return subscribe("catalog.product.changed", () => {
+      invalidateCachedUrl(productsUrl);
       void loadProducts({ background: true });
     });
-  }, [loadProducts, subscribe]);
+  }, [loadProducts, productsUrl, subscribe]);
 
   const sortOptions = useMemo(() => {
     const uniqueCategories = Array.from(
@@ -629,33 +686,41 @@ export function useCatalogProduct({
   fallback: Partial<CatalogProductItem> & { id: string };
 }) {
   const fallbackProduct = useMemo(() => buildFallbackProduct(fallback), [fallback]);
-  const [product, setProduct] = useState<CatalogProductItem>(fallbackProduct);
-  const [isLoading, setIsLoading] = useState(Boolean(productId));
+  const productUrl = productId
+    ? `${API_BASE_URL}/catalog/products/${encodeURIComponent(productId)}`
+    : "";
+  const [product, setProduct] = useState<CatalogProductItem>(() => {
+    if (!productUrl) {
+      return fallbackProduct;
+    }
+
+    const cached = peekCachedJson<ProductApiItem>(productUrl);
+    return cached ? mapProduct(cached) : fallbackProduct;
+  });
+  const [isLoading, setIsLoading] = useState(
+    () => Boolean(productId) && !hasCachedJson(productUrl),
+  );
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
   const loadProduct = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
-      if (!productId || isFetchingRef.current) {
+      if (!productId || !productUrl || isFetchingRef.current) {
         return;
       }
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(productUrl)) {
         setIsLoading(true);
       }
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/catalog/products/${encodeURIComponent(productId)}`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to load product.");
-        }
-
-        const payload = (await response.json()) as ProductApiItem;
+        const payload = await fetchJsonCached<ProductApiItem>(productUrl, {
+          staleTimeMs: CACHE_STALE.detail,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -665,7 +730,7 @@ export function useCatalogProduct({
           isSameProduct(current, nextProduct) ? current : nextProduct,
         );
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(productUrl)) {
           setProduct((current) =>
             isSameProduct(current, fallbackProduct) ? current : fallbackProduct,
           );
@@ -677,7 +742,7 @@ export function useCatalogProduct({
         isFetchingRef.current = false;
       }
     },
-    [fallbackProduct, productId],
+    [fallbackProduct, productId, productUrl],
   );
 
   useEffect(() => {
@@ -685,6 +750,20 @@ export function useCatalogProduct({
       isSameProduct(previous, fallbackProduct) ? previous : fallbackProduct,
     );
   }, [fallbackProduct]);
+
+  useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (!productUrl || url !== productUrl) {
+        return;
+      }
+
+      const nextProduct = mapProduct(data as ProductApiItem);
+      setProduct((current) =>
+        isSameProduct(current, nextProduct) ? current : nextProduct,
+      );
+      setIsLoading(false);
+    });
+  }, [productUrl]);
 
   useEffect(() => {
     if (!productId) {
@@ -712,9 +791,10 @@ export function useCatalogProduct({
         return;
       }
 
+      invalidateCachedUrl(productUrl);
       void loadProduct({ background: true });
     });
-  }, [loadProduct, productId, subscribe]);
+  }, [loadProduct, productId, productUrl, subscribe]);
 
   return { product, isLoading };
 }

@@ -1,9 +1,9 @@
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
-import StoreSocialLinksBar from "@/components/store/StoreSocialLinksBar";
 import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import ProductCard from "@/components/cards/ProductCard";
 import StoreOfferCard from "@/components/cards/StoreOfferCard";
 import EmptySection from "@/components/empty/EmptySection";
+import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
 import { ProductGridSkeleton, StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -38,7 +38,6 @@ const STICKY_BAR_HEIGHT = rV(52);
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const StoreDetailScreen = () => {
-  const [timeLeft, setTimeLeft] = useState("06:00:00");
   const [storeOffers, setStoreOffers] = useState<StoreVoucherOffer[]>([]);
   const [isClaimingOfferId, setIsClaimingOfferId] = useState<string | null>(null);
   const [showAllProducts, setShowAllProducts] = useState(false);
@@ -110,32 +109,6 @@ const StoreDetailScreen = () => {
     ? storeProducts
     : storeProducts.slice(0, PRODUCT_PREVIEW_LIMIT);
   const singleFlashSaleCardWidth = Math.max(shellWidth - horizontalPadding * 2, rS(200));
-
-  useEffect(() => {
-    const saleEnd = new Date().getTime() + 6 * 60 * 60 * 1000;
-
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = saleEnd - now;
-
-      if (distance <= 0) {
-        clearInterval(timer);
-        setTimeLeft("00:00:00");
-      } else {
-        const hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((distance / (1000 * 60)) % 60);
-        const seconds = Math.floor((distance / 1000) % 60);
-
-        setTimeLeft(
-          `${hours.toString().padStart(2, "0")}:${minutes
-            .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
-        );
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -427,17 +400,6 @@ const StoreDetailScreen = () => {
               <Ionicons name="chevron-forward" size={rS(18)} color="#9CA3AF" />
             </TouchableOpacity>
           ) : null}
-
-          <StoreSocialLinksBar
-            links={{
-              instagramUrl: store.instagramUrl,
-              facebookUrl: store.facebookUrl,
-              tiktokUrl: store.tiktokUrl,
-              twitterUrl: store.twitterUrl,
-              whatsappUrl: store.whatsappUrl,
-              websiteUrl: store.websiteUrl,
-            }}
-          />
         </View>
         </View>
 
@@ -448,9 +410,7 @@ const StoreDetailScreen = () => {
               <Text style={styles.sectionTitle}>
                 Flash Sales
               </Text>
-              <Text style={styles.sectionAccent}>
-                {timeLeft}
-              </Text>
+              <OffersCountBadge count={flashSaleProducts.length} label="live" />
             </View>
 
             {flashSaleProducts.length === 1 ? (

@@ -2,6 +2,15 @@ import { API_BASE_URL } from "@/constants/auth";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { resolveApiMediaUrl } from "@/utils/media";
+import {
+  buildCatalogStoresUrl,
+  CACHE_STALE,
+  fetchJsonCached,
+  hasCachedJson,
+  invalidateCachedUrl,
+  peekCachedJson,
+  subscribeCacheUpdates,
+} from "@/utils/fetchCache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type MarketItem = {
@@ -182,9 +191,13 @@ function areStoresEqual(current: StoreItem[], next: StoreItem[]) {
 }
 
 export function useMarkets() {
+  const marketsUrl = `${API_BASE_URL}/catalog/markets`;
   const { subscribe } = useRealtime();
-  const [markets, setMarkets] = useState<MarketItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [markets, setMarkets] = useState<MarketItem[]>(() => {
+    const cached = peekCachedJson<MarketApiItem[]>(marketsUrl);
+    return cached ? cached.map(mapMarket) : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !hasCachedJson(marketsUrl));
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -197,17 +210,16 @@ export function useMarkets() {
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(marketsUrl)) {
         setIsLoading(true);
         setError(null);
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/catalog/markets`);
-        if (!response.ok) {
-          throw new Error("Failed to load markets.");
-        }
-        const payload = (await response.json()) as MarketApiItem[];
+        const payload = await fetchJsonCached<MarketApiItem[]>(marketsUrl, {
+          staleTimeMs: CACHE_STALE.markets,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -217,7 +229,7 @@ export function useMarkets() {
           areMarketsEqual(current, nextMarkets) ? current : nextMarkets,
         );
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(marketsUrl)) {
           setError("We couldn't load markets right now.");
         }
       } finally {
@@ -227,7 +239,7 @@ export function useMarkets() {
         isFetchingRef.current = false;
       }
     },
-    [],
+    [marketsUrl],
   );
 
   useEffect(() => {
@@ -242,10 +254,26 @@ export function useMarkets() {
   useLiveRefresh(() => loadMarkets({ background: true }));
 
   useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (url !== marketsUrl) {
+        return;
+      }
+
+      const nextMarkets = (data as MarketApiItem[]).map(mapMarket);
+      setMarkets((current) =>
+        areMarketsEqual(current, nextMarkets) ? current : nextMarkets,
+      );
+      setIsLoading(false);
+      setError(null);
+    });
+  }, [marketsUrl]);
+
+  useEffect(() => {
     return subscribe("catalog.market.changed", () => {
+      invalidateCachedUrl(marketsUrl);
       void loadMarkets({ background: true });
     });
-  }, [loadMarkets, subscribe]);
+  }, [loadMarkets, marketsUrl, subscribe]);
 
   return { markets, isLoading, error, refresh: loadMarkets };
 }
@@ -257,12 +285,26 @@ export function useStores({
   marketSlug?: string;
   audience?: string;
 }) {
-  const [stores, setStores] = useState<StoreItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const storesUrl = useMemo(
+    () => buildCatalogStoresUrl({ marketSlug, audience }),
+    [audience, marketSlug],
+  );
+  const [stores, setStores] = useState<StoreItem[]>(() => {
+    const cached = peekCachedJson<StoreApiItem[]>(storesUrl);
+    return cached ? cached.map(mapStore) : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !hasCachedJson(storesUrl));
   const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
+
+  useEffect(() => {
+    const cached = peekCachedJson<StoreApiItem[]>(storesUrl);
+    setStores(cached ? cached.map(mapStore) : []);
+    setIsLoading(!cached);
+    setError(null);
+  }, [storesUrl]);
 
   const loadStores = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
@@ -272,26 +314,16 @@ export function useStores({
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(storesUrl)) {
         setIsLoading(true);
         setError(null);
       }
 
       try {
-        const query = new URLSearchParams();
-        if (marketSlug) {
-          query.set("market_slug", marketSlug);
-        }
-        if (audience) {
-          query.set("audience", audience);
-        }
-        const response = await fetch(
-          `${API_BASE_URL}/catalog/stores${query.toString() ? `?${query.toString()}` : ""}`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to load stores.");
-        }
-        const payload = (await response.json()) as StoreApiItem[];
+        const payload = await fetchJsonCached<StoreApiItem[]>(storesUrl, {
+          staleTimeMs: CACHE_STALE.stores,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -301,7 +333,7 @@ export function useStores({
           areStoresEqual(current, nextStores) ? current : nextStores,
         );
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(storesUrl)) {
           setError("We couldn't load stores right now.");
         }
       } finally {
@@ -311,7 +343,7 @@ export function useStores({
         isFetchingRef.current = false;
       }
     },
-    [audience, marketSlug],
+    [storesUrl],
   );
 
   useEffect(() => {
@@ -324,10 +356,26 @@ export function useStores({
   }, [loadStores]);
 
   useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (url !== storesUrl) {
+        return;
+      }
+
+      const nextStores = (data as StoreApiItem[]).map(mapStore);
+      setStores((current) =>
+        areStoresEqual(current, nextStores) ? current : nextStores,
+      );
+      setIsLoading(false);
+      setError(null);
+    });
+  }, [storesUrl]);
+
+  useEffect(() => {
     return subscribe("catalog.store.changed", () => {
+      invalidateCachedUrl(storesUrl);
       void loadStores({ background: true });
     });
-  }, [loadStores, subscribe]);
+  }, [loadStores, storesUrl, subscribe]);
 
   return { stores, isLoading, error, refresh: loadStores };
 }
@@ -339,8 +387,20 @@ export function useStore({
   storeId?: string;
   fallback?: StoreItem | null;
 }) {
-  const [store, setStore] = useState<StoreItem | null>(fallback ?? null);
-  const [isLoading, setIsLoading] = useState(Boolean(storeId));
+  const storeUrl = storeId
+    ? `${API_BASE_URL}/catalog/stores/${encodeURIComponent(storeId)}`
+    : "";
+  const [store, setStore] = useState<StoreItem | null>(() => {
+    if (!storeUrl) {
+      return fallback ?? null;
+    }
+
+    const cached = peekCachedJson<StoreApiItem>(storeUrl);
+    return cached ? mapStore(cached) : fallback ?? null;
+  });
+  const [isLoading, setIsLoading] = useState(
+    () => Boolean(storeId) && !hasCachedJson(storeUrl),
+  );
   const [error, setError] = useState<string | null>(null);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
@@ -348,25 +408,22 @@ export function useStore({
 
   const loadStore = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
-      if (!storeId || isFetchingRef.current) {
+      if (!storeId || !storeUrl || isFetchingRef.current) {
         return;
       }
 
       isFetchingRef.current = true;
 
-      if (!background) {
+      if (!background && !hasCachedJson(storeUrl)) {
         setIsLoading(true);
         setError(null);
       }
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/catalog/stores/${encodeURIComponent(storeId)}`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to load store.");
-        }
-        const payload = (await response.json()) as StoreApiItem;
+        const payload = await fetchJsonCached<StoreApiItem>(storeUrl, {
+          staleTimeMs: CACHE_STALE.detail,
+          force: background,
+        });
         if (!isMountedRef.current) {
           return;
         }
@@ -376,7 +433,7 @@ export function useStore({
           current && isSameStore(current, nextStore) ? current : nextStore,
         );
       } catch {
-        if (isMountedRef.current && !background) {
+        if (isMountedRef.current && !background && !hasCachedJson(storeUrl)) {
           setError("We couldn't load this store right now.");
         }
       } finally {
@@ -386,12 +443,27 @@ export function useStore({
         isFetchingRef.current = false;
       }
     },
-    [storeId],
+    [storeId, storeUrl],
   );
 
   useEffect(() => {
     setStore(fallback ?? null);
   }, [fallback]);
+
+  useEffect(() => {
+    return subscribeCacheUpdates((url, data) => {
+      if (!storeUrl || url !== storeUrl) {
+        return;
+      }
+
+      const nextStore = mapStore(data as StoreApiItem);
+      setStore((current) =>
+        current && isSameStore(current, nextStore) ? current : nextStore,
+      );
+      setIsLoading(false);
+      setError(null);
+    });
+  }, [storeUrl]);
 
   useEffect(() => {
     if (!storeId) {
@@ -418,9 +490,10 @@ export function useStore({
         return;
       }
 
+      invalidateCachedUrl(storeUrl);
       void loadStore({ background: true });
     });
-  }, [loadStore, storeId, subscribe]);
+  }, [loadStore, storeId, storeUrl, subscribe]);
 
   return { store, isLoading, error, refresh: loadStore };
 }

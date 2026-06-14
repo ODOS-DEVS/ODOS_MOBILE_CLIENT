@@ -1,4 +1,3 @@
-import StoreSocialLinksBar from "@/components/store/StoreSocialLinksBar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -405,15 +404,6 @@ export default function StoreLocationExperience({
               {store?.phone ? (
                 <QuickAction icon="call-outline" label="Call" onPress={callStore} />
               ) : null}
-              {store?.whatsappUrl ? (
-                <QuickAction
-                  icon="logo-whatsapp"
-                  label="WhatsApp"
-                  onPress={() => {
-                    if (store.whatsappUrl) void Linking.openURL(store.whatsappUrl);
-                  }}
-                />
-              ) : null}
             </View>
           </View>
         </GestureDetector>
@@ -504,8 +494,6 @@ export default function StoreLocationExperience({
               ) : null}
             </View>
           ) : null}
-
-          <StoreSocialLinksBar links={store ?? {}} title="Connect" />
 
           {mapsUrl ? (
             <TouchableOpacity style={styles.primaryCta} onPress={openExternalMaps}>
