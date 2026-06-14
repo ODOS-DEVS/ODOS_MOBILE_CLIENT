@@ -131,6 +131,8 @@ export function buildCatalogProductsUrl({
   subcategory,
   storeId,
   flashEvent,
+  limit,
+  offset,
 }: {
   audience?: string;
   category?: string;
@@ -139,6 +141,8 @@ export function buildCatalogProductsUrl({
   subcategory?: string;
   storeId?: string;
   flashEvent?: string;
+  limit?: number;
+  offset?: number;
 }) {
   const query = new URLSearchParams();
   if (audience) {
@@ -161,6 +165,12 @@ export function buildCatalogProductsUrl({
   }
   if (flashEvent) {
     query.set("flash_event", flashEvent);
+  }
+  if (typeof limit === "number") {
+    query.set("limit", String(limit));
+  }
+  if (typeof offset === "number" && offset > 0) {
+    query.set("offset", String(offset));
   }
 
   const qs = query.toString();

@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import {
@@ -8,18 +9,22 @@ import {
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import { FlatList, View } from "react-native";
 
 export default function PopularProductsScreen() {
   const commerceSeeAllScreenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [isSearching, setIsSearching] = useState(false);
-  const { products: catalogProducts, isLoading, error } = useCatalogProducts({
-    section: "popular",
-  });
+  const {
+    products: catalogProducts,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadMore,
+  } = useInfiniteCatalogProducts({ section: "popular" });
   const [searchResults, setSearchResults] = useState(catalogProducts);
 
   const displayed = useMemo(
@@ -45,88 +50,105 @@ export default function PopularProductsScreen() {
     [catalogProducts],
   );
 
+  const listHeader = (
+    <View style={{ gap: rV(14) }}>
+      <CommerceSeeAllHero
+        badgeIcon="flame-outline"
+        badgeLabel="Trending now"
+        title="Popular picks shoppers love"
+        subtitle="High-engagement products with strong ratings and steady demand across ODOS."
+        accent="gold"
+        stats={[
+          { value: catalogProducts.length, label: "products" },
+          { value: topRatedCount, label: "top rated" },
+          { value: dealCount, label: "on deal" },
+        ]}
+      />
+
+      <CommerceSeeAllSearch
+        data={catalogProducts}
+        onStartSearch={() => setIsSearching(true)}
+        onResults={(results) => {
+          setIsSearching(true);
+          setSearchResults(results);
+        }}
+        placeholder="Search popular products, brands, or categories"
+        searchKeys={["title", "category", "subcategory", "reviews", "discount"]}
+      />
+
+      <CommerceSeeAllSectionHeader
+        title="All popular products"
+        subtitle={
+          isSearching
+            ? `${displayed.length} result${displayed.length === 1 ? "" : "s"} from your search`
+            : "Updated from the live popular feed"
+        }
+        count={displayed.length}
+      />
+    </View>
+  );
+
   return (
     <View style={commerceSeeAllScreenStyles.screen}>
       <ProfileHeader title="Popular Products" />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          commerceSeeAllScreenStyles.scrollContent,
-          {
+      {isLoading && catalogProducts.length === 0 ? (
+        <View
+          style={{
+            paddingHorizontal: horizontalPadding,
+            paddingTop: rV(8),
+            paddingBottom: sectionSpacing,
+          }}
+        >
+          {listHeader}
+          <ProductListSkeleton count={5} />
+        </View>
+      ) : displayed.length === 0 ? (
+        <FlatList
+          data={[]}
+          renderItem={() => null}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
             paddingBottom: sectionSpacing,
-          },
-        ]}
-      >
-        <CommerceSeeAllHero
-          badgeIcon="flame-outline"
-          badgeLabel="Trending now"
-          title="Popular picks shoppers love"
-          subtitle="High-engagement products with strong ratings and steady demand across ODOS."
-          accent="gold"
-          stats={[
-            { value: catalogProducts.length, label: "products" },
-            { value: topRatedCount, label: "top rated" },
-            { value: dealCount, label: "on deal" },
-          ]}
-        />
-
-        <CommerceSeeAllSearch
-          data={catalogProducts}
-          onStartSearch={() => setIsSearching(true)}
-          onResults={(results) => {
-            setIsSearching(true);
-            setSearchResults(results);
           }}
-          placeholder="Search popular products, brands, or categories"
-          searchKeys={["title", "category", "subcategory", "reviews", "discount"]}
-        />
-
-        <View style={commerceSeeAllScreenStyles.contentBlock}>
-          <CommerceSeeAllSectionHeader
-            title="All popular products"
-            subtitle={
-              isSearching
-                ? `${displayed.length} result${displayed.length === 1 ? "" : "s"} from your search`
-                : "Updated from the live popular feed"
-            }
-            count={displayed.length}
-          />
-
-          {isLoading && catalogProducts.length === 0 ? (
-            <ProductListSkeleton count={5} />
-          ) : displayed.length === 0 ? (
+          ListEmptyComponent={
             <CommerceSeeAllEmptyState
               icon="cube-outline"
-              title={
-                error ? "We couldn't load popular products" : "No products found"
-              }
+              title={error ? "We couldn't load popular products" : "No products found"}
               subtitle={
                 error
                   ? "The live popular feed is unavailable right now. Try again shortly."
                   : "Adjust your search or check back when new products are added."
               }
             />
-          ) : (
-            <FlatList
-              data={displayed}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-              renderItem={({ item }) => (
-                <RecommendationCard
-                  {...item}
-                  reviews={
-                    item.reviews !== undefined ? Number(item.reviews) : undefined
-                  }
-                />
-              )}
-              contentContainerStyle={{ paddingTop: rV(4), paddingBottom: rV(8) }}
+          }
+        />
+      ) : (
+        <FlatList
+          data={displayed}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={listHeader}
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.45}
+          ListFooterComponent={
+            isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+          }
+          ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
+          renderItem={({ item }) => (
+            <RecommendationCard
+              {...item}
+              reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
             />
           )}
-        </View>
-      </ScrollView>
+          contentContainerStyle={{
+            paddingHorizontal: horizontalPadding,
+            paddingTop: rV(8),
+            paddingBottom: sectionSpacing,
+          }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }

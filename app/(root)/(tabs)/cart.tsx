@@ -44,8 +44,6 @@ const MyCart = () => {
     );
   }, [cart]);
 
-  const shipping = 0;
-  const total = subtotal + shipping;
   const stickyBarHeight = rV(76) + insets.bottom;
 
   useFocusEffect(
@@ -140,7 +138,7 @@ const MyCart = () => {
           borderRadius: rMS(20),
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.cardBorder,
-          marginBottom: rV(12),
+          marginBottom: rV(16),
           overflow: "hidden",
         },
         bagHeader: {
@@ -169,92 +167,6 @@ const MyCart = () => {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(13),
           color: colors.text,
-        },
-        bagCount: {
-          minWidth: rS(22),
-          textAlign: "center",
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(11),
-          color: AppColors.primary,
-          backgroundColor: colors.pill,
-          paddingHorizontal: rS(8),
-          paddingVertical: rV(3),
-          borderRadius: rS(999),
-          overflow: "hidden",
-        },
-        summaryCard: {
-          backgroundColor: colors.card,
-          borderRadius: rMS(18),
-          paddingHorizontal: rS(14),
-          marginBottom: rV(62),
-          paddingVertical: rV(12),
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.cardBorder,
-        },
-        summaryTitle: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(14),
-          color: colors.text,
-          marginBottom: rV(8),
-        },
-        voucherNote: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: rS(8),
-          borderRadius: rMS(12),
-          backgroundColor: colors.accentSoft,
-          paddingHorizontal: rS(10),
-          paddingVertical: rV(8),
-          marginBottom: rV(10),
-        },
-        voucherNoteText: {
-          flex: 1,
-          color: colors.textSecondary,
-          fontFamily: Fonts.text,
-          fontSize: rMS(12.5),
-          lineHeight: rMS(18),
-        },
-        summaryRow: {
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: rV(10),
-        },
-        summaryLabel: {
-          color: colors.textMuted,
-          fontFamily: Fonts.text,
-          fontSize: rMS(13.5),
-        },
-        summaryValue: {
-          color: colors.text,
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(14),
-        },
-        shippingFree: {
-          color: colors.successText,
-          fontFamily: Fonts.title,
-          fontSize: rMS(12.5),
-        },
-        divider: {
-          height: StyleSheet.hairlineWidth,
-          backgroundColor: colors.border,
-          marginVertical: rV(10),
-        },
-        totalLabel: {
-          color: colors.text,
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(15),
-        },
-        totalValue: {
-          color: colors.text,
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(20),
-        },
-        summaryHint: {
-          color: colors.textMuted,
-          fontFamily: Fonts.text,
-          fontSize: rMS(11.5),
-          lineHeight: rMS(16),
         },
         stickyBar: {
           position: "absolute",
@@ -289,12 +201,6 @@ const MyCart = () => {
           color: colors.text,
           fontFamily: Fonts.titleBold,
           fontSize: rMS(20),
-        },
-        stickyMeta: {
-          color: colors.textMuted,
-          fontFamily: Fonts.text,
-          fontSize: rMS(10.5),
-          marginTop: rV(2),
         },
         checkoutButton: {
           flexDirection: "row",
@@ -378,7 +284,6 @@ const MyCart = () => {
                   <Ionicons name="bag-handle" size={rS(16)} color={AppColors.primary} />
                 </View>
                 <Text style={styles.bagTitle}>Your picks</Text>
-                <Text style={styles.bagCount}>{itemCount}</Text>
               </View>
 
               {cart.map((item, index) => (
@@ -393,38 +298,6 @@ const MyCart = () => {
                 />
               ))}
             </View>
-
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>Summary</Text>
-
-              <View style={styles.voucherNote}>
-                <Ionicons name="ticket-outline" size={rS(15)} color={AppColors.primary} />
-                <Text style={styles.voucherNoteText}>
-                  Voucher codes apply at checkout.
-                </Text>
-              </View>
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(subtotal)}</Text>
-              </View>
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery</Text>
-                <Text style={styles.shippingFree}>Calculated at checkout</Text>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.summaryRow}>
-                <Text style={styles.totalLabel}>Estimated total</Text>
-                <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
-              </View>
-
-              <Text style={styles.summaryHint}>
-                Final tax, discounts, and delivery fees are confirmed at checkout.
-              </Text>
-            </View>
           </ScrollView>
 
           <View
@@ -434,11 +307,8 @@ const MyCart = () => {
             ]}
           >
             <View style={styles.stickyCopy}>
-              <Text style={styles.stickyLabel}>Total</Text>
-              <Text style={styles.stickyValue}>{formatCurrency(total)}</Text>
-              <Text style={styles.stickyMeta}>
-                {itemCount} item{itemCount === 1 ? "" : "s"}
-              </Text>
+              <Text style={styles.stickyLabel}>Subtotal</Text>
+              <Text style={styles.stickyValue}>{formatCurrency(subtotal)}</Text>
             </View>
             <TouchableOpacity
               onPress={openCheckout}

@@ -54,6 +54,7 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   const mediaHeight = imageHeight ?? rV(180);
   const isLowStock = typeof stock === "number" && stock > 0 && stock <= 5;
   const hasLiveFlashCountdown = getSecondsRemaining(flashSaleEndsAt) > 0;
+  const metaLineHeight = rV(14);
 
   return (
     <TouchableOpacity
@@ -219,10 +220,12 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
             >
               {category}
             </Text>
-          ) : null}
+          ) : (
+            <View style={{ marginTop: rV(3), height: rV(13) }} />
+          )}
 
           {hasPrice ? (
-            <View style={{ marginTop: rV(8), gap: rV(3) }}>
+            <View style={{ marginTop: rV(8) }}>
               <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
                 {price != null ? (
                   <Text style={[textStyles.price, { fontSize: rS(14) }]}>
@@ -244,16 +247,20 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
                   </Text>
                 ) : null}
               </View>
-              {savingsAmount ? (
-                <Text style={{ color: "#059669", fontWeight: "700", fontSize: rS(11) }}>
-                  Save {savingsAmount}
-                </Text>
-              ) : null}
-              {isLowStock ? (
-                <Text style={{ color: "#B45309", fontWeight: "700", fontSize: rS(11) }}>
-                  Only {stock} left
-                </Text>
-              ) : null}
+              <View style={{ marginTop: rV(3), minHeight: metaLineHeight, justifyContent: "center" }}>
+                {savingsAmount ? (
+                  <Text style={{ color: "#059669", fontWeight: "700", fontSize: rS(11) }}>
+                    Save {savingsAmount}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={{ minHeight: metaLineHeight, justifyContent: "center" }}>
+                {isLowStock ? (
+                  <Text style={{ color: "#B45309", fontWeight: "700", fontSize: rS(11) }}>
+                    Only {stock} left
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null}
         </View>

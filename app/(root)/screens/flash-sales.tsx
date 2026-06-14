@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import {
@@ -10,13 +11,13 @@ import {
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
-import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { computeSavingsPercent, isDealProduct } from "@/utils/deals";
 import { formatCountdownLabel } from "@/utils/countdown";
 import { rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import { FlatList, View } from "react-native";
 
 type FlashFilter = "all" | "deals" | "topRated";
 
@@ -33,7 +34,13 @@ export default function FlashSalesScreen() {
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
   const { primaryEvent: flashSaleEvent } = useFlashSaleEvents();
-  const { products, isLoading, error } = useCatalogProducts({
+  const {
+    products,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadMore,
+  } = useInfiniteCatalogProducts({
     placement: "flash-sale",
     flashEvent: flashSaleEvent?.productCount ? flashSaleEvent.slug : undefined,
   });
@@ -92,83 +99,92 @@ export default function FlashSalesScreen() {
     }
   }, [activeFilter]);
 
+  const listHeader = (
+    <View style={{ gap: rV(14) }}>
+      <CommerceSeeAllHero
+        badgeIcon="flash-outline"
+        badgeLabel={flashSaleEvent ? "Live event" : "Limited offers"}
+        title={flashSaleEvent?.title ?? "Flash sales curated for quick wins"}
+        subtitle={
+          flashSaleEvent?.subtitle ??
+          "Handpicked products with strong savings, updated live from the ODOS catalog."
+        }
+        accent="gold"
+        stats={[
+          { value: products.length, label: "live items" },
+          { value: dealProducts.length, label: "with savings" },
+          {
+            value: flashSaleEvent
+              ? formatFlashStatCountdown(flashSaleEvent.secondsRemaining)
+              : averageSavings > 0
+                ? `${averageSavings}%`
+                : "—",
+            label: flashSaleEvent ? "ends in" : "avg. savings",
+          },
+        ]}
+      />
+
+      {flashSaleEvent ? (
+        <FlashSaleCountdown
+          endsAt={flashSaleEvent.endsAt}
+          serverSecondsRemaining={flashSaleEvent.secondsRemaining}
+        />
+      ) : null}
+
+      <CommerceSeeAllSearch
+        data={products}
+        onStartSearch={() => setIsSearching(true)}
+        onResults={(results) => {
+          setIsSearching(true);
+          setSearchResults(results);
+        }}
+        placeholder="Search flash sale products"
+        searchKeys={["title", "category", "subcategory", "discount"]}
+      />
+
+      <CommerceFilterChips
+        chips={filterChips}
+        activeKey={activeFilter}
+        onChange={(key) => setActiveFilter(key as FlashFilter)}
+      />
+
+      <CommerceSeeAllSectionHeader
+        title={activeFilterLabel}
+        subtitle={
+          displayed.length > 0
+            ? `${displayed.length} product${displayed.length === 1 ? "" : "s"} in this view`
+            : "New flash sale items appear as vendors publish them"
+        }
+        count={displayed.length}
+      />
+    </View>
+  );
+
   return (
     <View style={screenStyles.screen}>
       <ProfileHeader title="Flash Sales" />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          screenStyles.scrollContent,
-          {
+      {isLoading && products.length === 0 ? (
+        <View
+          style={{
+            paddingHorizontal: horizontalPadding,
+            paddingTop: rV(8),
+            paddingBottom: sectionSpacing,
+          }}
+        >
+          {listHeader}
+          <ProductListSkeleton count={4} />
+        </View>
+      ) : displayed.length === 0 ? (
+        <FlatList
+          data={[]}
+          renderItem={() => null}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
             paddingBottom: sectionSpacing,
-          },
-        ]}
-      >
-        <CommerceSeeAllHero
-          badgeIcon="flash-outline"
-          badgeLabel={flashSaleEvent ? "Live event" : "Limited offers"}
-          title={flashSaleEvent?.title ?? "Flash sales curated for quick wins"}
-          subtitle={
-            flashSaleEvent?.subtitle ??
-            "Handpicked products with strong savings, updated live from the ODOS catalog."
-          }
-          accent="gold"
-          stats={[
-            { value: products.length, label: "live items" },
-            { value: dealProducts.length, label: "with savings" },
-            {
-              value: flashSaleEvent
-                ? formatFlashStatCountdown(flashSaleEvent.secondsRemaining)
-                : averageSavings > 0
-                  ? `${averageSavings}%`
-                  : "—",
-              label: flashSaleEvent ? "ends in" : "avg. savings",
-            },
-          ]}
-        />
-
-        {flashSaleEvent ? (
-          <View style={{ marginBottom: rV(12) }}>
-            <FlashSaleCountdown
-              endsAt={flashSaleEvent.endsAt}
-              serverSecondsRemaining={flashSaleEvent.secondsRemaining}
-            />
-          </View>
-        ) : null}
-
-        <CommerceSeeAllSearch
-          data={products}
-          onStartSearch={() => setIsSearching(true)}
-          onResults={(results) => {
-            setIsSearching(true);
-            setSearchResults(results);
           }}
-          placeholder="Search flash sale products"
-          searchKeys={["title", "category", "subcategory", "discount"]}
-        />
-
-        <CommerceFilterChips
-          chips={filterChips}
-          activeKey={activeFilter}
-          onChange={(key) => setActiveFilter(key as FlashFilter)}
-        />
-
-        <View style={screenStyles.contentBlock}>
-          <CommerceSeeAllSectionHeader
-            title={activeFilterLabel}
-            subtitle={
-              displayed.length > 0
-                ? `${displayed.length} product${displayed.length === 1 ? "" : "s"} in this view`
-                : "New flash sale items appear as vendors publish them"
-            }
-            count={displayed.length}
-          />
-
-          {isLoading && products.length === 0 ? (
-            <ProductListSkeleton count={4} />
-          ) : displayed.length === 0 ? (
+          ListEmptyComponent={
             <CommerceSeeAllEmptyState
               icon="flash-outline"
               title={error ? "We couldn't load flash sales" : "No flash sales yet"}
@@ -178,25 +194,33 @@ export default function FlashSalesScreen() {
                   : "Check back soon for limited-time offers from ODOS vendors."
               }
             />
-          ) : (
-            <FlatList
-              data={displayed}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-              renderItem={({ item }) => (
-                <RecommendationCard
-                  {...item}
-                  reviews={
-                    item.reviews !== undefined ? Number(item.reviews) : undefined
-                  }
-                />
-              )}
-              contentContainerStyle={{ paddingTop: rV(4), paddingBottom: rV(8) }}
+          }
+        />
+      ) : (
+        <FlatList
+          data={displayed}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={listHeader}
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.45}
+          ListFooterComponent={
+            isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+          }
+          ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
+          renderItem={({ item }) => (
+            <RecommendationCard
+              {...item}
+              reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
             />
           )}
-        </View>
-      </ScrollView>
+          contentContainerStyle={{
+            paddingHorizontal: horizontalPadding,
+            paddingTop: rV(8),
+            paddingBottom: sectionSpacing,
+          }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
