@@ -499,9 +499,22 @@ export default function VendorVouchersScreen() {
                     <Text style={styles.voucherTitle}>{voucher.title}</Text>
                   </View>
                   <View style={styles.statusPill}>
-                    <Text style={styles.statusPillText}>{voucher.status.replace(/_/g, " ")}</Text>
+                    <Text style={styles.statusPillText}>
+                      {voucher.approvalStatus === "pending"
+                        ? "Pending review"
+                        : voucher.status.replace(/_/g, " ")}
+                    </Text>
                   </View>
                 </View>
+
+                {voucher.approvalStatus === "pending" ? (
+                  <Text style={styles.pendingNote}>
+                    ODOS is reviewing this store offer before it goes live.
+                  </Text>
+                ) : null}
+                {voucher.approvalStatus === "rejected" && voucher.reviewNotes ? (
+                  <Text style={styles.pendingNote}>{voucher.reviewNotes}</Text>
+                ) : null}
 
                 <Text style={styles.rewardText}>{voucher.rewardText}</Text>
                 <Text style={styles.metaText}>
@@ -1014,6 +1027,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     fontSize: rMS(10.5),
     textTransform: "capitalize",
+  },
+  pendingNote: {
+    marginTop: rV(8),
+    color: "#B45309",
+    fontFamily: Fonts.text,
+    fontSize: rMS(11),
+    lineHeight: rMS(16),
   },
   rewardText: {
     marginTop: rV(14),

@@ -27,6 +27,8 @@ type VendorVoucherApi = {
   starts_at?: string | null;
   ends_at?: string | null;
   created_at?: string;
+  approval_status?: string;
+  review_notes?: string | null;
 };
 
 function requireToken(session: VendorSessionContext) {
@@ -69,6 +71,8 @@ function mapVoucher(payload: VendorVoucherApi): VendorVoucher {
     startsAt: payload.starts_at ?? undefined,
     endsAt: payload.ends_at ?? undefined,
     createdAt: payload.created_at ?? new Date().toISOString(),
+    approvalStatus: payload.approval_status ?? "approved",
+    reviewNotes: payload.review_notes ?? undefined,
   };
 }
 

@@ -173,7 +173,7 @@ export default function FlashSalesScreen() {
           }}
         >
           {listHeader}
-          <ProductListSkeleton count={4} />
+          <ProductListSkeleton count={2} />
         </View>
       ) : displayed.length === 0 ? (
         <FlatList

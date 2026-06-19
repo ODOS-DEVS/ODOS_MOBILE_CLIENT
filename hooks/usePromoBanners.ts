@@ -10,6 +10,9 @@ export type PromoBannerItem = {
   imageUrl?: string | null;
   accent?: "gold" | "default" | "teal" | null;
   sortOrder: number;
+  campaignTag?: string | null;
+  linkType?: string | null;
+  placement?: string | null;
 };
 
 type PromoBannerApiItem = {
@@ -21,6 +24,9 @@ type PromoBannerApiItem = {
   image_url?: string | null;
   accent?: string | null;
   sort_order: number;
+  campaign_tag?: string | null;
+  link_type?: string | null;
+  placement?: string | null;
 };
 
 function mapPromoBanner(item: PromoBannerApiItem): PromoBannerItem {
@@ -33,10 +39,13 @@ function mapPromoBanner(item: PromoBannerApiItem): PromoBannerItem {
     imageUrl: item.image_url ?? undefined,
     accent: (item.accent as PromoBannerItem["accent"]) ?? undefined,
     sortOrder: item.sort_order,
+    campaignTag: item.campaign_tag ?? undefined,
+    linkType: item.link_type ?? undefined,
+    placement: item.placement ?? undefined,
   };
 }
 
-export function usePromoBanners() {
+export function usePromoBanners(placement = "home") {
   const [banners, setBanners] = useState<PromoBannerItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +55,9 @@ export function usePromoBanners() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/catalog/promo-banners`);
+      const response = await fetch(
+        `${API_BASE_URL}/catalog/promo-banners?placement=${encodeURIComponent(placement)}`,
+      );
       if (!response.ok) {
         throw new Error("Unable to load promo banners.");
       }
@@ -63,7 +74,7 @@ export function usePromoBanners() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [placement]);
 
   useEffect(() => {
     void refresh();

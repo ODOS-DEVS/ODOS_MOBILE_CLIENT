@@ -1,7 +1,7 @@
 import { rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
+import { openProductDetail } from "@/utils/productNavigation";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
@@ -26,6 +26,10 @@ interface ProductCardProps {
   cardWidth?: number;
   /** Optional override for horizontal spacing (margin-right) to tune grid gaps */
   horizontalSpacing?: number;
+  sourceScreen?: string;
+  storeId?: string;
+  searchQuery?: string;
+  trackingEvent?: "product_click" | "search_result_click";
 }
 
 export type { ProductCardProps };
@@ -44,6 +48,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   reviews,
   cardWidth,
   horizontalSpacing,
+  sourceScreen,
+  storeId,
+  searchQuery,
+  trackingEvent,
 }) => {
   const { cardShell, imageArea, colors } = useCommerceTheme();
   const textStyles = useCatalogCardTextStyles();
@@ -56,11 +64,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <TouchableOpacity
       onPress={() =>
-        router.push({
-          pathname: "/screens/[id]" as any,
-          params: {
+        openProductDetail(
+          {
             id,
-            image: imageUrl ?? undefined,
+            image,
             imageKey,
             imageUrl,
             title,
@@ -71,7 +78,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
             rating,
             reviews,
           },
-        })
+          sourceScreen
+            ? {
+                sourceScreen,
+                storeId,
+                searchQuery,
+                eventType: trackingEvent,
+              }
+            : undefined,
+        )
       }
     >
       <View

@@ -1,13 +1,17 @@
 import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
-import ProductCard from "@/components/cards/ProductCard";
+import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
+import ProductImageGalleryModal from "@/components/media/ProductImageGalleryModal";
+import ProductDetailRecommendations from "@/components/product/ProductDetailRecommendations";
 import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import { useStore } from "@/hooks/useCommerce";
-import { useCatalogProduct, useCatalogProducts } from "@/hooks/useCatalog";
+import { useCatalogProduct } from "@/hooks/useCatalog";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useForYouRecommendations, useSimilarProducts } from "@/hooks/useRecommendations";
+import { useProfile } from "@/context/ProfileContext";
 import { useProductReviews } from "@/hooks/useReviews";
 import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
@@ -16,6 +20,10 @@ import ProductShareSheet from "@/components/share/ProductShareSheet";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import { getSecondsRemaining } from "@/utils/countdown";
 import { goBackOr } from "@/utils/navigation";
+import {
+  BEHAVIOR_EVENT_TYPES,
+  trackBehaviorEvent,
+} from "@/services/behaviorTracking";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import type { ProductSharePayload } from "@/utils/shareCatalog";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -25,7 +33,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  Modal,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -67,14 +74,6 @@ function toNumber(value: string | string[] | undefined, fallback = 0) {
 
 function formatPrice(value: number) {
   return `₵${value.toFixed(2)}`;
-}
-
-function normalizeValue(value?: string | null) {
-  return (value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function titleFromSlug(value?: string | null) {
@@ -172,8 +171,6 @@ export default function ProductDetail() {
   const { horizontalPadding } = useResponsive();
   const params = useLocalSearchParams();
   const galleryRef = useRef<FlatList<any>>(null);
-  const fullscreenGalleryRef = useRef<FlatList<any>>(null);
-
   const id = String(getParam(params.id) ?? "");
   const paramTitle = getParam(params.title) ?? "";
   const paramCategory = getParam(params.category) ?? undefined;
@@ -234,13 +231,37 @@ export default function ProductDetail() {
     fallback: productFallback,
   });
 
-  const primaryCategoryQuery = product.categorySlugs?.[0] ?? product.category;
-  const { products: categoryProducts } = useCatalogProducts({
-    category: primaryCategoryQuery,
+  useEffect(() => {
+    if (isLoading || !product.id) {
+      return;
+    }
+
+    trackBehaviorEvent({
+      eventType: BEHAVIOR_EVENT_TYPES.PRODUCT_VIEW,
+      productId: product.id,
+      storeId: product.storeId ?? null,
+      category: product.categorySlugs?.[0] ?? product.category ?? null,
+      sourceScreen: "product_detail",
+      metadata: {
+        price: product.price,
+      },
+    });
+  }, [isLoading, product.category, product.categorySlugs, product.id, product.price, product.storeId]);
+
+  const {
+    products: relatedProducts,
+    feed: similarFeed,
+    isLoading: isLoadingSimilar,
+  } = useSimilarProducts({
+    productId: id,
+    limit: 8,
   });
-  const { products: popularProducts } = useCatalogProducts({
-    section: "popular",
-  });
+  const {
+    products: forYouProducts,
+    feed: forYouFeed,
+    isLoading: isLoadingForYou,
+  } = useForYouRecommendations({ limit: 12 });
+  const { selectedAddress } = useProfile();
 
   const { store } = useStore({
     storeId: product.storeId,
@@ -341,30 +362,6 @@ export default function ProductDetail() {
     product.imageUrl,
     product.imageUrls,
   ]);
-
-  const relatedProducts = useMemo(() => {
-    const primarySubcategory = normalizeValue(product.subcategory);
-    const currentStoreId = product.storeId;
-    const merged = [...categoryProducts, ...popularProducts];
-    const uniqueProducts = merged.filter(
-      (item, index, array) =>
-        item.id !== id && array.findIndex((candidate) => candidate.id === item.id) === index,
-    );
-
-    return uniqueProducts
-      .sort((left, right) => {
-        const leftScore =
-          (normalizeValue(left.subcategory) === primarySubcategory ? 4 : 0) +
-          (left.storeId === currentStoreId ? 2 : 0) +
-          ((left.rating ?? 0) / 10);
-        const rightScore =
-          (normalizeValue(right.subcategory) === primarySubcategory ? 4 : 0) +
-          (right.storeId === currentStoreId ? 2 : 0) +
-          ((right.rating ?? 0) / 10);
-        return rightScore - leftScore;
-      })
-      .slice(0, 8);
-  }, [categoryProducts, id, popularProducts, product.storeId, product.subcategory]);
 
   const taxonomyLabels = useMemo(() => {
     const labels = [category, subcategory].filter(
@@ -838,35 +835,9 @@ export default function ProductDetail() {
                 />
 
                 {!isVoucher ? (
-                  <CollapsibleShippingCard
-                    title="Delivery & shipping"
-                    icon={
-                      <Ionicons
-                        name="car-outline"
-                        size={20}
-                        color={AppColors.subtext[100]}
-                      />
-                    }
-                    description={[
-                      "Choose the delivery speed that works best for you at checkout.",
-                    ]}
-                    shippingOptions={[
-                      {
-                        type: "Economy",
-                        deliveryTime: "Arrives in 3-5 business days",
-                        price: "GHC19",
-                      },
-                      {
-                        type: "Express",
-                        deliveryTime: "Arrives in 1-2 business days",
-                        price: "GHC29",
-                      },
-                      {
-                        type: "Same day",
-                        deliveryTime: "Available in selected areas",
-                        price: "GHC49",
-                      },
-                    ]}
+                  <DeliveryOptionsCard
+                    subtotal={price}
+                    region={selectedAddress?.region}
                     defaultExpanded={false}
                   />
                 ) : null}
@@ -888,24 +859,15 @@ export default function ProductDetail() {
                 />
               </View>
 
-              {relatedProducts.length > 0 ? (
-                <>
-                  <View style={styles.relatedHeader}>
-                    <Text style={styles.relatedTitle}>More like this</Text>
-                    <Text style={styles.relatedSubtitle}>
-                      Similar picks from this category and store network.
-                    </Text>
-                  </View>
-                  <FlatList
-                    data={relatedProducts}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <ProductCard {...item} />}
-                    contentContainerStyle={styles.relatedList}
-                  />
-                </>
-              ) : null}
+              <ProductDetailRecommendations
+                productId={id}
+                similarFeed={similarFeed}
+                similarProducts={relatedProducts}
+                similarLoading={isLoadingSimilar}
+                forYouFeed={forYouFeed}
+                forYouProducts={forYouProducts}
+                forYouLoading={isLoadingForYou}
+              />
             </View>
           </ScrollView>
 
@@ -968,115 +930,17 @@ export default function ProductDetail() {
             </View>
           </View>
 
-          <Modal
+          <ProductImageGalleryModal
             visible={isGalleryOpen}
-            animationType="fade"
-            transparent={false}
-            onRequestClose={() => setIsGalleryOpen(false)}
-          >
-            <View style={styles.fullscreenModal}>
-              <View
-                style={[
-                  styles.fullscreenHeader,
-                  {
-                    paddingTop: Math.max(insets.top + rV(6), rV(28)),
-                    paddingHorizontal: horizontalPadding,
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.fullscreenHeaderButton}
-                  activeOpacity={0.8}
-                  onPress={() => setIsGalleryOpen(false)}
-                >
-                  <Ionicons name="close" size={rMS(22)} color={AppColors.white} />
-                </TouchableOpacity>
-                <View style={styles.fullscreenCounter}>
-                  <Text style={styles.fullscreenCounterText}>
-                    {activeImageIndex + 1}/{productImages.length}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.fullscreenHeaderButton}
-                  activeOpacity={0.8}
-                  onPress={openShareSheet}
-                >
-                  <AntDesign name="share-alt" size={rMS(18)} color={AppColors.white} />
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                ref={fullscreenGalleryRef}
-                data={productImages}
-                horizontal
-                pagingEnabled
-                initialScrollIndex={activeImageIndex}
-                getItemLayout={(_, index) => ({
-                  length: screenWidth,
-                  offset: screenWidth * index,
-                  index,
-                })}
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(_, index) => `${id}-fullscreen-${index}`}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(
-                    event.nativeEvent.contentOffset.x / screenWidth,
-                  );
-                  setActiveImageIndex(index);
-                }}
-                renderItem={({ item }) => (
-                  <View style={styles.fullscreenImageSlide}>
-                    <Image
-                      source={item as any}
-                      style={styles.fullscreenImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                )}
-              />
-
-              <View style={styles.fullscreenFooter}>
-                <Text style={styles.fullscreenTitle} numberOfLines={1}>
-                  {title}
-                </Text>
-                <Text style={styles.fullscreenPrice}>{formatPrice(price)}</Text>
-                {productImages.length > 1 ? (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.fullscreenThumbs}
-                  >
-                    {productImages.map((item, index) => {
-                      const active = index === activeImageIndex;
-                      return (
-                        <TouchableOpacity
-                          key={`${id}-fullscreen-thumb-${index}`}
-                          activeOpacity={0.82}
-                          onPress={() => {
-                            setActiveImageIndex(index);
-                            fullscreenGalleryRef.current?.scrollToIndex({
-                              index,
-                              animated: true,
-                            });
-                          }}
-                          style={[
-                            styles.fullscreenThumbWrap,
-                            active && styles.fullscreenThumbWrapActive,
-                          ]}
-                        >
-                          <Image
-                            source={item as any}
-                            style={styles.fullscreenThumbImage}
-                            resizeMode="cover"
-                          />
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                ) : null}
-              </View>
-            </View>
-          </Modal>
+            images={productImages}
+            activeIndex={activeImageIndex}
+            title={title}
+            priceLabel={formatPrice(price)}
+            horizontalPadding={horizontalPadding}
+            onClose={() => setIsGalleryOpen(false)}
+            onIndexChange={setActiveImageIndex}
+            onSharePress={openShareSheet}
+          />
         </>
       )}
 

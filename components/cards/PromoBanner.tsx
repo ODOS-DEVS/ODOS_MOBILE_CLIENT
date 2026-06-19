@@ -4,7 +4,7 @@ import type { PromoBannerItem } from "@/hooks/usePromoBanners";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import { useResponsive, rMS, rS, rV } from "@/styles/responsive";
 import { resolveApiMediaUrl } from "@/utils/media";
-import { navigateFromPromoLink } from "@/utils/promoNavigation";
+import { navigateFromPromoBanner } from "@/utils/promoNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, useState } from "react";
@@ -25,6 +25,8 @@ type PromoBannerProps = {
   featuredPromotion?: StoreVoucherOffer | null;
   dealCount?: number;
   onPress?: () => void;
+  /** When false, banner fills its parent width (e.g. inside a padded screen). Default true for home. */
+  inset?: boolean;
 };
 
 function getGradientColors(accent: PromoBannerItem["accent"], isDark: boolean) {
@@ -49,24 +51,24 @@ function PromoBannerCard({
   dealCount,
   onPress,
   width,
+  inset = true,
 }: {
   banner?: PromoBannerItem;
   featuredPromotion?: StoreVoucherOffer | null;
   dealCount?: number;
   onPress?: () => void;
   width: number;
+  inset?: boolean;
 }) {
   const { horizontalPadding } = useResponsive();
   const { colors, isDark } = useTheme();
 
-  const headline = banner?.title ?? featuredPromotion?.title ?? "Deals & Promotions";
+  const headline = banner?.title ?? "Hot Deals on ODOS";
   const subtitle =
     banner?.subtitle ??
-    (featuredPromotion
-      ? featuredPromotion.rewardText
-      : dealCount && dealCount > 0
-        ? `${dealCount} live offer${dealCount === 1 ? "" : "s"} across ODOS`
-        : "Save on curated picks and promo codes");
+    (dealCount && dealCount > 0
+      ? `${dealCount} product deal${dealCount === 1 ? "" : "s"} live right now`
+      : "Discover flash sales and price drops across ODOS");
   const ctaLabel = banner?.ctaLabel ?? "Browse deals";
   const imageSource = banner?.imageUrl
     ? { uri: resolveApiMediaUrl(banner.imageUrl) }
@@ -76,8 +78,8 @@ function PromoBannerCard({
     () =>
       StyleSheet.create({
         shell: {
-          width: width - horizontalPadding * 2,
-          marginHorizontal: horizontalPadding,
+          width: inset ? width - horizontalPadding * 2 : "100%",
+          marginHorizontal: inset ? horizontalPadding : 0,
           marginTop: rV(8),
           borderRadius: rMS(22),
           overflow: "hidden",
@@ -85,9 +87,9 @@ function PromoBannerCard({
           borderColor: isDark ? colors.border : "rgba(15, 23, 42, 0.08)",
         },
         gradient: {
-          minHeight: rV(168),
-          paddingHorizontal: rS(18),
-          paddingVertical: rV(18),
+          minHeight: rV(152),
+          paddingHorizontal: rS(16),
+          paddingVertical: rV(16),
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
@@ -148,22 +150,23 @@ function PromoBannerCard({
           color: isDark ? "#111827" : "#FFFFFF",
         },
         artWrap: {
-          width: rS(112),
-          height: rV(132),
+          width: rS(96),
+          height: rV(112),
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         },
         artImage: {
-          width: rS(118),
-          height: rV(138),
+          width: rS(96),
+          height: rV(112),
         },
       }),
-    [colors.border, horizontalPadding, isDark, width],
+    [colors.border, horizontalPadding, inset, isDark, width],
   );
 
   const handlePress = () => {
-    if (banner?.ctaLink) {
-      navigateFromPromoLink(banner.ctaLink, onPress);
+    if (banner) {
+      navigateFromPromoBanner(banner, onPress);
       return;
     }
     onPress?.();
@@ -178,15 +181,9 @@ function PromoBannerCard({
         style={styles.gradient}
       >
         <View style={styles.copyBlock}>
-          <Text style={styles.eyebrow}>Limited-time savings</Text>
+          <Text style={styles.eyebrow}>Today's deals</Text>
           <Text style={styles.title}>{headline}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
-
-          {!banner && featuredPromotion?.code ? (
-            <View style={styles.codePill}>
-              <Text style={styles.codeText}>Code {featuredPromotion.code}</Text>
-            </View>
-          ) : null}
 
           <View style={styles.cta}>
             <Text style={styles.ctaText}>{ctaLabel}</Text>
@@ -211,6 +208,7 @@ export default function PromoBanner({
   featuredPromotion,
   dealCount = 0,
   onPress,
+  inset = true,
 }: PromoBannerProps) {
   const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -222,6 +220,17 @@ export default function PromoBanner({
       setActiveIndex(nextIndex);
     }
   };
+
+  if (hasCmsBanners && banners.length === 1) {
+    return (
+      <PromoBannerCard
+        banner={banners[0]}
+        onPress={onPress}
+        width={width}
+        inset={inset}
+      />
+    );
+  }
 
   if (hasCmsBanners) {
     return (
@@ -238,6 +247,7 @@ export default function PromoBanner({
               banner={banner}
               onPress={onPress}
               width={width}
+              inset={inset}
             />
           ))}
         </ScrollView>
@@ -273,6 +283,7 @@ export default function PromoBanner({
       dealCount={dealCount}
       onPress={onPress}
       width={width}
+      inset={inset}
     />
   );
 }

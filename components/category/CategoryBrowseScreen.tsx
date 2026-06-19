@@ -177,7 +177,7 @@ export function CategoryBrowseScreen({
         >
           {listHeader}
           <View style={{ paddingHorizontal: horizontalPadding }}>
-            <ProductGridSkeleton count={6} />
+            <ProductGridSkeleton count={4} />
           </View>
         </ScrollView>
       </View>

@@ -176,7 +176,7 @@ const WishlistScreen = () => {
       <ProfileHeader title="Wishlist" showBackButton={false} />
 
       {showInitialLoader ? (
-        <WishlistGridSkeleton columns={columns} count={columns * 2} />
+        <WishlistGridSkeleton columns={columns} count={columns} />
       ) : isEmpty ? (
         <View style={[styles.emptyWrap, { paddingBottom: tabBarInset }]}>
           <CommerceEmptyState

@@ -80,7 +80,20 @@ function formatMinSpend(amount: number) {
     return "No minimum spend";
   }
 
-  return `Min. spend GHS ${amount.toFixed(2)}`;
+  return `Min. spend GH₵${amount.toFixed(2)}`;
+}
+
+function formatScopeLabel(voucher: VoucherWalletItem) {
+  if (voucher.scope === "store") {
+    return "Store offer";
+  }
+  if (voucher.scope === "category") {
+    return "Category offer";
+  }
+  if (voucher.scope === "product") {
+    return "Product offer";
+  }
+  return "Platform offer";
 }
 
 function formatAvailabilityLabel(voucher: VoucherWalletItem) {
@@ -236,8 +249,7 @@ export default function VouchersScreen() {
                         </View>
                         <View style={[styles.infoChip, styles.infoChipMuted]}>
                           <Text style={[styles.infoChipText, styles.infoChipMutedText]}>
-                            {voucher.scope === "store" ? "Store promotion" : "ODOS promotion"} ·{" "}
-                            {formatAvailabilityLabel(voucher)}
+                            {formatScopeLabel(voucher)} · {formatAvailabilityLabel(voucher)}
                           </Text>
                         </View>
                       </View>

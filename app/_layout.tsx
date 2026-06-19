@@ -7,6 +7,7 @@ import { RealtimeProvider } from "@/context/RealtimeContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { BehaviorTrackingProvider } from "@/context/BehaviorTrackingContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
@@ -134,17 +135,19 @@ export default function RootLayout() {
                 <VendorRealtimeBridge />
                 <ChatProvider>
                   <ProfileProvider>
-                    <CartProvider>
-                      <WishlistProvider>
-                        <ThemedAppShell>
-                          <Stack
-                            screenOptions={{
-                              headerShown: false,
-                            }}
-                          />
-                        </ThemedAppShell>
-                      </WishlistProvider>
-                    </CartProvider>
+                    <BehaviorTrackingProvider>
+                      <CartProvider>
+                        <WishlistProvider>
+                          <ThemedAppShell>
+                            <Stack
+                              screenOptions={{
+                                headerShown: false,
+                              }}
+                            />
+                          </ThemedAppShell>
+                        </WishlistProvider>
+                      </CartProvider>
+                    </BehaviorTrackingProvider>
                   </ProfileProvider>
                 </ChatProvider>
               </RealtimeProvider>

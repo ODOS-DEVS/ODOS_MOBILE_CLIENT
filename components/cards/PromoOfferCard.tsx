@@ -22,6 +22,7 @@ type PromoOfferCardProps = {
   offer: StoreVoucherOffer;
   isBusy?: boolean;
   compact?: boolean;
+  fullWidth?: boolean;
   onClaim?: (offer: StoreVoucherOffer) => void;
   onUse?: (offer: StoreVoucherOffer) => void;
 };
@@ -30,6 +31,7 @@ export default function PromoOfferCard({
   offer,
   isBusy,
   compact = false,
+  fullWidth = false,
   onClaim,
   onUse,
 }: PromoOfferCardProps) {
@@ -40,16 +42,19 @@ export default function PromoOfferCard({
     () =>
       StyleSheet.create({
         card: {
-          width: compact ? rS(210) : rS(228),
-          marginRight: rS(10),
-          marginTop: rV(4),
-          marginBottom: rV(8),
+          width: fullWidth ? "100%" : compact ? rS(200) : rS(228),
+          alignSelf: fullWidth ? "stretch" : undefined,
+          minHeight: compact && !fullWidth ? rV(172) : undefined,
+          marginRight: 0,
+          marginTop: 0,
+          marginBottom: 0,
           paddingHorizontal: rS(14),
           paddingVertical: rV(14),
-          borderRadius: rMS(20),
+          borderRadius: rMS(18),
           backgroundColor: isDark ? colors.cardElevated : colors.card,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.cardBorder,
+          justifyContent: "space-between",
         },
         headerRow: {
           flexDirection: "row",
@@ -147,7 +152,7 @@ export default function PromoOfferCard({
           fontSize: rMS(11),
         },
       }),
-    [colors, compact, isDark],
+    [colors, compact, fullWidth, isDark],
   );
 
   return (
@@ -159,7 +164,9 @@ export default function PromoOfferCard({
             size={rMS(13)}
             color={isDark ? "#FCD34D" : AppColors.primary}
           />
-          <Text style={styles.pillText}>ODOS promo</Text>
+          <Text style={styles.pillText}>
+            {offer.scope === "store" ? "Store offer" : "Platform offer"}
+          </Text>
         </View>
         <Text style={styles.code}>{offer.code}</Text>
       </View>
@@ -170,11 +177,11 @@ export default function PromoOfferCard({
       <Text style={styles.reward}>{offer.rewardText}</Text>
       <Text style={styles.meta}>
         {offer.minSubtotal > 0
-          ? `Min. spend ${offer.minSubtotal.toFixed(2)} GHS`
+          ? `Min. spend GH₵${offer.minSubtotal.toFixed(2)}`
           : "No minimum spend"}
       </Text>
-      {offer.description && !compact ? (
-        <Text style={styles.description} numberOfLines={3}>
+      {offer.description && (!compact || fullWidth) ? (
+        <Text style={styles.description} numberOfLines={fullWidth ? 4 : 3}>
           {offer.description}
         </Text>
       ) : null}
@@ -192,7 +199,7 @@ export default function PromoOfferCard({
               activeOpacity={0.88}
               onPress={() => onUse?.(offer)}
             >
-              <Text style={styles.actionTextDark}>Use</Text>
+              <Text style={styles.actionTextDark}>Use at checkout</Text>
             </TouchableOpacity>
           ) : isClaimable ? (
             <TouchableOpacity

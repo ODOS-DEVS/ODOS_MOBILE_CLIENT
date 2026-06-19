@@ -102,20 +102,20 @@ function validate(values: VendorProductInput) {
 }
 
 const emptyForm = (): VendorProductInput => ({
-  name: "",
-  description: "",
-  category: "",
+    name: "",
+    description: "",
+    category: "",
   categorySlug: "",
-  subcategory: "",
-  price: 0,
-  oldPrice: undefined,
-  stock: 0,
-  imageUris: [],
-  placementTags: [],
-  colorOptions: [],
-  sizeOptions: [],
-  isReturnable: true,
-});
+    subcategory: "",
+    price: 0,
+    oldPrice: undefined,
+    stock: 0,
+    imageUris: [],
+    placementTags: [],
+    colorOptions: [],
+    sizeOptions: [],
+    isReturnable: true,
+  });
 
 export default function NewVendorProductScreen() {
   const { contentMaxWidth, width } = useResponsive();
@@ -217,10 +217,10 @@ export default function NewVendorProductScreen() {
       imageKey: selectedProduct.imageKey,
       imageUrl: selectedProduct.imageUrl,
       imageUris: selectedProduct.imageUrls?.length
-        ? selectedProduct.imageUrls
-        : selectedProduct.imageUrl
-          ? [selectedProduct.imageUrl]
-          : [],
+          ? selectedProduct.imageUrls
+          : selectedProduct.imageUrl
+            ? [selectedProduct.imageUrl]
+            : [],
       placementTags: selectedProduct.placementTags ?? [],
       colorOptions: selectedProduct.colorOptions ?? [],
       sizeOptions: selectedProduct.sizeOptions ?? [],
@@ -438,24 +438,24 @@ export default function NewVendorProductScreen() {
 
             <AccountSectionCard title="Basics">
               <View style={productFormStyles.sectionGap}>
-                <TextInputField
+              <TextInputField
                   label="Product name *"
-                  icon="cube-outline"
+                icon="cube-outline"
                   placeholder="e.g. Classic shoulder bag"
-                  value={form.name}
-                  onChangeText={(text) => handleChange("name", text)}
-                  errorMessage={fieldErrors.name}
-                />
-                <TextInputField
-                  label="Description *"
-                  icon="document-text-outline"
+                value={form.name}
+                onChangeText={(text) => handleChange("name", text)}
+                errorMessage={fieldErrors.name}
+              />
+              <TextInputField
+                label="Description *"
+                icon="document-text-outline"
                   placeholder="What makes this product worth buying?"
-                  value={form.description}
-                  onChangeText={(text) => handleChange("description", text)}
-                  errorMessage={fieldErrors.description}
-                  multiline
-                  numberOfLines={4}
-                />
+                value={form.description}
+                onChangeText={(text) => handleChange("description", text)}
+                errorMessage={fieldErrors.description}
+                multiline
+                numberOfLines={4}
+              />
                 <CatalogTaxonomyPicker
                   categories={catalogCategories}
                   isLoading={isLoadingCategories}
@@ -465,8 +465,8 @@ export default function NewVendorProductScreen() {
                   onSelectCategory={handleSelectCategory}
                   onSelectSubcategory={(value) => handleChange("subcategory", value)}
                   categoryError={fieldErrors.category}
-                />
-              </View>
+                  />
+                </View>
             </AccountSectionCard>
 
             <AccountSectionCard title="Pricing & inventory">
@@ -481,10 +481,10 @@ export default function NewVendorProductScreen() {
                     <View style={productFormStyles.rowSplit}>
                       <View style={productFormStyles.rowHalf}>{priceFields}</View>
                       <View style={productFormStyles.rowHalf}>{stockAndPromoFields}</View>
-                    </View>
+                </View>
                   </>
                 )}
-              </View>
+                </View>
             </AccountSectionCard>
 
             <AccountSectionCard title="Variants (optional)">

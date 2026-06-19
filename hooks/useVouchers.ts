@@ -4,8 +4,8 @@ import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 
 export type VoucherStatus = "active" | "used" | "expired";
-export type VoucherScope = "odos" | "store";
-export type VoucherAvailability = "auto" | "claim" | "assigned";
+export type VoucherScope = "odos" | "store" | "category" | "product";
+export type VoucherAvailability = "auto" | "claim" | "assigned" | "private";
 
 export type VoucherWalletItem = {
   id: string;
@@ -38,6 +38,9 @@ export type StoreVoucherOffer = {
   minSubtotal: number;
   expiresAt?: string | null;
   claimed: boolean;
+  campaignTag?: string | null;
+  discountType?: string | null;
+  approvalStatus?: string | null;
 };
 
 export type VoucherPreview = {
@@ -277,6 +280,38 @@ export function useVouchers() {
     [accessToken],
   );
 
+  const suggestVouchers = useCallback(
+    async (input: {
+      items: VoucherPreviewItemPayload[];
+      shippingAmount?: number;
+    }) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        return [];
+      }
+
+      const response = await fetch(`${API_BASE_URL}/vouchers/suggestions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: input.items,
+          shipping_amount: input.shippingAmount ?? 0,
+        }),
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const payload = (await response.json()) as VoucherPreviewApiItem[];
+      return payload.map(mapVoucherPreview);
+    },
+    [accessToken],
+  );
+
   const fetchStoreVouchers = useCallback(async (storeId: string) => {
     const response = await fetch(`${API_BASE_URL}/vouchers/stores/${encodeURIComponent(storeId)}`);
     if (!response.ok) {
@@ -322,6 +357,7 @@ export function useVouchers() {
     isLoadingVouchers,
     refreshVouchers,
     previewVoucher,
+    suggestVouchers,
     fetchStoreVouchers,
     claimVoucher,
   };
