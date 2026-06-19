@@ -16,9 +16,13 @@ import { CatalogProductItem, useCatalogCategories } from "@/hooks/useCatalog";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
+import {
+  BEHAVIOR_EVENT_TYPES,
+  trackBehaviorEvent,
+} from "@/services/behaviorTracking";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   ScrollView,
@@ -310,6 +314,26 @@ export default function SearchScreen() {
     storeLookup,
   ]);
 
+  useEffect(() => {
+    const normalized = query.trim();
+    if (normalized.length < 2) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      trackBehaviorEvent({
+        eventType: BEHAVIOR_EVENT_TYPES.SEARCH_QUERY,
+        searchQuery: normalized,
+        sourceScreen: "search",
+        metadata: {
+          result_count: filteredProducts.length,
+        },
+      });
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [filteredProducts.length, query]);
+
   const filterCount = useMemo(() => {
     return [
       selectedCategory,
@@ -566,7 +590,7 @@ export default function SearchScreen() {
 
       {isLoading && products.length === 0 ? (
         <View style={{ paddingHorizontal: horizontalPadding, paddingTop: rV(20) }}>
-          <ProductGridSkeleton count={6} />
+          <ProductGridSkeleton count={4} />
         </View>
       ) : (
         <FlatList
@@ -603,6 +627,10 @@ export default function SearchScreen() {
               {...item}
               cardWidth={gridCardWidth(numColumns, gridGap)}
               horizontalSpacing={0}
+              sourceScreen="search_results"
+              storeId={item.storeId}
+              searchQuery={query}
+              trackingEvent="search_result_click"
             />
           )}
         />

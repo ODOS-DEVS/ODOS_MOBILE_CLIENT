@@ -7,14 +7,17 @@ import {
   AccountTipBanner,
   useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
+import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
+import { configureBehaviorTracking } from "@/services/behaviorTracking";
 import { rV } from "@/styles/responsive";
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 export default function PreferenceScreen() {
   const accountStyles = useAccountStyles();
+  const { user, updateProfile } = useAuth();
   const { darkMode, isReady, setDarkMode } = useTheme();
   const { showToast } = useToast();
   const [analytics, setAnalytics] = useState(true);
@@ -22,6 +25,13 @@ export default function PreferenceScreen() {
   const [socialMedia, setSocialMedia] = useState(false);
   const [darkModeDraft, setDarkModeDraft] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setAnalytics(user.analytics_enabled);
+      setPersonalization(user.personalization_enabled);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (isReady) {
@@ -37,8 +47,19 @@ export default function PreferenceScreen() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await setDarkMode(darkModeDraft);
-      showToast("Preferences saved on this device.");
+      await Promise.all([
+        setDarkMode(darkModeDraft),
+        updateProfile({
+          personalizationEnabled: personalization,
+          analyticsEnabled: analytics,
+        }),
+      ]);
+      configureBehaviorTracking({
+        enabled: analytics,
+      });
+      showToast("Preferences saved.");
+    } catch {
+      showToast("We couldn't save your preferences right now.");
     } finally {
       setIsSaving(false);
     }
@@ -63,7 +84,7 @@ export default function PreferenceScreen() {
 
         <AccountTipBanner
           title="You're in control"
-          message="These preferences apply to this device. You can change them any time."
+          message="Personalization and analytics sync to your ODOS account. You can change them any time."
           icon="sparkles-outline"
         />
 
@@ -80,7 +101,7 @@ export default function PreferenceScreen() {
         <AccountSettingsGroup title="Privacy & data">
           <AccountSettingToggle
             title="Analytics"
-            description="Help us improve performance and reliability with anonymous usage insights."
+            description="Help ODOS learn what you browse, save, and buy so recommendations improve over time."
             value={analytics}
             onValueChange={setAnalytics}
           />

@@ -37,6 +37,8 @@ export type AuthUser = {
   system_notifications: boolean;
   location_notifications: boolean;
   location_updates: boolean;
+  personalization_enabled: boolean;
+  analytics_enabled: boolean;
   role: string;
   roles: AppRole[];
   vendorStatus: VendorStatus;
@@ -74,6 +76,8 @@ type ProfileUpdatePayload = {
   systemNotifications?: boolean;
   locationNotifications?: boolean;
   locationUpdates?: boolean;
+  personalizationEnabled?: boolean;
+  analyticsEnabled?: boolean;
 };
 
 type AuthFieldErrors = {
@@ -175,6 +179,8 @@ function isSameAuthUser(currentUser: AuthUser | null, nextUser: AuthUser | null)
     currentUser.system_notifications === nextUser.system_notifications &&
     currentUser.location_notifications === nextUser.location_notifications &&
     currentUser.location_updates === nextUser.location_updates &&
+    currentUser.personalization_enabled === nextUser.personalization_enabled &&
+    currentUser.analytics_enabled === nextUser.analytics_enabled &&
     currentUser.role === nextUser.role &&
     currentUser.vendorStatus === nextUser.vendorStatus &&
     currentUser.vendorId === nextUser.vendorId &&
@@ -214,6 +220,12 @@ function normalizeAuthUser(payload: Record<string, unknown>) {
     system_notifications: Boolean(payload.system_notifications),
     location_notifications: Boolean(payload.location_notifications),
     location_updates: Boolean(payload.location_updates),
+    personalization_enabled: Boolean(
+      payload.personalization_enabled ?? payload.personalizationEnabled ?? true,
+    ),
+    analytics_enabled: Boolean(
+      payload.analytics_enabled ?? payload.analyticsEnabled ?? true,
+    ),
     role:
       typeof payload.role === "string"
         ? payload.role
@@ -566,6 +578,8 @@ async function updateProfileRequest(token: string, payload: ProfileUpdatePayload
       system_notifications: payload.systemNotifications,
       location_notifications: payload.locationNotifications,
       location_updates: payload.locationUpdates,
+      personalization_enabled: payload.personalizationEnabled,
+      analytics_enabled: payload.analyticsEnabled,
     }),
   });
 
@@ -1250,6 +1264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         systemNotifications,
         locationNotifications,
         locationUpdates,
+        personalizationEnabled,
+        analyticsEnabled,
       } = payload;
 
       if (!accessToken) {
@@ -1278,6 +1294,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           systemNotifications,
           locationNotifications,
           locationUpdates,
+          personalizationEnabled,
+          analyticsEnabled,
         });
 
         setUser(updatedUser);

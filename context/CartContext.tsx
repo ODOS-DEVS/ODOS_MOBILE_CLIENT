@@ -2,6 +2,10 @@ import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useAuth } from "@/context/AuthContext";
+import {
+  BEHAVIOR_EVENT_TYPES,
+  trackBehaviorEvent,
+} from "@/services/behaviorTracking";
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
@@ -207,6 +211,19 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             }),
           ),
         );
+
+        normalizedProducts.forEach((product) => {
+          trackBehaviorEvent({
+            eventType: BEHAVIOR_EVENT_TYPES.ADD_TO_CART,
+            productId: product.id,
+            category: product.category ?? null,
+            sourceScreen: "cart",
+            metadata: {
+              quantity: Math.max(1, Math.min(product.quantity ?? 1, 99)),
+              price: product.price,
+            },
+          });
+        });
       } catch {
         // Keep optimistic UI state for now.
       }
@@ -287,7 +304,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const removeItem = useCallback(
     async (id: string) => {
       const normalizedId = String(id);
-      setCart((prev) => prev.filter((p) => p.id !== normalizedId));
+      let removedItem: CartItem | undefined;
+      setCart((prev) => {
+        removedItem = prev.find((item) => item.id === normalizedId);
+        return prev.filter((p) => p.id !== normalizedId);
+      });
 
       if (!user) {
         return;
@@ -305,6 +326,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             Authorization: `Bearer ${token}`,
           },
         });
+        if (removedItem) {
+          trackBehaviorEvent({
+            eventType: BEHAVIOR_EVENT_TYPES.REMOVE_FROM_CART,
+            productId: removedItem.id,
+            category: removedItem.category ?? null,
+            sourceScreen: "cart",
+          });
+        }
       } catch {
         // Keep optimistic UI state for now.
       }

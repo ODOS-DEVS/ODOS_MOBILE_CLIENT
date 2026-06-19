@@ -60,7 +60,7 @@ type CategoryApiItem = {
   subcategories?: string[] | null;
 };
 
-type ProductApiItem = {
+export type ProductApiItem = {
   id: string;
   audience_slug: string | null;
   section: string | null;
@@ -110,7 +110,7 @@ function mapCategory(item: CategoryApiItem): CatalogCategoryItem {
   };
 }
 
-function mapProduct(item: ProductApiItem): CatalogProductItem {
+export function mapProduct(item: ProductApiItem): CatalogProductItem {
   const imageUrl = resolveApiMediaUrl(item.image_url);
   return {
     id: item.id,
@@ -632,6 +632,7 @@ export function useCategoryBrowseProducts(slug?: string) {
   return useCatalogProducts({ category: slug });
 }
 
+/** @deprecated Use `useForYouRecommendations` from `@/hooks/useRecommendations`. */
 export function useRecommendedProducts({
   limit = 8,
 }: {
@@ -643,8 +644,7 @@ export function useRecommendedProducts({
   const popularCatalog = useCatalogProducts({
     section: "popular",
   });
-  const allCatalog = useCatalogProducts({
-  });
+  const allCatalog = useCatalogProducts({});
 
   const products = useMemo(
     () =>
@@ -654,30 +654,19 @@ export function useRecommendedProducts({
         allProducts: allCatalog.products,
         limit,
       }),
-    [
-      allCatalog.products,
-      highlightedCatalog.products,
-      limit,
-      popularCatalog.products,
-    ],
+    [allCatalog.products, highlightedCatalog.products, limit, popularCatalog.products],
   );
 
   const isLoading =
     products.length === 0 &&
-    (highlightedCatalog.isLoading ||
-      popularCatalog.isLoading ||
-      allCatalog.isLoading);
+    (highlightedCatalog.isLoading || popularCatalog.isLoading || allCatalog.isLoading);
 
   return {
     products,
     isLoading,
-    error:
-      highlightedCatalog.error ??
-      popularCatalog.error ??
-      allCatalog.error,
+    error: highlightedCatalog.error ?? popularCatalog.error ?? allCatalog.error,
   };
 }
-
 export function useCatalogProduct({
   productId,
   fallback,

@@ -1,5 +1,9 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
+import {
+  BEHAVIOR_EVENT_TYPES,
+  trackBehaviorEvent,
+} from "@/services/behaviorTracking";
 import { resolveApiMediaUrl } from "@/utils/media";
 import * as SecureStore from "expo-secure-store";
 import React, {
@@ -182,6 +186,15 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
                 : null,
           }),
         });
+        trackBehaviorEvent({
+          eventType: BEHAVIOR_EVENT_TYPES.ADD_TO_WISHLIST,
+          productId: normalizedProduct.id,
+          category: normalizedProduct.category ?? null,
+          sourceScreen: "wishlist",
+          metadata: {
+            price: normalizedProduct.price,
+          },
+        });
       } catch {
         // Keep optimistic UI state for now.
       }
@@ -192,7 +205,11 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const removeFromWishlist = useCallback(
     async (id: string) => {
       const normalizedId = String(id);
-      setWishlist((prev) => prev.filter((item) => item.id !== normalizedId));
+      let removedItem: WishlistProduct | undefined;
+      setWishlist((prev) => {
+        removedItem = prev.find((item) => item.id === normalizedId);
+        return prev.filter((item) => item.id !== normalizedId);
+      });
 
       if (!user) {
         return;
@@ -213,6 +230,14 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
             },
           },
         );
+        if (removedItem) {
+          trackBehaviorEvent({
+            eventType: BEHAVIOR_EVENT_TYPES.REMOVE_FROM_WISHLIST,
+            productId: removedItem.id,
+            category: removedItem.category ?? null,
+            sourceScreen: "wishlist",
+          });
+        }
       } catch {
         // Keep optimistic UI state for now.
       }

@@ -136,6 +136,8 @@ export type VendorVoucher = {
   startsAt?: string | null;
   endsAt?: string | null;
   createdAt: string;
+  approvalStatus?: string;
+  reviewNotes?: string | null;
 };
 
 export type VendorVoucherInput = {
