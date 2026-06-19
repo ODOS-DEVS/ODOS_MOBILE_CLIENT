@@ -101,7 +101,7 @@ export default function PopularProductsScreen() {
           }}
         >
           {listHeader}
-          <ProductListSkeleton count={5} />
+          <ProductListSkeleton count={2} />
         </View>
       ) : displayed.length === 0 ? (
         <FlatList

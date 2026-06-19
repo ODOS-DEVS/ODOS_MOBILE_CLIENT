@@ -2,16 +2,11 @@ import FlashSalesCard from "@/components/cards/FlashSaleCard";
 import MarketCard from "@/components/cards/MarketCard";
 import ProductCard from "@/components/cards/ProductCard";
 import PromoBanner from "@/components/cards/PromoBanner";
-import PromoOfferCard from "@/components/cards/PromoOfferCard";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import {
-  FlashSalesRowSkeleton,
-  HorizontalProductRowSkeleton,
-  HorizontalStoreRowSkeleton,
-  HomeFeedSkeleton,
-  MarketsRowSkeleton,
-  ProductListSkeleton,
+  HomeContentSkeleton,
   PromoBannerSkeleton,
+  SectionSkeleton,
 } from "@/components/loaders/CommerceSkeletons";
 import { ViewAllButton } from "@/components/browse/ViewAllButton";
 import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
@@ -21,28 +16,18 @@ import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
-import { useCatalogProducts, useRecommendedProducts } from "@/hooks/useCatalog";
-import { usePromotions } from "@/hooks/usePromotions";
-import { usePromoBanners } from "@/hooks/usePromoBanners";
+import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useForYouRecommendations } from "@/hooks/useRecommendations";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
-import { useVouchers } from "@/hooks/useVouchers";
+import { usePromoBanners } from "@/hooks/usePromoBanners";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { rS, rV, useResponsive } from "@/styles/responsive";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
-
-function buildShuffleScore(id: string, seed: number) {
-  return Array.from(`${id}-${seed}`).reduce(
-    (score, character) => (score * 31 + character.charCodeAt(0)) % 2147483647,
-    7,
-  );
-}
 
 type HomeSectionProps = {
   title: string;
@@ -118,23 +103,22 @@ function HomeSection({
 
 const HomeScreen = () => {
   const { colors } = useTheme();
-  const { user } = useAuth();
-  const { showToast } = useToast();
   const tabBarInset = useTabBarContentInsetFromContext();
   const { horizontalPadding, sectionSpacing } = useResponsive();
-  const [recommendationSeed, setRecommendationSeed] = useState(1);
-  const [claimingPromotionId, setClaimingPromotionId] = useState<string | null>(null);
   const { products: flashSaleProducts, isLoading: isLoadingFlashSales } = useCatalogProducts({
     placement: "flash-sale",
   });
   const { primaryEvent: primaryFlashSaleEvent } = useFlashSaleEvents();
-  const { promotions, isLoading: isLoadingPromotions } = usePromotions();
   const { banners: promoBanners, isLoading: isLoadingPromoBanners } = usePromoBanners();
-  const { claimVoucher, vouchers } = useVouchers();
-  const { products: recommendationProducts, isLoading: isLoadingRecommendations } =
-    useRecommendedProducts({
-      limit: 12,
-    });
+  const {
+    feed: recommendationFeed,
+    products: recommendationProducts,
+    isLoading: isLoadingRecommendations,
+    refresh: refreshRecommendations,
+  } = useForYouRecommendations({
+    limit: 12,
+  });
+  const [isRefreshingHome, setIsRefreshingHome] = useState(false);
   const { products: popularProducts, isLoading: isLoadingPopular } = useCatalogProducts({
     section: "popular",
   });
@@ -147,29 +131,13 @@ const HomeScreen = () => {
     popularProducts.length === 0 &&
     marketItems.length === 0 &&
     storeItems.length === 0 &&
-    promotions.length === 0 &&
     promoBanners.length === 0 &&
     (isLoadingFlashSales ||
       isLoadingRecommendations ||
       isLoadingPopular ||
       isLoadingMarkets ||
       isLoadingStores ||
-      isLoadingPromotions ||
       isLoadingPromoBanners);
-
-  const savedPromotionIds = useMemo(
-    () => new Set(vouchers.map((item) => item.id)),
-    [vouchers],
-  );
-
-  const promotionsWithSavedState = useMemo(
-    () =>
-      promotions.map((promotion) => ({
-        ...promotion,
-        claimed: promotion.claimed || savedPromotionIds.has(promotion.id),
-      })),
-    [promotions, savedPromotionIds],
-  );
 
   const dealProducts = useMemo(
     () =>
@@ -181,58 +149,25 @@ const HomeScreen = () => {
     [flashSaleProducts, popularProducts, recommendationProducts],
   );
 
-  const featuredPromotion = promotionsWithSavedState[0] ?? null;
-  const totalLiveOffers = dealProducts.length + promotionsWithSavedState.length;
+  const totalLiveOffers = dealProducts.length;
 
-  const handleClaimPromotion = useCallback(
-    async (promotionId: string) => {
-      if (!user) {
-        showToast("Sign in to save promotions to your wallet.", "info");
-        router.push("/(root)/(auth)/signin");
-        return;
-      }
-
-      setClaimingPromotionId(promotionId);
-      try {
-        await claimVoucher(promotionId);
-        showToast("Promotion saved to your wallet.", "success");
-      } catch (error) {
-        showToast(
-          error instanceof Error ? error.message : "Unable to save this promotion.",
-          "error",
-        );
-      } finally {
-        setClaimingPromotionId(null);
-      }
-    },
-    [claimVoucher, showToast, user],
-  );
+  const handleRefreshHome = useCallback(async () => {
+    setIsRefreshingHome(true);
+    try {
+      await refreshRecommendations();
+    } finally {
+      setIsRefreshingHome(false);
+    }
+  }, [refreshRecommendations]);
 
   const handleOpenDeals = useCallback(() => {
     router.push("../screens/deals");
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (recommendationProducts.length > 4) {
-        setRecommendationSeed((current) => current + 1);
-      }
-    }, [recommendationProducts.length]),
+  const homeRecommendationProducts = useMemo(
+    () => recommendationProducts.slice(0, 4),
+    [recommendationProducts],
   );
-
-  const homeRecommendationProducts = useMemo(() => {
-    if (recommendationProducts.length <= 4) {
-      return recommendationProducts;
-    }
-
-    return [...recommendationProducts]
-      .sort((left, right) => {
-        const leftScore = buildShuffleScore(left.id, recommendationSeed);
-        const rightScore = buildShuffleScore(right.id, recommendationSeed);
-        return leftScore - rightScore;
-      })
-      .slice(0, 4);
-  }, [recommendationProducts, recommendationSeed]);
 
   const hasCatalogContent =
     flashSaleProducts.length > 0 ||
@@ -253,7 +188,13 @@ const HomeScreen = () => {
   if (isBootstrapping) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.screen }} edges={["top"]}>
-        <HomeFeedSkeleton />
+        <View style={{ paddingBottom: tabBarInset }}>
+          <HomeHeader />
+          <SearchLauncher />
+          <View style={{ paddingHorizontal: horizontalPadding, marginTop: sectionSpacing }}>
+            <HomeContentSkeleton />
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
@@ -265,6 +206,12 @@ const HomeScreen = () => {
         keyExtractor={() => "dummy"}
         renderItem={() => null}
         style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshingHome}
+            onRefresh={() => void handleRefreshHome()}
+          />
+        }
         contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={
           <View style={{ paddingBottom: tabBarInset }}>
@@ -296,7 +243,7 @@ const HomeScreen = () => {
               }
               isLoading={isLoadingFlashSales}
               isEmpty={flashSaleProducts.length === 0}
-              skeleton={<FlashSalesRowSkeleton />}
+              skeleton={<SectionSkeleton variant="strip" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
@@ -314,11 +261,7 @@ const HomeScreen = () => {
               </View>
             </HomeSection>
 
-            {hasCatalogContent ||
-            promotionsWithSavedState.length > 0 ||
-            promoBanners.length > 0 ? (
-              isLoadingPromotions &&
-              promotionsWithSavedState.length === 0 &&
+            {hasCatalogContent || promoBanners.length > 0 ? (
               isLoadingPromoBanners &&
               promoBanners.length === 0 &&
               isLoadingFlashSales &&
@@ -327,45 +270,11 @@ const HomeScreen = () => {
               ) : (
                 <PromoBanner
                   banners={promoBanners}
-                  featuredPromotion={featuredPromotion}
                   dealCount={totalLiveOffers}
                   onPress={handleOpenDeals}
                 />
               )
             ) : null}
-
-            <HomeSection
-              title="Promo codes"
-              onSeeAll={handleOpenDeals}
-              isLoading={isLoadingPromotions}
-              isEmpty={promotionsWithSavedState.length === 0}
-              skeleton={<HorizontalProductRowSkeleton />}
-              sectionSpacing={sectionSpacing}
-              horizontalPadding={horizontalPadding}
-            >
-              <View style={{ marginLeft: -horizontalPadding }}>
-                <FlatList
-                  data={promotionsWithSavedState}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <PromoOfferCard
-                      offer={item}
-                      compact
-                      isBusy={claimingPromotionId === item.id}
-                      onClaim={() => handleClaimPromotion(item.id)}
-                      onUse={() =>
-                        router.push("/(root)/screens/profileScreens/Account/Vouchers")
-                      }
-                    />
-                  )}
-                  contentContainerStyle={{
-                    paddingHorizontal: horizontalPadding,
-                  }}
-                />
-              </View>
-            </HomeSection>
 
             <HomeSection
               title="Top deals"
@@ -377,17 +286,20 @@ const HomeScreen = () => {
               }
               isLoading={isLoadingRecommendations || isLoadingPopular}
               isEmpty={dealProducts.length === 0}
-              skeleton={<ProductListSkeleton count={2} />}
+              skeleton={<SectionSkeleton variant="row" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
               <View style={{ paddingHorizontal: horizontalPadding }}>
                 <FlatList
-                  data={dealProducts.slice(0, 4)}
+                  data={dealProducts.slice(0, 3)}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <RecommendationCard
                       {...item}
+                      badgeLabel="Deal"
+                      sourceScreen="home_top_deals"
+                      storeId={item.storeId}
                       reviews={
                         item.reviews !== undefined
                           ? Number(item.reviews)
@@ -402,11 +314,11 @@ const HomeScreen = () => {
             </HomeSection>
 
             <HomeSection
-              title="Recommendation"
+              title={recommendationFeed.title}
               onSeeAll={() => router.push("../screens/recommendation")}
               isLoading={isLoadingRecommendations}
               isEmpty={homeRecommendationProducts.length === 0}
-              skeleton={<ProductListSkeleton count={2} />}
+              skeleton={<SectionSkeleton variant="row" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
@@ -417,6 +329,9 @@ const HomeScreen = () => {
                   renderItem={({ item }) => (
                     <RecommendationCard
                       {...item}
+                      badgeLabel={recommendationFeed.personalized ? "For you" : "ODOS Pick"}
+                      sourceScreen="home_for_you"
+                      storeId={item.storeId}
                       reviews={
                         item.reviews !== undefined
                           ? Number(item.reviews)
@@ -426,9 +341,6 @@ const HomeScreen = () => {
                   )}
                   ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
                   scrollEnabled={false}
-                  contentContainerStyle={{
-                    paddingHorizontal: horizontalPadding * 0.5,
-                  }}
                 />
               </View>
             </HomeSection>
@@ -438,7 +350,7 @@ const HomeScreen = () => {
               onSeeAll={() => router.push("../screens/stores/stores")}
               isLoading={isLoadingStores}
               isEmpty={storeItems.length === 0}
-              skeleton={<HorizontalStoreRowSkeleton />}
+              skeleton={<SectionSkeleton variant="strip" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
@@ -458,7 +370,7 @@ const HomeScreen = () => {
               onSeeAll={() => router.push("../screens/popular")}
               isLoading={isLoadingPopular}
               isEmpty={popularProducts.length === 0}
-              skeleton={<HorizontalProductRowSkeleton />}
+              skeleton={<SectionSkeleton variant="strip" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >
@@ -468,7 +380,7 @@ const HomeScreen = () => {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => <ProductCard {...item} />}
+                  renderItem={({ item }) => <ProductCard {...item} sourceScreen="home_popular" />}
                   contentContainerStyle={{
                     paddingRight: horizontalPadding,
                   }}
@@ -481,7 +393,7 @@ const HomeScreen = () => {
               onSeeAll={() => router.push("../screens/market")}
               isLoading={isLoadingMarkets}
               isEmpty={marketItems.length === 0}
-              skeleton={<MarketsRowSkeleton />}
+              skeleton={<SectionSkeleton variant="strip" />}
               sectionSpacing={sectionSpacing}
               horizontalPadding={horizontalPadding}
             >

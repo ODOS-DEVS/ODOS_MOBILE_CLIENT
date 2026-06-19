@@ -3,8 +3,8 @@ import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { openProductDetail } from "@/utils/productNavigation";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React, { useMemo } from "react";
 import {
   Image,
@@ -56,6 +56,9 @@ interface RecommendationCardProps {
   discount?: string;
   rating?: number;
   reviews?: number | string;
+  badgeLabel?: string;
+  sourceScreen?: string;
+  storeId?: string;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
@@ -71,6 +74,9 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   discount,
   rating,
   reviews,
+  badgeLabel = "ODOS Pick",
+  sourceScreen = "recommendations",
+  storeId,
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createRecommendationStyles(colors), [colors]);
@@ -91,11 +97,10 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     <TouchableOpacity
       activeOpacity={0.92}
       onPress={() =>
-        router.push({
-          pathname: "/screens/[id]" as any,
-          params: {
+        openProductDetail(
+          {
             id,
-            image: imageUrl ?? undefined,
+            image,
             imageKey,
             imageUrl,
             title,
@@ -106,7 +111,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             rating,
             reviews,
           },
-        })
+          {
+            sourceScreen,
+            storeId,
+            eventType: "product_click",
+          },
+        )
       }
     >
       <View style={styles.card}>
@@ -140,7 +150,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           <View style={styles.topRow}>
             <View style={styles.pill}>
               <Ionicons name="sparkles-outline" size={rMS(12)} color="#8A6A2E" />
-              <Text style={styles.pillText}>ODOS Pick</Text>
+              <Text style={styles.pillText}>{badgeLabel}</Text>
             </View>
 
             {hasRating ? (

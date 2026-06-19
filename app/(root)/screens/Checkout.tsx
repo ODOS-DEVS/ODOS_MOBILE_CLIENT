@@ -1,4 +1,5 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import {
   AccountEmptyState,
   AccountListCard,
@@ -21,6 +22,12 @@ import { useCatalogProduct } from "@/hooks/useCatalog";
 import { createCheckoutSessionRequest, createWalletCheckoutRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
+import { useDeliveryStore } from "@/stores/deliveryStore";
+import {
+  buildDeliveryOptions,
+  resolveActiveDeliveryMethod,
+  resolveDeliveryAmount,
+} from "@/utils/delivery";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { buildOrderItemImagePayload } from "@/utils/orderImages";
 import { goBackOr } from "@/utils/navigation";
@@ -72,7 +79,7 @@ export default function CheckoutScreen() {
   const { accessToken } = useAuth();
   const { cart, clearCart } = useCart();
   const { showSuccessToast, showErrorToast, showInfoToast } = useToast();
-  const { previewVoucher } = useVouchers();
+  const { previewVoucher, suggestVouchers } = useVouchers();
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
   const imageKey = getParam(params.imageKey);
@@ -108,6 +115,7 @@ export default function CheckoutScreen() {
     setCheckoutVoucherCode,
     isSyncingProfileData,
   } = useProfile();
+  const { selectedMethodId, setSelectedMethodId } = useDeliveryStore();
 
   const [quantity, setQuantity] = useState(1);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -115,6 +123,7 @@ export default function CheckoutScreen() {
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherPreview | null>(null);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
   const [voucherError, setVoucherError] = useState("");
+  const [suggestedVouchers, setSuggestedVouchers] = useState<VoucherPreview[]>([]);
 
   const routeToPaymentReturn = useCallback(
     (params: Record<string, string>) => {
@@ -190,7 +199,27 @@ export default function CheckoutScreen() {
       ),
     [checkoutItems],
   );
-  const shipping: number = 0;
+  const deliveryOptions = useMemo(
+    () =>
+      buildDeliveryOptions({
+        subtotal,
+        region: selectedAddress?.region,
+      }),
+    [selectedAddress?.region, subtotal],
+  );
+  const activeDeliveryMethodId = useMemo(
+    () => resolveActiveDeliveryMethod(deliveryOptions, selectedMethodId),
+    [deliveryOptions, selectedMethodId],
+  );
+  useEffect(() => {
+    if (activeDeliveryMethodId !== selectedMethodId) {
+      setSelectedMethodId(activeDeliveryMethodId);
+    }
+  }, [activeDeliveryMethodId, selectedMethodId, setSelectedMethodId]);
+  const shipping = useMemo(
+    () => resolveDeliveryAmount(deliveryOptions, activeDeliveryMethodId),
+    [activeDeliveryMethodId, deliveryOptions],
+  );
   const discountAmount = appliedVoucher?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
 
@@ -313,6 +342,27 @@ export default function CheckoutScreen() {
 
     void applyVoucherCode(appliedVoucher.code, { silent: true });
   }, [applyVoucherCode, appliedVoucher?.code, subtotal]);
+
+  useEffect(() => {
+    if (!user || appliedVoucher || checkoutItems.length === 0) {
+      setSuggestedVouchers([]);
+      return;
+    }
+
+    let cancelled = false;
+    void suggestVouchers({
+      items: checkoutItems,
+      shippingAmount: shipping,
+    }).then((items) => {
+      if (!cancelled) {
+        setSuggestedVouchers(items);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedVoucher, checkoutItems, shipping, suggestVouchers, user]);
 
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder || !selectedAddress || !selectedPayment || !accessToken) {
@@ -589,6 +639,16 @@ export default function CheckoutScreen() {
               />
             </AccountSectionCard>
 
+            <AccountSectionCard title="Delivery speed">
+              <DeliveryOptionsCard
+                subtotal={subtotal}
+                region={selectedAddress?.region}
+                selectedMethodId={activeDeliveryMethodId}
+                onSelectMethod={setSelectedMethodId}
+                variant="inline"
+              />
+            </AccountSectionCard>
+
             <AccountSectionCard title="Payment">
               <OrderSelectableRow
                 icon="card-outline"
@@ -674,7 +734,7 @@ export default function CheckoutScreen() {
                   </View>
                   <Text style={styles.appliedVoucherTitle}>{appliedVoucher.title}</Text>
                   <Text style={styles.appliedVoucherMeta}>
-                    {appliedVoucher.rewardText} · You save ₵
+                    {appliedVoucher.rewardText} · You saved GH₵
                     {appliedVoucher.discountAmount.toFixed(2)}
                   </Text>
                   {appliedVoucher.scope === "store" ? (
@@ -685,9 +745,35 @@ export default function CheckoutScreen() {
                   ) : null}
                 </View>
               ) : (
-                <Text style={styles.voucherHelpText}>
-                  Apply an ODOS promo here, or pick a claimed store offer from your wallet.
-                </Text>
+                <>
+                  <Text style={styles.voucherHelpText}>
+                    Apply an ODOS promo here, or pick a claimed store offer from your wallet.
+                  </Text>
+                  {suggestedVouchers.length > 0 ? (
+                    <View style={styles.suggestedVouchersWrap}>
+                      <Text style={styles.suggestedVouchersTitle}>Best for your cart</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.suggestedVouchersRow}
+                      >
+                        {suggestedVouchers.map((suggestion) => (
+                          <TouchableOpacity
+                            key={suggestion.voucherId}
+                            style={styles.suggestedVoucherChip}
+                            activeOpacity={0.82}
+                            onPress={() => void applyVoucherCode(suggestion.code)}
+                          >
+                            <Text style={styles.suggestedVoucherCode}>{suggestion.code}</Text>
+                            <Text style={styles.suggestedVoucherMeta}>
+                              Save GH₵{suggestion.discountAmount.toFixed(2)}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  ) : null}
+                </>
               )}
             </AccountListCard>
 
@@ -701,7 +787,10 @@ export default function CheckoutScreen() {
                 />
               ) : null}
               <OrderSummaryRow
-                label="Shipping"
+                label={
+                  deliveryOptions.find((option) => option.id === activeDeliveryMethodId)
+                    ?.title ?? "Shipping"
+                }
                 value={shipping === 0 ? "FREE" : formatOrderMoney(shipping)}
                 accent={shipping === 0 ? "success" : "default"}
               />
@@ -1035,6 +1124,40 @@ const styles = StyleSheet.create({
     lineHeight: rMS(18),
     fontFamily: Fonts.text,
     color: AppColors.secondary,
+  },
+  suggestedVouchersWrap: {
+    marginTop: rV(12),
+  },
+  suggestedVouchersTitle: {
+    fontSize: rMS(11.5),
+    fontFamily: Fonts.textBold,
+    color: AppColors.text,
+    marginBottom: rV(8),
+  },
+  suggestedVouchersRow: {
+    gap: rS(8),
+    paddingRight: rS(4),
+  },
+  suggestedVoucherChip: {
+    minWidth: rS(120),
+    borderRadius: rMS(14),
+    borderWidth: 1,
+    borderColor: "#DCE7F3",
+    backgroundColor: "#F8FBFF",
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(10),
+  },
+  suggestedVoucherCode: {
+    fontSize: rMS(11.5),
+    fontFamily: Fonts.textBold,
+    color: AppColors.secondary,
+    letterSpacing: 0.4,
+  },
+  suggestedVoucherMeta: {
+    marginTop: rV(4),
+    fontSize: rMS(10.5),
+    fontFamily: Fonts.text,
+    color: AppColors.subtext[100],
   },
   voucherErrorText: {
     marginTop: rV(10),

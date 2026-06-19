@@ -1,4 +1,3 @@
-import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import {
@@ -11,11 +10,11 @@ import {
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { type CatalogProductItem } from "@/hooks/useCatalog";
-import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
+import { useForYouRecommendations } from "@/hooks/useRecommendations";
 import { rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, View } from "react-native";
+import { FlatList, RefreshControl, View } from "react-native";
 
 type RecommendationFilter = "all" | "fresh" | "topRated" | "deals" | "budget";
 
@@ -79,34 +78,33 @@ export default function RecommendationScreen() {
   const [activeFilter, setActiveFilter] =
     useState<RecommendationFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
-  const {
-    products: catalogProducts,
-    isLoading,
-    isLoadingMore,
-    error,
-    loadMore,
-  } = useInfiniteCatalogProducts({});
   const [searchResults, setSearchResults] = useState<CatalogProductItem[]>([]);
+  const {
+    feed,
+    products: recommendationProducts,
+    isLoading,
+    error,
+    refresh,
+  } = useForYouRecommendations({ limit: 48 });
 
-  const allProducts = catalogProducts;
   const freshProducts = useMemo(
-    () => filterProducts(allProducts, "fresh"),
-    [allProducts],
+    () => filterProducts(recommendationProducts, "fresh"),
+    [recommendationProducts],
   );
   const topRatedProducts = useMemo(
-    () => filterProducts(allProducts, "topRated"),
-    [allProducts],
+    () => filterProducts(recommendationProducts, "topRated"),
+    [recommendationProducts],
   );
   const dealProducts = useMemo(
-    () => filterProducts(allProducts, "deals"),
-    [allProducts],
+    () => filterProducts(recommendationProducts, "deals"),
+    [recommendationProducts],
   );
   const budgetProducts = useMemo(
-    () => filterProducts(allProducts, "budget"),
-    [allProducts],
+    () => filterProducts(recommendationProducts, "budget"),
+    [recommendationProducts],
   );
 
-  const sourceProducts = isSearching ? searchResults : allProducts;
+  const sourceProducts = isSearching ? searchResults : recommendationProducts;
   const displayed = useMemo(
     () => filterProducts(sourceProducts, activeFilter),
     [activeFilter, sourceProducts],
@@ -130,21 +128,33 @@ export default function RecommendationScreen() {
 
   const filterChips = useMemo(
     () => [
-      { key: "all" as const, label: "All", count: allProducts.length },
-      { key: "fresh" as const, label: "Fresh picks", count: freshProducts.length },
+      {
+        key: "all" as const,
+        label: "All",
+        count: recommendationProducts.length,
+      },
+      {
+        key: "fresh" as const,
+        label: "Fresh picks",
+        count: freshProducts.length,
+      },
       {
         key: "topRated" as const,
         label: "Top rated",
         count: topRatedProducts.length,
       },
       { key: "deals" as const, label: "Deals", count: dealProducts.length },
-      { key: "budget" as const, label: "Under ₵100", count: budgetProducts.length },
+      {
+        key: "budget" as const,
+        label: "Under ₵100",
+        count: budgetProducts.length,
+      },
     ],
     [
-      allProducts.length,
       budgetProducts.length,
       dealProducts.length,
       freshProducts.length,
+      recommendationProducts.length,
       topRatedProducts.length,
     ],
   );
@@ -166,19 +176,24 @@ export default function RecommendationScreen() {
     <View style={{ gap: rV(14) }}>
       <CommerceSeeAllHero
         badgeIcon="sparkles-outline"
-        badgeLabel="Curated for you"
-        title="Smarter picks from across ODOS"
-        subtitle="Explore strong-rated items, live deals, and fresh products in one calmer shopping flow."
+        badgeLabel={feed.personalized ? "Personalized" : "Curated for you"}
+        title={feed.title}
+        subtitle={
+          feed.subtitle ??
+          (feed.personalized
+            ? "Picks shaped by what you browse, save, and buy on ODOS."
+            : "Explore strong-rated items, live deals, and fresh products in one calmer shopping flow.")
+        }
         accent="gold"
         stats={[
-          { value: allProducts.length, label: "live picks" },
+          { value: recommendationProducts.length, label: "live picks" },
           { value: topRatedProducts.length, label: "top rated" },
           { value: dealProducts.length, label: "deals now" },
         ]}
       />
 
       <CommerceSeeAllSearch
-        data={allProducts}
+        data={recommendationProducts}
         onQueryChange={(query) => {
           const hasQuery = query.length > 0;
           setIsSearching(hasQuery);
@@ -189,7 +204,7 @@ export default function RecommendationScreen() {
         onResults={(results) => {
           setSearchResults(results as CatalogProductItem[]);
         }}
-        placeholder="Search recommendations, deals, or categories"
+        placeholder="Search your recommendations"
         searchKeys={[
           "title",
           "category",
@@ -212,7 +227,7 @@ export default function RecommendationScreen() {
             ? `${displayed.length} item${displayed.length === 1 ? "" : "s"} ready to explore`
             : isSearching
               ? "Try a broader search or switch filters"
-              : "New picks appear as more products are curated"
+              : "Browse more products to unlock richer personalized picks"
         }
         count={displayed.length}
       />
@@ -223,7 +238,7 @@ export default function RecommendationScreen() {
     <View style={screenStyles.screen}>
       <ProfileHeader title="Recommendations" />
 
-      {isLoading && allProducts.length === 0 ? (
+      {isLoading && recommendationProducts.length === 0 ? (
         <View
           style={{
             paddingHorizontal: horizontalPadding,
@@ -232,49 +247,47 @@ export default function RecommendationScreen() {
           }}
         >
           {listHeader}
-          <ProductListSkeleton count={5} />
+          <ProductListSkeleton count={2} />
         </View>
-      ) : displayed.length === 0 ? (
-        <FlatList
-          data={[]}
-          renderItem={() => null}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: sectionSpacing,
-          }}
-          ListEmptyComponent={
-            <CommerceSeeAllEmptyState
-              icon="sparkles-outline"
-              title={error ? "We couldn't load recommendations" : "Nothing here yet"}
-              subtitle={
-                error
-                  ? "The live catalog is unavailable right now. Try again in a moment."
-                  : isSearching
-                    ? "Try a broader search or switch to another recommendation view."
-                    : "New recommendation matches will appear here as more products are curated."
-              }
-            />
-          }
-        />
       ) : (
         <FlatList
           data={displayed}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={listHeader}
-          onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.45}
-          ListFooterComponent={
-            isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={() => void refresh()} />
           }
           ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-          renderItem={({ item }) => <RecommendationCard {...item} />}
+          renderItem={({ item }) => (
+            <RecommendationCard
+              {...item}
+              badgeLabel={feed.personalized ? "For you" : "ODOS Pick"}
+              sourceScreen="recommendations_hub"
+              storeId={item.storeId}
+              reviews={
+                item.reviews !== undefined ? Number(item.reviews) : undefined
+              }
+            />
+          )}
           contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
             paddingTop: rV(8),
             paddingBottom: sectionSpacing,
           }}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <CommerceSeeAllEmptyState
+              icon="sparkles-outline"
+              title={error ? "We couldn't load recommendations" : "Nothing here yet"}
+              subtitle={
+                error
+                  ? "Pull to refresh, or open search to browse the full catalog."
+                  : isSearching
+                    ? "Try a broader search or switch to another recommendation view."
+                    : "Shop, save, and buy more on ODOS to sharpen these picks."
+              }
+            />
+          }
         />
       )}
     </View>
