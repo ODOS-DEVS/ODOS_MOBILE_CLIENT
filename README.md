@@ -31,6 +31,7 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 - Delivery speed selection at checkout (standard, express, same-day where available)
 - Store profiles with location map and directions
 - Product sharing, dark mode, pull-to-refresh across main feeds
+- **ODOS Assistant** — in-app AI guide for orders, checkout, delivery, vouchers, returns, and navigation (with human support handoff)
 
 **Vendor**
 
@@ -80,6 +81,8 @@ When testing on a physical phone, use your Mac’s LAN IP (not `127.0.0.1`) and 
 | `EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY` | Optional | iOS-specific override |
 | `EXPO_PUBLIC_SHARE_WEB_BASE_URL` | Optional | Product share links |
 | `EXPO_PUBLIC_APP_DOWNLOAD_URL` | Optional | App download CTA in shares |
+
+The assistant is powered by the backend (`/api/assistant/chat`). Add `OPENAI_API_KEY` on the API for full AI responses; without it, guided fallback answers still work.
 
 Maps are injected into the native build via `app.config.js`. Changing map keys requires a **new native build**, not just a Metro refresh.
 
