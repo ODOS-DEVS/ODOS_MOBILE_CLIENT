@@ -533,6 +533,13 @@ export default function ProfileScreen() {
       <Text style={styles.sectionTitle}>Help & Support</Text>
       <AccountListCard style={styles.menuCard}>
         <MenuItem
+          icon="sparkles-outline"
+          label="ODOS Assistant"
+          onPress={() => {
+            router.push("../screens/assistant" as any);
+          }}
+        />
+        <MenuItem
           icon="help-circle-outline"
           label="Get Help"
           onPress={() => {
