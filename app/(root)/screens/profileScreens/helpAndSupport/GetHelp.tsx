@@ -17,6 +17,12 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const channels = [
   {
+    id: "assistant",
+    icon: <Ionicons name="sparkles" size={22} color={AppColors.text} />,
+    label: "AI Assistant",
+    active: true,
+  },
+  {
     id: "chat",
     icon: <Ionicons name="chatbubble-ellipses" size={22} color={AppColors.text} />,
     label: "Live chat",
@@ -45,6 +51,10 @@ const channels = [
 export default function GetHelp() {
   const accountStyles = useAccountStyles();
   const { requireAuth } = useRequireAuth();
+
+  const openAssistant = () => {
+    router.push("/screens/assistant" as any);
+  };
 
   const openSupportChat = () => {
     if (
@@ -76,10 +86,10 @@ export default function GetHelp() {
       >
         <AccountInsightCard
           title="We're here for you"
-          subtitle="Reach ODOS support through live chat today. More channels are opening soon."
+          subtitle="Start with the ODOS Assistant for instant answers, or message support for hands-on help."
           stats={[
-            { value: "Live", label: "Chat" },
-            { value: "Mon–Sat", label: "Hours" },
+            { value: "24/7", label: "AI guide" },
+            { value: "Mon–Sat", label: "Live chat" },
           ]}
         />
 
@@ -88,7 +98,7 @@ export default function GetHelp() {
             <Ionicons name="headset-outline" size={rMS(28)} color="#FFFFFF" />
           </View>
           <Text style={styles.heroText}>
-            Fastest response: sign in and message the admin team directly in the app.
+            Fastest help: ask the ODOS Assistant first. For account issues, sign in and chat with the admin team.
           </Text>
         </View>
 
@@ -100,7 +110,13 @@ export default function GetHelp() {
               icon={item.icon}
               label={item.label}
               active={item.active}
-              onPress={item.id === "chat" ? openSupportChat : undefined}
+              onPress={
+                item.id === "assistant"
+                  ? openAssistant
+                  : item.id === "chat"
+                    ? openSupportChat
+                    : undefined
+              }
             />
           ))}
         </View>
