@@ -1,6 +1,8 @@
 import StoreLocationPicker, {
   type StoreLocationValue,
 } from "@/components/location/StoreLocationPicker";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import TextInputField from "@/components/TextInputField";
 import {
   AccountActionButton,
@@ -26,9 +28,6 @@ import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -281,7 +280,7 @@ export default function VendorApplyScreen() {
   if (vendorStatus === "approved" || vendorStatus === "pending" || vendorStatus === "under_review" || vendorStatus === "suspended") {
     return (
       <VendorScreenShell title="Become a Vendor" showSettings={false}>
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[
@@ -307,25 +306,20 @@ export default function VendorApplyScreen() {
               }
             />
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </VendorScreenShell>
     );
   }
 
   return (
     <VendorScreenShell title="Become a Vendor" showSettings={false}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardAwareScreen
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + rV(36) },
+        ]}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + rV(36) },
-          ]}
-        >
           <View style={[styles.contentWrap, { maxWidth: contentMaxWidth }]}>
             {topCard}
 
@@ -544,8 +538,7 @@ export default function VendorApplyScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScreen>
     </VendorScreenShell>
   );
 }

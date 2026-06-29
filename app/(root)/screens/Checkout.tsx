@@ -11,10 +11,9 @@ import {
   OrderStickyFooter,
   OrderSummaryRow,
 } from "@/components/orders/OrderUi";
-import { AppColors } from "@/constants/Colors";
 import { resolveCatalogImage } from "@/constants/catalogImages";
-import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
@@ -22,12 +21,9 @@ import { useCatalogProduct } from "@/hooks/useCatalog";
 import { createCheckoutSessionRequest, createWalletCheckoutRequest } from "@/hooks/useOrders";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { type VoucherPreview, useVouchers } from "@/hooks/useVouchers";
+import { useDeliveryQuote } from "@/hooks/useDeliveryQuote";
 import { useDeliveryStore } from "@/stores/deliveryStore";
-import {
-  buildDeliveryOptions,
-  resolveActiveDeliveryMethod,
-  resolveDeliveryAmount,
-} from "@/utils/delivery";
+import { useCheckoutStyles } from "@/styles/themedCheckoutStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { buildOrderItemImagePayload } from "@/utils/orderImages";
 import { goBackOr } from "@/utils/navigation";
@@ -39,13 +35,16 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageSourcePropType,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
+import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (p: string | string[] | undefined) =>
@@ -74,6 +73,8 @@ function normalizeRouteParamsFromUrl(url: string) {
 
 export default function CheckoutScreen() {
   const accountStyles = useAccountStyles();
+  const styles = useCheckoutStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { requireAuth, user, isHydrating } = useRequireAuth();
   const { accessToken } = useAuth();
@@ -115,7 +116,7 @@ export default function CheckoutScreen() {
     setCheckoutVoucherCode,
     isSyncingProfileData,
   } = useProfile();
-  const { selectedMethodId, setSelectedMethodId } = useDeliveryStore();
+  const { selectedMethodId, setSelectedMethodId, resetDeliveryMethod } = useDeliveryStore();
 
   const [quantity, setQuantity] = useState(1);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -199,27 +200,23 @@ export default function CheckoutScreen() {
       ),
     [checkoutItems],
   );
-  const deliveryOptions = useMemo(
-    () =>
-      buildDeliveryOptions({
-        subtotal,
-        region: selectedAddress?.region,
-      }),
-    [selectedAddress?.region, subtotal],
-  );
-  const activeDeliveryMethodId = useMemo(
-    () => resolveActiveDeliveryMethod(deliveryOptions, selectedMethodId),
-    [deliveryOptions, selectedMethodId],
-  );
+  const {
+    options: deliveryOptions,
+    selectedMethod: resolvedDeliveryMethodId,
+    shippingAmount: shipping,
+    isLoading: isLoadingDelivery,
+    error: deliveryQuoteError,
+  } = useDeliveryQuote({
+    subtotal,
+    region: selectedAddress?.region,
+    selectedMethod: selectedMethodId,
+  });
+
   useEffect(() => {
-    if (activeDeliveryMethodId !== selectedMethodId) {
-      setSelectedMethodId(activeDeliveryMethodId);
+    if (resolvedDeliveryMethodId !== selectedMethodId) {
+      setSelectedMethodId(resolvedDeliveryMethodId);
     }
-  }, [activeDeliveryMethodId, selectedMethodId, setSelectedMethodId]);
-  const shipping = useMemo(
-    () => resolveDeliveryAmount(deliveryOptions, activeDeliveryMethodId),
-    [activeDeliveryMethodId, deliveryOptions],
-  );
+  }, [resolvedDeliveryMethodId, selectedMethodId, setSelectedMethodId]);
   const discountAmount = appliedVoucher?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
 
@@ -377,6 +374,7 @@ export default function CheckoutScreen() {
           items: checkoutItems,
           subtotal_amount: subtotal,
           shipping_amount: shipping,
+          delivery_method: resolvedDeliveryMethodId,
           discount_amount: discountAmount,
           total_amount: total,
           voucher_code: appliedVoucher?.code ?? null,
@@ -394,6 +392,7 @@ export default function CheckoutScreen() {
         if (checkoutMode === "cart") {
           await clearCart();
         }
+        resetDeliveryMethod();
         showSuccessToast(walletResult.message);
         router.replace({
           pathname: "/(root)/screens/order-success" as any,
@@ -416,6 +415,7 @@ export default function CheckoutScreen() {
         items: checkoutItems,
         subtotal_amount: subtotal,
         shipping_amount: shipping,
+        delivery_method: resolvedDeliveryMethodId,
         discount_amount: discountAmount,
         total_amount: total,
         voucher_code: appliedVoucher?.code ?? null,
@@ -460,16 +460,55 @@ export default function CheckoutScreen() {
     }
   };
 
-  const footerHint =
-    !canPlaceOrder && checkoutItems.length > 0
-      ? !selectedAddress && !selectedPayment
-        ? "Add address and payment to continue"
-        : !selectedAddress
-          ? "Add delivery address to continue"
-          : !selectedPayment
-            ? "Add payment method to continue"
-            : "Sign in to continue"
-      : undefined;
+  const footerHint = useMemo(() => {
+    if (checkoutItems.length === 0) {
+      return undefined;
+    }
+
+    if (isPlacingOrder) {
+      return "Processing your order...";
+    }
+
+    if (isApplyingVoucher) {
+      return "Applying voucher...";
+    }
+
+    if (isHydrating) {
+      return "Loading your account...";
+    }
+
+    if (!user || !accessToken) {
+      return "Sign in to continue";
+    }
+
+    if (!selectedAddress && !selectedPayment) {
+      return "Add address and payment to continue";
+    }
+
+    if (!selectedAddress) {
+      return "Add delivery address to continue";
+    }
+
+    if (!selectedPayment) {
+      return "Add payment method to continue";
+    }
+
+    if (isLoadingDelivery) {
+      return "Calculating delivery...";
+    }
+
+    return undefined;
+  }, [
+    accessToken,
+    checkoutItems.length,
+    isApplyingVoucher,
+    isHydrating,
+    isLoadingDelivery,
+    isPlacingOrder,
+    selectedAddress,
+    selectedPayment,
+    user,
+  ]);
 
   const footerScrollPadding = useMemo(
     () =>
@@ -496,7 +535,7 @@ export default function CheckoutScreen() {
           }
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color={AppColors.text} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
         <View style={styles.headerSpacer} />
@@ -516,15 +555,20 @@ export default function CheckoutScreen() {
         </View>
       ) : (
         <>
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={[
-              accountStyles.content,
-              styles.scrollContent,
-              { paddingBottom: footerScrollPadding },
-            ]}
-            showsVerticalScrollIndicator={false}
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
+            keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top, 52)}
           >
+            <KeyboardAwareScrollView
+              style={styles.scroll}
+              contentContainerStyle={[
+                accountStyles.content,
+                styles.scrollContent,
+                { paddingBottom: footerScrollPadding },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
             <AccountSectionCard
               title={checkoutMode === "cart" ? "Cart summary" : "Order summary"}
             >
@@ -566,7 +610,7 @@ export default function CheckoutScreen() {
                         <Ionicons
                           name="image-outline"
                           size={rMS(28)}
-                          color={AppColors.subtext[100]}
+                          color={colors.textMuted}
                         />
                       </View>
                     )}
@@ -608,7 +652,7 @@ export default function CheckoutScreen() {
                           onPress={() => setQuantity((q) => Math.max(1, q - 1))}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="remove" size={18} color={AppColors.text} />
+                          <Ionicons name="remove" size={18} color={colors.text} />
                         </TouchableOpacity>
                         <Text style={styles.quantityValue}>{quantity}</Text>
                         <TouchableOpacity
@@ -616,7 +660,7 @@ export default function CheckoutScreen() {
                           onPress={() => setQuantity((q) => q + 1)}
                           activeOpacity={0.7}
                         >
-                          <Ionicons name="add" size={18} color={AppColors.text} />
+                          <Ionicons name="add" size={18} color={colors.text} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -643,8 +687,11 @@ export default function CheckoutScreen() {
               <DeliveryOptionsCard
                 subtotal={subtotal}
                 region={selectedAddress?.region}
-                selectedMethodId={activeDeliveryMethodId}
+                selectedMethodId={selectedMethodId}
                 onSelectMethod={setSelectedMethodId}
+                options={deliveryOptions}
+                isLoading={isLoadingDelivery}
+                statusMessage={deliveryQuoteError}
                 variant="inline"
               />
             </AccountSectionCard>
@@ -682,7 +729,7 @@ export default function CheckoutScreen() {
                   <Ionicons
                     name="ticket-outline"
                     size={rMS(18)}
-                    color={AppColors.subtext[100]}
+                    color={colors.textMuted}
                   />
                   <TextInput
                     value={voucherCodeInput}
@@ -694,7 +741,7 @@ export default function CheckoutScreen() {
                     }}
                     autoCapitalize="characters"
                     placeholder="Enter voucher code"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={colors.placeholder}
                     style={styles.voucherInput}
                   />
                 </View>
@@ -719,7 +766,7 @@ export default function CheckoutScreen() {
                 <View style={styles.appliedVoucherCard}>
                   <View style={styles.appliedVoucherTopRow}>
                     <View style={styles.appliedVoucherBadge}>
-                      <Ionicons name="pricetag-outline" size={rMS(14)} color="#166534" />
+                      <Ionicons name="pricetag-outline" size={rMS(14)} color={colors.successText} />
                       <Text style={styles.appliedVoucherBadgeText}>
                         {appliedVoucher.code}
                       </Text>
@@ -788,7 +835,7 @@ export default function CheckoutScreen() {
               ) : null}
               <OrderSummaryRow
                 label={
-                  deliveryOptions.find((option) => option.id === activeDeliveryMethodId)
+                  deliveryOptions.find((option) => option.id === resolvedDeliveryMethodId)
                     ?.title ?? "Shipping"
                 }
                 value={shipping === 0 ? "FREE" : formatOrderMoney(shipping)}
@@ -797,7 +844,7 @@ export default function CheckoutScreen() {
               <OrderSummaryRow label="Total" value={formatOrderMoney(total)} last />
             </AccountSectionCard>
 
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <OrderStickyFooter
             hint={footerHint}
@@ -806,521 +853,9 @@ export default function CheckoutScreen() {
             onPrimaryPress={handlePlaceOrder}
             disabled={!canPlaceOrder}
           />
+          </KeyboardAvoidingView>
         </>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(12),
-    backgroundColor: AppColors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEE",
-  },
-  backButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F2F2F2",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: rMS(18),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  headerSpacer: {
-    width: rMS(40),
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  sectionLabel: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.subtext[100],
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: rV(12),
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: rV(12),
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  imageWrap: {
-    borderRadius: rMS(12),
-    overflow: "hidden",
-    backgroundColor: "#F0F0F0",
-  },
-  productImage: {
-    width: rMS(88),
-    height: rMS(88),
-    borderRadius: rMS(12),
-  },
-  placeholderImage: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  productInfo: {
-    flex: 1,
-    marginLeft: rS(12),
-  },
-  productTitle: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-    marginBottom: rV(4),
-  },
-  category: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    marginBottom: rV(6),
-  },
-  variantRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(6),
-    marginBottom: rV(8),
-  },
-  variantPill: {
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(4),
-    borderRadius: rMS(8),
-    backgroundColor: "#EEF2F5",
-  },
-  variantPillText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: rV(10),
-  },
-  price: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  oldPrice: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textDecorationLine: "line-through",
-    marginLeft: rS(8),
-  },
-  quantityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  quantityLabel: {
-    fontSize: rMS(12),
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-  },
-  quantityControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  quantityBtn: {
-    width: rMS(30),
-    height: rMS(30),
-    borderRadius: rMS(10),
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quantityValue: {
-    fontSize: rMS(14),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    minWidth: rS(18),
-    textAlign: "center",
-  },
-  cartSummaryList: {
-    gap: rV(10),
-  },
-  cartSummaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-    paddingBottom: rV(10),
-  },
-  cartSummaryRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E8ECF1",
-  },
-  cartSummaryText: {
-    flex: 1,
-  },
-  cartSummaryTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  cartSummaryMeta: {
-    marginTop: rV(3),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  cartSummaryAmount: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  deliveryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  deliveryIcon: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(12),
-    backgroundColor: "#F2F6FB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(12),
-  },
-  deliveryText: {
-    flex: 1,
-  },
-  deliveryTag: {
-    alignSelf: "flex-start",
-    marginBottom: rV(4),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(4),
-    borderRadius: rMS(999),
-    backgroundColor: "#EEF2F6",
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  deliveryTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  deliverySub: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  paymentIcon: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(12),
-    backgroundColor: "#F2F6FB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: rS(12),
-  },
-  paymentText: {
-    flex: 1,
-  },
-  paymentTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  paymentSub: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  voucherBrowseBtn: {
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-    borderRadius: rMS(999),
-    backgroundColor: "#EEF2F6",
-  },
-  voucherBrowseText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  voucherEntryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  voucherInputWrap: {
-    flex: 1,
-    minHeight: rV(48),
-    borderRadius: rMS(14),
-    borderWidth: 1,
-    borderColor: "#D8E0EA",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(12),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  voucherInput: {
-    flex: 1,
-    fontSize: rMS(13),
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    letterSpacing: 0.4,
-  },
-  voucherApplyBtn: {
-    minHeight: rV(48),
-    paddingHorizontal: rS(18),
-    borderRadius: rMS(14),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  voucherApplyBtnDisabled: {
-    opacity: 0.7,
-  },
-  voucherApplyText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  voucherHelpText: {
-    marginTop: rV(10),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  suggestedVouchersWrap: {
-    marginTop: rV(12),
-  },
-  suggestedVouchersTitle: {
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    marginBottom: rV(8),
-  },
-  suggestedVouchersRow: {
-    gap: rS(8),
-    paddingRight: rS(4),
-  },
-  suggestedVoucherChip: {
-    minWidth: rS(120),
-    borderRadius: rMS(14),
-    borderWidth: 1,
-    borderColor: "#DCE7F3",
-    backgroundColor: "#F8FBFF",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(10),
-  },
-  suggestedVoucherCode: {
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-    letterSpacing: 0.4,
-  },
-  suggestedVoucherMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(10.5),
-    fontFamily: Fonts.text,
-    color: AppColors.subtext[100],
-  },
-  voucherErrorText: {
-    marginTop: rV(10),
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: "#B91C1C",
-  },
-  appliedVoucherCard: {
-    marginTop: rV(12),
-    borderRadius: rMS(14),
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    padding: rS(12),
-  },
-  appliedVoucherTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  appliedVoucherBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
-    borderRadius: rMS(999),
-    backgroundColor: "#DCFCE7",
-  },
-  appliedVoucherBadgeText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#166534",
-    letterSpacing: 0.4,
-  },
-  removeVoucherBtn: {
-    paddingVertical: rV(4),
-  },
-  removeVoucherText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: "#B91C1C",
-  },
-  appliedVoucherTitle: {
-    marginTop: rV(10),
-    fontSize: rMS(14),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  appliedVoucherMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: "#166534",
-  },
-  appliedVoucherScopeNote: {
-    marginTop: rV(6),
-    fontSize: rMS(11.5),
-    lineHeight: rMS(17),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  totalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: rV(12),
-  },
-  totalRowLast: {
-    marginBottom: 0,
-    paddingTop: rV(4),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E8ECF1",
-  },
-  totalLabel: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  totalValue: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  totalLabelBold: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  totalValueBold: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  discountValue: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: "#166534",
-  },
-  shippingFree: {
-    color: "#15803D",
-  },
-  footer: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(12),
-    paddingBottom: rV(24),
-    backgroundColor: AppColors.white,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#EEE",
-  },
-  footerHint: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    marginBottom: rV(10),
-  },
-  placeOrderBtn: {
-    minHeight: rV(52),
-    borderRadius: rMS(16),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeOrderBtnDisabled: {
-    backgroundColor: "#B8C1CC",
-  },
-  placeOrderText: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  emptyCheckout: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: rS(24),
-  },
-  emptyTitle: {
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    textAlign: "center",
-    marginBottom: rV(8),
-  },
-  emptyText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-    lineHeight: rMS(20),
-  },
-  emptyButton: {
-    alignSelf: "center",
-    marginTop: rV(18),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(12),
-    borderRadius: rMS(14),
-    backgroundColor: AppColors.primary,
-  },
-  emptyButtonText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-});

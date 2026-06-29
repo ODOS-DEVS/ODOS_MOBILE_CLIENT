@@ -9,7 +9,7 @@ import {
   getOrderStatusPresentation,
   OrderProgressBar,
   OrderThumbnail,
-  orderStyles,
+  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { Order } from "@/hooks/useOrders";
 import { router } from "expo-router";
@@ -25,6 +25,8 @@ export default function ProcessingTab({
   onCancelOrder: (orderId: string) => Promise<unknown>;
   isMutatingOrder: boolean;
 }) {
+  const orderStyles = useOrderStyles();
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
       {orders.length === 0 ? (

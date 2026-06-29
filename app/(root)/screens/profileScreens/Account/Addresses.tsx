@@ -218,11 +218,11 @@ export default function AddressScreen() {
                       {address.label ? (
                         <View style={[accountStyles.pill, { marginBottom: 6 }]}>
                           <Text style={accountStyles.pillText}>{address.label}</Text>
-                        </View>
+          </View>
                       ) : null}
                       <Text style={accountStyles.cardTitle}>{address.fullName}</Text>
                       <Text style={accountStyles.cardSubtitle}>{address.phone}</Text>
-                    </View>
+        </View>
                     {address.isDefault ? <AccountBadge label="Default" tone="dark" /> : null}
                   </View>
 
@@ -231,9 +231,9 @@ export default function AddressScreen() {
                     <Text style={accountStyles.cardMuted}>
                       {address.city}, {address.region}
                     </Text>
-                  </View>
-                </View>
               </View>
+                </View>
+            </View>
 
               <AccountActionRow>
                 {fromCheckout ? (
@@ -254,11 +254,11 @@ export default function AddressScreen() {
                     <AccountActionButton
                       label="Edit"
                       icon="create-outline"
-                      onPress={() => {
+                    onPress={() => {
                         setForm(address);
                         setEditingId(address.id);
-                        setShowModal(true);
-                      }}
+                      setShowModal(true);
+                    }}
                     />
                     <AccountActionButton
                       label="Delete"
@@ -266,12 +266,12 @@ export default function AddressScreen() {
                       icon="trash-outline"
                       onPress={() => handleDelete(address.id)}
                     />
-                  </>
-                )}
+                </>
+              )}
               </AccountActionRow>
             </AccountListCard>
-          ))}
-        </ScrollView>
+        ))}
+      </ScrollView>
       )}
 
       <AccountFab
@@ -286,9 +286,9 @@ export default function AddressScreen() {
         title={editingId ? "Edit address" : "Add address"}
         subtitle="Use a nickname like Home or Office so the right place is easy to spot at checkout."
         onClose={() => {
-          setShowModal(false);
-          resetForm();
-        }}
+                setShowModal(false);
+                resetForm();
+              }}
         onSave={() => void handleSave()}
         saveLabel={editingId ? "Update address" : "Save address"}
         isSaving={isSaving}

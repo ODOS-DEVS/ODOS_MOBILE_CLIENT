@@ -9,7 +9,8 @@ import { openSignInFromApp } from "@/utils/authNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useNotificationStyles } from "@/styles/themedNotificationStyles";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { openActivityRoute } from "@/utils/activityNavigation";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import {
   Image,
@@ -106,7 +107,14 @@ export default function NotificationScreen() {
     isPullRefreshing,
     markAsRead,
     pullToRefresh,
+    refreshActivity,
   } = useActivityFeed();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshActivity({ silent: true });
+    }, [refreshActivity]),
+  );
 
   const openItem = useCallback(
     async (item: ActivityItem) => {
@@ -118,25 +126,7 @@ export default function NotificationScreen() {
         return;
       }
 
-      if (item.route.type === "order") {
-        router.push({
-          pathname: "/(root)/screens/profileScreens/orders/[orderId]" as any,
-          params: { orderId: item.route.orderId },
-        });
-        return;
-      }
-
-      if (item.route.type === "profile") {
-        router.push("/(root)/screens/profileScreens/CustomerProfile" as any);
-        return;
-      }
-
-      if (item.route.type === "vendor_wallet") {
-        router.push("/vendor/wallet" as any);
-        return;
-      }
-
-      router.push("/(root)/screens/profileScreens/orders" as any);
+      await openActivityRoute(item.route);
     },
     [markAsRead],
   );

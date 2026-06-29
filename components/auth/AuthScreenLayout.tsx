@@ -1,5 +1,6 @@
 import AuthHeader from "@/components/AuthHeader";
 import AuthBackButton from "@/components/auth/AuthBackButton";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -7,7 +8,6 @@ import React, { type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -72,25 +72,23 @@ export default function AuthScreenLayout({
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={0}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           style={[styles.scroll, { backgroundColor: colors.screen }]}
           contentContainerStyle={[
             styles.scrollContent,
             { paddingBottom: insets.bottom + rV(28) },
           ]}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
           bounces={false}
           alwaysBounceVertical={false}
           overScrollMode="never"
         >
           <View style={styles.body}>{children}</View>
           {footer ? <View style={styles.footer}>{footer}</View> : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </View>
   );

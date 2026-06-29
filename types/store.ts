@@ -11,6 +11,7 @@ export type VendorOrderStatus =
   | "confirmed"
   | "processing"
   | "ready"
+  | "out_for_delivery"
   | "delivered"
   | "cancelled";
 export type VendorVoucherAvailability = "auto" | "claim" | "assigned";

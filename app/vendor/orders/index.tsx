@@ -23,13 +23,14 @@ const NEXT_STATUS: Partial<Record<VendorOrderStatus, VendorOrderStatus>> = {
   pending: "confirmed",
   confirmed: "processing",
   processing: "ready",
-  ready: "delivered",
+  ready: "out_for_delivery",
+  out_for_delivery: "delivered",
 };
 
 function orderStatusTone(status: VendorOrderStatus): "neutral" | "warning" | "success" | "info" {
   if (status === "delivered") return "success";
   if (status === "pending") return "warning";
-  if (status === "ready") return "info";
+  if (status === "ready" || status === "out_for_delivery") return "info";
   return "neutral";
 }
 

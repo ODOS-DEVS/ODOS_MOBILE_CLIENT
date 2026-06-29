@@ -33,6 +33,9 @@ type DeliveryOptionsCardProps = {
   onSelectMethod?: (methodId: DeliveryMethodId) => void;
   defaultExpanded?: boolean;
   variant?: "card" | "inline";
+  options?: DeliveryOption[];
+  isLoading?: boolean;
+  statusMessage?: string | null;
 };
 
 function DeliveryOptionRow({
@@ -172,13 +175,17 @@ export default function DeliveryOptionsCard({
   onSelectMethod,
   defaultExpanded = false,
   variant = "card",
+  options: externalOptions,
+  isLoading = false,
+  statusMessage,
 }: DeliveryOptionsCardProps) {
   const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || variant === "inline");
-  const options = useMemo(
+  const computedOptions = useMemo(
     () => buildDeliveryOptions({ subtotal, region }),
     [region, subtotal],
   );
+  const options = externalOptions ?? computedOptions;
   const selectable = Boolean(onSelectMethod);
 
   const styles = useMemo(
@@ -226,6 +233,13 @@ export default function DeliveryOptionsCard({
           color: colors.textMuted,
           fontFamily: Fonts.text,
         },
+        status: {
+          fontSize: 12,
+          lineHeight: 17,
+          color: colors.primary,
+          fontFamily: Fonts.text,
+          marginBottom: 4,
+        },
       }),
     [colors],
   );
@@ -240,10 +254,11 @@ export default function DeliveryOptionsCard({
 
   const content = (
     <View style={variant === "inline" ? styles.inlineContent : styles.content}>
+      {statusMessage ? <Text style={styles.status}>{statusMessage}</Text> : null}
       <Text style={styles.intro}>
         {selectable
-          ? "Choose how fast you want this order delivered. Rates update automatically from your address and cart total."
-          : "See estimated delivery speeds for this item. You can choose your preferred option at checkout."}
+          ? "Choose how fast you want this order delivered. Rates are confirmed from your address and cart total."
+          : "Estimated delivery speeds for this item. Choose your preferred option at checkout."}
       </Text>
       {options.map((option) => (
         <DeliveryOptionRow

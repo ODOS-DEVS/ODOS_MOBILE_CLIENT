@@ -1,11 +1,38 @@
 const appJson = require("./app.json");
 
+function getGoogleIosUrlScheme(iosClientId) {
+  const clientId = (iosClientId ?? "").trim();
+  if (!clientId.endsWith(".apps.googleusercontent.com")) {
+    return null;
+  }
+
+  const prefix = clientId.replace(/\.apps\.googleusercontent.com$/, "");
+  return prefix ? `com.googleusercontent.apps.${prefix}` : null;
+}
+
 const enableGoogleMaps = process.env.EXPO_PUBLIC_ENABLE_GOOGLE_MAPS === "true";
+const googleIosUrlScheme = getGoogleIosUrlScheme(
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+);
 const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 const iosGoogleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || googleMapsApiKey;
 const androidGoogleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY || googleMapsApiKey;
+
+const iosInfoPlist = {
+  ...(appJson.expo.ios?.infoPlist ?? {}),
+  ...(googleIosUrlScheme
+    ? {
+        CFBundleURLTypes: [
+          ...(appJson.expo.ios?.infoPlist?.CFBundleURLTypes ?? []),
+          {
+            CFBundleURLSchemes: [googleIosUrlScheme],
+          },
+        ],
+      }
+    : {}),
+};
 
 const iosConfig = {
   ...(appJson.expo.ios?.config ?? {}),
@@ -39,6 +66,7 @@ module.exports = {
     },
     ios: {
       ...appJson.expo.ios,
+      infoPlist: iosInfoPlist,
       config: iosConfig,
     },
     android: {

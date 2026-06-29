@@ -12,6 +12,27 @@ export type DeliveryOption = {
 };
 
 const FREE_SHIPPING_THRESHOLD = 299;
+const SAME_DAY_CUTOFF_HOUR = 14;
+
+export const DELIVERY_METHOD_LABELS: Record<DeliveryMethodId, string> = {
+  economy: "Standard delivery",
+  express: "Express delivery",
+  same_day: "Same-day delivery",
+};
+
+export function getDeliveryMethodLabel(method?: string | null) {
+  if (!method) {
+    return DELIVERY_METHOD_LABELS.economy;
+  }
+  return DELIVERY_METHOD_LABELS[method as DeliveryMethodId] ?? "Standard delivery";
+}
+
+export function isSameDayOrderWindowOpen(date = new Date()) {
+  if (date.getDay() === 0) {
+    return false;
+  }
+  return date.getHours() < SAME_DAY_CUTOFF_HOUR;
+}
 
 const GREATER_ACCRA_ALIASES = [
   "greater accra",
@@ -50,10 +71,26 @@ export function buildDeliveryOptions(input: {
   region?: string | null;
 }): DeliveryOption[] {
   const sameDayEligible = isSameDayEligibleRegion(input.region);
+  const sameDayWindowOpen = isSameDayOrderWindowOpen();
+  const sameDayAvailable = sameDayEligible && sameDayWindowOpen;
   const economyAmount =
     input.subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 19;
   const expressAmount = 29;
   const sameDayAmount = 49;
+
+  let sameDaySubtitle = "Available when your delivery address is in Greater Accra";
+  let sameDayEta = "Greater Accra only";
+  let sameDayReason: string | undefined = "Select a Greater Accra address at checkout";
+
+  if (sameDayEligible && !sameDayWindowOpen) {
+    sameDaySubtitle = "Order before 2:00 PM for evening drop-off";
+    sameDayEta = "Unavailable today";
+    sameDayReason = "Same-day orders close at 2:00 PM (Mon–Sat)";
+  } else if (sameDayEligible) {
+    sameDaySubtitle = "Order before 2:00 PM for evening drop-off";
+    sameDayEta = "Today";
+    sameDayReason = undefined;
+  }
 
   return [
     {
@@ -79,15 +116,11 @@ export function buildDeliveryOptions(input: {
     {
       id: "same_day",
       title: "Same-day delivery",
-      subtitle: sameDayEligible
-        ? "Order before 2:00 PM for evening drop-off"
-        : "Available when your delivery address is in Greater Accra",
-      eta: sameDayEligible ? "Today" : "Greater Accra only",
+      subtitle: sameDaySubtitle,
+      eta: sameDayEta,
       amount: sameDayAmount,
-      available: sameDayEligible,
-      unavailableReason: sameDayEligible
-        ? undefined
-        : "Select a Greater Accra address at checkout",
+      available: sameDayAvailable,
+      unavailableReason: sameDayAvailable ? undefined : sameDayReason,
     },
   ];
 }

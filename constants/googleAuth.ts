@@ -40,3 +40,14 @@ export function canUseGoogleAuthRequest() {
 export function isGoogleAuthConfigured() {
   return canUseGoogleAuthRequest();
 }
+
+/** iOS reversed client ID URL scheme required for Google OAuth redirect. */
+export function getGoogleIosUrlScheme(iosClientId?: string) {
+  const clientId = (iosClientId ?? GOOGLE_IOS_CLIENT_ID).trim();
+  if (!clientId.endsWith(".apps.googleusercontent.com")) {
+    return null;
+  }
+
+  const prefix = clientId.replace(/\.apps\.googleusercontent\.com$/, "");
+  return prefix ? `com.googleusercontent.apps.${prefix}` : null;
+}

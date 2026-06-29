@@ -1,5 +1,7 @@
+import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
+import { useChatStyles } from "@/styles/themedChatStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,11 +10,10 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const QUICK_PROMPTS = [
-  "Where is my order?",
-  "How do delivery options work?",
-  "How do I use a voucher?",
-  "How do I start a return?",
-  "Help me find deals",
+  { label: "Track my order", prompt: "Where is my order?" },
+  { label: "Delivery options", prompt: "How do delivery options work?" },
+  { label: "Use a voucher", prompt: "How do I use a voucher?" },
+  { label: "Start a return", prompt: "How do I start a return?" },
 ];
 
 type AssistantQuickPromptsProps = {
@@ -29,34 +30,31 @@ export function AssistantQuickPrompts({
     () =>
       StyleSheet.create({
         wrap: {
-          gap: rV(8),
-          paddingHorizontal: rS(16),
-          paddingBottom: rV(8),
-        },
-        label: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(12),
-          color: colors.textMuted,
-          textTransform: "uppercase",
-          letterSpacing: 0.4,
+          marginHorizontal: rS(16),
+          marginTop: rV(4),
+          marginBottom: rV(12),
+          borderRadius: rMS(16),
+          backgroundColor: colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+          overflow: "hidden",
+          opacity: disabled ? 0.55 : 1,
         },
         row: {
           flexDirection: "row",
-          flexWrap: "wrap",
-          gap: rS(8),
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: rS(14),
+          paddingVertical: rV(13),
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
         },
-        chip: {
-          borderRadius: 999,
-          paddingHorizontal: rS(12),
-          paddingVertical: rV(8),
-          backgroundColor: colors.accentSoft,
-          borderWidth: 1,
-          borderColor: colors.border,
-          opacity: disabled ? 0.55 : 1,
+        rowLast: {
+          borderBottomWidth: 0,
         },
-        chipText: {
+        rowText: {
           fontFamily: Fonts.text,
-          fontSize: rMS(12),
+          fontSize: rMS(14),
           color: colors.text,
         },
       }),
@@ -65,21 +63,125 @@ export function AssistantQuickPrompts({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Quick questions</Text>
-      <View style={styles.row}>
-        {QUICK_PROMPTS.map((prompt) => (
-          <TouchableOpacity
-            key={prompt}
-            style={styles.chip}
-            activeOpacity={0.82}
-            disabled={disabled}
-            onPress={() => onSelect(prompt)}
-          >
-            <Text style={styles.chipText}>{prompt}</Text>
-          </TouchableOpacity>
-        ))}
+      {QUICK_PROMPTS.map((item, index) => (
+        <TouchableOpacity
+          key={item.label}
+          style={[styles.row, index === QUICK_PROMPTS.length - 1 ? styles.rowLast : null]}
+          activeOpacity={0.72}
+          disabled={disabled}
+          onPress={() => onSelect(item.prompt)}
+        >
+          <Text style={styles.rowText}>{item.label}</Text>
+          <Ionicons name="chevron-forward" size={rMS(16)} color={colors.textMuted} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+type AssistantTypingIndicatorProps = {
+  visible: boolean;
+};
+
+export function AssistantTypingIndicator({ visible }: AssistantTypingIndicatorProps) {
+  const chatStyles = useChatStyles();
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <View style={[chatStyles.messageRow, chatStyles.messageRowTheirs]}>
+      <View style={[chatStyles.bubble, chatStyles.bubbleTheirs]}>
+        <Text style={[chatStyles.bubbleText, { color: AppColors.textMuted }]}>
+          Typing…
+        </Text>
       </View>
     </View>
+  );
+}
+
+type AssistantMessageItemProps = {
+  message: AssistantMessage;
+};
+
+export function AssistantMessageItem({ message }: AssistantMessageItemProps) {
+  const chatStyles = useChatStyles();
+  const { colors } = useTheme();
+  const isUser = message.role === "user";
+
+  const actionStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        actions: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: rS(8),
+          marginTop: rV(6),
+          paddingHorizontal: rS(16),
+          maxWidth: "88%",
+        },
+        actionChip: {
+          borderRadius: 999,
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(6),
+          backgroundColor: colors.accentSoft,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        actionText: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(12),
+          color: colors.primary,
+        },
+      }),
+    [colors],
+  );
+
+  return (
+    <>
+      <View
+        style={[
+          chatStyles.messageRow,
+          isUser ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
+        ]}
+      >
+        <View
+          style={[
+            chatStyles.bubble,
+            isUser ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
+          ]}
+        >
+          <Text
+            style={[
+              chatStyles.bubbleText,
+              { color: isUser ? "#FFFFFF" : colors.text },
+            ]}
+          >
+            {message.content}
+          </Text>
+        </View>
+      </View>
+      {!isUser && message.suggestedActions?.length ? (
+        <View
+          style={[
+            actionStyles.actions,
+            { alignSelf: "flex-start" },
+          ]}
+        >
+          {message.suggestedActions.map((action) => (
+            <TouchableOpacity
+              key={`${message.id}-${action.route}`}
+              style={actionStyles.actionChip}
+              activeOpacity={0.75}
+              onPress={() => router.push(action.route as any)}
+            >
+              <Text style={actionStyles.actionText}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </>
   );
 }
 
@@ -88,132 +190,11 @@ type AssistantMessageListProps = {
 };
 
 export function AssistantMessageList({ messages }: AssistantMessageListProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        list: {
-          gap: rV(12),
-          paddingHorizontal: rS(16),
-          paddingTop: rV(8),
-          paddingBottom: rV(16),
-        },
-        row: {
-          flexDirection: "row",
-          alignItems: "flex-end",
-          gap: rS(8),
-        },
-        rowMine: {
-          justifyContent: "flex-end",
-        },
-        avatar: {
-          width: rMS(28),
-          height: rMS(28),
-          borderRadius: rMS(14),
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: colors.primary,
-        },
-        bubble: {
-          maxWidth: "82%",
-          borderRadius: rMS(18),
-          paddingHorizontal: rS(14),
-          paddingVertical: rV(10),
-        },
-        bubbleAssistant: {
-          backgroundColor: colors.card,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        bubbleUser: {
-          backgroundColor: colors.primary,
-        },
-        textAssistant: {
-          fontFamily: Fonts.text,
-          fontSize: rMS(14),
-          lineHeight: rMS(20),
-          color: colors.text,
-        },
-        textUser: {
-          fontFamily: Fonts.text,
-          fontSize: rMS(14),
-          lineHeight: rMS(20),
-          color: "#FFFFFF",
-        },
-        actions: {
-          marginTop: rV(10),
-          gap: rV(8),
-        },
-        actionBtn: {
-          alignSelf: "flex-start",
-          borderRadius: 999,
-          paddingHorizontal: rS(12),
-          paddingVertical: rV(7),
-          backgroundColor: colors.accentSoft,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        actionText: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(12),
-          color: colors.primary,
-        },
-        supportNote: {
-          marginTop: rV(8),
-          fontFamily: Fonts.text,
-          fontSize: rMS(11),
-          color: colors.textMuted,
-        },
-      }),
-    [colors],
-  );
-
   return (
-    <View style={styles.list}>
-      {messages.map((message) => {
-        const isUser = message.role === "user";
-        return (
-          <View
-            key={message.id}
-            style={[styles.row, isUser ? styles.rowMine : null]}
-          >
-            {!isUser ? (
-              <View style={styles.avatar}>
-                <Ionicons name="sparkles" size={rMS(14)} color="#FFFFFF" />
-              </View>
-            ) : null}
-            <View
-              style={[
-                styles.bubble,
-                isUser ? styles.bubbleUser : styles.bubbleAssistant,
-              ]}
-            >
-              <Text style={isUser ? styles.textUser : styles.textAssistant}>
-                {message.content}
-              </Text>
-              {!isUser && message.suggestedActions?.length ? (
-                <View style={styles.actions}>
-                  {message.suggestedActions.map((action) => (
-                    <TouchableOpacity
-                      key={`${message.id}-${action.route}`}
-                      style={styles.actionBtn}
-                      activeOpacity={0.82}
-                      onPress={() => router.push(action.route as any)}
-                    >
-                      <Text style={styles.actionText}>{action.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null}
-              {!isUser && message.escalatedToSupport ? (
-                <Text style={styles.supportNote}>
-                  A human support agent can take over from here if you need more help.
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        );
-      })}
+    <View style={{ paddingTop: rV(8), paddingBottom: rV(4) }}>
+      {messages.map((message) => (
+        <AssistantMessageItem key={message.id} message={message} />
+      ))}
     </View>
   );
 }

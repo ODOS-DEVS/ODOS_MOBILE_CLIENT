@@ -34,6 +34,8 @@ type CartItemInput = Omit<CartItem, "quantity"> & {
 type CartContextType = {
   cart: CartItem[];
   isSyncingCart: boolean;
+  cartItemCount: number;
+  getItemQuantity: (productId: string) => number;
   addToCart: (product: Omit<CartItem, "quantity">) => Promise<void>;
   addItemsToCart: (products: CartItemInput[]) => Promise<void>;
   increaseQty: (id: string) => Promise<void>;
@@ -365,10 +367,25 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [accessToken, user]);
 
+  const getItemQuantity = useCallback(
+    (productId: string) => {
+      const item = cart.find((entry) => entry.id === String(productId));
+      return item?.quantity ?? 0;
+    },
+    [cart],
+  );
+
+  const cartItemCount = useMemo(
+    () => cart.reduce((total, item) => total + item.quantity, 0),
+    [cart],
+  );
+
   const value = useMemo(
     () => ({
       cart,
       isSyncingCart,
+      cartItemCount,
+      getItemQuantity,
       addToCart,
       addItemsToCart,
       increaseQty,
@@ -381,8 +398,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       addToCart,
       addItemsToCart,
       cart,
+      cartItemCount,
       clearCart,
       decreaseQty,
+      getItemQuantity,
       increaseQty,
       isSyncingCart,
       refreshCart,

@@ -5,6 +5,7 @@ import AssistantFab from "@/components/assistant/AssistantFab";
 import { TabBarMetricsProvider } from "@/components/navigation/TabBarMetricsContext";
 import { useTabBarMetrics } from "@/components/navigation/tabBarMetrics";
 import VendorTabIcon from "@/components/vendor/VendorTabIcon";
+import CartTabIcon from "@/components/navigation/CartTabIcon";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
@@ -108,7 +109,7 @@ const TabsLayout = () => {
           name="cart"
           options={{
             title: "Cart",
-            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="cart" focused={focused} />,
+            tabBarIcon: ({ focused }) => <CartTabIcon focused={focused} />,
           }}
         />
         <Tabs.Screen
