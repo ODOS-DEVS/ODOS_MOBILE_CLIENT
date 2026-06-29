@@ -1,4 +1,5 @@
 import { AccountListCard } from "@/components/account/AccountUi";
+import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import { MenuItem } from "@/components/MenuItem";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import UserAvatar from "@/components/UserAvatar";
@@ -11,6 +12,7 @@ import { useVendorStore } from "@/stores/vendorStore";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { normalizeVendorStatus } from "@/types/vendor";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAppReview } from "@/hooks/useAppReview";
 import { resetAuthStackToSignIn } from "@/utils/authNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
@@ -28,6 +30,12 @@ export default function ProfileScreen() {
     user,
   } = useAuth();
   const { requireAuth } = useRequireAuth();
+  const {
+    visible: reviewPromptVisible,
+    promptFromProfile,
+    handleRate: handleAppReviewRate,
+    handleDismiss: handleAppReviewDismiss,
+  } = useAppReview();
   const { session } = useVendorSession();
   const { isLoading, refreshVendorState, vendorApplication, vendorStatus } =
     useVendorStore();
@@ -567,6 +575,11 @@ export default function ProfileScreen() {
             router.push("../screens/profileScreens/helpAndSupport/FAQ");
           }}
         />
+        <MenuItem
+          icon="star-outline"
+          label="Rate ODOS"
+          onPress={promptFromProfile}
+        />
       </AccountListCard>
 
       {user ? (
@@ -580,6 +593,11 @@ export default function ProfileScreen() {
         </AccountListCard>
       ) : null}
       </ScrollView>
+      <AppReviewPrompt
+        visible={reviewPromptVisible}
+        onRate={() => void handleAppReviewRate()}
+        onDismiss={() => void handleAppReviewDismiss()}
+      />
     </SafeAreaView>
   );
 }

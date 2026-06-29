@@ -326,7 +326,7 @@ export default function WalletScreen() {
               style={[walletStyles.tabText, activeTab === "methods" && walletStyles.tabTextActive]}
             >
               Payment Methods
-            </Text>
+          </Text>
           </TouchableOpacity>
         </View>
 
@@ -369,7 +369,7 @@ export default function WalletScreen() {
               </View>
               <Text style={walletStyles.amountHint}>
                 Choose your preferred funding method before continuing.
-              </Text>
+                  </Text>
               <View style={walletStyles.topupMethodRow}>
                 {(["card", "momo"] as const).map((method) => {
                   const active = topupPaymentType === method;
@@ -411,7 +411,7 @@ export default function WalletScreen() {
                   topupMethods.map((method) => {
                     const active = selectedTopupMethod?.id === method.id;
                     return (
-                      <TouchableOpacity
+                  <TouchableOpacity
                         key={method.id}
                         activeOpacity={0.85}
                         onPress={() => setSelectedTopupMethodId(method.id)}
@@ -426,12 +426,12 @@ export default function WalletScreen() {
                             {method.type === "card"
                               ? `Card • **** ${method.cardLast4 ?? "****"}`
                               : `${method.network ?? "MoMo"} • ${method.phone ?? "Saved number"}`}
-                          </Text>
+                    </Text>
                         </View>
                         {active ? (
                           <Text style={walletStyles.savedTopupMethodBadge}>Selected</Text>
                         ) : null}
-                      </TouchableOpacity>
+                  </TouchableOpacity>
                     );
                   })
                 )}
@@ -551,8 +551,8 @@ export default function WalletScreen() {
                       </View>
                       {payment.isDefault ? <AccountBadge label="Default" tone="dark" /> : null}
                     </View>
-                  </View>
-                </View>
+            </View>
+          </View>
 
                 <AccountActionRow>
                   {fromCheckout ? (
@@ -587,10 +587,10 @@ export default function WalletScreen() {
 
       {activeTab === "methods" ? (
         <AccountFab
-          onPress={() => {
-            resetForm();
-            setShowModal(true);
-          }}
+        onPress={() => {
+          resetForm();
+          setShowModal(true);
+        }}
         />
       ) : null}
 
@@ -599,9 +599,9 @@ export default function WalletScreen() {
         title="Add payment method"
         subtitle="Choose card or mobile money. Details are stored for faster checkout."
         onClose={() => {
-          setShowModal(false);
-          resetForm();
-        }}
+                setShowModal(false);
+                resetForm();
+              }}
         onSave={() => void handleSave()}
         saveLabel="Save payment method"
         isSaving={isSaving}
@@ -625,59 +625,59 @@ export default function WalletScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+          </View>
 
         {type === "card" ? (
-          <>
+            <>
             <AccountFormField
               label="Cardholder name"
               placeholder="Name on card"
-              value={form.cardName ?? ""}
+                value={form.cardName ?? ""}
               onChangeText={(value) => {
                 setForm({ ...form, cardName: value });
-                setFieldErrors((current) => ({ ...current, cardName: undefined }));
-              }}
+                  setFieldErrors((current) => ({ ...current, cardName: undefined }));
+                }}
               error={fieldErrors.cardName}
             />
             <AccountFormField
               label="Card number"
               placeholder="0000 0000 0000 0000"
-              keyboardType="number-pad"
-              value={form.cardNumber ?? ""}
+                keyboardType="number-pad"
+                value={form.cardNumber ?? ""}
               onChangeText={(value) => {
                 setForm({ ...form, cardNumber: value });
-                setFieldErrors((current) => ({ ...current, cardNumber: undefined }));
-              }}
+                  setFieldErrors((current) => ({ ...current, cardNumber: undefined }));
+                }}
               error={fieldErrors.cardNumber}
             />
             <View style={walletStyles.splitRow}>
               <View style={{ flex: 1 }}>
                 <AccountFormField
                   label="Expiry"
-                  placeholder="MM/YY"
-                  value={form.expiry ?? ""}
+                    placeholder="MM/YY"
+                    value={form.expiry ?? ""}
                   onChangeText={(value) => {
                     setForm({ ...form, expiry: value });
-                    setFieldErrors((current) => ({ ...current, expiry: undefined }));
-                  }}
+                      setFieldErrors((current) => ({ ...current, expiry: undefined }));
+                    }}
                   error={fieldErrors.expiry}
-                />
-              </View>
+                  />
+                </View>
               <View style={{ flex: 1 }}>
                 <AccountFormField
                   label="CVV"
                   placeholder="123"
-                  keyboardType="number-pad"
-                  value={form.cvv ?? ""}
+                    keyboardType="number-pad"
+                    value={form.cvv ?? ""}
                   onChangeText={(value) => {
                     setForm({ ...form, cvv: value });
-                    setFieldErrors((current) => ({ ...current, cvv: undefined }));
-                  }}
+                      setFieldErrors((current) => ({ ...current, cvv: undefined }));
+                    }}
                   error={fieldErrors.cvv}
-                />
+                  />
               </View>
-            </View>
-          </>
+              </View>
+            </>
         ) : (
           <>
             <Text style={walletStyles.networkLabel}>Mobile network</Text>
@@ -702,18 +702,18 @@ export default function WalletScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </View>
-            {fieldErrors.network ? (
+              </View>
+              {fieldErrors.network ? (
               <Text style={walletStyles.error}>{fieldErrors.network}</Text>
-            ) : null}
+              ) : null}
             <AccountFormField
               label="MoMo number"
               placeholder="0541234567"
-              keyboardType="phone-pad"
-              value={form.phone ?? ""}
+                keyboardType="phone-pad"
+                value={form.phone ?? ""}
               onChangeText={(value) => {
                 setForm({ ...form, phone: formatPhoneInput(value) });
-                setFieldErrors((current) => ({ ...current, phone: undefined }));
+                  setFieldErrors((current) => ({ ...current, phone: undefined }));
                 momoPhoneVerification.setVerificationError("");
               }}
               error={fieldErrors.phone}
@@ -743,9 +743,9 @@ export default function WalletScreen() {
                   }
                 }}
               />
-            ) : null}
-          </>
-        )}
+              ) : null}
+            </>
+          )}
       </AccountFormSheet>
     </View>
   );

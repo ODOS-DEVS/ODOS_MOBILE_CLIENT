@@ -5,7 +5,7 @@ import {
   useAccountStyles,
   formatOrderMoney,
   OrderSummaryRow,
-  orderStyles,
+  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -22,6 +22,7 @@ const getParam = (value: string | string[] | undefined) =>
 
 export default function OrderSuccessScreen() {
   const accountStyles = useAccountStyles();
+  const orderStyles = useOrderStyles();
   const params = useLocalSearchParams();
   useBlockBackNavigation(true);
   const orderNumber = getParam(params.orderNumber) ?? "ORD-000000";

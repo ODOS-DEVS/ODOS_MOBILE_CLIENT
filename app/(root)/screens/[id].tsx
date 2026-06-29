@@ -908,6 +908,7 @@ export default function ProductDetail() {
                 containerStyle={styles.bottomIconButton}
               />
               <AddToCartBtn
+                variant="stepper"
                 item={{
                   id,
                   title,

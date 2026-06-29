@@ -7,7 +7,7 @@ import {
   formatOrderMoney,
   getOrderPrimaryItem,
   OrderThumbnail,
-  orderStyles,
+  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { Order } from "@/hooks/useOrders";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +22,8 @@ function formatCancelledDate(order: Order) {
 }
 
 export default function CancelledTab({ orders }: { orders: Order[] }) {
+  const orderStyles = useOrderStyles();
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
       {orders.length === 0 ? (

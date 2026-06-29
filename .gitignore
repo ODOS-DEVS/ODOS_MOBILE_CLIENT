@@ -33,7 +33,9 @@ yarn-error.*
 # local env files
 .env
 .env*.local
-.env.example
+
+# local tooling (do not commit)
+.tools/
 
 # typescript
 *.tsbuildinfo

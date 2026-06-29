@@ -27,12 +27,10 @@ function mapActions(items?: { label: string; route: string }[]): AssistantAction
 const WELCOME_MESSAGE: AssistantMessage = {
   id: "welcome",
   role: "assistant",
-  content:
-    "Hi — I'm the ODOS Assistant. I can help with orders, checkout, delivery, vouchers, returns, stores, and anything else in the app. What do you need?",
+  content: "Hi! How can I help you today?",
   suggestedActions: [
-    { label: "Track an order", route: "/screens/profileScreens/orders" },
+    { label: "View my orders", route: "/screens/profileScreens/orders" },
     { label: "Browse deals", route: "/screens/deals" },
-    { label: "FAQ", route: "/screens/profileScreens/helpAndSupport/FAQ" },
   ],
   createdAt: Date.now(),
 };

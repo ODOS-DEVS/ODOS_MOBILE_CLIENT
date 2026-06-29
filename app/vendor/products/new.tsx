@@ -4,6 +4,7 @@ import {
   AccountSettingToggle,
   AccountStickySaveBar,
 } from "@/components/profile/ProfileHubUi";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import TextInputField from "@/components/TextInputField";
 import {
   ProductFormChipGroup,
@@ -39,7 +40,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -402,11 +402,10 @@ export default function NewVendorProductScreen() {
     <VendorScreenShell title={isEditing ? "Edit Product" : "Add Product"}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[vendorStyles.content, { paddingBottom: rV(110) }]}
         >
@@ -584,7 +583,7 @@ export default function NewVendorProductScreen() {
               </Text>
             ) : null}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         <AccountStickySaveBar
           label={isEditing ? "Save changes" : "Publish listing"}

@@ -12,12 +12,22 @@ import {
   useAccountStyles,
 } from "@/components/account/AccountUi";
 import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateOfBirthPicker, {
+  AndroidBirthDatePicker,
+} from "@/components/profile/DateOfBirthPicker";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
+import {
+  formatBirthDateForApi,
+  formatBirthDateForDisplay,
+  getDefaultBirthDate,
+  parseBirthDateInput,
+} from "@/utils/dateOfBirth";
+import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import {
   formatPhoneInput,
@@ -26,56 +36,13 @@ import {
   validateGhanaPhone,
 } from "@/utils/phone";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
-function formatDateForInput(value?: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const [year, month, day] = value.split("-");
-  if (!year || !month || !day) {
-    return null;
-  }
-
-  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatDateForDisplay(value: Date | null) {
-  if (!value) {
-    return "Select date of birth";
-  }
-
-  return value.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatDateForApi(value: Date | null) {
-  if (!value) {
-    return null;
-  }
-
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 const CustomerProfile = () => {
+  const insets = useSafeAreaInsets();
   const accountStyles = useAccountStyles();
   const { showToast } = useToast();
   const {
@@ -91,7 +58,8 @@ const CustomerProfile = () => {
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [draftDateOfBirth, setDraftDateOfBirth] = useState<Date>(new Date(2000, 0, 1));
+  const [showAndroidDatePicker, setShowAndroidDatePicker] = useState(false);
+  const [draftDateOfBirth, setDraftDateOfBirth] = useState<Date>(getDefaultBirthDate(null));
   const [phoneNumber, setPhoneNumber] = useState("");
   const [gender, setGender] = useState("");
   const [showGenderPicker, setShowGenderPicker] = useState(false);
@@ -116,7 +84,7 @@ const CustomerProfile = () => {
 
     setFullName(user.full_name || "");
     setEmail(user.email || "");
-    setDateOfBirth(formatDateForInput(user.date_of_birth));
+    setDateOfBirth(parseBirthDateInput(user.date_of_birth));
     setPhoneNumber(user.phone_number || "");
     setGender(user.gender || "");
     setCity(user.city || "");
@@ -185,7 +153,7 @@ const CustomerProfile = () => {
     const trimmedGender = gender.trim();
     const trimmedCity = city.trim();
     const trimmedRegion = region.trim();
-    const formattedDateOfBirth = formatDateForApi(dateOfBirth);
+    const formattedDateOfBirth = formatBirthDateForApi(dateOfBirth);
 
     if (!trimmedFullName) {
       setFullNameError("Enter your full name.");
@@ -272,7 +240,7 @@ const CustomerProfile = () => {
 
       const updateResult = await updateProfile({
         fullName: fullName.trim(),
-        dateOfBirth: formatDateForApi(dateOfBirth),
+        dateOfBirth: formatBirthDateForApi(dateOfBirth),
         gender: gender.trim(),
         city: city.trim(),
         region: region.trim(),
@@ -292,19 +260,14 @@ const CustomerProfile = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={accountStyles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={2}
-    >
+    <View style={accountStyles.screen}>
       <ProfileHeader title="My Profile" />
 
-      <ScrollView
+      <KeyboardAwareScreen
+        keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
         keyboardShouldPersistTaps="always"
-        keyboardDismissMode="none"
-        automaticallyAdjustKeyboardInsets
       >
         <AccountProfileHero
           name={user?.full_name || fullName || "ODOS User"}
@@ -351,15 +314,19 @@ const CustomerProfile = () => {
           />
           <AccountPickerField
             label="Date of birth"
-            value={formatDateForDisplay(dateOfBirth)}
+            value={formatBirthDateForDisplay(dateOfBirth)}
             placeholder="Select date of birth"
             icon="calendar-outline"
             error={dateOfBirthError}
             onPress={() => {
-              setDraftDateOfBirth(dateOfBirth || new Date(2000, 0, 1));
-              setShowDatePicker(true);
+              setDraftDateOfBirth(getDefaultBirthDate(dateOfBirth));
               setDateOfBirthError("");
               clearGeneralError();
+              if (Platform.OS === "android") {
+                setShowAndroidDatePicker(true);
+                return;
+              }
+              setShowDatePicker(true);
             }}
             onClear={() => setDateOfBirth(null)}
           />
@@ -491,7 +458,7 @@ const CustomerProfile = () => {
           onPress={() => void handleSave()}
           disabled={isUpdatingProfile}
         />
-      </ScrollView>
+      </KeyboardAwareScreen>
 
       <AccountChoiceSheet
         visible={showDatePicker}
@@ -515,19 +482,25 @@ const CustomerProfile = () => {
           </View>
         }
       >
-        <DateTimePicker
+        <DateOfBirthPicker
           value={draftDateOfBirth}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
           maximumDate={new Date()}
-          onChange={(_event, selectedDate) => {
-            if (selectedDate) {
-              setDraftDateOfBirth(selectedDate);
-            }
-          }}
-          style={styles.datePicker}
+          onChange={setDraftDateOfBirth}
         />
       </AccountChoiceSheet>
+
+      <AndroidBirthDatePicker
+        visible={showAndroidDatePicker}
+        value={draftDateOfBirth}
+        maximumDate={new Date()}
+        onDismiss={() => setShowAndroidDatePicker(false)}
+        onChange={(selectedDate) => {
+          setDateOfBirth(selectedDate);
+          setDraftDateOfBirth(selectedDate);
+          setDateOfBirthError("");
+          clearGeneralError();
+        }}
+      />
 
       <AccountChoiceSheet
         visible={showGenderPicker}
@@ -546,7 +519,7 @@ const CustomerProfile = () => {
           />
         ))}
       </AccountChoiceSheet>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -575,9 +548,6 @@ const styles = StyleSheet.create({
     gap: rS(10),
     marginTop: rV(12),
     marginBottom: rV(8),
-  },
-  datePicker: {
-    alignSelf: "center",
   },
   phoneStatusRow: {
     flexDirection: "row",

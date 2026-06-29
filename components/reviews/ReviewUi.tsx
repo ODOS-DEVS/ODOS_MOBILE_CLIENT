@@ -7,8 +7,9 @@ import {
 } from "@/components/account/AccountUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useReviewStyles } from "@/styles/themedReviewStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { getHalfStepRatingFromLocation, getStarIconName } from "@/utils/ratings";
+import { getStarIconName } from "@/utils/ratings";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -16,7 +17,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   LayoutAnimation,
-  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -34,212 +34,6 @@ if (
 }
 
 type ReviewComposerStep = "rating" | "comment";
-
-export const reviewStyles = StyleSheet.create({
-  productRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  imageWrap: {
-    width: rS(64),
-    height: rS(64),
-    borderRadius: rMS(16),
-    backgroundColor: "#F3F4F6",
-    overflow: "hidden",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  info: {
-    flex: 1,
-    gap: rV(2),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14.5),
-    color: AppColors.text,
-  },
-  sub: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#6B7280",
-  },
-  meta: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    color: "#9CA3AF",
-  },
-  orderText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(11),
-    color: "#64748B",
-  },
-  starsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(4),
-    marginTop: rV(10),
-  },
-  starsValue: {
-    marginLeft: rS(6),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    color: AppColors.text,
-  },
-  commentPreview: {
-    marginTop: rV(8),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: "#4B5563",
-  },
-  ratingSection: {
-    gap: rV(10),
-  },
-  ratingHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  ratingValuePill: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11.5),
-    color: "#B45309",
-    backgroundColor: "#FFF4D6",
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  ratingControlWrap: {
-    alignItems: "center",
-    gap: rV(10),
-  },
-  ratingGestureArea: {
-    alignSelf: "stretch",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(14),
-    borderRadius: rMS(20),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#F3D28A",
-    backgroundColor: "#FFFBEB",
-  },
-  ratingTrack: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  ratingTrackStar: {
-    width: rS(44),
-    height: rS(44),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ratingMoodPill: {
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(6),
-    borderRadius: 999,
-    backgroundColor: "#FEF3C7",
-  },
-  ratingMoodText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#A16207",
-  },
-  ratingHint: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: rMS(17),
-  },
-  commentInput: {
-    minHeight: rV(128),
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#F9FAFB",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13.5),
-    lineHeight: rMS(20),
-    textAlignVertical: "top",
-  },
-  composerProductCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-    backgroundColor: "#F9FAFB",
-    borderRadius: rMS(18),
-    padding: rS(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  sectionLabel: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  ratingStepWrap: {
-    gap: rV(14),
-    paddingVertical: rV(4),
-  },
-  ratingStepPrompt: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  ratingStepPromptHighlight: {
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  ratingRequiredHint: {
-    textAlign: "center",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#DC2626",
-  },
-  commentStepCard: {
-    gap: rV(12),
-    marginTop: rV(4),
-    padding: rS(14),
-    borderRadius: rMS(20),
-    backgroundColor: "#F9FAFB",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  ratingSummaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  changeRatingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(4),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-    borderRadius: 999,
-    backgroundColor: "#FFFBEB",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FDE68A",
-  },
-  changeRatingText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#B45309",
-  },
-});
 
 export function formatReviewDate(value: string, prefix: string) {
   return `${prefix} ${new Date(value).toLocaleDateString(undefined, {
@@ -282,6 +76,7 @@ type ReviewStarsRowProps = {
 };
 
 export function ReviewStarsRow({ rating, size = rMS(14), showValue = false }: ReviewStarsRowProps) {
+  const reviewStyles = useReviewStyles();
   return (
     <View style={reviewStyles.starsRow}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -308,6 +103,7 @@ export function ReviewProductThumbnail({
   imageUrl,
   size = rS(64),
 }: ReviewProductThumbnailProps) {
+  const reviewStyles = useReviewStyles();
   return (
     <View style={[reviewStyles.imageWrap, { width: size, height: size }]}>
       <Image
@@ -340,6 +136,7 @@ type ReviewListCardProps = {
 };
 
 export function ReviewListCard({ item, onWritePress }: ReviewListCardProps) {
+  const reviewStyles = useReviewStyles();
   const isPending = item.status === "pending";
 
   return (
@@ -397,34 +194,12 @@ type ReviewRatingPickerProps = {
 };
 
 export function ReviewRatingPicker({ rating, onChange }: ReviewRatingPickerProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
-
-  const handleGesture = useCallback(
-    (locationX: number) => {
-      const nextRating = getHalfStepRatingFromLocation(locationX, trackWidth);
-      if (nextRating > 0) {
-        onChange(nextRating);
-      }
+  const reviewStyles = useReviewStyles();
+  const handleStarPress = useCallback(
+    (star: number) => {
+      onChange(star);
     },
-    [onChange, trackWidth],
-  );
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: (event) => {
-          handleGesture(event.nativeEvent.locationX);
-        },
-        onPanResponderMove: (event) => {
-          handleGesture(event.nativeEvent.locationX);
-        },
-      }),
-    [handleGesture],
+    [onChange],
   );
 
   return (
@@ -432,25 +207,28 @@ export function ReviewRatingPicker({ rating, onChange }: ReviewRatingPickerProps
       <View style={reviewStyles.ratingHeaderRow}>
         <Text style={reviewStyles.sectionLabel}>Your rating</Text>
         <Text style={reviewStyles.ratingValuePill}>
-          {rating > 0 ? `${rating.toFixed(1)} / 5` : "Not rated"}
+          {rating > 0 ? `${rating} / 5` : "Not rated"}
         </Text>
       </View>
 
       <View style={reviewStyles.ratingControlWrap}>
-        <View
-          style={reviewStyles.ratingGestureArea}
-          onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
-          {...panResponder.panHandlers}
-        >
+        <View style={reviewStyles.ratingGestureArea}>
           <View style={reviewStyles.ratingTrack}>
             {[1, 2, 3, 4, 5].map((star) => (
-              <View key={`picker-star-${star}`} style={reviewStyles.ratingTrackStar}>
+              <TouchableOpacity
+                key={`picker-star-${star}`}
+                style={reviewStyles.ratingTrackStar}
+                activeOpacity={0.85}
+                onPress={() => handleStarPress(star)}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${star} out of 5 stars`}
+              >
                 <Ionicons
                   name={getStarIconName(star, rating)}
                   size={rMS(30)}
                   color={rating >= star - 0.5 ? "#F59E0B" : "#CBD5E1"}
                 />
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -460,7 +238,7 @@ export function ReviewRatingPicker({ rating, onChange }: ReviewRatingPickerProps
       </View>
 
       <Text style={reviewStyles.ratingHint}>
-        Tap or slide across the stars for a half or full star rating.
+        Tap the star rating you want — 1 is poor, 5 is excellent.
       </Text>
     </View>
   );
@@ -499,6 +277,7 @@ export function ReviewComposerSheet({
   onCommentChange,
   onSubmit,
 }: ReviewComposerSheetProps) {
+  const reviewStyles = useReviewStyles();
   const [step, setStep] = useState<ReviewComposerStep>("rating");
   const [showRatingRequired, setShowRatingRequired] = useState(false);
 

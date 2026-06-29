@@ -38,13 +38,26 @@ export type ThemeColors = {
   skeletonHighlight: string;
   dangerSoft: string;
   dangerText: string;
+  successSoft: string;
+  successBorder: string;
   successText: string;
+  warningSoft: string;
+  warningBorder: string;
+  warningText: string;
+  infoSoft: string;
+  infoBorder: string;
+  infoText: string;
+  ratingSoft: string;
+  ratingBorder: string;
+  ratingText: string;
   accentSoft: string;
   inverseSurface: string;
   onInverseSurface: string;
   mutedOnInverse: string;
   bottomBar: string;
   bottomBarBorder: string;
+  overlayControl: string;
+  link: string;
 };
 
 export const lightTheme: ThemeColors = {
@@ -85,60 +98,87 @@ export const lightTheme: ThemeColors = {
   skeletonHighlight: "rgba(255,255,255,0.55)",
   dangerSoft: "#FEF2F2",
   dangerText: "#DC2626",
+  successSoft: "#F0FDF4",
+  successBorder: "#BBF7D0",
   successText: "#059669",
+  warningSoft: "#FFFBEB",
+  warningBorder: "#FDE68A",
+  warningText: "#B45309",
+  infoSoft: "#EEF2FF",
+  infoBorder: "#C7D2FE",
+  infoText: "#4338CA",
+  ratingSoft: "#FFFBEB",
+  ratingBorder: "#F3D28A",
+  ratingText: "#B45309",
   accentSoft: "#F8FAFC",
   inverseSurface: "#0F172A",
   onInverseSurface: "#F8FAFC",
   mutedOnInverse: "#CBD5E1",
   bottomBar: "rgba(255,255,255,0.985)",
   bottomBarBorder: "#E5E7EB",
+  overlayControl: "#F2F2F2",
+  link: AppColors.primary,
 };
 
 export const darkTheme: ThemeColors = {
-  screen: "#0B1220",
-  card: "#151C2B",
-  cardBorder: "#243044",
-  text: "#F3F4F6",
-  textMuted: "#9CA3AF",
-  textSecondary: "#D1D5DB",
-  textBody: "#E5E7EB",
-  header: "#111827",
-  headerBorder: "#374151",
-  surface: "#151C2B",
-  surfaceMuted: "#1F2937",
-  surfaceSubtle: "#1A2332",
-  border: "#374151",
-  borderStrong: "#243044",
-  segmentBg: "#1F2937",
-  segmentActive: "#374151",
-  pill: "#1F2937",
-  pillText: "#D1D5DB",
-  inputBg: "#1A2332",
-  inputBorder: "#374151",
-  placeholder: "#6B7280",
-  iconMuted: "#9CA3AF",
-  tabBar: "#111827",
-  tabBarBorder: "#374151",
-  tabFocused: "#3B4A63",
+  screen: "#0A0E17",
+  card: "#131A29",
+  cardBorder: "#1F2A3D",
+  text: "#F4F6FA",
+  textMuted: "#94A3B8",
+  textSecondary: "#CBD5E1",
+  textBody: "#E2E8F0",
+  header: "#0F1522",
+  headerBorder: "#243044",
+  surface: "#131A29",
+  surfaceMuted: "#182030",
+  surfaceSubtle: "#151D2C",
+  border: "#243044",
+  borderStrong: "#2D3B52",
+  segmentBg: "#182030",
+  segmentActive: "#243044",
+  pill: "#182030",
+  pillText: "#CBD5E1",
+  inputBg: "#151D2C",
+  inputBorder: "#2D3B52",
+  placeholder: "#64748B",
+  iconMuted: "#94A3B8",
+  tabBar: "#0F1522",
+  tabBarBorder: "#243044",
+  tabFocused: "#2D3B52",
   shadow: "#000000",
-  backdrop: "rgba(0, 0, 0, 0.62)",
-  primary: "#A3A3A3",
-  onPrimary: "#111827",
-  inverseText: "#111827",
-  editAvatarBorder: "#151C2B",
-  imagePlaceholder: "#1E293B",
-  cardElevated: "#1A2234",
+  backdrop: "rgba(0, 0, 0, 0.72)",
+  primary: "#8E8E8E",
+  onPrimary: "#FFFFFF",
+  inverseText: "#FFFFFF",
+  editAvatarBorder: "#131A29",
+  imagePlaceholder: "#182030",
+  cardElevated: "#182030",
   skeleton: "#1E293B",
-  skeletonHighlight: "rgba(255,255,255,0.08)",
-  dangerSoft: "#3F1D24",
+  skeletonHighlight: "rgba(255,255,255,0.06)",
+  dangerSoft: "#3B1519",
   dangerText: "#FCA5A5",
+  successSoft: "#0F2419",
+  successBorder: "#166534",
   successText: "#34D399",
-  accentSoft: "#1A2234",
+  warningSoft: "#2A2010",
+  warningBorder: "#854D0E",
+  warningText: "#FCD34D",
+  infoSoft: "#151E33",
+  infoBorder: "#3730A3",
+  infoText: "#A5B4FC",
+  ratingSoft: "#2A2010",
+  ratingBorder: "#854D0E",
+  ratingText: "#FCD34D",
+  accentSoft: "#182030",
   inverseSurface: "#243044",
-  onInverseSurface: "#F3F4F6",
+  onInverseSurface: "#F4F6FA",
   mutedOnInverse: "#94A3B8",
-  bottomBar: "#151C2B",
-  bottomBarBorder: "#374151",
+  bottomBar: "#131A29",
+  bottomBarBorder: "#243044",
+  overlayControl: "#182030",
+  link: "#CBD5E1",
 };
 
 export const THEME_STORAGE_KEY = "odos_dark_mode";
+export const THEME_PREFERENCE_KEY = "odos_theme_preference";

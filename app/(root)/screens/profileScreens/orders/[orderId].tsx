@@ -13,20 +13,23 @@ import {
   OrderSummaryRow,
   OrderScreenFooter,
   estimateOrderScreenFooterHeight,
-  orderStyles,
+  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import TextInputField from "@/components/TextInputField";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
+import { getDeliveryMethodLabel } from "@/utils/delivery";
 import { useReviews } from "@/hooks/useReviews";
+import { useAppReview } from "@/hooks/useAppReview";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Alert,
   Image,
@@ -189,9 +192,21 @@ function getTimelineSteps(order: Order) {
     },
     {
       key: "processing",
-      title: "Preparing delivery",
+      title: "Preparing your order",
       caption: order.tracking_eta || "We’re getting your items ready",
-      state: "active" as const,
+      state: (order.progress ?? 0) >= 0.9 ? ("done" as const) : ("active" as const),
+    },
+    {
+      key: "out_for_delivery",
+      title: "Out for delivery",
+      caption:
+        (order.progress ?? 0) >= 0.9 || (order.tracking_eta ?? "").toLowerCase().includes("out for delivery")
+          ? order.tracking_eta || "Your package is on the way"
+          : "We’ll notify you when the courier is en route",
+      state:
+        (order.progress ?? 0) >= 0.9 || (order.tracking_eta ?? "").toLowerCase().includes("out for delivery")
+          ? ("active" as const)
+          : ("pending" as const),
     },
     {
       key: "delivered",
@@ -253,6 +268,7 @@ function getReturnStatusMeta(status: ReturnRequest["status"]) {
 
 export default function OrderDetailScreen() {
   const accountStyles = useAccountStyles();
+  const orderStyles = useOrderStyles();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
@@ -272,6 +288,24 @@ export default function OrderDetailScreen() {
   const [returnReason, setReturnReason] = React.useState("");
   const [returnDetails, setReturnDetails] = React.useState("");
   const [isSubmittingReturn, setIsSubmittingReturn] = React.useState(false);
+  const {
+    visible: reviewPromptVisible,
+    maybePromptAfterDelivery,
+    handleRate: handleAppReviewRate,
+    handleDismiss: handleAppReviewDismiss,
+  } = useAppReview();
+  const deliveredReviewCheckedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!order || order.status !== "delivered") {
+      return;
+    }
+    if (deliveredReviewCheckedRef.current === order.id) {
+      return;
+    }
+    deliveredReviewCheckedRef.current = order.id;
+    void maybePromptAfterDelivery(order.id);
+  }, [maybePromptAfterDelivery, order]);
 
   const footerActionRows = useMemo(() => {
     if (!order) {
@@ -753,7 +787,13 @@ export default function OrderDetailScreen() {
         ) : null}
 
         <AccountSectionCard title="Delivery">
-          <Text style={styles.detailPrimary}>{order.address_full_name}</Text>
+          <Text style={styles.detailPrimary}>{getDeliveryMethodLabel(order.delivery_method)}</Text>
+          <Text style={styles.detailText}>
+            {order.tracking_eta || "Delivery updates will appear here"}
+          </Text>
+          <Text style={[styles.detailText, { marginTop: rV(8) }]}>
+            {order.address_full_name}
+          </Text>
           <Text style={styles.detailText}>
             {order.address_street}, {order.address_city}, {order.address_region}
           </Text>
@@ -783,7 +823,7 @@ export default function OrderDetailScreen() {
           />
           <OrderSummaryRow label="Subtotal" value={formatOrderMoney(order.subtotal_amount)} />
           <OrderSummaryRow
-            label="Shipping"
+            label={getDeliveryMethodLabel(order.delivery_method)}
             value={
               order.shipping_amount === 0 ? "FREE" : formatOrderMoney(order.shipping_amount)
             }
@@ -1065,6 +1105,13 @@ export default function OrderDetailScreen() {
           </ScrollView>
         </View>
       </Modal>
+      <AppReviewPrompt
+        visible={reviewPromptVisible}
+        title="Enjoying ODOS?"
+        message="You just received your order. Would you mind rating the ODOS app?"
+        onRate={() => void handleAppReviewRate()}
+        onDismiss={() => void handleAppReviewDismiss()}
+      />
     </View>
   );
 }

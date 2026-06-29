@@ -8,6 +8,8 @@ import {
   useAccountStyles,
 } from "@/components/account/AccountUi";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import TextInputField from "@/components/TextInputField";
@@ -16,6 +18,7 @@ import Fonts from "@/constants/Fonts";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,13 +26,16 @@ import React, { useMemo, useState } from "react";
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ReturnsView = "eligible" | "requests";
 
@@ -72,6 +78,7 @@ function formatFriendlyDate(value?: string | null) {
 }
 
 export default function ReturnsScreen() {
+  const insets = useSafeAreaInsets();
   const accountStyles = useAccountStyles();
   const { orders, isLoadingOrders, createReturnRequest, isMutatingOrder, refreshOrders } =
     useOrders();
@@ -238,7 +245,8 @@ export default function ReturnsScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader title="Returns" />
 
-      <ScrollView
+      <KeyboardAwareScreen
+        keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
       >
@@ -388,7 +396,7 @@ export default function ReturnsScreen() {
             );
           })
         )}
-      </ScrollView>
+      </KeyboardAwareScreen>
 
       <Modal
         visible={Boolean(target)}
@@ -396,7 +404,10 @@ export default function ReturnsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => closeComposer()}
       >
-        <View style={styles.modalScreen}>
+        <KeyboardAvoidingView
+          style={styles.modalScreen}
+          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        >
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => closeComposer()} disabled={isSubmitting}>
               <Text style={styles.modalHeaderAction}>Cancel</Text>
@@ -409,7 +420,10 @@ export default function ReturnsScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalContent}>
+          <KeyboardAwareScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalContent}
+          >
             {target ? (
               <>
                 <View style={styles.modalCard}>
@@ -546,8 +560,8 @@ export default function ReturnsScreen() {
                 />
               </>
             ) : null}
-          </ScrollView>
-        </View>
+          </KeyboardAwareScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

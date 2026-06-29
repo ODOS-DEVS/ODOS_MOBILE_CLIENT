@@ -9,7 +9,7 @@ import {
   formatOrderDateTime,
   formatOrderMoney,
   OrderSummaryRow,
-  orderStyles,
+  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
@@ -27,6 +27,7 @@ const getParam = (value: string | string[] | undefined) =>
 
 export default function OrderReceiptScreen() {
   const accountStyles = useAccountStyles();
+  const orderStyles = useOrderStyles();
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder } = useOrder(orderId);

@@ -1,4 +1,6 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import TextInputField from "@/components/TextInputField";
 import {
   AccountListCard,
@@ -32,7 +34,6 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -380,7 +381,7 @@ export default function VendorWalletScreen() {
 
   return (
     <VendorScreenShell title="Vendor Wallet">
-      <ScrollView
+      <KeyboardAwareScreen
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
@@ -763,7 +764,7 @@ export default function VendorWalletScreen() {
             </Text>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScreen>
 
       <Modal
         visible={showInstitutionSelector}
@@ -792,10 +793,9 @@ export default function VendorWalletScreen() {
               style={styles.selectorSearchInput}
             />
 
-            <ScrollView
+            <KeyboardAwareScrollView
               style={styles.selectorList}
               contentContainerStyle={styles.selectorListContent}
-              keyboardShouldPersistTaps="handled"
             >
               {isLoadingInstitutions ? (
                 <Text style={styles.selectorEmptyText}>Loading payout destinations...</Text>
@@ -833,7 +833,7 @@ export default function VendorWalletScreen() {
                   No payout destinations matched that search.
                 </Text>
               )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <PrimaryButton
               title="Close"

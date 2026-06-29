@@ -1,4 +1,5 @@
 import {
+  THEME_PREFERENCE_KEY,
   THEME_STORAGE_KEY,
   darkTheme,
   lightTheme,
@@ -15,7 +16,9 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { StatusBar, type StatusBarStyle } from "react-native";
+import { Appearance, StatusBar, type StatusBarStyle } from "react-native";
+
+type ThemePreference = "system" | "light" | "dark";
 
 type ThemeContextValue = {
   isDark: boolean;
@@ -29,9 +32,20 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+function resolveDarkMode(preference: ThemePreference) {
+  if (preference === "dark") {
+    return true;
+  }
+  if (preference === "light") {
+    return false;
+  }
+  return Appearance.getColorScheme() === "dark";
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { setColorScheme } = useNativeWindColorScheme();
-  const [darkMode, setDarkModeState] = useState(false);
+  const [preference, setPreference] = useState<ThemePreference>("system");
+  const [darkMode, setDarkModeState] = useState(() => resolveDarkMode("system"));
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -39,9 +53,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const stored = await SecureStore.getItemAsync(THEME_STORAGE_KEY);
-        if (mounted && stored != null) {
-          setDarkModeState(stored === "1");
+        const storedPreference = await SecureStore.getItemAsync(THEME_PREFERENCE_KEY);
+        const legacyStored = await SecureStore.getItemAsync(THEME_STORAGE_KEY);
+
+        if (mounted) {
+          if (storedPreference === "light" || storedPreference === "dark") {
+            setPreference(storedPreference);
+            setDarkModeState(storedPreference === "dark");
+          } else if (legacyStored != null) {
+            const legacyDark = legacyStored === "1";
+            setPreference(legacyDark ? "dark" : "light");
+            setDarkModeState(legacyDark);
+          } else {
+            setPreference("system");
+            setDarkModeState(resolveDarkMode("system"));
+          }
         }
       } finally {
         if (mounted) {
@@ -55,6 +81,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (preference !== "system") {
+      return;
+    }
+
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setDarkModeState(colorScheme === "dark");
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [preference]);
+
   const isDark = darkMode;
   const colors = isDark ? darkTheme : lightTheme;
   const statusBarStyle: StatusBarStyle = isDark ? "light-content" : "dark-content";
@@ -63,18 +103,26 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setColorScheme(isDark ? "dark" : "light");
   }, [isDark, setColorScheme]);
 
-  const setDarkMode = useCallback(async (enabled: boolean) => {
-    setDarkModeState(enabled);
-    await SecureStore.setItemAsync(THEME_STORAGE_KEY, enabled ? "1" : "0");
+  const persistPreference = useCallback(async (nextPreference: ThemePreference) => {
+    setPreference(nextPreference);
+    setDarkModeState(resolveDarkMode(nextPreference));
+    await SecureStore.setItemAsync(THEME_PREFERENCE_KEY, nextPreference);
+    await SecureStore.setItemAsync(
+      THEME_STORAGE_KEY,
+      resolveDarkMode(nextPreference) ? "1" : "0",
+    );
   }, []);
 
+  const setDarkMode = useCallback(
+    async (enabled: boolean) => {
+      await persistPreference(enabled ? "dark" : "light");
+    },
+    [persistPreference],
+  );
+
   const toggleDarkMode = useCallback(async () => {
-    setDarkModeState((current) => {
-      const next = !current;
-      void SecureStore.setItemAsync(THEME_STORAGE_KEY, next ? "1" : "0");
-      return next;
-    });
-  }, []);
+    await setDarkMode(!darkMode);
+  }, [darkMode, setDarkMode]);
 
   const value = useMemo(
     () => ({

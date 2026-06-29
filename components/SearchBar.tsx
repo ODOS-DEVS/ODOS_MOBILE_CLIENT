@@ -1,4 +1,5 @@
 import SearchField from "@/components/search/SearchField";
+import { normalizeSearchText, queryMatchesSearchableText } from "@/utils/searchMatching";
 import React, { useCallback, useMemo, useState } from "react";
 import { type ViewStyle } from "react-native";
 
@@ -27,10 +28,7 @@ export const SearchBar = ({
 }: SearchBarProps) => {
   const [query, setQuery] = useState("");
 
-  const normalizedQuery = useMemo(
-    () => query.trim().toLowerCase().replace(/\s+/g, " "),
-    [query],
-  );
+  const normalizedQuery = useMemo(() => normalizeSearchText(query), [query]);
 
   const performSearch = useCallback(
     (value: string) => {
@@ -40,14 +38,13 @@ export const SearchBar = ({
         return;
       }
 
-      const terms = value.split(" ");
       const filtered = data.filter((item) => {
         const searchableText = searchKeys
           .map((key) => item?.[key])
-          .filter((v) => typeof v === "string" || typeof v === "number")
-          .map((v) => String(v).toLowerCase())
+          .filter((value) => typeof value === "string" || typeof value === "number")
+          .map((value) => String(value))
           .join(" ");
-        return terms.every((term) => searchableText.includes(term));
+        return queryMatchesSearchableText(value, searchableText);
       });
       onResults(filtered);
     },
@@ -56,7 +53,7 @@ export const SearchBar = ({
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    const normalized = value.trim().toLowerCase().replace(/\s+/g, " ");
+    const normalized = normalizeSearchText(value);
     onQueryChange?.(normalized);
     if (normalized.length > 0) {
       onStartSearch?.();

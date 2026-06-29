@@ -384,7 +384,7 @@ export function ChatMessageBubble({ message, isMine, showMeta }: ChatMessageBubb
 }
 
 type ChatComposerProps = {
-  hint: string;
+  hint?: string;
   placeholder: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -408,7 +408,7 @@ export function ChatComposer({
 
   return (
     <View style={[chatStyles.composerWrap, { paddingBottom: Math.max(insets.bottom, rV(12)) }]}>
-      <Text style={chatStyles.composerHint}>{hint}</Text>
+      {hint ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
       <View style={chatStyles.composerRow}>
         <View style={chatStyles.composerInputWrap}>
           <TextInput
@@ -449,7 +449,7 @@ export function ChatScreenShell({ children }: ChatScreenShellProps) {
   return (
     <KeyboardAvoidingView
       style={chatStyles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
     >
       {children}
     </KeyboardAvoidingView>

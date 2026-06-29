@@ -1064,6 +1064,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsSigningOut(true);
 
     try {
+      const token = accessToken || (await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY));
+
       try {
         await fetch(`${API_BASE_URL}/auth/logout`, {
           method: "POST",
@@ -1072,11 +1074,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ignore backend logout failures for now and clear the local session
       }
 
+      if (token) {
+        try {
+          await fetch(`${API_BASE_URL}/notifications/push-token`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch {
+          // Best-effort push token cleanup.
+        }
+      }
+
       await clearLocalSession();
     } finally {
       setIsSigningOut(false);
     }
-  }, [clearLocalSession]);
+  }, [accessToken, clearLocalSession]);
 
   const refreshCurrentUser = useCallback(async () => {
     if (!accessToken) {

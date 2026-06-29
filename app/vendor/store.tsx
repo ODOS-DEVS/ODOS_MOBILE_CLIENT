@@ -1,6 +1,7 @@
 import StoreLocationPicker, {
   type StoreLocationValue,
 } from "@/components/location/StoreLocationPicker";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import TextInputField from "@/components/TextInputField";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
@@ -25,9 +26,6 @@ import { resolveImageSource } from "@/utils/media";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -238,19 +236,14 @@ export default function VendorStoreScreen() {
 
   return (
     <VendorScreenShell title="Store Profile">
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardAwareScreen
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          vendorStyles.content,
+          { paddingBottom: insets.bottom + rV(36) },
+        ]}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            vendorStyles.content,
-            { paddingBottom: insets.bottom + rV(36) },
-          ]}
-        >
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <VendorPageIntro
               title="Store profile"
@@ -431,8 +424,7 @@ export default function VendorStoreScreen() {
               disabled={isSavingStore}
             />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScreen>
     </VendorScreenShell>
   );
 }

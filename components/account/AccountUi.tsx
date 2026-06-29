@@ -1,5 +1,6 @@
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useAccountUiStyles } from "@/styles/themedAccountStyles";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,10 +8,10 @@ import React from "react";
 import {
   ActivityIndicator,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -310,58 +311,60 @@ export function AccountFormSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={sheetStyles.backdrop}>
-        <Pressable
-          style={sheetStyles.backdropTap}
-          onPress={dismissKeyboard}
-          accessibilityLabel="Dismiss keyboard"
-          accessibilityRole="button"
-        />
-        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
-          <View style={sheetStyles.handle} />
-          <View style={sheetStyles.header}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      >
+        <View style={sheetStyles.backdrop}>
+          <Pressable
+            style={sheetStyles.backdropTap}
+            onPress={dismissKeyboard}
+            accessibilityLabel="Dismiss keyboard"
+            accessibilityRole="button"
+          />
+          <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
+            <View style={sheetStyles.handle} />
+            <View style={sheetStyles.header}>
+              <TouchableOpacity
+                style={sheetStyles.closeBtn}
+                onPress={() => {
+                  dismissKeyboard();
+                  onClose();
+                }}
+                activeOpacity={0.82}
+              >
+                <Ionicons name="close" size={rMS(22)} color={colors.text} />
+              </TouchableOpacity>
+              <View style={sheetStyles.headerCopy}>
+                <Text style={sheetStyles.title}>{title}</Text>
+                {subtitle ? <Text style={sheetStyles.subtitle}>{subtitle}</Text> : null}
+              </View>
+            </View>
+
+            <KeyboardAwareScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={sheetStyles.body}
+            >
+              {children}
+            </KeyboardAwareScrollView>
+
             <TouchableOpacity
-              style={sheetStyles.closeBtn}
+              style={[
+                sheetStyles.saveBtn,
+                (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
+              ]}
               onPress={() => {
                 dismissKeyboard();
-                onClose();
+                onSave();
               }}
-              activeOpacity={0.82}
+              disabled={isSaving || saveDisabled}
+              activeOpacity={0.9}
             >
-              <Ionicons name="close" size={rMS(22)} color={colors.text} />
+              <Text style={sheetStyles.saveBtnText}>{isSaving ? "Saving..." : saveLabel}</Text>
             </TouchableOpacity>
-            <View style={sheetStyles.headerCopy}>
-              <Text style={sheetStyles.title}>{title}</Text>
-              {subtitle ? <Text style={sheetStyles.subtitle}>{subtitle}</Text> : null}
-            </View>
           </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-            automaticallyAdjustKeyboardInsets
-            contentContainerStyle={sheetStyles.body}
-          >
-            {children}
-          </ScrollView>
-
-          <TouchableOpacity
-            style={[
-              sheetStyles.saveBtn,
-              (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
-            ]}
-            onPress={() => {
-              dismissKeyboard();
-              onSave();
-            }}
-            disabled={isSaving || saveDisabled}
-            activeOpacity={0.9}
-          >
-            <Text style={sheetStyles.saveBtnText}>{isSaving ? "Saving..." : saveLabel}</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

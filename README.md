@@ -30,7 +30,10 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 
 - Delivery speed selection at checkout (standard, express, same-day where available)
 - Store profiles with location map and directions
-- Product sharing, dark mode, pull-to-refresh across main feeds
+- Product sharing, **dark mode** (system or manual), pull-to-refresh across main feeds
+- **Push notifications** for orders and activity (tap opens the relevant screen)
+- **First-launch onboarding** before sign-in
+- **Google Sign-In** (native build / TestFlight; configure client IDs in `.env` and EAS)
 - **ODOS Assistant** — in-app AI guide for orders, checkout, delivery, vouchers, returns, and navigation (with human support handoff)
 
 **Vendor**
@@ -169,7 +172,10 @@ Production release:
 
 ```bash
 eas build --platform android --profile production
+eas build --platform ios --profile production
 ```
+
+**TestFlight (iOS)** — use the `production` profile, upload via EAS Submit, and configure push notification credentials in the Expo dashboard.
 
 `eas.json` profiles:
 

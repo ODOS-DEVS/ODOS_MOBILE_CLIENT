@@ -22,6 +22,7 @@ export type OrderPayload = {
   items: OrderItemPayload[];
   subtotal_amount: number;
   shipping_amount: number;
+  delivery_method?: "economy" | "express" | "same_day";
   discount_amount: number;
   total_amount: number;
   voucher_code?: string | null;
@@ -113,6 +114,7 @@ export type Order = {
   payment_reference: string | null;
   subtotal_amount: number;
   shipping_amount: number;
+  delivery_method?: string | null;
   discount_amount: number;
   total_amount: number;
   progress: number | null;

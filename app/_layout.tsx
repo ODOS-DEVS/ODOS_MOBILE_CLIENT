@@ -1,6 +1,7 @@
 import { CartProvider } from "@/context/CartContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ActivityFeedProvider } from "@/context/ActivityFeedContext";
 import { PushNotificationsProvider } from "@/context/PushNotificationsProvider";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
@@ -130,28 +131,30 @@ export default function RootLayout() {
         <ToastProvider>
           <AuthProvider>
             <VendorStateBridge />
-            <PushNotificationsProvider>
-              <RealtimeProvider>
-                <VendorRealtimeBridge />
-                <ChatProvider>
-                  <ProfileProvider>
-                    <BehaviorTrackingProvider>
-                      <CartProvider>
-                        <WishlistProvider>
-                          <ThemedAppShell>
-                            <Stack
-                              screenOptions={{
-                                headerShown: false,
-                              }}
-                            />
-                          </ThemedAppShell>
-                        </WishlistProvider>
-                      </CartProvider>
-                    </BehaviorTrackingProvider>
-                  </ProfileProvider>
-                </ChatProvider>
-              </RealtimeProvider>
-            </PushNotificationsProvider>
+            <RealtimeProvider>
+              <ActivityFeedProvider>
+                <PushNotificationsProvider>
+                  <VendorRealtimeBridge />
+                  <ChatProvider>
+                    <ProfileProvider>
+                      <BehaviorTrackingProvider>
+                        <CartProvider>
+                          <WishlistProvider>
+                            <ThemedAppShell>
+                              <Stack
+                                screenOptions={{
+                                  headerShown: false,
+                                }}
+                              />
+                            </ThemedAppShell>
+                          </WishlistProvider>
+                        </CartProvider>
+                      </BehaviorTrackingProvider>
+                    </ProfileProvider>
+                  </ChatProvider>
+                </PushNotificationsProvider>
+              </ActivityFeedProvider>
+            </RealtimeProvider>
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

@@ -1,100 +1,155 @@
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { rMS, rS, rV } from "@/styles/responsive";
-import { LinearGradient } from "expo-linear-gradient";
-import { exitAuthToHome } from "@/utils/authNavigation";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
+import { rMS, rS, rV } from "@/styles/responsive";
+import { exitAuthToHome } from "@/utils/authNavigation";
+import { markOnboardingComplete } from "@/utils/onboardingStorage";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
+  type ImageSourcePropType,
+  type ListRenderItem,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const slides = [
+type OnboardingSlide = {
+  id: string;
+  image: ImageSourcePropType;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  text: string;
+};
+
+const slides: OnboardingSlide[] = [
   {
-    id: "1",
+    id: "discover",
     image: require("@/assets/images/onboarding1.png"),
-    title: "Discover stores around you",
-    text: "Browse groceries, fashion, and everyday essentials from vendors in your area — all in one app.",
+    icon: "storefront-outline",
+    title: "Shop local, all in one place",
+    text: "Browse groceries, fashion, and everyday essentials from trusted vendors near you.",
   },
   {
-    id: "2",
+    id: "order",
     image: require("@/assets/images/onboarding2.png"),
+    icon: "checkmark-circle-outline",
     title: "Order with confidence",
-    text: "Track deliveries, get updates, and pay your way — card, mobile money, or your ODOS wallet.",
+    text: "Track deliveries, get real-time updates, and pay your way — card, mobile money, or wallet.",
   },
   {
-    id: "3",
+    id: "start",
     image: require("@/assets/images/onboarding4.png"),
-    title: "One tap to get started",
-    text: "Sign in with Google when you're ready. No long forms — your favourites and orders stay with you.",
+    icon: "sparkles-outline",
+    title: "Ready when you are",
+    text: "Create an account to save favourites, checkout faster, and keep every order in one place.",
   },
 ];
 
-export default function Onboarding() {
+export default function OnboardingScreen() {
+  const flatListRef = useRef<FlatList<OnboardingSlide>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
-  useBlockBackNavigation(true);
   const { requireAuth, user } = useRequireAuth();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  useBlockBackNavigation(true);
 
-  const gradientColors = isDark
-    ? (["#3F3F46", "#27272A"] as const)
-    : (["#6B7280", "#52525B"] as const);
+  const finishOnboarding = useCallback(async () => {
+    await markOnboardingComplete();
+    exitAuthToHome(router);
+  }, [router]);
 
-  const handleNext = () => {
+  const handleSkip = useCallback(() => {
+    void finishOnboarding();
+  }, [finishOnboarding]);
+
+  const handleNext = useCallback(() => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
       return;
     }
 
-    if (user) {
-      exitAuthToHome(router);
-      return;
+    void (async () => {
+      await markOnboardingComplete();
+
+      if (user) {
+        exitAuthToHome(router);
+        return;
+      }
+
+      requireAuth({
+        title: "Create your ODOS account",
+        message: "Sign up or sign in to checkout, track orders, and save your favourites.",
+        cancelLabel: "Browse first",
+        onCancel: () => exitAuthToHome(router),
+      });
+    })();
+  }, [currentIndex, finishOnboarding, requireAuth, router, user]);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    if (index >= 0 && index < slides.length) {
+      setCurrentIndex(index);
     }
+  }, []);
 
-    requireAuth({
-      title: "Ready to shop for real?",
-      message:
-        "Sign up or sign in to save favourites, track orders, and use your wallet at checkout.",
-      cancelLabel: "Keep browsing",
-      onCancel: () => exitAuthToHome(router),
-    });
-  };
+  const renderSlide: ListRenderItem<OnboardingSlide> = useCallback(
+    ({ item }) => (
+      <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
+        <View
+          style={[
+            styles.hero,
+            {
+              backgroundColor: isDark ? colors.surfaceMuted : colors.surfaceSubtle,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Image source={item.image} style={styles.heroImage} resizeMode="contain" />
+        </View>
 
-  const handleScroll = (event: {
-    nativeEvent: { contentOffset: { x: number } };
-  }) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
-    setCurrentIndex(index);
-  };
+        <View style={styles.copyBlock}>
+          <View style={[styles.iconBadge, { backgroundColor: colors.pill }]}>
+            <Ionicons name={item.icon} size={rMS(22)} color={colors.primary} />
+          </View>
+          <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+          <Text style={[styles.body, { color: colors.textMuted }]}>{item.text}</Text>
+        </View>
+      </View>
+    ),
+    [colors, isDark],
+  );
+
+  const isLastSlide = currentIndex === slides.length - 1;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
-      <LinearGradient
-        colors={gradientColors}
-        style={[styles.topBar, { paddingTop: insets.top + rV(8) }]}
+      <View
+        style={[
+          styles.topBar,
+          {
+            paddingTop: insets.top + rV(8),
+            borderBottomColor: colors.headerBorder,
+          },
+        ]}
       >
-        <Text style={styles.brand}>ODOS</Text>
-        <TouchableOpacity
-          onPress={() => exitAuthToHome(router)}
-          hitSlop={12}
-        >
-          <Text style={styles.skip}>Skip</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+        <Text style={[styles.brand, { color: colors.text }]}>ODOS</Text>
+        <Pressable onPress={handleSkip} hitSlop={12} accessibilityRole="button">
+          <Text style={[styles.skip, { color: colors.textMuted }]}>Skip</Text>
+        </Pressable>
+      </View>
 
       <FlatList
         ref={flatListRef}
@@ -102,53 +157,58 @@ export default function Onboarding() {
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
+        bounces={false}
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { width }]}>
-            <Image source={item.image} style={styles.image} resizeMode="contain" />
+        scrollEventThrottle={16}
+        renderItem={renderSlide}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
+      />
 
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingBottom: Math.max(insets.bottom, rV(16)),
+            backgroundColor: colors.bottomBar,
+            borderTopColor: colors.bottomBarBorder,
+          },
+        ]}
+      >
+        <View style={styles.dots}>
+          {slides.map((slide, index) => (
             <View
+              key={slide.id}
               style={[
-                styles.card,
+                styles.dot,
                 {
-                  backgroundColor: colors.card,
-                  borderColor: colors.cardBorder,
-                  shadowColor: colors.shadow,
+                  width: index === currentIndex ? rS(22) : rS(8),
+                  backgroundColor: index === currentIndex ? colors.primary : colors.border,
                 },
               ]}
-            >
-              <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-              <Text style={[styles.body, { color: colors.textMuted }]}>{item.text}</Text>
+            />
+          ))}
+        </View>
 
-              <View style={styles.dots}>
-                {slides.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.dot,
-                      {
-                        width: index === currentIndex ? rS(20) : rS(8),
-                        backgroundColor:
-                          index === currentIndex ? colors.primary : colors.border,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-
-              <TouchableOpacity
-                onPress={handleNext}
-                style={[styles.cta, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.ctaText, { color: colors.onPrimary }]}>
-                  {currentIndex === slides.length - 1 ? "Get started" : "Next"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
+        <Pressable
+          onPress={handleNext}
+          style={[styles.cta, { backgroundColor: colors.primary }]}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.ctaText, { color: colors.onPrimary }]}>
+            {isLastSlide ? "Get started" : "Continue"}
+          </Text>
+          <Ionicons
+            name={isLastSlide ? "arrow-forward" : "chevron-forward"}
+            size={rMS(18)}
+            color={colors.onPrimary}
+          />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -161,59 +221,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: rS(22),
+    paddingHorizontal: rS(20),
     paddingBottom: rV(10),
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   brand: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-    color: "#FFFFFF",
-    letterSpacing: 1.2,
+    fontSize: rMS(20),
+    letterSpacing: 1.4,
   },
   skip: {
     fontFamily: Fonts.title,
     fontSize: rMS(14),
-    color: "rgba(255,255,255,0.9)",
   },
   slide: {
     flex: 1,
-    alignItems: "center",
-    paddingTop: rV(8),
+    paddingHorizontal: rS(20),
+    paddingTop: rV(16),
   },
-  image: {
-    width: width * 0.92,
-    height: rV(360),
-  },
-  card: {
-    position: "absolute",
-    bottom: rV(48),
-    width: width * 0.86,
-    borderRadius: rMS(22),
-    paddingVertical: rV(28),
-    paddingHorizontal: rS(26),
-    alignItems: "center",
+  hero: {
+    flex: 1,
+    borderRadius: rMS(24),
     borderWidth: StyleSheet.hairlineWidth,
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    minHeight: rV(280),
+  },
+  heroImage: {
+    width: "92%",
+    height: "88%",
+  },
+  copyBlock: {
+    paddingTop: rV(24),
+    paddingBottom: rV(8),
+    gap: rV(10),
+  },
+  iconBadge: {
+    width: rS(44),
+    height: rS(44),
+    borderRadius: rMS(14),
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(19),
-    textAlign: "center",
-    marginBottom: rV(10),
+    fontSize: rMS(24),
+    lineHeight: rMS(30),
   },
   body: {
     fontFamily: Fonts.text,
-    fontSize: rMS(14),
-    lineHeight: rMS(21),
-    textAlign: "center",
-    marginBottom: rV(18),
+    fontSize: rMS(15),
+    lineHeight: rMS(23),
+  },
+  footer: {
+    paddingHorizontal: rS(20),
+    paddingTop: rV(14),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: rV(14),
   },
   dots: {
     flexDirection: "row",
-    marginBottom: rV(18),
+    justifyContent: "center",
     gap: rS(6),
   },
   dot: {
@@ -221,14 +290,16 @@ const styles = StyleSheet.create({
     borderRadius: rS(4),
   },
   cta: {
-    borderRadius: rMS(999),
-    paddingVertical: rV(14),
-    paddingHorizontal: rS(32),
-    minWidth: rS(200),
+    minHeight: rV(52),
+    borderRadius: rMS(16),
+    paddingHorizontal: rS(20),
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: rS(8),
   },
   ctaText: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(14.5),
+    fontSize: rMS(15),
   },
 });

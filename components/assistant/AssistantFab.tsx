@@ -38,9 +38,9 @@ export default function AssistantFab() {
           zIndex: 40,
         },
         button: {
-          width: rMS(54),
-          height: rMS(54),
-          borderRadius: rMS(27),
+          width: rMS(48),
+          height: rMS(48),
+          borderRadius: rMS(24),
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: colors.primary,
@@ -67,7 +67,7 @@ export default function AssistantFab() {
           accessibilityRole="button"
           accessibilityLabel="Open ODOS Assistant"
         >
-          <Ionicons name="sparkles" size={rMS(22)} color="#FFFFFF" />
+          <Ionicons name="sparkles" size={rMS(20)} color="#FFFFFF" />
         </Pressable>
       </View>
     </View>

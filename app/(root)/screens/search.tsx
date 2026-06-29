@@ -9,13 +9,19 @@ import SearchFilterSheet, {
   type SearchPriceRange,
   type SearchSortMode,
 } from "@/components/search/SearchFilterSheet";
-import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { CatalogProductItem, useCatalogCategories } from "@/hooks/useCatalog";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
+import { useSearchScreenStyles } from "@/styles/themedSearchStyles";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
+import {
+  buildDiscoverySearchScore,
+  buildDiscoverySearchText,
+  normalizeSearchText,
+  queryMatchesSearchableText,
+} from "@/utils/searchMatching";
 import {
   BEHAVIOR_EVENT_TYPES,
   trackBehaviorEvent,
@@ -61,40 +67,10 @@ function matchesPriceRange(price: number | undefined, range: SearchPriceRange) {
   }
 }
 
-function buildSearchScore(
-  product: CatalogProductItem,
-  query: string,
-  storeTitle: string,
-  marketTitle: string,
-) {
-  if (!query) return 0;
-  const title = (product.title ?? "").toLowerCase();
-  const description = (product.description ?? "").toLowerCase();
-  const category = (product.category ?? "").toLowerCase();
-  const subcategory = (product.subcategory ?? "").toLowerCase();
-  const placementTags = (product.placementTags ?? []).join(" ").toLowerCase();
-  const normalizedQuery = query.toLowerCase();
-  const terms = normalizedQuery.split(" ").filter(Boolean);
-
-  let score = 0;
-  if (title.includes(normalizedQuery)) score += 12;
-  if (category.includes(normalizedQuery) || subcategory.includes(normalizedQuery)) score += 8;
-  if (storeTitle.includes(normalizedQuery) || marketTitle.includes(normalizedQuery)) score += 6;
-  if (description.includes(normalizedQuery)) score += 4;
-  if (placementTags.includes(normalizedQuery)) score += 3;
-
-  for (const term of terms) {
-    if (title.includes(term)) score += 3;
-    if (description.includes(term)) score += 2;
-    if (category.includes(term) || subcategory.includes(term)) score += 2;
-    if (storeTitle.includes(term) || marketTitle.includes(term)) score += 1;
-  }
-  if (typeof product.rating === "number") score += product.rating / 10;
-  return score;
-}
-
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
+  const styles = useSearchScreenStyles();
+  const { colors } = useTheme();
   const { horizontalPadding, responsiveColumns, gridCardWidth } = useResponsive();
   const params = useLocalSearchParams<{
     query?: string;
@@ -200,7 +176,7 @@ export default function SearchScreen() {
   }, [products, selectedCategory, selectedMarket, stores]);
 
   const filteredProducts = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, " ");
+    const normalizedQuery = normalizeSearchText(query);
 
     const base = products.filter((product) => {
       const store = product.storeId ? storeLookup.get(product.storeId) : undefined;
@@ -240,26 +216,21 @@ export default function SearchScreen() {
 
       if (!normalizedQuery) return true;
 
-      const searchable = [
-        product.title,
-        product.description,
-        product.category,
-        product.subcategory,
-        ...(product.categorySlugs ?? []),
-        ...(product.subcategorySlugs ?? []),
-        ...(product.placementTags ?? []),
-        store?.title,
-        store?.category,
-        market?.title,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return normalizedQuery
-        .split(" ")
-        .filter(Boolean)
-        .every((term) => searchable.includes(term));
+      return queryMatchesSearchableText(
+        normalizedQuery,
+        buildDiscoverySearchText({
+          title: product.title,
+          description: product.description,
+          category: product.category,
+          subcategory: product.subcategory,
+          categorySlugs: product.categorySlugs,
+          subcategorySlugs: product.subcategorySlugs,
+          placementTags: product.placementTags,
+          storeTitle: store?.title,
+          storeCategory: store?.category,
+          marketTitle: market?.title,
+        }),
+      );
     });
 
     return [...base].sort((left, right) => {
@@ -282,18 +253,32 @@ export default function SearchScreen() {
         );
       }
 
-      const leftScore = buildSearchScore(
-        left,
-        normalizedQuery,
-        leftStore?.title?.toLowerCase() ?? "",
-        leftMarket?.title?.toLowerCase() ?? "",
-      );
-      const rightScore = buildSearchScore(
-        right,
-        normalizedQuery,
-        rightStore?.title?.toLowerCase() ?? "",
-        rightMarket?.title?.toLowerCase() ?? "",
-      );
+      const leftScore = buildDiscoverySearchScore(normalizedQuery, {
+        title: left.title,
+        description: left.description,
+        category: left.category,
+        subcategory: left.subcategory,
+        categorySlugs: left.categorySlugs,
+        subcategorySlugs: left.subcategorySlugs,
+        placementTags: left.placementTags,
+        storeTitle: leftStore?.title,
+        storeCategory: leftStore?.category,
+        marketTitle: leftMarket?.title,
+        rating: left.rating,
+      });
+      const rightScore = buildDiscoverySearchScore(normalizedQuery, {
+        title: right.title,
+        description: right.description,
+        category: right.category,
+        subcategory: right.subcategory,
+        categorySlugs: right.categorySlugs,
+        subcategorySlugs: right.subcategorySlugs,
+        placementTags: right.placementTags,
+        storeTitle: rightStore?.title,
+        storeCategory: rightStore?.category,
+        marketTitle: rightMarket?.title,
+        rating: right.rating,
+      });
       if (rightScore !== leftScore) return rightScore - leftScore;
       return (
         new Date(right.updatedAt ?? right.createdAt ?? 0).getTime() -
@@ -518,7 +503,7 @@ export default function SearchScreen() {
             onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={rMS(20)} color={AppColors.text} />
+            <Ionicons name="arrow-back" size={rMS(20)} color={colors.text} />
           </TouchableOpacity>
 
           <SearchField
@@ -541,7 +526,7 @@ export default function SearchScreen() {
               activeOpacity={0.85}
               onPress={() => setFiltersOpen(true)}
             >
-              <Ionicons name="options-outline" size={rMS(14)} color={AppColors.text} />
+              <Ionicons name="options-outline" size={rMS(14)} color={colors.text} />
               <Text style={styles.toolbarChipText}>Filters</Text>
               {filterCount > 0 ? (
                 <View style={styles.badge}>
@@ -555,7 +540,7 @@ export default function SearchScreen() {
               activeOpacity={0.85}
               onPress={() => setFiltersOpen(true)}
             >
-              <Ionicons name="swap-vertical" size={rMS(14)} color={AppColors.text} />
+              <Ionicons name="swap-vertical" size={rMS(14)} color={colors.text} />
               <Text style={styles.toolbarChipText} numberOfLines={1}>
                 {sortLabel}
               </Text>
@@ -578,7 +563,7 @@ export default function SearchScreen() {
                 onPress={pill.onClear}
               >
                 <Text style={styles.activePillText}>{pill.label}</Text>
-                <Ionicons name="close" size={rMS(12)} color={AppColors.primary} />
+                <Ionicons name="close" size={rMS(12)} color={colors.link} />
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={clearFilters} activeOpacity={0.82}>
@@ -662,120 +647,3 @@ export default function SearchScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  header: {
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-    paddingBottom: rV(10),
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  backButton: {
-    width: rMS(40),
-    height: rMS(40),
-    borderRadius: rMS(20),
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toolbar: {
-    marginTop: rV(12),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(8),
-  },
-  resultCount: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  toolbarActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  toolbarChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(7),
-    borderRadius: 999,
-    backgroundColor: "#F3F4F6",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  toolbarChipText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-    maxWidth: rS(88),
-  },
-  badge: {
-    minWidth: rS(18),
-    height: rS(18),
-    borderRadius: rS(9),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(4),
-  },
-  badgeText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.titleBold,
-    color: "#FFFFFF",
-  },
-  pillScroller: {
-    marginTop: rV(10),
-    marginHorizontal: -rS(4),
-  },
-  pillRow: {
-    gap: rS(8),
-    paddingRight: rS(8),
-    alignItems: "center",
-  },
-  activePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-    borderRadius: 999,
-    backgroundColor: "#EEF2FF",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#C7D2FE",
-  },
-  activePillText: {
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  clearPillsText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-    color: AppColors.primary,
-    paddingHorizontal: rS(6),
-  },
-  idleLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.titleBold,
-    color: "#6B7280",
-    marginBottom: rV(10),
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  suggestionRow: {
-    gap: rS(8),
-    paddingRight: rS(4),
-  },
-});
