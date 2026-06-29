@@ -26,6 +26,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "distribution": "store"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://odos-backend.onrender.com/api",
         "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
