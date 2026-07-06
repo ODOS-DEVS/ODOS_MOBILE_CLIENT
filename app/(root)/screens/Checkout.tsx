@@ -1,3 +1,7 @@
+import CheckoutPaymentSection from "@/components/checkout/CheckoutPaymentSection";
+import CheckoutProcessingOverlay, {
+  type CheckoutProcessingMode,
+} from "@/components/checkout/CheckoutProcessingOverlay";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import {
@@ -27,12 +31,18 @@ import { useCheckoutStyles } from "@/styles/themedCheckoutStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { buildOrderItemImagePayload } from "@/utils/orderImages";
 import { goBackOr } from "@/utils/navigation";
+import {
+  isWalletCheckoutSelection,
+  WALLET_CHECKOUT_PAYMENT_ID,
+  walletCoversOrder,
+} from "@/utils/checkoutPayment";
 import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Image,
   ImageSourcePropType,
   Platform,
@@ -110,6 +120,9 @@ export default function CheckoutScreen() {
   const {
     selectedAddress,
     selectedPayment,
+    checkoutPaymentId,
+    setCheckoutPaymentId,
+    paymentMethods,
     checkoutVoucherCode,
     setCheckoutVoucherCode,
     isSyncingProfileData,
@@ -120,6 +133,7 @@ export default function CheckoutScreen() {
 
   const [quantity, setQuantity] = useState(1);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [processingMode, setProcessingMode] = useState<CheckoutProcessingMode | null>(null);
   const [voucherCodeInput, setVoucherCodeInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherPreview | null>(null);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
@@ -219,10 +233,8 @@ export default function CheckoutScreen() {
   }, [resolvedDeliveryMethodId, selectedMethodId, setSelectedMethodId]);
   const discountAmount = appliedVoucher?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
-  const walletInsufficient =
-    selectedPayment?.type === "wallet" &&
-    customerWallet != null &&
-    customerWallet.available_balance + 0.001 < total;
+  const payingWithWallet = isWalletCheckoutSelection(selectedPayment, checkoutPaymentId);
+  const walletInsufficient = payingWithWallet && !walletCoversOrder(customerWallet, total);
 
   const canPlaceOrder =
     !!user &&
@@ -247,6 +259,12 @@ export default function CheckoutScreen() {
       onCancel: () => router.replace("/(root)/(tabs)"),
     });
   }, [isHydrating, requireAuth]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfileData();
+    }, [refreshProfileData]),
+  );
 
   const openAddressScreen = () => {
     router.push({
@@ -367,54 +385,88 @@ export default function CheckoutScreen() {
     };
   }, [appliedVoucher, checkoutItems, shipping, suggestVouchers, user]);
 
+  const executeWalletCheckout = async () => {
+    if (!accessToken || !selectedAddress) {
+      return;
+    }
+
+    const walletResult = await createWalletCheckoutRequest(accessToken, {
+      source: checkoutMode,
+      items: checkoutItems,
+      subtotal_amount: subtotal,
+      shipping_amount: shipping,
+      delivery_method: resolvedDeliveryMethodId,
+      discount_amount: discountAmount,
+      total_amount: total,
+      voucher_code: appliedVoucher?.code ?? null,
+      address_full_name: selectedAddress.fullName,
+      address_phone: selectedAddress.phone,
+      address_street: selectedAddress.street,
+      address_city: selectedAddress.city,
+      address_region: selectedAddress.region,
+      payment_type: "wallet",
+      payment_label: "ODOS Wallet",
+      payment_network: null,
+      payment_phone: null,
+      payment_last4: null,
+    });
+
+    if (checkoutMode === "cart") {
+      await clearCart();
+    }
+    resetDeliveryMethod();
+    setCheckoutPaymentId(null);
+    void refreshProfileData();
+    showSuccessToast(walletResult.message);
+    router.replace({
+      pathname: "/(root)/screens/order-success" as any,
+      params: {
+        orderId: walletResult.order.id,
+        orderNumber: walletResult.order.order_number,
+        total: String(walletResult.order.total_amount),
+        itemCount: String(
+          walletResult.order.items.reduce((sum, item) => sum + item.quantity, 0),
+        ),
+        eta: walletResult.order.tracking_eta ?? "Estimated delivery in 2–3 days",
+      },
+    });
+  };
+
   const handlePlaceOrder = async () => {
     if (!canPlaceOrder || !selectedAddress || !selectedPayment || !accessToken) {
       return;
     }
 
-    setIsPlacingOrder(true);
+    let keepProcessingOverlay = false;
     try {
-      if (selectedPayment.type === "wallet") {
-        const walletResult = await createWalletCheckoutRequest(accessToken, {
-          source: checkoutMode,
-          items: checkoutItems,
-          subtotal_amount: subtotal,
-          shipping_amount: shipping,
-          delivery_method: resolvedDeliveryMethodId,
-          discount_amount: discountAmount,
-          total_amount: total,
-          voucher_code: appliedVoucher?.code ?? null,
-          address_full_name: selectedAddress.fullName,
-          address_phone: selectedAddress.phone,
-          address_street: selectedAddress.street,
-          address_city: selectedAddress.city,
-          address_region: selectedAddress.region,
-          payment_type: "wallet",
-          payment_label: "ODOS Wallet",
-          payment_network: null,
-          payment_phone: null,
-          payment_last4: null,
+      if (payingWithWallet) {
+        const balanceAfter = (customerWallet?.available_balance ?? 0) - total;
+        await new Promise<void>((resolve, reject) => {
+          Alert.alert(
+            "Pay with ODOS Wallet?",
+            `₵${total.toFixed(2)} will be deducted instantly. Remaining balance: ₵${Math.max(
+              0,
+              balanceAfter,
+            ).toFixed(2)}.`,
+            [
+              { text: "Cancel", style: "cancel", onPress: () => reject(new Error("cancelled")) },
+              {
+                text: "Confirm & pay",
+                onPress: () => resolve(),
+              },
+            ],
+          );
         });
-        if (checkoutMode === "cart") {
-          await clearCart();
-        }
-        resetDeliveryMethod();
-        void refreshProfileData();
-        showSuccessToast(walletResult.message);
-        router.replace({
-          pathname: "/(root)/screens/order-success" as any,
-          params: {
-            orderId: walletResult.order.id,
-            orderNumber: walletResult.order.order_number,
-            total: String(walletResult.order.total_amount),
-            itemCount: String(
-              walletResult.order.items.reduce((sum, item) => sum + item.quantity, 0),
-            ),
-            eta: walletResult.order.tracking_eta ?? "Estimated delivery in 2–3 days",
-          },
-        });
+
+        setIsPlacingOrder(true);
+        setProcessingMode("wallet");
+        await executeWalletCheckout();
+        keepProcessingOverlay = true;
         return;
       }
+
+      setIsPlacingOrder(true);
+      setProcessingMode("paystack");
 
       const callbackUrl = Linking.createURL("/payments/return");
       const checkoutSession = await createCheckoutSessionRequest(accessToken, {
@@ -440,6 +492,7 @@ export default function CheckoutScreen() {
         cancel_url: callbackUrl,
       });
       showInfoToast("Opening secure checkout...");
+      setProcessingMode(null);
       const checkoutResult = await WebBrowser.openAuthSessionAsync(
         checkoutSession.authorization_url,
         callbackUrl,
@@ -457,13 +510,21 @@ export default function CheckoutScreen() {
         });
       }
     } catch (error) {
+      if (error instanceof Error && error.message === "cancelled") {
+        return;
+      }
       const message =
         error instanceof Error && error.message
           ? error.message
-          : "We couldn't start your payment right now.";
+          : payingWithWallet
+            ? "We couldn't complete your wallet payment right now."
+            : "We couldn't start your payment right now.";
       showErrorToast(message);
     } finally {
       setIsPlacingOrder(false);
+      if (!keepProcessingOverlay) {
+        setProcessingMode(null);
+      }
     }
   };
 
@@ -508,6 +569,10 @@ export default function CheckoutScreen() {
       return "Insufficient wallet balance for this order";
     }
 
+    if (payingWithWallet) {
+      return "Instant wallet payment — no Paystack redirect";
+    }
+
     return undefined;
   }, [
     accessToken,
@@ -516,6 +581,7 @@ export default function CheckoutScreen() {
     isHydrating,
     isLoadingDelivery,
     isPlacingOrder,
+    payingWithWallet,
     selectedAddress,
     selectedPayment,
     user,
@@ -704,19 +770,15 @@ export default function CheckoutScreen() {
             </AccountSectionCard>
 
             <AccountSectionCard title="Payment">
-              <OrderSelectableRow
-                icon="card-outline"
-                title={selectedPayment?.label ?? "Add payment method"}
-                subtitle={
-                  selectedPayment
-                    ? selectedPayment.type === "wallet"
-                      ? "Pay from wallet balance"
-                      : selectedPayment.type === "card"
-                      ? "Debit / Credit Card"
-                      : selectedPayment.network ?? "MoMo"
-                    : "Choose wallet, card, or mobile money"
-                }
-                onPress={openPaymentScreen}
+              <CheckoutPaymentSection
+                wallet={customerWallet}
+                paymentMethods={paymentMethods}
+                selectedPaymentId={checkoutPaymentId ?? selectedPayment?.id ?? null}
+                selectedPayment={selectedPayment}
+                orderTotal={total}
+                onSelectWallet={() => setCheckoutPaymentId(WALLET_CHECKOUT_PAYMENT_ID)}
+                onSelectMethod={(id) => setCheckoutPaymentId(id)}
+                onManagePayments={openPaymentScreen}
               />
             </AccountSectionCard>
 
@@ -856,12 +918,30 @@ export default function CheckoutScreen() {
           <OrderStickyFooter
             hint={footerHint}
             amountValue={formatOrderMoney(total)}
-            primaryLabel={isPlacingOrder ? "Placing..." : "Place order"}
+            primaryLabel={
+              isPlacingOrder
+                ? payingWithWallet
+                  ? "Paying with wallet..."
+                  : "Opening checkout..."
+                : payingWithWallet
+                  ? "Pay with wallet"
+                  : "Pay with Paystack"
+            }
             onPrimaryPress={handlePlaceOrder}
             disabled={!canPlaceOrder}
           />
         </>
       )}
+      {processingMode ? (
+        <CheckoutProcessingOverlay
+          visible
+          mode={processingMode}
+          subtotal={subtotal}
+          shipping={shipping}
+          discount={discountAmount}
+          total={total}
+        />
+      ) : null}
     </View>
   );
 }
