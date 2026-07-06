@@ -2,6 +2,7 @@ import PromoOfferCard from "@/components/cards/PromoOfferCard";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import PromoBanner from "@/components/cards/PromoBanner";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import { CarouselDots } from "@/components/ui/CarouselDots";
 import { HomeContentSkeleton } from "@/components/loaders/CommerceSkeletons";
 import {
   CommerceSeeAllEmptyState,
@@ -13,21 +14,27 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useDealsHub } from "@/hooks/useDealsHub";
 import { useVouchers } from "@/hooks/useVouchers";
-import { rS, rV, useResponsive } from "@/styles/responsive";
+import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { navigateToCampaignDeals } from "@/utils/promoNavigation";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 
 export default function DealsScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
+  const { width: screenWidth } = useWindowDimensions();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -35,6 +42,9 @@ export default function DealsScreen() {
   const { claimVoucher, vouchers } = useVouchers();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [promoCarouselIndex, setPromoCarouselIndex] = useState(0);
+
+  const promoSlideWidth = screenWidth - horizontalPadding * 2;
 
   const savedPromotionIds = useMemo(
     () => new Set(vouchers.map((item) => item.id)),
@@ -86,6 +96,14 @@ export default function DealsScreen() {
   const handleUsePromotion = () => {
     router.push("/(root)/screens/profileScreens/Account/Vouchers");
   };
+
+  const handlePromoCarouselScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / promoSlideWidth);
+      setPromoCarouselIndex(Math.max(0, Math.min(nextIndex, promotions.length - 1)));
+    },
+    [promoSlideWidth, promotions.length],
+  );
 
   return (
     <View style={screenStyles.screen}>
@@ -192,22 +210,38 @@ export default function DealsScreen() {
                     onUse={handleUsePromotion}
                   />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: rS(12), paddingVertical: rV(2) }}
-                  >
-                    {promotions.map((item) => (
-                      <PromoOfferCard
-                        key={item.id}
-                        offer={item}
-                        compact
-                        isBusy={claimingId === item.id}
-                        onClaim={() => void handleClaimPromotion(item.id)}
-                        onUse={handleUsePromotion}
-                      />
-                    ))}
-                  </ScrollView>
+                  <View>
+                    <FlatList
+                      data={promotions}
+                      horizontal
+                      pagingEnabled
+                      nestedScrollEnabled
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      snapToInterval={promoSlideWidth}
+                      snapToAlignment="start"
+                      disableIntervalMomentum
+                      keyExtractor={(item) => item.id}
+                      onMomentumScrollEnd={handlePromoCarouselScrollEnd}
+                      getItemLayout={(_, index) => ({
+                        length: promoSlideWidth,
+                        offset: promoSlideWidth * index,
+                        index,
+                      })}
+                      renderItem={({ item }) => (
+                        <View style={{ width: promoSlideWidth }}>
+                          <PromoOfferCard
+                            offer={item}
+                            fullWidth
+                            isBusy={claimingId === item.id}
+                            onClaim={() => void handleClaimPromotion(item.id)}
+                            onUse={handleUsePromotion}
+                          />
+                        </View>
+                      )}
+                    />
+                    <CarouselDots count={promotions.length} activeIndex={promoCarouselIndex} />
+                  </View>
                 )}
               </View>
 
@@ -240,8 +274,10 @@ export default function DealsScreen() {
                   />
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                     {data?.campaignTags.map((campaign) => (
-                      <View
+                      <TouchableOpacity
                         key={campaign.tag}
+                        activeOpacity={0.85}
+                        onPress={() => navigateToCampaignDeals(campaign.tag, campaign.label)}
                         style={{
                           paddingHorizontal: 12,
                           paddingVertical: 8,
@@ -256,7 +292,7 @@ export default function DealsScreen() {
                         >
                           {campaign.label}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </View>

@@ -1,11 +1,10 @@
+import type { PromoBannerItem } from "@/hooks/usePromoBanners";
 import { router } from "expo-router";
 import { Linking } from "react-native";
 
-import type { PromoBannerItem } from "@/hooks/usePromoBanners";
-
 type PromoNavigationInput = Pick<
   PromoBannerItem,
-  "linkType" | "ctaLink" | "campaignTag"
+  "linkType" | "ctaLink" | "campaignTag" | "title" | "subtitle"
 >;
 
 function inferLinkTypeFromLegacyLink(link?: string | null): string {
@@ -23,18 +22,68 @@ function inferLinkTypeFromLegacyLink(link?: string | null): string {
   return "screen";
 }
 
+export function extractPromoDiscountPercent(banner: PromoNavigationInput): number | undefined {
+  if (banner.linkType === "discounted_products") {
+    const parsed = Number.parseInt(banner.ctaLink?.trim() ?? "", 10);
+    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 90) {
+      return parsed;
+    }
+  }
+
+  const text = `${banner.title ?? ""} ${banner.subtitle ?? ""}`;
+  const match = text.match(/(\d{1,2})\s*(?:%|percent|pct)/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 90) {
+    return undefined;
+  }
+  return parsed;
+}
+
+export function navigateToPromoDealBrowse(banner: PromoNavigationInput) {
+  const minDiscount = extractPromoDiscountPercent(banner);
+  const campaign = banner.campaignTag?.trim() || "";
+
+  router.push({
+    pathname: "/(root)/screens/promo-deals",
+    params: {
+      title: banner.title?.trim() || "Deals for you",
+      subtitle: banner.subtitle?.trim() || "",
+      minDiscount: minDiscount ? String(minDiscount) : "",
+      campaign,
+    },
+  } as never);
+}
+
 export function navigateFromPromoBanner(
   banner: PromoNavigationInput,
   fallback?: () => void,
 ) {
   const rawLinkType = banner.linkType?.trim() || "deals";
   const target = banner.ctaLink?.trim() || "";
-  const campaignTag = banner.campaignTag?.trim() || target;
+  const campaignTag = banner.campaignTag?.trim() || "";
   const linkType =
     rawLinkType === "screen" && target ? inferLinkTypeFromLegacyLink(target) : rawLinkType;
+  const inferredDiscount = extractPromoDiscountPercent(banner);
 
   switch (linkType) {
+    case "discounted_products":
+      navigateToPromoDealBrowse(banner);
+      return;
+    case "campaign":
+      navigateToPromoDealBrowse({
+        ...banner,
+        campaignTag: campaignTag || banner.campaignTag,
+      });
+      return;
     case "deals":
+      if (inferredDiscount || campaignTag) {
+        navigateToPromoDealBrowse(banner);
+        return;
+      }
       router.push("../screens/deals" as never);
       return;
     case "flash_sales":
@@ -70,12 +119,6 @@ export function navigateFromPromoBanner(
         return;
       }
       break;
-    case "campaign":
-      router.push({
-        pathname: "../screens/deals",
-        params: campaignTag ? { campaign: campaignTag } : {},
-      } as never);
-      return;
     case "external":
       if (target) {
         void Linking.openURL(target);
@@ -109,4 +152,14 @@ export function navigateFromPromoLink(link?: string | null, fallback?: () => voi
   }
 
   router.push(`../screens/${trimmed}` as never);
+}
+
+export function navigateToCampaignDeals(campaignTag: string, label?: string) {
+  navigateToPromoDealBrowse({
+    title: label ?? "Campaign deals",
+    subtitle: "Vendor-priced offers opted into this campaign",
+    linkType: "campaign",
+    campaignTag,
+    ctaLink: null,
+  });
 }

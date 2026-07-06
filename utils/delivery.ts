@@ -27,11 +27,30 @@ export function getDeliveryMethodLabel(method?: string | null) {
   return DELIVERY_METHOD_LABELS[method as DeliveryMethodId] ?? "Standard delivery";
 }
 
+const ACCRA_TIME_ZONE = "Africa/Accra";
+
+function getAccraDateParts(date: Date) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ACCRA_TIME_ZONE,
+    weekday: "short",
+    hour: "numeric",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return {
+    weekday: parts.weekday ?? "",
+    hour: Number(parts.hour ?? "0"),
+  };
+}
+
 export function isSameDayOrderWindowOpen(date = new Date()) {
-  if (date.getDay() === 0) {
+  const { weekday, hour } = getAccraDateParts(date);
+  if (weekday === "Sun") {
     return false;
   }
-  return date.getHours() < SAME_DAY_CUTOFF_HOUR;
+  return hour < SAME_DAY_CUTOFF_HOUR;
 }
 
 const GREATER_ACCRA_ALIASES = [

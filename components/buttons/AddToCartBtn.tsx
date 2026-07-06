@@ -28,7 +28,16 @@ interface AddToCartBtnProps {
   iconSize?: number;
   iconColor?: string;
   variant?: "icon" | "stepper";
+  stepperLayout?: "fixed" | "fluid";
+  stepperTone?: "solid" | "soft" | "accent" | "compact";
+  stepperIdleLabel?: string;
 }
+
+const STEPPER_WIDTH = rS(118);
+const STEPPER_WIDTH_COMPACT = rS(96);
+const STEPPER_HEIGHT = rS(44);
+const STEPPER_HEIGHT_ACCENT = rS(50);
+const STEPPER_HEIGHT_COMPACT = rS(42);
 
 function formatCartToastMessage(previousQty: number, nextQty: number) {
   if (previousQty <= 0) {
@@ -48,9 +57,49 @@ const AddToCartBtn = ({
   iconSize = rS(14),
   iconColor,
   variant = "icon",
+  stepperLayout = "fixed",
+  stepperTone = "solid",
+  stepperIdleLabel,
 }: AddToCartBtnProps) => {
   const { colors } = useTheme();
   const resolvedIconColor = iconColor ?? colors.text;
+  const isFluidStepper = stepperLayout === "fluid";
+  const isSoftStepper = stepperTone === "soft";
+  const isAccentStepper = stepperTone === "accent";
+  const isCompactStepper = stepperTone === "compact";
+  const stepperHeight = isCompactStepper
+    ? STEPPER_HEIGHT_COMPACT
+    : isAccentStepper
+      ? STEPPER_HEIGHT_ACCENT
+      : STEPPER_HEIGHT;
+  const stepperBackground = isCompactStepper
+    ? colors.card
+    : isAccentStepper
+      ? colors.surfaceMuted
+      : isSoftStepper
+        ? colors.surfaceMuted
+        : colors.inverseSurface;
+  const stepperBorderColor = isCompactStepper
+    ? colors.borderStrong
+    : isAccentStepper
+      ? colors.borderStrong
+      : isSoftStepper
+        ? colors.border
+        : "transparent";
+  const stepperIconColor = isCompactStepper
+    ? colors.text
+    : isAccentStepper
+      ? colors.text
+      : isSoftStepper
+        ? colors.text
+        : resolvedIconColor;
+  const stepperQtyColor = isCompactStepper
+    ? colors.text
+    : isAccentStepper
+      ? colors.onPrimary
+      : isSoftStepper
+        ? colors.text
+        : colors.onInverseSurface;
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -79,36 +128,96 @@ const AddToCartBtn = ({
           fontSize: rMS(10),
           fontFamily: Fonts.titleBold,
         },
-        stepperWrap: {
+        stepperShell: {
+          width: isFluidStepper ? "100%" : isCompactStepper ? STEPPER_WIDTH_COMPACT : STEPPER_WIDTH,
+          height: stepperHeight,
+          borderRadius: isCompactStepper ? rMS(12) : isAccentStepper ? rMS(22) : rMS(14),
+          backgroundColor: stepperBackground,
+          borderWidth: isSoftStepper || isAccentStepper || isCompactStepper ? StyleSheet.hairlineWidth : 0,
+          borderColor: stepperBorderColor,
+          overflow: "hidden",
+          ...(isAccentStepper
+            ? {
+                shadowColor: colors.shadow,
+                shadowOpacity: 0.08,
+                shadowOffset: { width: 0, height: 3 },
+                shadowRadius: 8,
+                elevation: 2,
+              }
+            : null),
+        },
+        stepperIdleButton: {
+          flex: 1,
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: colors.primary,
-          borderRadius: rS(999),
-          paddingHorizontal: rS(6),
-          paddingVertical: rS(4),
-          gap: rS(4),
+          justifyContent: "center",
+          gap: rS(isCompactStepper ? 4 : isAccentStepper ? 6 : 4),
+          paddingHorizontal: rS(isCompactStepper ? 8 : isAccentStepper ? 12 : 8),
         },
-        stepperButton: {
-          width: rS(34),
-          height: rS(34),
-          borderRadius: rS(17),
+        stepperIdleLabel: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(isCompactStepper ? 12 : isAccentStepper ? 13.5 : 12.5),
+          color: stepperIconColor,
+          letterSpacing: isAccentStepper ? 0.1 : 0,
+        },
+        stepperActiveRow: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+        },
+        stepperSideButton: {
+          width: isFluidStepper ? undefined : isCompactStepper ? rS(30) : rS(38),
+          flex: isFluidStepper ? 1 : undefined,
+          height: "100%",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "rgba(255,255,255,0.14)",
+        },
+        stepperSideButtonDisabled: {
+          opacity: 0.35,
+        },
+        stepperDivider: {
+          width: StyleSheet.hairlineWidth,
+          height: rS(isCompactStepper ? 18 : isAccentStepper ? 24 : 22),
+          backgroundColor: isCompactStepper
+            ? colors.border
+            : isAccentStepper
+              ? colors.border
+              : isSoftStepper
+                ? colors.border
+                : "rgba(255,255,255,0.18)",
         },
         stepperQtyWrap: {
-          minWidth: rS(28),
+          flex: isFluidStepper ? 1.2 : 1,
           alignItems: "center",
           justifyContent: "center",
-          paddingHorizontal: rS(4),
+          minWidth: isFluidStepper ? rS(28) : isCompactStepper ? rS(24) : rS(34),
+          ...(isAccentStepper
+            ? {
+                minWidth: rS(34),
+                height: rS(28),
+                borderRadius: rMS(14),
+                backgroundColor: colors.inverseSurface,
+              }
+            : null),
         },
         stepperQtyText: {
-          fontSize: rMS(14),
+          fontSize: rMS(isCompactStepper ? 12.5 : isAccentStepper ? 13.5 : 15),
           fontFamily: Fonts.titleBold,
-          color: colors.onPrimary,
+          color: stepperQtyColor,
         },
       }),
-    [colors],
+    [
+      colors,
+      isAccentStepper,
+      isCompactStepper,
+      isFluidStepper,
+      isSoftStepper,
+      stepperBackground,
+      stepperBorderColor,
+      stepperHeight,
+      stepperIconColor,
+      stepperQtyColor,
+    ],
   );
   const { addToCart, increaseQty, decreaseQty, getItemQuantity } = useCart();
   const { showSuccessToast } = useToast();
@@ -145,41 +254,66 @@ const AddToCartBtn = ({
     });
   }, [decreaseQty, item.id, quantity, showSuccessToast]);
 
-  if (variant === "stepper" && quantity > 0) {
+  if (variant === "stepper") {
+    const canDecrease = quantity > 1;
+
     return (
-      <View style={[containerStyle, styles.stepperWrap]}>
-        <TouchableOpacity
-          style={styles.stepperButton}
-          activeOpacity={0.85}
-          onPress={handleDecrease}
-          accessibilityLabel="Decrease quantity"
-        >
-          <Ionicons name="remove" size={iconSize} color={resolvedIconColor} />
-        </TouchableOpacity>
+      <View style={[styles.stepperShell, containerStyle]}>
+        {quantity > 0 ? (
+          <View style={styles.stepperActiveRow}>
+            <TouchableOpacity
+              style={[
+                styles.stepperSideButton,
+                !canDecrease && styles.stepperSideButtonDisabled,
+              ]}
+              activeOpacity={0.85}
+              onPress={handleDecrease}
+              disabled={!canDecrease}
+              accessibilityLabel="Decrease quantity"
+            >
+              <Ionicons name="remove" size={iconSize} color={stepperIconColor} />
+            </TouchableOpacity>
 
-        <View style={styles.stepperQtyWrap}>
-          <Text style={[styles.stepperQtyText, { color: resolvedIconColor }]}>{quantity}</Text>
-        </View>
+            <View style={styles.stepperDivider} />
 
-        <TouchableOpacity
-          style={styles.stepperButton}
-          activeOpacity={0.85}
-          onPress={handleIncrease}
-          accessibilityLabel="Increase quantity"
-        >
-          <Ionicons name="add" size={iconSize} color={resolvedIconColor} />
-        </TouchableOpacity>
+            <View style={styles.stepperQtyWrap}>
+              <Text style={styles.stepperQtyText}>{quantity}</Text>
+            </View>
+
+            <View style={styles.stepperDivider} />
+
+            <TouchableOpacity
+              style={styles.stepperSideButton}
+              activeOpacity={0.85}
+              onPress={handleIncrease}
+              accessibilityLabel="Increase quantity"
+            >
+              <Ionicons name="add" size={iconSize} color={stepperIconColor} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.stepperIdleButton}
+            activeOpacity={0.85}
+            onPress={handleAdd}
+            accessibilityLabel="Add to cart"
+          >
+            <Ionicons
+              name={isAccentStepper || isCompactStepper ? "bag-handle-outline" : "cart-outline"}
+              size={iconSize}
+              color={stepperIconColor}
+            />
+            {stepperIdleLabel ? (
+              <Text style={styles.stepperIdleLabel}>{stepperIdleLabel}</Text>
+            ) : null}
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
 
   return (
-    <View
-      style={[
-        styles.iconWrap,
-        containerStyle,
-      ]}
-    >
+    <View style={[styles.iconWrap, containerStyle]}>
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={handleAdd}

@@ -1,49 +1,71 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { AccountBadge } from "@/components/account/AccountUi";
+import { AccountEmptyState } from "@/components/account/AccountUi";
+import VendorProductCard from "@/components/vendor/VendorProductCard";
+import VendorProductQueueTabs from "@/components/vendor/VendorProductQueueTabs";
 import {
-  AccountActionButton,
-  AccountEmptyState,
-  AccountListCard,
   VendorPageIntro,
   VendorScreenShell,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
-import Fonts from "@/constants/Fonts";
-import { AppColors } from "@/constants/Colors";
+import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { router } from "expo-router";
-import React, { useEffect } from "react";
+import type { VendorProductCatalogTab } from "@/types/store";
 import {
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  countVendorProductsByCatalogTab,
+  filterVendorProductsByCatalogTab,
+} from "@/utils/vendorProductCatalog";
+import { rV, useResponsive } from "@/styles/responsive";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
+import { FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-function productStatusTone(status: string): "success" | "warning" | "neutral" {
-  if (status === "active") return "success";
-  if (status === "pending") return "warning";
-  return "neutral";
-}
+import Fonts from "@/constants/Fonts";
+import { AppColors } from "@/constants/Colors";
+import { rMS } from "@/styles/responsive";
 
 export default function VendorProductsScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
+  const { showToast } = useToast();
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
-  const { error, fetchProducts, isLoadingProducts, products } = useStoreStore();
+  const [activeTab, setActiveTab] = useState<VendorProductCatalogTab>("live");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const {
+    deleteProduct,
+    error,
+    fetchProducts,
+    isLoadingProducts,
+    patchProductStock,
+    products,
+    setProductStatus,
+    updatingProductId,
+  } = useStoreStore();
 
-  useEffect(() => {
-    if (!hasVendorAccess) {
-      return;
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasVendorAccess) {
+        return undefined;
+      }
+      void fetchProducts(session);
+      return undefined;
+    }, [fetchProducts, hasVendorAccess, session]),
+  );
+
+  const counts = useMemo(() => countVendorProductsByCatalogTab(products), [products]);
+  const filteredProducts = useMemo(
+    () => filterVendorProductsByCatalogTab(products, activeTab),
+    [activeTab, products],
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchProducts(session);
+    } finally {
+      setIsRefreshing(false);
     }
-
-    void fetchProducts(session);
-  }, [fetchProducts, hasVendorAccess, session]);
+  }, [fetchProducts, session]);
 
   const addButton = (
     <TouchableOpacity
@@ -69,9 +91,7 @@ export default function VendorProductsScreen() {
     return null;
   }
 
-  const showLoader = isLoadingProducts && products.length === 0;
-
-  if (showLoader) {
+  if (isLoadingProducts && products.length === 0) {
     return (
       <VendorScreenShell
         title="My Products"
@@ -82,29 +102,36 @@ export default function VendorProductsScreen() {
     );
   }
 
-  const activeCount = products.filter((p) => p.status === "active").length;
-
   return (
     <VendorScreenShell title="My Products" rightNode={addButton}>
       <FlatList
-        data={products}
+        data={filteredProducts}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
+        }
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           vendorStyles.listContent,
           { paddingBottom: insets.bottom + rV(28) },
         ]}
         ListHeaderComponent={
-          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth, gap: rV(14) }]}>
             <VendorPageIntro
-              title="Store inventory"
-              subtitle="Review pricing, stock, and visibility for every product in your catalog."
+              title="Catalog control"
+              subtitle="Hide, relist, adjust stock, or remove products without opening the full editor."
               stats={[
-                { value: products.length, label: "Products" },
-                { value: activeCount, label: "Live" },
+                { value: counts.live, label: "Live" },
+                { value: counts.pending, label: "Pending" },
+                { value: counts.hidden, label: "Hidden" },
               ]}
               error={error}
+            />
+            <VendorProductQueueTabs
+              activeTab={activeTab}
+              counts={counts}
+              onChange={setActiveTab}
             />
           </View>
         }
@@ -112,56 +139,91 @@ export default function VendorProductsScreen() {
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <AccountEmptyState
               icon="cube-outline"
-              title="No products yet"
-              message="Add your first product to start building the vendor catalog."
-              actionLabel="Add Product"
-              onAction={() => router.push("/vendor/products/new" as any)}
+              title={
+                activeTab === "live"
+                  ? "No live products"
+                  : activeTab === "pending"
+                    ? "Nothing awaiting approval"
+                    : activeTab === "hidden"
+                      ? "No hidden products"
+                      : "No products yet"
+              }
+              message={
+                activeTab === "all"
+                  ? "Add your first product to start building the vendor catalog."
+                  : "Switch tabs or add a new listing for your store."
+              }
+              actionLabel={activeTab === "all" ? "Add Product" : undefined}
+              onAction={
+                activeTab === "all"
+                  ? () => router.push("/vendor/products/new" as any)
+                  : undefined
+              }
             />
           </View>
         }
         renderItem={({ item }) => (
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
-            <AccountListCard style={styles.productCard}>
-              <View style={styles.cardRow}>
-                <Image source={item.image} style={styles.image} resizeMode="cover" />
-                <View style={styles.cardBody}>
-                  <View style={styles.cardHeader}>
-                    <Text numberOfLines={1} style={styles.productTitle}>
-                      {item.name}
-                    </Text>
-                    <AccountBadge
-                      label={
-                        item.status === "pending"
-                          ? "pending approval"
-                          : item.status.replace(/_/g, " ")
-                      }
-                      tone={productStatusTone(item.status)}
-                    />
-                  </View>
-                  <Text numberOfLines={2} style={styles.description}>
-                    {item.description}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaText}>{item.category}</Text>
-                    <Text style={styles.metaText}>Stock: {item.stock}</Text>
-                  </View>
-                  {item.placementTags?.includes("flash-sale") ? (
-                    <AccountBadge label="Flash Sale" tone="info" />
-                  ) : null}
-                  <Text style={styles.price}>GHS {item.price.toFixed(2)}</Text>
-                </View>
-              </View>
-              <AccountActionButton
-                label="Edit product"
-                variant="secondary"
-                onPress={() =>
-                  router.push({
-                    pathname: "/vendor/products/new" as any,
-                    params: { productId: item.id },
-                  })
+            <VendorProductCard
+              product={item}
+              isUpdating={updatingProductId === item.id}
+              onEdit={() =>
+                router.push({
+                  pathname: "/vendor/products/new" as any,
+                  params: { productId: item.id },
+                })
+              }
+              onHide={async () => {
+                try {
+                  await setProductStatus(session, item.id, "hidden");
+                  showToast("Product hidden from your storefront.");
+                } catch (updateError) {
+                  showToast(
+                    updateError instanceof Error
+                      ? updateError.message
+                      : "We couldn't hide that product.",
+                  );
                 }
-              />
-            </AccountListCard>
+              }}
+              onUnhide={async () => {
+                try {
+                  await setProductStatus(session, item.id, "active");
+                  showToast("Product relisted on your storefront.");
+                } catch (updateError) {
+                  showToast(
+                    updateError instanceof Error
+                      ? updateError.message
+                      : "We couldn't relist that product.",
+                  );
+                }
+              }}
+              onDelete={async () => {
+                try {
+                  await deleteProduct(session, item.id);
+                  showToast("Product removed.");
+                } catch (deleteError) {
+                  showToast(
+                    deleteError instanceof Error
+                      ? deleteError.message
+                      : "We couldn't delete that product.",
+                  );
+                }
+              }}
+              onAdjustStock={async (nextStock) => {
+                if (nextStock === item.stock) {
+                  return;
+                }
+                try {
+                  await patchProductStock(session, item.id, nextStock);
+                } catch (stockError) {
+                  showToast(
+                    stockError instanceof Error
+                      ? stockError.message
+                      : "We couldn't update stock.",
+                  );
+                }
+              }}
+            />
           </View>
         )}
       />
@@ -169,61 +231,10 @@ export default function VendorProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   headerAction: {
     color: AppColors.primary,
     fontFamily: Fonts.titleBold,
     fontSize: rMS(13),
   },
-  productCard: {
-    marginBottom: rV(10),
-    gap: rV(12),
-  },
-  cardRow: {
-    flexDirection: "row",
-    gap: rS(12),
-  },
-  image: {
-    width: rS(88),
-    height: rS(88),
-    borderRadius: rMS(16),
-    backgroundColor: "#F3F4F6",
-  },
-  cardBody: {
-    flex: 1,
-    gap: rV(6),
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: rS(8),
-  },
-  productTitle: {
-    flex: 1,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  description: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-    color: "#6B7280",
-  },
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  metaText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    color: "#6B7280",
-  },
-  price: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    color: AppColors.text,
-  },
-});
+};

@@ -7,18 +7,29 @@ import { ProfileProvider } from "@/context/ProfileContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { VendorOrderAlertProvider } from "@/context/VendorOrderAlertProvider";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { BehaviorTrackingProvider } from "@/context/BehaviorTrackingContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
 import { useVendorSession } from "@/hooks/useVendorSession";
+import {
+  cancelVendorOrderReminders,
+  triggerVendorOrderAlert,
+} from "@/context/VendorOrderAlertProvider";
+import { mapRealtimeVendorOrderPayload } from "@/services/storeService";
+import {
+  vendorOrderAlertFromRealtimePayload,
+} from "@/utils/vendorOrderAlertBus";
 import { useFonts } from "expo-font";
-import { SplashScreen, Stack } from "expo-router";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { SplashScreen as ExpoSplashScreen, Stack } from "expo-router";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./global.css";
+
+ExpoSplashScreen.preventAutoHideAsync();
 
 function VendorStateBridge() {
   const { accessToken, user } = useAuth();
@@ -57,9 +68,16 @@ function VendorStateBridge() {
 function VendorRealtimeBridge() {
   const { session, user } = useVendorSession();
   const { subscribe } = useRealtime();
+  const orders = useStoreStore((state) => state.orders);
+  const ordersRef = useRef(orders);
+  ordersRef.current = orders;
+  const upsertRealtimeOrder = useStoreStore((state) => state.upsertRealtimeOrder);
   const fetchOrders = useStoreStore((state) => state.fetchOrders);
   const fetchProducts = useStoreStore((state) => state.fetchProducts);
   const fetchVendorDashboard = useVendorStore((state) => state.fetchVendorDashboard);
+  const setRealtimeVendorDashboard = useVendorStore(
+    (state) => state.setRealtimeVendorDashboard,
+  );
 
   useEffect(() => {
     if (!user?.roles?.includes("vendor") || !session.accessToken) {
@@ -67,8 +85,40 @@ function VendorRealtimeBridge() {
     }
 
     const unsubscribeOrder = subscribe("vendor.order.updated", (event) => {
-      if (!event.payload) return;
-      void fetchOrders(session);
+      if (!event.payload || typeof event.payload !== "object") {
+        return;
+      }
+
+      const payload = event.payload as Record<string, unknown>;
+      const existingOrder = ordersRef.current.find(
+        (item) => item.id === String(payload.id ?? ""),
+      );
+      const alertPayload = vendorOrderAlertFromRealtimePayload(payload);
+      const status = String(payload.status ?? "");
+      const isActionableStatus = ["pending", "confirmed", "processing"].includes(status);
+      const createdAtMs = Date.parse(String(payload.created_at ?? ""));
+      const isRecentOrder =
+        Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 10 * 60 * 1000;
+      const isNewOrder = !existingOrder && isActionableStatus && isRecentOrder;
+      const isStillActive = ["pending", "confirmed", "processing", "ready", "out_for_delivery"].includes(
+        status,
+      );
+
+      if (!isStillActive && alertPayload) {
+        void cancelVendorOrderReminders(alertPayload.orderId);
+      }
+
+      if (alertPayload && isNewOrder) {
+        triggerVendorOrderAlert(alertPayload);
+      }
+
+      if (alertPayload) {
+        const mappedOrder = mapRealtimeVendorOrderPayload(payload);
+        upsertRealtimeOrder(mappedOrder);
+      } else {
+        void fetchOrders(session);
+      }
+
       void fetchVendorDashboard(session);
     });
 
@@ -79,8 +129,11 @@ function VendorRealtimeBridge() {
     });
 
     const unsubscribeDashboard = subscribe("vendor.dashboard.updated", (event) => {
-      if (!event.payload) return;
-      void fetchVendorDashboard(session);
+      if (!event.payload || typeof event.payload !== "object") {
+        return;
+      }
+
+      setRealtimeVendorDashboard(event.payload as any);
     });
 
     return () => {
@@ -93,7 +146,9 @@ function VendorRealtimeBridge() {
     fetchProducts,
     fetchVendorDashboard,
     session,
+    setRealtimeVendorDashboard,
     subscribe,
+    upsertRealtimeOrder,
     user?.roles,
   ]);
 
@@ -115,14 +170,8 @@ export default function RootLayout() {
     "Montserrat-SemiBold": require("@/assets/fonts/Montserrat-SemiBold.ttf"),
   });
 
-  useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
   if (!fontsLoaded) {
-    return null; // wait until fonts are loaded
+    return null;
   }
 
   return (
@@ -134,8 +183,9 @@ export default function RootLayout() {
             <RealtimeProvider>
               <ActivityFeedProvider>
                 <PushNotificationsProvider>
-                  <VendorRealtimeBridge />
-                  <ChatProvider>
+                  <VendorOrderAlertProvider>
+                    <VendorRealtimeBridge />
+                    <ChatProvider>
                     <ProfileProvider>
                       <BehaviorTrackingProvider>
                         <CartProvider>
@@ -152,6 +202,7 @@ export default function RootLayout() {
                       </BehaviorTrackingProvider>
                     </ProfileProvider>
                   </ChatProvider>
+                  </VendorOrderAlertProvider>
                 </PushNotificationsProvider>
               </ActivityFeedProvider>
             </RealtimeProvider>

@@ -86,6 +86,58 @@ export type VendorDashboardStats = {
   totalCommission: number;
 };
 
+export type VendorTopProduct = {
+  productId: string;
+  productTitle: string;
+  productImageUrl?: string | null;
+  unitsSold: number;
+  grossSales: number;
+};
+
+export type VendorAnalytics = {
+  currency: string;
+  todaySales: number;
+  weekSales: number;
+  todayOrders: number;
+  weekOrders: number;
+  openReturns: number;
+  topProducts: VendorTopProduct[];
+};
+
+export type VendorDailySales = {
+  label: string;
+  sales: number;
+  orders: number;
+};
+
+export type VendorAnalyticsInsights = {
+  currency: string;
+  usedFallback: boolean;
+  period: {
+    today: { sales: number; orders: number };
+    week: { sales: number; orders: number; avgOrderValue: number; dailyAverage: number };
+    month: { sales: number; orders: number };
+  };
+  operations: {
+    pending: number;
+    delivered: number;
+    cancelled: number;
+    fulfillmentRate: number;
+    openReturns: number;
+  };
+  finance: {
+    availableBalance: number;
+    lifetimeEarnings: number;
+    totalSales: number;
+  };
+  catalog: {
+    totalProducts: number;
+    activeProducts: number;
+  };
+  topProducts: VendorTopProduct[];
+  dailyTrend: VendorDailySales[];
+};
+
 export type VendorWalletTransaction = {
   id: string;
   kind: string;

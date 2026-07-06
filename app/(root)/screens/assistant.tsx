@@ -19,7 +19,7 @@ import type { AssistantMessage } from "@/types/assistant";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   StatusBar,
@@ -51,6 +51,12 @@ export default function AssistantScreen() {
       listRef.current?.scrollToEnd({ animated: true });
     });
   }, []);
+
+  useEffect(() => {
+    if (isSending) {
+      scrollToEnd();
+    }
+  }, [isSending, scrollToEnd]);
 
   const handleSend = async () => {
     const value = input.trim();

@@ -3,7 +3,6 @@ export type StoreSocialLinks = {
   facebookUrl?: string | null;
   tiktokUrl?: string | null;
   twitterUrl?: string | null;
-  whatsappUrl?: string | null;
   websiteUrl?: string | null;
 };
 
@@ -12,7 +11,6 @@ export type SocialPlatform =
   | "facebook"
   | "tiktok"
   | "twitter"
-  | "whatsapp"
   | "website";
 
 export type SocialLinkItem = {
@@ -24,7 +22,6 @@ export type SocialLinkItem = {
     | "logo-facebook"
     | "logo-tiktok"
     | "logo-twitter"
-    | "logo-whatsapp"
     | "globe-outline";
 };
 
@@ -99,33 +96,6 @@ function normalizeHandleUrl(
   return null;
 }
 
-function normalizeWhatsapp(value: string) {
-  if (!value) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (hasProtocol(trimmed)) {
-    return trimmed;
-  }
-
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length >= 9) {
-    const normalizedDigits = digits.startsWith("233")
-      ? digits
-      : digits.startsWith("0")
-        ? `233${digits.slice(1)}`
-        : `233${digits}`;
-    return `https://wa.me/${normalizedDigits}`;
-  }
-
-  return normalizeHandleUrl(trimmed, "wa.me", "/");
-}
-
 export function normalizeStoreSocialLinks(
   input: StoreSocialLinks,
 ): StoreSocialLinks {
@@ -136,7 +106,6 @@ export function normalizeStoreSocialLinks(
     twitterUrl:
       normalizeHandleUrl(stripInput(input.twitterUrl), "x.com", "/") ??
       normalizeHandleUrl(stripInput(input.twitterUrl), "twitter.com", "/"),
-    whatsappUrl: normalizeWhatsapp(stripInput(input.whatsappUrl)),
     websiteUrl: normalizeWebsite(stripInput(input.websiteUrl)),
   };
 }
@@ -175,14 +144,6 @@ export function listStoreSocialLinks(links: StoreSocialLinks): SocialLinkItem[] 
       label: "X",
       url: normalized.twitterUrl,
       icon: "logo-twitter",
-    });
-  }
-  if (normalized.whatsappUrl) {
-    items.push({
-      platform: "whatsapp",
-      label: "WhatsApp",
-      url: normalized.whatsappUrl,
-      icon: "logo-whatsapp",
     });
   }
   if (normalized.websiteUrl) {

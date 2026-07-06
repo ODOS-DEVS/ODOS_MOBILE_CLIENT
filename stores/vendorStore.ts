@@ -107,7 +107,11 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
         vendorProfile ||
         canAccessVendorDashboard(session.roles, vendorStatus)
       ) {
-        vendorDashboardStats = await fetchVendorDashboard(session);
+        try {
+          vendorDashboardStats = await fetchVendorDashboard(session);
+        } catch {
+          vendorDashboardStats = null;
+        }
       }
 
       set({

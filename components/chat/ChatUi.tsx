@@ -9,10 +9,12 @@ import Fonts from "@/constants/Fonts";
 import type { ChatMessage, ChatThread, SupportChatStatus } from "@/types/chat";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { resolveImageSource } from "@/utils/media";
+import { AnimatedChatMessageWrap, TypingDots } from "@/components/chat/ChatAnimations";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -347,39 +349,40 @@ type ChatMessageBubbleProps = {
 
 export function ChatMessageBubble({ message, isMine, showMeta }: ChatMessageBubbleProps) {
   const chatStyles = useChatStyles();
-  const itemTime = new Date(message.time).getTime();
 
   return (
-    <View
-      style={[
-        chatStyles.messageRow,
-        isMine ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
-      ]}
-    >
+    <AnimatedChatMessageWrap isMine={isMine}>
       <View
         style={[
-          chatStyles.bubble,
-          isMine ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
+          chatStyles.messageRow,
+          isMine ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
         ]}
       >
-        <Text
-          style={[chatStyles.bubbleText, { color: isMine ? "#FFFFFF" : AppColors.text }]}
+        <View
+          style={[
+            chatStyles.bubble,
+            isMine ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
+          ]}
         >
-          {message.text}
-        </Text>
-        {showMeta ? (
           <Text
-            style={[
-              chatStyles.bubbleMeta,
-              { color: isMine ? "rgba(255,255,255,0.88)" : "#9CA3AF" },
-            ]}
+            style={[chatStyles.bubbleText, { color: isMine ? "#FFFFFF" : AppColors.text }]}
           >
-            {formatChatTime(message.time)}
-            {isMine && message.isRead ? " · Seen" : ""}
+            {message.text}
           </Text>
-        ) : null}
+          {showMeta ? (
+            <Text
+              style={[
+                chatStyles.bubbleMeta,
+                { color: isMine ? "rgba(255,255,255,0.88)" : "#9CA3AF" },
+              ]}
+            >
+              {formatChatTime(message.time)}
+              {isMine && message.isRead ? " · Seen" : ""}
+            </Text>
+          ) : null}
+        </View>
       </View>
-    </View>
+    </AnimatedChatMessageWrap>
   );
 }
 
@@ -405,6 +408,16 @@ export function ChatComposer({
   const chatStyles = useChatStyles();
   const insets = useSafeAreaInsets();
   const canSend = Boolean(value.trim()) && !disabled && !isSending;
+  const sendScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(sendScale, {
+      toValue: canSend ? 1 : 0.94,
+      friction: 7,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
+  }, [canSend, sendScale]);
 
   return (
     <View style={[chatStyles.composerWrap, { paddingBottom: Math.max(insets.bottom, rV(12)) }]}>
@@ -418,23 +431,25 @@ export function ChatComposer({
             onChangeText={onChangeText}
             style={chatStyles.composerInput}
             multiline
-            editable={!disabled}
+            editable={!disabled && !isSending}
           />
         </View>
-        <Pressable
-          onPress={onSend}
-          disabled={!canSend}
-          style={[
-            chatStyles.sendButton,
-            canSend ? chatStyles.sendButtonActive : chatStyles.sendButtonDisabled,
-          ]}
-        >
-          {isSending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons name="send" size={rMS(16)} color="#FFFFFF" />
-          )}
-        </Pressable>
+        <Animated.View style={{ transform: [{ scale: sendScale }] }}>
+          <Pressable
+            onPress={onSend}
+            disabled={!canSend}
+            style={[
+              chatStyles.sendButton,
+              canSend ? chatStyles.sendButtonActive : chatStyles.sendButtonDisabled,
+            ]}
+          >
+            {isSending ? (
+              <TypingDots color="#FFFFFF" dotSize={rS(5)} />
+            ) : (
+              <Ionicons name="send" size={rMS(16)} color="#FFFFFF" />
+            )}
+          </Pressable>
+        </Animated.View>
       </View>
     </View>
   );
@@ -449,7 +464,7 @@ export function ChatScreenShell({ children }: ChatScreenShellProps) {
   return (
     <KeyboardAvoidingView
       style={chatStyles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {children}
     </KeyboardAvoidingView>
@@ -514,3 +529,9 @@ export function renderChatMessageItem({
 }
 
 export { useChatStyles } from "@/styles/themedChatStyles";
+export {
+  AnimatedChatMessageWrap,
+  AnimatedChatThreadWrap,
+  ChatTypingIndicator,
+  TypingDots,
+} from "@/components/chat/ChatAnimations";

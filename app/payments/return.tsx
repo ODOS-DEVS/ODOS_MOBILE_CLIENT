@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { verifyCheckoutSessionRequest, type PaymentVerification } from "@/hooks/useOrders";
+import { useDeliveryStore } from "@/stores/deliveryStore";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -46,6 +47,7 @@ export default function PaymentReturnScreen() {
   const { accessToken, isHydrating } = useAuth();
   const { clearCart } = useCart();
   const { clearCheckoutSelection } = useProfile();
+  const { resetDeliveryMethod } = useDeliveryStore();
   const { showToast } = useToast();
 
   const [verificationState, setVerificationState] =
@@ -91,14 +93,11 @@ export default function PaymentReturnScreen() {
       return;
     }
 
-    if (isCancelled) {
-      setVerificationState("cancelled");
-      return;
-    }
-
     if (!reference) {
-      setVerificationState("error");
-      setErrorMessage("Missing payment reference from the checkout redirect.");
+      setVerificationState(isCancelled ? "cancelled" : "error");
+      if (!isCancelled) {
+        setErrorMessage("Missing payment reference from the checkout redirect.");
+      }
       return;
     }
 
@@ -129,6 +128,7 @@ export default function PaymentReturnScreen() {
             await clearCart();
           }
           clearCheckoutSelection();
+          resetDeliveryMethod();
           showToast(result.message);
           router.replace({
             pathname: "/(root)/screens/order-success" as any,
@@ -176,6 +176,7 @@ export default function PaymentReturnScreen() {
     isCancelled,
     isHydrating,
     reference,
+    resetDeliveryMethod,
     showToast,
   ]);
 
@@ -197,6 +198,7 @@ export default function PaymentReturnScreen() {
           await clearCart();
         }
         clearCheckoutSelection();
+        resetDeliveryMethod();
         router.replace({
           pathname: "/(root)/screens/order-success" as any,
           params: {

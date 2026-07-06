@@ -2,6 +2,7 @@ import { AccountListCard } from "@/components/account/AccountUi";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import { MenuItem } from "@/components/MenuItem";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
+import { ProfileCover } from "@/components/profile/ProfileCover";
 import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -240,6 +241,20 @@ export default function ProfileScreen() {
         },
         profileEntryCard: {
           marginBottom: rV(14),
+          paddingHorizontal: 0,
+          paddingTop: 0,
+          paddingBottom: rV(14),
+          overflow: "hidden",
+        },
+        profileEntryHero: {
+          position: "relative",
+        },
+        profileEntryCover: {
+          width: "100%",
+        },
+        profileEntryBody: {
+          paddingHorizontal: rS(16),
+          paddingTop: rV(8),
         },
         profileEntryRow: {
           flexDirection: "row",
@@ -261,11 +276,11 @@ export default function ProfileScreen() {
           fontFamily: Fonts.title,
           color: colors.primary,
         },
-        avatar: {
-          width: rS(52),
-          height: rS(52),
-          borderRadius: rMS(26),
-          marginRight: rS(12),
+        avatarWrap: {
+          position: "absolute",
+          left: rS(16),
+          bottom: -rS(24),
+          zIndex: 2,
         },
         name: {
           fontSize: rMS(16),
@@ -383,9 +398,22 @@ export default function ProfileScreen() {
         }}
       >
         <AccountListCard style={styles.profileEntryCard}>
-          <View style={styles.profileEntryRow}>
+          <View style={styles.profileEntryHero}>
+            <View style={styles.profileEntryCover}>
+              <ProfileCover gender={user?.gender} height={rV(84)} compact />
+            </View>
+            <View style={styles.avatarWrap}>
+              <UserAvatar
+                avatarUrl={user?.avatar_url}
+                gender={user?.gender}
+                size={rS(56)}
+                bordered
+              />
+            </View>
+          </View>
+          <View style={[styles.profileEntryBody, styles.profileEntryRow]}>
             <View style={styles.subHeader}>
-              <UserAvatar avatarUrl={user?.avatar_url} size={rS(52)} style={styles.avatar} />
+              <View style={{ width: rS(56), marginRight: rS(12) }} />
               <View style={styles.profileEntryCopy}>
                 <Text style={styles.name}>
                   {user ? user.full_name || "ODOS User" : "Guest"}

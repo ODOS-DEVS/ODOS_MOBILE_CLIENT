@@ -6,15 +6,15 @@ import React from "react";
 
 type VendorTabIconProps = {
   focused: boolean;
-  pendingOrders?: number;
+  badgeCount?: number;
 };
 
-export default function VendorTabIcon({ focused, pendingOrders = 0 }: VendorTabIconProps) {
+export default function VendorTabIcon({ focused, badgeCount = 0 }: VendorTabIconProps) {
   const { colors } = useTheme();
   const { iconSize } = useTabBarMetricsContext();
 
   return (
-    <TabBarIconShell focused={focused} title="Store" badgeCount={pendingOrders}>
+    <TabBarIconShell focused={focused} title="Store" badgeCount={badgeCount}>
       <Ionicons
         name={focused ? "storefront" : "storefront-outline"}
         size={iconSize}

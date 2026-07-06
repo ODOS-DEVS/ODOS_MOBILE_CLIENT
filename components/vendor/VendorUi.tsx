@@ -31,6 +31,7 @@ import { VendorEmptyState } from "./VendorEmptyState";
 
 export {
   AccountActionButton,
+  AccountActionRow,
   AccountEmptyState,
   AccountInsightCard,
   AccountListCard,

@@ -255,6 +255,9 @@ export default function DeliveryOptionsCard({
   const content = (
     <View style={variant === "inline" ? styles.inlineContent : styles.content}>
       {statusMessage ? <Text style={styles.status}>{statusMessage}</Text> : null}
+      {isLoading ? (
+        <Text style={styles.status}>Loading delivery rates...</Text>
+      ) : null}
       <Text style={styles.intro}>
         {selectable
           ? "Choose how fast you want this order delivered. Rates are confirmed from your address and cart total."

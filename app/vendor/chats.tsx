@@ -2,24 +2,45 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountEmptyState,
   AccountInsightCard,
+  AnimatedChatThreadWrap,
   ChatThreadRow,
 } from "@/components/chat/ChatUi";
 import { VendorScreenShell, vendorStyles } from "@/components/vendor/VendorUi";
 import { useChat } from "@/context/ChatContext";
+import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import { FlatList } from "react-native";
 
 export default function VendorChatsScreen() {
+  const { hasVendorAccess, isCheckingVendorAccess } = useRequireVendor();
   const { isLoadingVendorThreads, loadVendorThreads, vendorThreads } = useChat();
 
   useFocusEffect(
     useCallback(() => {
+      if (!hasVendorAccess) {
+        return undefined;
+      }
       void loadVendorThreads({
         silent: vendorThreads.length > 0,
       });
-    }, [loadVendorThreads, vendorThreads.length]),
+      return undefined;
+    }, [hasVendorAccess, loadVendorThreads, vendorThreads.length]),
   );
+
+  if (isCheckingVendorAccess) {
+    return (
+      <VendorScreenShell
+        title="Shopper Chats"
+        loading
+        loadingLabel="Loading shopper conversations..."
+      />
+    );
+  }
+
+  if (!hasVendorAccess) {
+    return null;
+  }
 
   const unreadTotal = vendorThreads.reduce((sum, thread) => sum + thread.unreadCount, 0);
 
@@ -42,22 +63,24 @@ export default function VendorChatsScreen() {
               ]}
             />
           }
-          renderItem={({ item }) => (
-            <ChatThreadRow
-              thread={item}
-              avatarMode="counterpart"
-              onPress={() =>
-                router.push({
-                  pathname: "/screens/productDetails/chat/[vendorId]" as any,
-                  params: {
-                    vendorId: item.store.id,
-                    vendorName: item.counterpart.name,
-                    threadId: item.id,
-                    viewer: "vendor",
-                  },
-                })
-              }
-            />
+          renderItem={({ item, index }) => (
+            <AnimatedChatThreadWrap index={index}>
+              <ChatThreadRow
+                thread={item}
+                avatarMode="counterpart"
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/productDetails/chat/[vendorId]" as any,
+                    params: {
+                      vendorId: item.store.id,
+                      vendorName: item.counterpart.name,
+                      threadId: item.id,
+                      viewer: "vendor",
+                    },
+                  })
+                }
+              />
+            </AnimatedChatThreadWrap>
           )}
         />
       </VendorScreenShell>

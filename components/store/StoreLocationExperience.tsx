@@ -74,7 +74,6 @@ export type StoreLocationData = {
   facebookUrl?: string | null;
   tiktokUrl?: string | null;
   twitterUrl?: string | null;
-  whatsappUrl?: string | null;
   websiteUrl?: string | null;
 };
 

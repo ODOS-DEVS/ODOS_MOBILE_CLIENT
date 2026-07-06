@@ -42,12 +42,6 @@ const FIELDS: Array<{
     placeholder: "@yourstore or x.com/yourstore",
   },
   {
-    key: "whatsappUrl",
-    label: "WhatsApp",
-    icon: "logo-whatsapp",
-    placeholder: "024 000 0000 or wa.me link",
-  },
-  {
     key: "websiteUrl",
     label: "Website",
     icon: "globe-outline",

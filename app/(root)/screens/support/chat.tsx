@@ -7,6 +7,7 @@ import {
   ChatScreenHeader,
   ChatScreenShell,
   ChatStatusBadge,
+  ChatTypingIndicator,
   getSupportStatusMeta,
   renderChatMessageItem,
 } from "@/components/chat/ChatUi";
@@ -24,7 +25,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   StatusBar,
   StyleSheet,
@@ -182,7 +182,7 @@ export default function SupportChatScreen() {
   );
 
   useEffect(() => {
-    if (!messages.length) {
+    if (!messages.length && !isSending) {
       return;
     }
     const timeoutId = setTimeout(
@@ -190,7 +190,7 @@ export default function SupportChatScreen() {
       50,
     );
     return () => clearTimeout(timeoutId);
-  }, [messages.length]);
+  }, [isSending, messages.length]);
 
   const onSend = async () => {
     if (!resolvedThreadId || !input.trim()) {
@@ -345,10 +345,13 @@ export default function SupportChatScreen() {
               currentUserId: user.id,
             })
           }
+          ListFooterComponent={
+            <ChatTypingIndicator visible={isSending} variant="outgoing" label="Sending" />
+          }
           ListEmptyComponent={
             isLoadingMessages ? (
               <View style={chatStyles.loadingWrap}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ChatTypingIndicator visible variant="incoming" />
                 <Text style={chatStyles.loadingText}>Loading messages...</Text>
               </View>
             ) : (

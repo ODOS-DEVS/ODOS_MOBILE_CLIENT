@@ -56,7 +56,13 @@ export function usePromoBanners(placement = "home") {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/catalog/promo-banners?placement=${encodeURIComponent(placement)}`,
+        `${API_BASE_URL}/catalog/promo-banners?placement=${encodeURIComponent(placement)}&_=${Date.now()}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "Cache-Control": "no-cache",
+          },
+        },
       );
       if (!response.ok) {
         throw new Error("Unable to load promo banners.");

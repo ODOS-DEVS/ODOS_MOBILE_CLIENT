@@ -27,31 +27,23 @@ import {
   getDefaultBirthDate,
   parseBirthDateInput,
 } from "@/utils/dateOfBirth";
-import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import {
   formatPhoneInput,
-  isGhanaPhoneVerified,
-  normalizeGhanaPhone,
   validateGhanaPhone,
 } from "@/utils/phone";
+import { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import React, { useEffect, useMemo, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
 const CustomerProfile = () => {
-  const insets = useSafeAreaInsets();
   const accountStyles = useAccountStyles();
   const { showToast } = useToast();
   const {
     isUpdatingProfile,
-    isSendingPhoneVerificationCode,
-    isVerifyingPhoneNumber,
     updateProfile,
-    sendPhoneVerificationCode,
-    verifyPhoneNumber,
     user,
   } = useAuth();
   const [fullName, setFullName] = useState("");
@@ -74,8 +66,9 @@ const CustomerProfile = () => {
   const [cityError, setCityError] = useState("");
   const [regionError, setRegionError] = useState("");
   const [generalError, setGeneralError] = useState("");
-  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
-  const [phoneVerifyError, setPhoneVerifyError] = useState("");
+  const phoneVerification = usePhoneVerification(phoneNumber, {
+    linkToProfile: true,
+  });
 
   useEffect(() => {
     if (!user) {
@@ -90,33 +83,12 @@ const CustomerProfile = () => {
     setCity(user.city || "");
     setRegion(user.region || "");
     setAvatarUri(user.avatar_url || null);
-    setPhoneCodeSent(false);
-    setPhoneVerifyError("");
-  }, [user]);
-
-  const normalizedDraftPhone = useMemo(
-    () => normalizeGhanaPhone(phoneNumber),
-    [phoneNumber],
-  );
-
-  const isPhoneVerified = useMemo(
-    () =>
-      isGhanaPhoneVerified(
-        phoneNumber,
-        user?.phone_number,
-        user?.phone_verified ?? false,
-      ),
-    [phoneNumber, user?.phone_number, user?.phone_verified],
-  );
-
-  const showPhoneVerification = Boolean(
-    normalizedDraftPhone && !isPhoneVerified,
-  );
+  }, [user?.id, user?.full_name, user?.email, user?.date_of_birth, user?.phone_number, user?.gender, user?.city, user?.region, user?.avatar_url]);
 
   const profileCompletion = useMemo(() => {
     const fields = [
       fullName,
-      isPhoneVerified ? phoneNumber : "",
+      phoneVerification.isVerified ? phoneNumber : "",
       gender,
       city,
       region,
@@ -129,7 +101,7 @@ const CustomerProfile = () => {
       return String(value ?? "").trim().length > 0;
     }).length;
     return Math.round((filled / fields.length) * 100);
-  }, [city, dateOfBirth, fullName, gender, isPhoneVerified, phoneNumber, region]);
+  }, [city, dateOfBirth, fullName, gender, phoneNumber, phoneVerification.isVerified, region]);
 
   const clearGeneralError = () => {
     if (generalError) {
@@ -170,7 +142,7 @@ const CustomerProfile = () => {
     if (phoneValidationMessage) {
       setPhoneNumberError(phoneValidationMessage);
       hasError = true;
-    } else if (trimmedPhoneNumber && !isPhoneVerified) {
+    } else if (trimmedPhoneNumber && !phoneVerification.isVerified) {
       setPhoneNumberError("Verify your phone number before saving.");
       hasError = true;
     }
@@ -264,7 +236,6 @@ const CustomerProfile = () => {
       <ProfileHeader title="My Profile" />
 
       <KeyboardAwareScreen
-        keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
         keyboardShouldPersistTaps="always"
@@ -272,10 +243,16 @@ const CustomerProfile = () => {
         <AccountProfileHero
           name={user?.full_name || fullName || "ODOS User"}
           email={user?.email || email || "No email on file"}
+          gender={gender || user?.gender}
           onEditPhoto={() => void handlePickAvatar()}
           isEditingPhoto={isPickingAvatar}
           renderAvatar={(size) => (
-            <UserAvatar avatarUrl={avatarUri} size={size} imageStyle={styles.avatar} />
+            <UserAvatar
+              avatarUrl={avatarUri}
+              gender={gender || user?.gender}
+              size={size}
+              bordered
+            />
           )}
         />
 
@@ -340,8 +317,7 @@ const CustomerProfile = () => {
                 const formatted = formatPhoneInput(text);
                 setPhoneNumber(formatted);
                 setPhoneNumberError("");
-                setPhoneVerifyError("");
-                setPhoneCodeSent(false);
+                phoneVerification.setVerificationError("");
                 clearGeneralError();
               }}
               error={phoneNumberError}
@@ -350,19 +326,20 @@ const CustomerProfile = () => {
               autoCorrect={false}
               maxLength={10}
             />
-            {isPhoneVerified ? (
+            {phoneVerification.isVerified ? (
               <View style={styles.phoneStatusRow}>
                 <AccountBadge label="Verified" tone="success" />
               </View>
             ) : null}
-            {showPhoneVerification && normalizedDraftPhone ? (
+            {phoneVerification.showVerificationPanel &&
+            phoneVerification.normalizedPhone ? (
               <PhoneVerificationPanel
-                phoneNumber={normalizedDraftPhone}
-                codeSent={phoneCodeSent}
-                isSendingCode={isSendingPhoneVerificationCode}
-                isVerifying={isVerifyingPhoneNumber}
-                error={phoneVerifyError}
-                onDismissError={() => setPhoneVerifyError("")}
+                phoneNumber={phoneVerification.normalizedPhone}
+                codeSent={phoneVerification.codeSent}
+                isSendingCode={phoneVerification.isSendingCode}
+                isVerifying={phoneVerification.isVerifying}
+                error={phoneVerification.verificationError}
+                onDismissError={() => phoneVerification.setVerificationError("")}
                 onSendCode={async () => {
                   const validation = validateGhanaPhone(phoneNumber);
                   if (validation) {
@@ -370,29 +347,19 @@ const CustomerProfile = () => {
                     return;
                   }
 
-                  const result = await sendPhoneVerificationCode(normalizedDraftPhone);
+                  const result = await phoneVerification.handleSendCode();
                   if (!result.success) {
-                    setPhoneVerifyError(
-                      result.fieldErrors?.general ||
-                        result.fieldErrors?.phoneNumber ||
-                        "We couldn't send a code.",
-                    );
                     return;
                   }
 
-                  setPhoneCodeSent(true);
                   showToast(result.message || "Verification code sent.");
                 }}
                 onVerify={async (code) => {
-                  const result = await verifyPhoneNumber(normalizedDraftPhone, code);
+                  const result = await phoneVerification.handleVerify(code);
                   if (!result.success) {
-                    setPhoneVerifyError(
-                      result.fieldErrors?.general || "That code could not be verified.",
-                    );
                     return;
                   }
 
-                  setPhoneVerifyError("");
                   setPhoneNumberError("");
                   if (result.user?.phone_number) {
                     setPhoneNumber(result.user.phone_number);
@@ -526,9 +493,6 @@ const CustomerProfile = () => {
 export default CustomerProfile;
 
 const styles = StyleSheet.create({
-  avatar: {
-    borderRadius: rMS(48),
-  },
   errorBanner: {
     borderRadius: rMS(14),
     borderWidth: StyleSheet.hairlineWidth,

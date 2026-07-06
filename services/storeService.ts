@@ -11,6 +11,7 @@ import type {
   VendorOrderStatus,
   VendorProduct,
   VendorProductInput,
+  VendorReturnRequest,
 } from "@/types/store";
 import type { VendorSessionContext } from "@/types/vendor";
 
@@ -70,9 +71,22 @@ type VendorOrderApi = {
   id: string;
   order_number?: string;
   customer_name?: string | null;
+  customer_phone?: string | null;
+  delivery_method?: string | null;
+  address_street?: string | null;
+  address_city?: string | null;
+  address_region?: string | null;
+  payment_label?: string | null;
   product_count?: number;
   total_amount?: number;
+  gross_amount?: number | null;
+  commission_amount?: number | null;
+  net_amount?: number | null;
+  is_settled?: boolean;
+  currency?: string;
   status?: VendorOrderStatus;
+  placed_at?: string | null;
+  paid_at?: string | null;
   created_at?: string;
   items?: Array<{
     id: string;
@@ -80,7 +94,29 @@ type VendorOrderApi = {
     title?: string;
     quantity?: number;
     unit_price?: number;
+    image_url?: string | null;
   }>;
+};
+
+type VendorReturnRequestApi = {
+  id: string;
+  order_id?: string;
+  order_number?: string;
+  order_item_id?: string;
+  product_id?: string;
+  product_title?: string;
+  product_image_url?: string | null;
+  customer_name?: string | null;
+  request_type?: string;
+  status?: string;
+  quantity?: number;
+  reason?: string;
+  details?: string | null;
+  evidence_image_urls?: string[] | null;
+  admin_note?: string | null;
+  refund_amount?: number | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 async function parseResponse<T>(response: Response) {
@@ -197,12 +233,25 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
     id: payload.id,
     orderNumber: payload.order_number ?? "OD-000000",
     customerName: payload.customer_name ?? undefined,
+    customerPhone: payload.customer_phone ?? undefined,
+    deliveryMethod: payload.delivery_method ?? undefined,
+    addressStreet: payload.address_street ?? undefined,
+    addressCity: payload.address_city ?? undefined,
+    addressRegion: payload.address_region ?? undefined,
+    paymentLabel: payload.payment_label ?? undefined,
     productCount:
       payload.product_count ??
       payload.items?.reduce((count, item) => count + (item.quantity ?? 0), 0) ??
       0,
     totalAmount: payload.total_amount ?? 0,
+    grossAmount: payload.gross_amount ?? undefined,
+    commissionAmount: payload.commission_amount ?? undefined,
+    netAmount: payload.net_amount ?? undefined,
+    isSettled: payload.is_settled ?? false,
+    currency: payload.currency ?? "GHS",
     status: payload.status ?? "pending",
+    placedAt: payload.placed_at ?? undefined,
+    paidAt: payload.paid_at ?? undefined,
     createdAt: payload.created_at ?? new Date().toISOString(),
     items:
       payload.items?.map((item) => ({
@@ -211,8 +260,15 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
         title: item.title ?? "Product",
         quantity: item.quantity ?? 0,
         unitPrice: item.unit_price ?? 0,
+        imageUrl: resolveApiMediaUrl(item.image_url) ?? item.image_url ?? undefined,
       })) ?? [],
   };
+}
+
+export function mapRealtimeVendorOrderPayload(
+  payload: Record<string, unknown>,
+): VendorOrder {
+  return mapOrder(payload as VendorOrderApi);
 }
 
 export async function fetchVendorStore(session: VendorSessionContext) {
@@ -456,4 +512,175 @@ export async function updateVendorOrderStatus(
     throw new Error("The order update response was empty.");
   }
   return mapOrder(payload);
+}
+
+export async function fetchVendorOrder(session: VendorSessionContext, orderId: string) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}`,
+    {
+      headers: buildHeaders(accessToken),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorOrderApi>(response);
+  if (!payload) {
+    throw new Error("That order could not be loaded.");
+  }
+  return mapOrder(payload);
+}
+
+export async function acknowledgeVendorOrderApi(
+  session: VendorSessionContext,
+  orderId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}/acknowledge`,
+    {
+      method: "POST",
+      headers: buildHeaders(accessToken),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorOrderApi>(response);
+  if (!payload) {
+    throw new Error("That order could not be acknowledged.");
+  }
+  return mapOrder(payload);
+}
+
+export async function deleteVendorProduct(session: VendorSessionContext, productId: string) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}`,
+    {
+      method: "DELETE",
+      headers: buildHeaders(accessToken),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+}
+
+export async function updateVendorProductStatus(
+  session: VendorSessionContext,
+  productId: string,
+  status: "active" | "hidden",
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}/status`,
+    {
+      method: "PATCH",
+      headers: buildHeaders(accessToken),
+      body: JSON.stringify({ status }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductApi>(response);
+  if (!payload) {
+    throw new Error("The product status response was empty.");
+  }
+  return mapProduct(payload);
+}
+
+export async function patchVendorProductStock(
+  session: VendorSessionContext,
+  productId: string,
+  stock: number,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}/stock`,
+    {
+      method: "PATCH",
+      headers: buildHeaders(accessToken),
+      body: JSON.stringify({ stock }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductApi>(response);
+  if (!payload) {
+    throw new Error("The stock update response was empty.");
+  }
+  return mapProduct(payload);
+}
+
+function mapReturnRequest(payload: VendorReturnRequestApi): VendorReturnRequest {
+  return {
+    id: payload.id,
+    orderId: payload.order_id ?? "",
+    orderNumber: payload.order_number ?? "OD-000000",
+    orderItemId: payload.order_item_id ?? "",
+    productId: payload.product_id ?? "",
+    productTitle: payload.product_title ?? "Product",
+    productImageUrl: resolveApiMediaUrl(payload.product_image_url) ?? payload.product_image_url,
+    customerName: payload.customer_name ?? undefined,
+    requestType: payload.request_type ?? "return",
+    status: payload.status ?? "requested",
+    quantity: payload.quantity ?? 1,
+    reason: payload.reason ?? "",
+    details: payload.details ?? undefined,
+    evidenceImageUrls: payload.evidence_image_urls ?? undefined,
+    adminNote: payload.admin_note ?? undefined,
+    refundAmount: payload.refund_amount ?? undefined,
+    createdAt: payload.created_at ?? new Date().toISOString(),
+    updatedAt: payload.updated_at ?? new Date().toISOString(),
+  };
+}
+
+export async function fetchVendorReturns(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/returns`, {
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorReturnRequestApi[]>(response);
+  return payload?.map(mapReturnRequest) ?? [];
+}
+
+export async function fetchVendorReturn(
+  session: VendorSessionContext,
+  returnRequestId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/returns/${encodeURIComponent(returnRequestId)}`,
+    {
+      headers: buildHeaders(accessToken),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorReturnRequestApi>(response);
+  if (!payload) {
+    throw new Error("That return request could not be loaded.");
+  }
+  return mapReturnRequest(payload);
 }

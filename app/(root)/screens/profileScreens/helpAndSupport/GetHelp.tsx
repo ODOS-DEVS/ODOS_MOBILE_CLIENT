@@ -29,12 +29,6 @@ const channels = [
     active: true,
   },
   {
-    id: "whatsapp",
-    icon: <FontAwesome name="whatsapp" size={22} color="#25D366" />,
-    label: "WhatsApp",
-    active: false,
-  },
-  {
     id: "facebook",
     icon: <FontAwesome name="facebook" size={22} color="#1877F2" />,
     label: "Facebook",

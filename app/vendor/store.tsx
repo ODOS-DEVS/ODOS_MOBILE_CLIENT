@@ -97,7 +97,6 @@ export default function VendorStoreScreen() {
     facebookUrl: "",
     tiktokUrl: "",
     twitterUrl: "",
-    whatsappUrl: "",
     websiteUrl: "",
     region: "",
     city: "",
@@ -176,7 +175,6 @@ export default function VendorStoreScreen() {
         facebookUrl: form.facebookUrl,
         tiktokUrl: form.tiktokUrl,
         twitterUrl: form.twitterUrl,
-        whatsappUrl: form.whatsappUrl,
         websiteUrl: form.websiteUrl,
       });
 
@@ -186,7 +184,7 @@ export default function VendorStoreScreen() {
         facebookUrl: socialLinks.facebookUrl ?? "",
         tiktokUrl: socialLinks.tiktokUrl ?? "",
         twitterUrl: socialLinks.twitterUrl ?? "",
-        whatsappUrl: socialLinks.whatsappUrl ?? "",
+        whatsappUrl: "",
         websiteUrl: socialLinks.websiteUrl ?? "",
       });
       showToast("Store profile updated.");

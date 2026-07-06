@@ -1,7 +1,7 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useChatStyles } from "@/styles/themedChatStyles";
+import { ChatTypingIndicator } from "@/components/chat/ChatAnimations";
 import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
 import { Ionicons } from "@expo/vector-icons";
@@ -84,21 +84,7 @@ type AssistantTypingIndicatorProps = {
 };
 
 export function AssistantTypingIndicator({ visible }: AssistantTypingIndicatorProps) {
-  const chatStyles = useChatStyles();
-
-  if (!visible) {
-    return null;
-  }
-
-  return (
-    <View style={[chatStyles.messageRow, chatStyles.messageRowTheirs]}>
-      <View style={[chatStyles.bubble, chatStyles.bubbleTheirs]}>
-        <Text style={[chatStyles.bubbleText, { color: AppColors.textMuted }]}>
-          Typing…
-        </Text>
-      </View>
-    </View>
-  );
+  return <ChatTypingIndicator visible={visible} variant="incoming" label="ODOS is typing" />;
 }
 
 type AssistantMessageItemProps = {

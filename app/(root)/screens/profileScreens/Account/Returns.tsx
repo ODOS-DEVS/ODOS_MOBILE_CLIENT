@@ -18,7 +18,6 @@ import Fonts from "@/constants/Fonts";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,7 +25,6 @@ import React, { useMemo, useState } from "react";
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -35,7 +33,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ReturnsView = "eligible" | "requests";
 
@@ -78,7 +75,6 @@ function formatFriendlyDate(value?: string | null) {
 }
 
 export default function ReturnsScreen() {
-  const insets = useSafeAreaInsets();
   const accountStyles = useAccountStyles();
   const { orders, isLoadingOrders, createReturnRequest, isMutatingOrder, refreshOrders } =
     useOrders();
@@ -246,7 +242,6 @@ export default function ReturnsScreen() {
       <ProfileHeader title="Returns" />
 
       <KeyboardAwareScreen
-        keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
       >
@@ -404,10 +399,7 @@ export default function ReturnsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => closeComposer()}
       >
-        <KeyboardAvoidingView
-          style={styles.modalScreen}
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        >
+        <View style={styles.modalScreen}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => closeComposer()} disabled={isSubmitting}>
               <Text style={styles.modalHeaderAction}>Cancel</Text>
@@ -561,7 +553,7 @@ export default function ReturnsScreen() {
               </>
             ) : null}
           </KeyboardAwareScrollView>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );

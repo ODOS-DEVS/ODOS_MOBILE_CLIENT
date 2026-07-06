@@ -34,6 +34,7 @@ export type AuthUser = {
   allow_notifications: boolean;
   discount_notifications: boolean;
   store_notifications: boolean;
+  vendor_order_notifications: boolean;
   system_notifications: boolean;
   location_notifications: boolean;
   location_updates: boolean;
@@ -73,6 +74,7 @@ type ProfileUpdatePayload = {
   allowNotifications?: boolean;
   discountNotifications?: boolean;
   storeNotifications?: boolean;
+  vendorOrderNotifications?: boolean;
   systemNotifications?: boolean;
   locationNotifications?: boolean;
   locationUpdates?: boolean;
@@ -121,7 +123,7 @@ type AuthContextType = {
   verifiedPhones: string[];
   fetchVerifiedPhones: () => Promise<void>;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
-  signInWithGoogle: (idToken: string) => Promise<AuthResult>;
+  signInWithGoogle: (idToken: string, pictureUrl?: string | null) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
   sendPhoneVerificationCode: (
@@ -176,6 +178,7 @@ function isSameAuthUser(currentUser: AuthUser | null, nextUser: AuthUser | null)
     currentUser.allow_notifications === nextUser.allow_notifications &&
     currentUser.discount_notifications === nextUser.discount_notifications &&
     currentUser.store_notifications === nextUser.store_notifications &&
+    currentUser.vendor_order_notifications === nextUser.vendor_order_notifications &&
     currentUser.system_notifications === nextUser.system_notifications &&
     currentUser.location_notifications === nextUser.location_notifications &&
     currentUser.location_updates === nextUser.location_updates &&
@@ -217,6 +220,9 @@ function normalizeAuthUser(payload: Record<string, unknown>) {
     allow_notifications: Boolean(payload.allow_notifications),
     discount_notifications: Boolean(payload.discount_notifications),
     store_notifications: Boolean(payload.store_notifications),
+    vendor_order_notifications: Boolean(
+      payload.vendor_order_notifications ?? payload.vendorOrderNotifications ?? true,
+    ),
     system_notifications: Boolean(payload.system_notifications),
     location_notifications: Boolean(payload.location_notifications),
     location_updates: Boolean(payload.location_updates),
@@ -480,13 +486,16 @@ async function fetchCurrentUser(token: string) {
   return normalizeAuthUser((await response.json()) as Record<string, unknown>);
 }
 
-async function googleAuthRequest(idToken: string) {
+async function googleAuthRequest(idToken: string, pictureUrl?: string | null) {
   const response = await fetch(`${API_BASE_URL}/auth/google`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ id_token: idToken }),
+    body: JSON.stringify({
+      id_token: idToken,
+      picture_url: pictureUrl ?? null,
+    }),
   });
 
   if (!response.ok) {
@@ -575,6 +584,7 @@ async function updateProfileRequest(token: string, payload: ProfileUpdatePayload
       allow_notifications: payload.allowNotifications,
       discount_notifications: payload.discountNotifications,
       store_notifications: payload.storeNotifications,
+      vendor_order_notifications: payload.vendorOrderNotifications,
       system_notifications: payload.systemNotifications,
       location_notifications: payload.locationNotifications,
       location_updates: payload.locationUpdates,
@@ -955,11 +965,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const signInWithGoogle = useCallback(async (idToken: string) => {
+  const signInWithGoogle = useCallback(async (idToken: string, pictureUrl?: string | null) => {
     setIsSigningInWithGoogle(true);
 
     try {
-      const payload = await googleAuthRequest(idToken);
+      const payload = await googleAuthRequest(idToken, pictureUrl);
 
       await SecureStore.setItemAsync(
         ACCESS_TOKEN_STORAGE_KEY,
@@ -1276,6 +1286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         allowNotifications,
         discountNotifications,
         storeNotifications,
+        vendorOrderNotifications,
         systemNotifications,
         locationNotifications,
         locationUpdates,
@@ -1306,6 +1317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           allowNotifications,
           discountNotifications,
           storeNotifications,
+          vendorOrderNotifications,
           systemNotifications,
           locationNotifications,
           locationUpdates,

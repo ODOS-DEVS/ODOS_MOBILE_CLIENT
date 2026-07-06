@@ -55,8 +55,8 @@ export function useDeliveryQuote(input: {
           return;
         }
         setOptions(quote.options);
-        setFreeShippingThreshold(quote.free_shipping_threshold);
-        setSameDayCutoffPassed(quote.same_day_cutoff_passed);
+        setFreeShippingThreshold(quote.freeShippingThreshold);
+        setSameDayCutoffPassed(quote.sameDayCutoffPassed);
         setError(null);
       })
       .catch(() => {
@@ -75,7 +75,7 @@ export function useDeliveryQuote(input: {
     return () => {
       cancelled = true;
     };
-  }, [input.region, input.subtotal]);
+  }, [input.region, input.selectedMethod, input.subtotal]);
 
   const selectedMethod = useMemo(
     () => resolveActiveDeliveryMethod(options, input.selectedMethod),

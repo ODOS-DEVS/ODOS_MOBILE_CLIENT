@@ -3,7 +3,7 @@ export const APP_LINK_SCHEME = "odosmobileexpo";
 
 /**
  * Public web base for share links (e.g. https://odos.app).
- * When set, shared links use /p/{productId} for better previews in WhatsApp etc.
+ * When set, shared links use /p/{productId} for richer link previews in chat apps.
  */
 export const SHARE_WEB_BASE_URL = (
   process.env.EXPO_PUBLIC_SHARE_WEB_BASE_URL ?? ""

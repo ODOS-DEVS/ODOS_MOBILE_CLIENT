@@ -2,6 +2,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountEmptyState,
   AccountInsightCard,
+  AnimatedChatThreadWrap,
   useAccountStyles,
   ChatThreadRow,
 } from "@/components/chat/ChatUi";
@@ -45,20 +46,22 @@ export default function ChatsScreen() {
               ]}
             />
           }
-          renderItem={({ item }) => (
-            <ChatThreadRow
-              thread={item}
-              onPress={() =>
-                router.push({
-                  pathname: "/screens/productDetails/chat/[vendorId]" as any,
-                  params: {
-                    vendorId: item.store.id,
-                    vendorName: item.counterpart.name,
-                    threadId: item.id,
-                  },
-                })
-              }
-            />
+          renderItem={({ item, index }) => (
+            <AnimatedChatThreadWrap index={index}>
+              <ChatThreadRow
+                thread={item}
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/productDetails/chat/[vendorId]" as any,
+                    params: {
+                      vendorId: item.store.id,
+                      vendorName: item.counterpart.name,
+                      threadId: item.id,
+                    },
+                  })
+                }
+              />
+            </AnimatedChatThreadWrap>
           )}
         />
       ) : isLoadingCustomerThreads ? (

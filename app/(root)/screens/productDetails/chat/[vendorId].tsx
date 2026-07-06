@@ -3,6 +3,7 @@ import {
   ChatContextCard,
   ChatLoadingCenter,
   ChatMessagesEmpty,
+  ChatTypingIndicator,
   useChatStyles,
   ChatScreenHeader,
   ChatScreenShell,
@@ -20,10 +21,17 @@ import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, StatusBar, Text, View } from "react-native";
+import { FlatList, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
+
+const VENDOR_QUICK_REPLIES = [
+  "Yes, it's in stock.",
+  "You can order now — we'll prepare it right away.",
+  "Sorry, this item is out of stock right now.",
+  "Thanks for reaching out. How can I help?",
+];
 
 export default function VendorChatScreen() {
   const chatStyles = useChatStyles();
@@ -152,7 +160,7 @@ export default function VendorChatScreen() {
   );
 
   useEffect(() => {
-    if (!messages.length) {
+    if (!messages.length && !isSending) {
       return;
     }
     const timeoutId = setTimeout(
@@ -160,7 +168,7 @@ export default function VendorChatScreen() {
       50,
     );
     return () => clearTimeout(timeoutId);
-  }, [messages.length]);
+  }, [isSending, messages.length]);
 
   const onSend = async () => {
     if (!resolvedThreadId || !input.trim()) {
@@ -268,10 +276,13 @@ export default function VendorChatScreen() {
               currentUserId: user?.id,
             })
           }
+          ListFooterComponent={
+            <ChatTypingIndicator visible={isSending} variant="outgoing" label="Sending" />
+          }
           ListEmptyComponent={
             isLoadingMessages ? (
               <View style={chatStyles.loadingWrap}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ChatTypingIndicator visible variant="incoming" />
                 <Text style={chatStyles.loadingText}>Loading messages...</Text>
               </View>
             ) : (
@@ -286,6 +297,25 @@ export default function VendorChatScreen() {
             )
           }
         />
+      ) : null}
+
+      {viewer === "vendor" ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={chatStyles.quickReplyRow}
+        >
+          {VENDOR_QUICK_REPLIES.map((reply) => (
+            <TouchableOpacity
+              key={reply}
+              activeOpacity={0.88}
+              style={chatStyles.quickReplyChip}
+              onPress={() => setInput(reply)}
+            >
+              <Text style={chatStyles.quickReplyLabel}>{reply}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       ) : null}
 
       <ChatComposer

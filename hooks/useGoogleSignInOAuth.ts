@@ -5,6 +5,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resolveGoogleProfilePicture } from "@/utils/googleProfile";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -21,6 +22,7 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
     webClientId: clientIds.webClientId,
     iosClientId: clientIds.iosClientId,
     androidClientId: clientIds.androidClientId,
+    scopes: ["openid", "profile", "email"],
   });
 
   useEffect(() => {
@@ -48,7 +50,11 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
     }
 
     void (async () => {
-      const result = await signInWithGoogle(idToken);
+      const pictureUrl = await resolveGoogleProfilePicture(
+        idToken,
+        response.authentication?.accessToken ?? null,
+      );
+      const result = await signInWithGoogle(idToken, pictureUrl);
       if (!result.success) {
         setError(
           result.fieldErrors?.general ||

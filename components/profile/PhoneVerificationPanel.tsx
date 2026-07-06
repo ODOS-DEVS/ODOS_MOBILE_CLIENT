@@ -66,7 +66,9 @@ export default function PhoneVerificationPanel({
       return;
     }
     autoVerifyLock.current = true;
-    void onVerify(code);
+    void Promise.resolve(onVerify(code)).finally(() => {
+      autoVerifyLock.current = false;
+    });
   };
 
   if (verified) {
