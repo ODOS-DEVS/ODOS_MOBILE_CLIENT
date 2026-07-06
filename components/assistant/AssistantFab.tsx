@@ -1,6 +1,7 @@
 import { useTabBarMetricsContext } from "@/components/navigation/TabBarMetricsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS } from "@/styles/responsive";
+import { deriveAssistantScreen } from "@/utils/assistantQuickPrompts";
 import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import React, { useMemo } from "react";
@@ -15,7 +16,6 @@ const HIDDEN_SNIPPETS = [
   "onboarding",
   "verification",
   "forgotpassword",
-  "/vendor",
 ];
 
 export default function AssistantFab() {
@@ -63,7 +63,12 @@ export default function AssistantFab() {
       <View style={styles.wrap}>
         <Pressable
           style={styles.button}
-          onPress={() => router.push("/screens/assistant" as any)}
+          onPress={() =>
+            router.push({
+              pathname: "/screens/assistant",
+              params: { screen: deriveAssistantScreen(pathname) },
+            } as any)
+          }
           accessibilityRole="button"
           accessibilityLabel="Open ODOS Assistant"
         >
