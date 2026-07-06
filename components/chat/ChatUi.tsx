@@ -394,6 +394,9 @@ type ChatComposerProps = {
   onSend: () => void;
   disabled?: boolean;
   isSending?: boolean;
+  onVoicePress?: () => void;
+  isListening?: boolean;
+  voiceSupported?: boolean;
 };
 
 export function ChatComposer({
@@ -404,6 +407,9 @@ export function ChatComposer({
   onSend,
   disabled = false,
   isSending = false,
+  onVoicePress,
+  isListening = false,
+  voiceSupported = false,
 }: ChatComposerProps) {
   const chatStyles = useChatStyles();
   const insets = useSafeAreaInsets();
@@ -423,6 +429,20 @@ export function ChatComposer({
     <View style={[chatStyles.composerWrap, { paddingBottom: Math.max(insets.bottom, rV(12)) }]}>
       {hint ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
       <View style={chatStyles.composerRow}>
+        {voiceSupported && onVoicePress ? (
+          <Pressable
+            onPress={onVoicePress}
+            disabled={disabled || isSending}
+            style={[
+              chatStyles.sendButton,
+              isListening ? chatStyles.sendButtonActive : chatStyles.sendButtonDisabled,
+              { marginRight: rS(8), backgroundColor: isListening ? "#EF4444" : "#64748B" },
+            ]}
+            accessibilityLabel={isListening ? "Stop voice input" : "Start voice input"}
+          >
+            <Ionicons name={isListening ? "stop" : "mic"} size={rMS(16)} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
         <View style={chatStyles.composerInputWrap}>
           <TextInput
             placeholder={placeholder}

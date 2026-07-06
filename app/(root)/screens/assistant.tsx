@@ -14,11 +14,12 @@ import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAssistant } from "@/hooks/useAssistant";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -32,18 +33,24 @@ import {
 export default function AssistantScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
+  const screenContext = typeof screenParam === "string" ? screenParam : "assistant";
   const {
     messages,
     status,
+    nudge,
     isSending,
     error,
     sendMessage,
+    submitFeedback,
     resetConversation,
-  } = useAssistant("assistant");
+  } = useAssistant(screenContext);
+  const { isListening, isSupported, startListening, stopListening } = useSpeechInput();
   const [input, setInput] = useState("");
   const listRef = useRef<FlatList<AssistantMessage>>(null);
 
-  const showQuickPrompts = messages.length === 1 && messages[0]?.id === "welcome";
+  const showQuickPrompts =
+    messages.length === 1 && (messages[0]?.id === "welcome" || Boolean(nudge));
   const connectionState = status?.enabled ? "connected" : "disconnected";
 
   const scrollToEnd = useCallback(() => {
@@ -149,8 +156,10 @@ export default function AssistantScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: AssistantMessage }) => <AssistantMessageItem message={item} />,
-    [],
+    ({ item }: { item: AssistantMessage }) => (
+      <AssistantMessageItem message={item} onFeedback={submitFeedback} />
+    ),
+    [submitFeedback],
   );
 
   const listFooter = useMemo(
@@ -160,6 +169,8 @@ export default function AssistantScreen() {
         {showQuickPrompts ? (
           <AssistantQuickPrompts
             disabled={isSending}
+            screen={screenContext}
+            nudgePrompt={nudge?.prompt}
             onSelect={(prompt) => {
               void sendMessage(prompt);
             }}
@@ -184,9 +195,11 @@ export default function AssistantScreen() {
       openSupport,
       sendMessage,
       showQuickPrompts,
+      nudge?.prompt,
       styles.footer,
       styles.footerLink,
       styles.footerLinkText,
+      screenContext,
     ],
   );
 
@@ -255,6 +268,18 @@ export default function AssistantScreen() {
         onSend={() => void handleSend()}
         disabled={isSending}
         isSending={isSending}
+        voiceSupported={isSupported}
+        isListening={isListening}
+        onVoicePress={() => {
+          if (isListening) {
+            stopListening();
+            return;
+          }
+          void startListening((transcript) => {
+            setInput(transcript);
+            stopListening();
+          });
+        }}
       />
     </ChatScreenShell>
   );
