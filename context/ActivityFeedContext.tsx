@@ -28,7 +28,8 @@ export type ActivityRoute =
   | { type: "vendor_flash_sale" }
   | { type: "profile" }
   | { type: "orders" }
-  | { type: "vendor_wallet" };
+  | { type: "vendor_wallet" }
+  | { type: "customer_wallet" };
 
 export type ActivityItem = {
   id: string;
@@ -170,6 +171,9 @@ function mapRoute(
   }
   if (routeType === "vendor_wallet") {
     return { type: "vendor_wallet" };
+  }
+  if (routeType === "customer_wallet") {
+    return { type: "customer_wallet" };
   }
   if (routeType === "vendor_order") {
     return { type: "vendor_order", orderId: routeTargetId ?? undefined };
