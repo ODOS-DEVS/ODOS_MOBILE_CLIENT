@@ -50,7 +50,9 @@ export const HomeHeader = () => {
       >
         <UserAvatar
           avatarUrl={user?.avatar_url}
-          size={rS(40)}
+          gender={user?.gender}
+          size={rS(44)}
+          bordered
           style={{ marginRight: rS(10) }}
         />
         <View>

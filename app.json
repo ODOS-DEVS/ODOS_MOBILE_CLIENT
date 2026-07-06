@@ -51,6 +51,7 @@
           "icon": "./assets/images/icon.png",
           "color": "#696969",
           "defaultChannel": "default",
+          "sounds": ["./assets/sounds/vendor-order.wav"],
           "enableBackgroundRemoteNotifications": true
         }
       ],

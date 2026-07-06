@@ -42,7 +42,6 @@ const initialForm = (phoneNumber?: string | null): VendorApplicationInput => ({
   businessCategory: "",
   businessDescription: "",
   phoneNumber: phoneNumber ?? "",
-  whatsappNumber: phoneNumber ?? "",
   region: "",
   city: "",
   marketId: "",
@@ -128,7 +127,6 @@ export default function VendorApplyScreen() {
       setForm((current) => ({
         ...current,
         phoneNumber: current.phoneNumber || user.phone_number || "",
-        whatsappNumber: current.whatsappNumber || user.phone_number || "",
       }));
     }
   }, [user?.phone_number]);
@@ -143,7 +141,6 @@ export default function VendorApplyScreen() {
       businessCategory: vendorApplication.businessCategory,
       businessDescription: vendorApplication.businessDescription,
       phoneNumber: vendorApplication.phoneNumber,
-      whatsappNumber: vendorApplication.whatsappNumber ?? "",
       region: vendorApplication.region,
       city: vendorApplication.city,
       marketId: vendorApplication.marketId ?? "",
@@ -221,7 +218,6 @@ export default function VendorApplyScreen() {
         storeLatitude: form.storeLatitude ?? undefined,
         storeLongitude: form.storeLongitude ?? undefined,
         storeDescription: form.storeDescription?.trim() || undefined,
-        whatsappNumber: form.whatsappNumber?.trim() || undefined,
       });
       showSuccessToast("Vendor application submitted.");
       router.replace("/vendor/application-status" as any);
@@ -382,14 +378,6 @@ export default function VendorApplyScreen() {
                 keyboardType="phone-pad"
               />
 
-              <TextInputField
-                label="WhatsApp Number"
-                icon="logo-whatsapp"
-                placeholder="Optional contact number for customers"
-                value={form.whatsappNumber}
-                onChangeText={(text) => handleChange("whatsappNumber", text)}
-                keyboardType="phone-pad"
-              />
             </View>
 
             <View style={styles.sectionCard}>

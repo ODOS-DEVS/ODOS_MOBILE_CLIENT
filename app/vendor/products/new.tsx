@@ -23,6 +23,7 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { useToast } from "@/context/ToastContext";
+import { fetchCampaignTags, type CampaignTagOption } from "@/hooks/useDealProducts";
 import { useCatalogCategories } from "@/hooks/useCatalog";
 import type { CatalogCategoryItem } from "@/hooks/useCatalog";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
@@ -38,7 +39,6 @@ import { pickCroppedImage } from "@/utils/imagePicker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
@@ -144,6 +144,11 @@ export default function NewVendorProductScreen() {
   const [specificationsText, setSpecificationsText] = useState("");
   const [form, setForm] = useState<VendorProductInput>(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<ProductErrors>({});
+  const [campaignOptions, setCampaignOptions] = useState<CampaignTagOption[]>([]);
+
+  useEffect(() => {
+    void fetchCampaignTags().then(setCampaignOptions);
+  }, []);
 
   const selectedCategory = useMemo(
     () =>
@@ -158,6 +163,24 @@ export default function NewVendorProductScreen() {
   );
 
   const isFlashSale = Boolean(form.placementTags?.includes(FLASH_SALE_TAG));
+  const hasSalePricing = Boolean(form.oldPrice && form.oldPrice > form.price);
+  const selectedCampaignTags = useMemo(
+    () =>
+      (form.placementTags ?? []).filter((tag) =>
+        campaignOptions.some((option) => option.tag === tag),
+      ),
+    [campaignOptions, form.placementTags],
+  );
+
+  const toggleCampaignTag = (tag: string) => {
+    const current = form.placementTags ?? [];
+    const preserved = current.filter(
+      (value) =>
+        value === FLASH_SALE_TAG ||
+        !campaignOptions.some((option) => option.tag === value),
+    );
+    handleChange("placementTags", toggleValue(preserved, tag));
+  };
   const coverUri = form.imageUris?.[0];
 
   const progressItems = useMemo(
@@ -389,26 +412,40 @@ export default function NewVendorProductScreen() {
           onValueChange={(value) =>
             handleChange(
               "placementTags",
-              value ? [FLASH_SALE_TAG] : [],
+              value
+                ? [...selectedCampaignTags, FLASH_SALE_TAG]
+                : selectedCampaignTags,
             )
           }
-          isLast
+          isLast={!hasSalePricing || campaignOptions.length === 0}
         />
       </AccountSettingsGroup>
+      {hasSalePricing && campaignOptions.length > 0 ? (
+        <ProductFormChipGroup
+          label="Join ODOS campaigns"
+          helper="Optional. Only products you discount can appear in campaign promos — you control the sale price."
+          options={campaignOptions.map((option) => option.label)}
+          selected={selectedCampaignTags.map(
+            (tag) => campaignOptions.find((option) => option.tag === tag)?.label ?? tag,
+          )}
+          onToggle={(label) => {
+            const tag = campaignOptions.find((option) => option.label === label)?.tag;
+            if (tag) {
+              toggleCampaignTag(tag);
+            }
+          }}
+        />
+      ) : null}
     </>
   );
 
   return (
     <VendorScreenShell title={isEditing ? "Edit Product" : "Add Product"}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      <KeyboardAwareScrollView
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[vendorStyles.content, { paddingBottom: rV(110) }]}
       >
-        <KeyboardAwareScrollView
-          showsVerticalScrollIndicator={false}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[vendorStyles.content, { paddingBottom: rV(110) }]}
-        >
           <View style={[vendorStyles.contentWrap, styles.formStack, { maxWidth: contentMaxWidth }]}>
             <VendorPageIntro
               title={isEditing ? "Update listing" : "New product listing"}
@@ -590,7 +627,6 @@ export default function NewVendorProductScreen() {
           onPress={() => void handleSubmit()}
           loading={isSavingProduct}
         />
-      </KeyboardAvoidingView>
     </VendorScreenShell>
   );
 }

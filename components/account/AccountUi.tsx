@@ -1,3 +1,4 @@
+import { ProfileCover } from "@/components/profile/ProfileCover";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
@@ -8,9 +9,7 @@ import React from "react";
 import {
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   Text,
   TextInput,
@@ -311,60 +310,55 @@ export function AccountFormSheet({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-      >
-        <View style={sheetStyles.backdrop}>
-          <Pressable
-            style={sheetStyles.backdropTap}
-            onPress={dismissKeyboard}
-            accessibilityLabel="Dismiss keyboard"
-            accessibilityRole="button"
-          />
-          <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
-            <View style={sheetStyles.handle} />
-            <View style={sheetStyles.header}>
-              <TouchableOpacity
-                style={sheetStyles.closeBtn}
-                onPress={() => {
-                  dismissKeyboard();
-                  onClose();
-                }}
-                activeOpacity={0.82}
-              >
-                <Ionicons name="close" size={rMS(22)} color={colors.text} />
-              </TouchableOpacity>
-              <View style={sheetStyles.headerCopy}>
-                <Text style={sheetStyles.title}>{title}</Text>
-                {subtitle ? <Text style={sheetStyles.subtitle}>{subtitle}</Text> : null}
-              </View>
-            </View>
-
-            <KeyboardAwareScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={sheetStyles.body}
-            >
-              {children}
-            </KeyboardAwareScrollView>
-
+      <View style={sheetStyles.backdrop}>
+        <Pressable
+          style={sheetStyles.backdropTap}
+          onPress={dismissKeyboard}
+          accessibilityLabel="Dismiss keyboard"
+          accessibilityRole="button"
+        />
+        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
+          <View style={sheetStyles.handle} />
+          <View style={sheetStyles.header}>
             <TouchableOpacity
-              style={[
-                sheetStyles.saveBtn,
-                (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
-              ]}
+              style={sheetStyles.closeBtn}
               onPress={() => {
                 dismissKeyboard();
-                onSave();
+                onClose();
               }}
-              disabled={isSaving || saveDisabled}
-              activeOpacity={0.9}
+              activeOpacity={0.82}
             >
-              <Text style={sheetStyles.saveBtnText}>{isSaving ? "Saving..." : saveLabel}</Text>
+              <Ionicons name="close" size={rMS(22)} color={colors.text} />
             </TouchableOpacity>
+            <View style={sheetStyles.headerCopy}>
+              <Text style={sheetStyles.title}>{title}</Text>
+              {subtitle ? <Text style={sheetStyles.subtitle}>{subtitle}</Text> : null}
+            </View>
           </View>
+
+          <KeyboardAwareScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={sheetStyles.body}
+          >
+            {children}
+          </KeyboardAwareScrollView>
+
+          <TouchableOpacity
+            style={[
+              sheetStyles.saveBtn,
+              (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
+            ]}
+            onPress={() => {
+              dismissKeyboard();
+              onSave();
+            }}
+            disabled={isSaving || saveDisabled}
+            activeOpacity={0.9}
+          >
+            <Text style={sheetStyles.saveBtnText}>{isSaving ? "Saving..." : saveLabel}</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -462,6 +456,7 @@ export function AccountSectionCard({
 type AccountProfileHeroProps = {
   name: string;
   email: string;
+  gender?: string | null;
   avatarUrl?: string | null;
   avatarSize?: number;
   onEditPhoto: () => void;
@@ -472,6 +467,7 @@ type AccountProfileHeroProps = {
 export function AccountProfileHero({
   name,
   email,
+  gender,
   onEditPhoto,
   isEditingPhoto = false,
   renderAvatar,
@@ -481,6 +477,9 @@ export function AccountProfileHero({
 
   return (
     <AccountListCard style={profileHeroStyles.card}>
+      <View style={profileHeroStyles.coverWrap}>
+        <ProfileCover gender={gender} />
+      </View>
       <View style={profileHeroStyles.avatarWrap}>
         {renderAvatar(avatarSize)}
         <TouchableOpacity

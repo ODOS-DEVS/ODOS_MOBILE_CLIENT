@@ -9,6 +9,7 @@ interface StoreCardProps {
   image: any;
   imageKey?: string;
   imageUrl?: string;
+  imageBannerUrl?: string;
   title: string;
   category?: string;
   rating?: number;
@@ -24,6 +25,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
   image,
   imageKey,
   imageUrl,
+  imageBannerUrl,
   title,
   category,
   rating,
@@ -48,6 +50,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
             image: imageUrl ?? undefined,
             imageKey,
             imageUrl,
+            imageBanner: imageBannerUrl ?? undefined,
             title,
           },
         })

@@ -169,11 +169,24 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, [addresses, checkoutAddressId, defaultAddress]);
 
   const selectedPayment = useMemo(() => {
+    const walletPayment: PaymentMethod | null = customerWallet
+      ? {
+          id: "wallet",
+          type: "wallet",
+          label: `Wallet (${customerWallet.currency} ${customerWallet.available_balance.toFixed(2)})`,
+          isDefault: false,
+        }
+      : null;
+
+    if (checkoutPaymentId === "wallet") {
+      return walletPayment;
+    }
+
     if (checkoutPaymentId) {
       return paymentMethods.find((payment) => payment.id === checkoutPaymentId) ?? defaultPayment;
     }
     return defaultPayment;
-  }, [paymentMethods, checkoutPaymentId, defaultPayment]);
+  }, [paymentMethods, checkoutPaymentId, customerWallet, defaultPayment]);
 
   const getToken = useCallback(async () => {
     return accessToken || (await getStoredAccessToken());

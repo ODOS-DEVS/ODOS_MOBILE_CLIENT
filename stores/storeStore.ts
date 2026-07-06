@@ -1,11 +1,16 @@
 import { create } from "zustand";
 
 import {
+  acknowledgeVendorOrderApi,
   createVendorProduct,
+  deleteVendorProduct,
+  fetchVendorOrder,
   fetchVendorOrders,
   fetchVendorProducts,
   fetchVendorStore,
+  patchVendorProductStock,
   updateVendorProduct,
+  updateVendorProductStatus,
   updateVendorOrderStatus,
   updateVendorStore,
 } from "@/services/storeService";
@@ -18,6 +23,7 @@ import type {
   VendorProductInput,
 } from "@/types/store";
 import type { VendorSessionContext } from "@/types/vendor";
+import { acknowledgeVendorOrder } from "@/utils/vendorOrderReminders";
 
 type StoreStoreState = {
   storeProfile: ManagedStoreProfile | null;
@@ -29,6 +35,8 @@ type StoreStoreState = {
   isSavingProduct: boolean;
   isLoadingOrders: boolean;
   isUpdatingOrder: boolean;
+  updatingOrderId: string | null;
+  updatingProductId: string | null;
   error: string | null;
   fetchStoreProfile: (session: VendorSessionContext) => Promise<void>;
   updateStoreProfile: (
@@ -45,12 +53,25 @@ type StoreStoreState = {
     productId: string,
     input: VendorProductInput,
   ) => Promise<VendorProduct>;
+  deleteProduct: (session: VendorSessionContext, productId: string) => Promise<void>;
+  setProductStatus: (
+    session: VendorSessionContext,
+    productId: string,
+    status: "active" | "hidden",
+  ) => Promise<VendorProduct>;
+  patchProductStock: (
+    session: VendorSessionContext,
+    productId: string,
+    stock: number,
+  ) => Promise<VendorProduct>;
   fetchOrders: (session: VendorSessionContext) => Promise<void>;
+  fetchOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   updateOrderStatus: (
     session: VendorSessionContext,
     orderId: string,
     status: VendorOrderStatus,
   ) => Promise<VendorOrder>;
+  acknowledgeOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   upsertRealtimeProduct: (product: VendorProduct) => void;
   upsertRealtimeOrder: (order: VendorOrder) => void;
   clearStoreState: () => void;
@@ -66,6 +87,8 @@ const initialState = {
   isSavingProduct: false,
   isLoadingOrders: false,
   isUpdatingOrder: false,
+  updatingOrderId: null,
+  updatingProductId: null,
   error: null,
 };
 
@@ -169,6 +192,75 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
     }
   },
 
+  deleteProduct: async (session, productId) => {
+    set({ updatingProductId: productId, error: null });
+    try {
+      await deleteVendorProduct(session, productId);
+      set((state) => ({
+        products: state.products.filter((product) => product.id !== productId),
+        updatingProductId: null,
+      }));
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "We couldn't remove that product right now.";
+      set({
+        updatingProductId: null,
+        error: nextMessage,
+      });
+      throw error;
+    }
+  },
+
+  setProductStatus: async (session, productId, status) => {
+    set({ updatingProductId: productId, error: null });
+    try {
+      const updatedProduct = await updateVendorProductStatus(session, productId, status);
+      set((state) => ({
+        products: state.products.map((product) =>
+          product.id === updatedProduct.id ? updatedProduct : product,
+        ),
+        updatingProductId: null,
+      }));
+      return updatedProduct;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "We couldn't update that product right now.";
+      set({
+        updatingProductId: null,
+        error: nextMessage,
+      });
+      throw error;
+    }
+  },
+
+  patchProductStock: async (session, productId, stock) => {
+    set({ updatingProductId: productId, error: null });
+    try {
+      const updatedProduct = await patchVendorProductStock(session, productId, stock);
+      set((state) => ({
+        products: state.products.map((product) =>
+          product.id === updatedProduct.id ? updatedProduct : product,
+        ),
+        updatingProductId: null,
+      }));
+      return updatedProduct;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "We couldn't update stock right now.";
+      set({
+        updatingProductId: null,
+        error: nextMessage,
+      });
+      throw error;
+    }
+  },
+
   fetchOrders: async (session) => {
     set({ isLoadingOrders: true, error: null });
     try {
@@ -185,8 +277,22 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
     }
   },
 
+  fetchOrder: async (session, orderId) => {
+    const order = await fetchVendorOrder(session, orderId);
+    set((state) => {
+      const existingIndex = state.orders.findIndex((item) => item.id === order.id);
+      if (existingIndex < 0) {
+        return { orders: [order, ...state.orders] };
+      }
+      const next = [...state.orders];
+      next[existingIndex] = order;
+      return { orders: next };
+    });
+    return order;
+  },
+
   updateOrderStatus: async (session, orderId, status) => {
-    set({ isUpdatingOrder: true, error: null });
+    set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
     try {
       const updatedOrder = await updateVendorOrderStatus(session, orderId, status);
       set((state) => ({
@@ -194,7 +300,11 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
           order.id === updatedOrder.id ? updatedOrder : order,
         ),
         isUpdatingOrder: false,
+        updatingOrderId: null,
       }));
+      if (status === "delivered" || status === "cancelled") {
+        await acknowledgeVendorOrder(orderId);
+      }
       return updatedOrder;
     } catch (error) {
       const nextMessage =
@@ -203,6 +313,34 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
           : "We couldn't update that order right now.";
       set({
         isUpdatingOrder: false,
+        updatingOrderId: null,
+        error: nextMessage,
+      });
+      throw error;
+    }
+  },
+
+  acknowledgeOrder: async (session, orderId) => {
+    set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
+    try {
+      const updatedOrder = await acknowledgeVendorOrderApi(session, orderId);
+      await acknowledgeVendorOrder(orderId);
+      set((state) => ({
+        orders: state.orders.map((order) =>
+          order.id === updatedOrder.id ? updatedOrder : order,
+        ),
+        isUpdatingOrder: false,
+        updatingOrderId: null,
+      }));
+      return updatedOrder;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "We couldn't acknowledge that order right now.";
+      set({
+        isUpdatingOrder: false,
+        updatingOrderId: null,
         error: nextMessage,
       });
       throw error;

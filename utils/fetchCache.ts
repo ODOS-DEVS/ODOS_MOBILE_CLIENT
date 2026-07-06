@@ -177,6 +177,35 @@ export function buildCatalogProductsUrl({
   return `${API_BASE_URL}/catalog/products${qs ? `?${qs}` : ""}`;
 }
 
+export function buildDealProductsUrl({
+  minDiscountPercent,
+  campaignTag,
+  limit,
+  offset,
+}: {
+  minDiscountPercent?: number;
+  campaignTag?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const query = new URLSearchParams();
+  if (typeof minDiscountPercent === "number" && minDiscountPercent > 0) {
+    query.set("min_discount_percent", String(minDiscountPercent));
+  }
+  if (campaignTag) {
+    query.set("campaign_tag", campaignTag);
+  }
+  if (typeof limit === "number") {
+    query.set("limit", String(limit));
+  }
+  if (typeof offset === "number" && offset > 0) {
+    query.set("offset", String(offset));
+  }
+
+  const qs = query.toString();
+  return `${API_BASE_URL}/catalog/deal-products${qs ? `?${qs}` : ""}`;
+}
+
 export function buildCatalogStoresUrl({
   marketSlug,
   audience,

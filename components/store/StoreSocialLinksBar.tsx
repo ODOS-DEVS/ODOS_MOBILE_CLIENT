@@ -51,12 +51,15 @@ export default function StoreSocialLinksBar({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: rV(10),
+    gap: rV(8),
+    paddingTop: rS(2),
   },
   title: {
-    color: "#111827",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13.5),
+    color: "#64748B",
+    fontFamily: Fonts.title,
+    fontSize: rMS(11),
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   row: {
     flexDirection: "row",
@@ -68,15 +71,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: rS(6),
     borderRadius: rS(999),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
+    borderColor: "#E2E8F0",
     paddingHorizontal: rS(12),
     paddingVertical: rV(8),
   },
   chipLabel: {
-    color: "#374151",
+    color: "#334155",
     fontFamily: Fonts.title,
-    fontSize: rMS(12),
+    fontSize: rMS(11.5),
   },
 });

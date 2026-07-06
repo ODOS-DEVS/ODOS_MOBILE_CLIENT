@@ -102,17 +102,86 @@ export type VendorOrderItem = {
   title: string;
   quantity: number;
   unitPrice: number;
+  imageUrl?: string | null;
 };
 
 export type VendorOrder = {
   id: string;
   orderNumber: string;
   customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryMethod?: string | null;
+  addressStreet?: string | null;
+  addressCity?: string | null;
+  addressRegion?: string | null;
+  paymentLabel?: string | null;
   productCount: number;
   totalAmount: number;
+  grossAmount?: number | null;
+  commissionAmount?: number | null;
+  netAmount?: number | null;
+  isSettled?: boolean;
+  currency?: string;
   status: VendorOrderStatus;
+  placedAt?: string | null;
+  paidAt?: string | null;
   createdAt: string;
   items: VendorOrderItem[];
+};
+
+export type VendorReturnRequest = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  orderItemId: string;
+  productId: string;
+  productTitle: string;
+  productImageUrl?: string | null;
+  customerName?: string | null;
+  requestType: string;
+  status: string;
+  quantity: number;
+  reason: string;
+  details?: string | null;
+  evidenceImageUrls?: string[] | null;
+  adminNote?: string | null;
+  refundAmount?: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VendorReturnQueueTab = "open" | "resolved";
+
+export type VendorOrderQueueTab = "new" | "active" | "done";
+
+export type VendorProductCatalogTab = "all" | "live" | "pending" | "hidden";
+
+export type VendorFlashSaleNomination = {
+  id: string;
+  eventId?: string | null;
+  eventTitle?: string | null;
+  productId: string;
+  productTitle?: string | null;
+  productImageUrl?: string | null;
+  proposedPrice?: number | null;
+  proposedOldPrice?: number | null;
+  stockLimit?: number | null;
+  maxPerUser?: number | null;
+  vendorNote?: string | null;
+  status: "pending" | "approved" | "rejected" | string;
+  reviewNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VendorFlashSaleNominationInput = {
+  productId: string;
+  eventId?: string | null;
+  proposedPrice?: number | null;
+  proposedOldPrice?: number | null;
+  stockLimit?: number | null;
+  maxPerUser?: number | null;
+  vendorNote?: string | null;
 };
 
 export type VendorVoucher = {

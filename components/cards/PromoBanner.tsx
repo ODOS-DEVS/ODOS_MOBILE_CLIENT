@@ -1,5 +1,7 @@
 import Fonts from "@/constants/Fonts";
+import { CarouselDots } from "@/components/ui/CarouselDots";
 import { useTheme } from "@/context/ThemeContext";
+import { useCarouselAutoPlay } from "@/hooks/useCarouselAutoPlay";
 import type { PromoBannerItem } from "@/hooks/usePromoBanners";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import { useResponsive, rMS, rS, rV } from "@/styles/responsive";
@@ -7,12 +9,12 @@ import { resolveApiMediaUrl } from "@/utils/media";
 import { navigateFromPromoBanner } from "@/utils/promoNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  FlatList,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,12 +22,16 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+const CARD_HEIGHT = rV(156);
+const CAROUSEL_HEIGHT = CARD_HEIGHT + rV(34);
+const AUTO_PLAY_INTERVAL_MS = 5000;
+
 type PromoBannerProps = {
   banners?: PromoBannerItem[];
   featuredPromotion?: StoreVoucherOffer | null;
   dealCount?: number;
   onPress?: () => void;
-  /** When false, banner fills its parent width (e.g. inside a padded screen). Default true for home. */
+  /** When false, carousel fits a parent that already applies horizontal padding. */
   inset?: boolean;
 };
 
@@ -50,17 +56,12 @@ function PromoBannerCard({
   featuredPromotion,
   dealCount,
   onPress,
-  width,
-  inset = true,
 }: {
   banner?: PromoBannerItem;
   featuredPromotion?: StoreVoucherOffer | null;
   dealCount?: number;
   onPress?: () => void;
-  width: number;
-  inset?: boolean;
 }) {
-  const { horizontalPadding } = useResponsive();
   const { colors, isDark } = useTheme();
 
   const headline = banner?.title ?? "Hot Deals on ODOS";
@@ -78,16 +79,19 @@ function PromoBannerCard({
     () =>
       StyleSheet.create({
         shell: {
-          width: inset ? width - horizontalPadding * 2 : "100%",
-          marginHorizontal: inset ? horizontalPadding : 0,
-          marginTop: rV(8),
+          flex: 1,
           borderRadius: rMS(22),
           overflow: "hidden",
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: isDark ? colors.border : "rgba(15, 23, 42, 0.08)",
+          shadowColor: colors.shadow,
+          shadowOpacity: isDark ? 0.18 : 0.08,
+          shadowOffset: { width: 0, height: 6 },
+          shadowRadius: 14,
+          elevation: 3,
         },
         gradient: {
-          minHeight: rV(152),
+          minHeight: CARD_HEIGHT,
           paddingHorizontal: rS(16),
           paddingVertical: rV(16),
           flexDirection: "row",
@@ -119,20 +123,6 @@ function PromoBannerCard({
           lineHeight: rMS(18),
           color: isDark ? "#CBD5E1" : "#475569",
         },
-        codePill: {
-          alignSelf: "flex-start",
-          marginTop: rV(10),
-          paddingHorizontal: rS(10),
-          paddingVertical: rV(5),
-          borderRadius: rMS(999),
-          backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)",
-        },
-        codeText: {
-          fontFamily: Fonts.textBold,
-          fontSize: rMS(11),
-          color: isDark ? "#F8FAFC" : "#111827",
-          letterSpacing: 0.6,
-        },
         cta: {
           marginTop: rV(16),
           alignSelf: "flex-start",
@@ -161,7 +151,7 @@ function PromoBannerCard({
           height: rV(112),
         },
       }),
-    [colors.border, horizontalPadding, inset, isDark, width],
+    [colors.border, colors.shadow, isDark],
   );
 
   const handlePress = () => {
@@ -182,8 +172,12 @@ function PromoBannerCard({
       >
         <View style={styles.copyBlock}>
           <Text style={styles.eyebrow}>Today's deals</Text>
-          <Text style={styles.title}>{headline}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={styles.title} numberOfLines={2}>
+            {headline}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
 
           <View style={styles.cta}>
             <Text style={styles.ctaText}>{ctaLabel}</Text>
@@ -210,80 +204,147 @@ export default function PromoBanner({
   onPress,
   inset = true,
 }: PromoBannerProps) {
-  const { width } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
+  const { horizontalPadding } = useResponsive();
+  const listRef = useRef<FlatList<PromoBannerItem>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const hasCmsBanners = banners.length > 0;
+  const activeIndexRef = useRef(0);
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-    if (nextIndex !== activeIndex) {
-      setActiveIndex(nextIndex);
-    }
-  };
+  const slideWidth = inset ? screenWidth : screenWidth - horizontalPadding * 2;
+  const cardPadding = inset ? horizontalPadding : 0;
 
-  if (hasCmsBanners && banners.length === 1) {
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      const clamped = Math.max(0, Math.min(index, banners.length - 1));
+      listRef.current?.scrollToOffset({
+        offset: clamped * slideWidth,
+        animated: true,
+      });
+      activeIndexRef.current = clamped;
+      setActiveIndex(clamped);
+    },
+    [banners.length, slideWidth],
+  );
+
+  const { pauseAutoPlay, resumeAutoPlay } = useCarouselAutoPlay({
+    count: banners.length,
+    intervalMs: AUTO_PLAY_INTERVAL_MS,
+    enabled: banners.length > 1,
+    getActiveIndex: () => activeIndexRef.current,
+    onAdvance: scrollToIndex,
+  });
+
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
+      const clamped = Math.max(0, Math.min(nextIndex, banners.length - 1));
+      activeIndexRef.current = clamped;
+      setActiveIndex(clamped);
+      resumeAutoPlay();
+    },
+    [banners.length, resumeAutoPlay, slideWidth],
+  );
+
+  const renderBannerSlide = useCallback(
+    ({ item }: { item: PromoBannerItem }) => (
+      <View
+        style={{
+          width: slideWidth,
+          height: CARD_HEIGHT,
+          paddingHorizontal: cardPadding,
+        }}
+      >
+        <PromoBannerCard banner={item} onPress={onPress} />
+      </View>
+    ),
+    [cardPadding, onPress, slideWidth],
+  );
+
+  const carouselStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          marginTop: rV(8),
+        },
+        counter: {
+          position: "absolute",
+          top: rV(18),
+          right: cardPadding + rS(14),
+          zIndex: 2,
+          paddingHorizontal: rS(8),
+          paddingVertical: rV(4),
+          borderRadius: rMS(999),
+          backgroundColor: "rgba(15, 23, 42, 0.42)",
+        },
+        counterText: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(10),
+          color: "#F8FAFC",
+          letterSpacing: 0.4,
+        },
+      }),
+    [cardPadding],
+  );
+
+  if (banners.length > 0) {
     return (
-      <PromoBannerCard
-        banner={banners[0]}
-        onPress={onPress}
-        width={width}
-        inset={inset}
-      />
-    );
-  }
-
-  if (hasCmsBanners) {
-    return (
-      <View>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-        >
-          {banners.map((banner) => (
-            <PromoBannerCard
-              key={banner.id}
-              banner={banner}
-              onPress={onPress}
-              width={width}
-              inset={inset}
-            />
-          ))}
-        </ScrollView>
+      <View style={carouselStyles.wrap}>
         {banners.length > 1 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: rS(6),
-              marginTop: rV(8),
-            }}
-          >
-            {banners.map((banner, index) => (
-              <View
-                key={banner.id}
-                style={{
-                  width: rS(index === activeIndex ? 18 : 6),
-                  height: rV(6),
-                  borderRadius: rS(999),
-                  backgroundColor: index === activeIndex ? "#696969" : "#CBD5E1",
-                }}
-              />
-            ))}
+          <View style={carouselStyles.counter} pointerEvents="none">
+            <Text style={carouselStyles.counterText}>
+              {activeIndex + 1}/{banners.length}
+            </Text>
           </View>
         ) : null}
+
+        <FlatList
+          ref={listRef}
+          data={banners}
+          horizontal
+          pagingEnabled
+          nestedScrollEnabled
+          scrollEnabled={banners.length > 1}
+          directionalLockEnabled
+          scrollEventThrottle={16}
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          bounces={banners.length > 1}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBannerSlide}
+          getItemLayout={(_, index) => ({
+            length: slideWidth,
+            offset: slideWidth * index,
+            index,
+          })}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScrollBeginDrag={pauseAutoPlay}
+          style={{ width: slideWidth, height: CAROUSEL_HEIGHT }}
+          contentContainerStyle={{
+            alignItems: "flex-start",
+          }}
+        />
+
+        <CarouselDots
+          count={banners.length}
+          activeIndex={activeIndex}
+          onSelectIndex={scrollToIndex}
+        />
       </View>
     );
   }
 
   return (
-    <PromoBannerCard
-      featuredPromotion={featuredPromotion}
-      dealCount={dealCount}
-      onPress={onPress}
-      width={width}
-      inset={inset}
-    />
+    <View
+      style={{
+        marginTop: rV(8),
+        paddingHorizontal: cardPadding,
+      }}
+    >
+      <PromoBannerCard
+        featuredPromotion={featuredPromotion}
+        dealCount={dealCount}
+        onPress={onPress}
+      />
+    </View>
   );
 }

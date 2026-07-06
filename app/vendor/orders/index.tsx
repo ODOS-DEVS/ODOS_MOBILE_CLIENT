@@ -1,82 +1,88 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { AccountBadge } from "@/components/account/AccountUi";
+import { AccountEmptyState } from "@/components/account/AccountUi";
+import VendorOrderCard from "@/components/vendor/VendorOrderCard";
+import VendorOrderQueueTabs from "@/components/vendor/VendorOrderQueueTabs";
 import {
-  AccountActionButton,
-  AccountEmptyState,
-  AccountListCard,
   VendorPageIntro,
   VendorScreenShell,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
-import Fonts from "@/constants/Fonts";
-import { AppColors } from "@/constants/Colors";
-import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import type { VendorOrderStatus } from "@/types/store";
-import React, { useEffect } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import type { VendorOrderQueueTab } from "@/types/store";
+import {
+  countVendorOrdersByQueue,
+  filterVendorOrdersByQueue,
+} from "@/utils/vendorOrderFulfillment";
+import { rV, useResponsive } from "@/styles/responsive";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, RefreshControl, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const NEXT_STATUS: Partial<Record<VendorOrderStatus, VendorOrderStatus>> = {
-  pending: "confirmed",
-  confirmed: "processing",
-  processing: "ready",
-  ready: "out_for_delivery",
-  out_for_delivery: "delivered",
-};
+const getParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
-function orderStatusTone(status: VendorOrderStatus): "neutral" | "warning" | "success" | "info" {
-  if (status === "delivered") return "success";
-  if (status === "pending") return "warning";
-  if (status === "ready" || status === "out_for_delivery") return "info";
-  return "neutral";
-}
+const QUEUE_TABS = new Set(["new", "active", "done"]);
 
 export default function VendorOrdersScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
-  const { showToast } = useToast();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const tabParam = getParam(params.tab);
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
+  const [activeTab, setActiveTab] = useState<VendorOrderQueueTab>("new");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const {
     error,
     fetchOrders,
     isLoadingOrders,
     isUpdatingOrder,
+    updatingOrderId,
     orders,
-    updateOrderStatus,
   } = useStoreStore();
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasVendorAccess) {
+        return undefined;
+      }
+      void fetchOrders(session);
+      return undefined;
+    }, [fetchOrders, hasVendorAccess, session]),
+  );
+
   useEffect(() => {
-    if (!hasVendorAccess) {
-      return;
+    if (tabParam && QUEUE_TABS.has(tabParam)) {
+      setActiveTab(tabParam as VendorOrderQueueTab);
     }
+  }, [tabParam]);
 
-    void fetchOrders(session);
-  }, [fetchOrders, hasVendorAccess, session]);
+  const counts = useMemo(() => countVendorOrdersByQueue(orders), [orders]);
+  const filteredOrders = useMemo(
+    () => filterVendorOrdersByQueue(orders, activeTab),
+    [activeTab, orders],
+  );
 
-  const handleAdvance = async (orderId: string, status: VendorOrderStatus) => {
-    const nextStatus = NEXT_STATUS[status];
-    if (!nextStatus) {
-      return;
-    }
-
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
-      await updateOrderStatus(session, orderId, nextStatus);
-      showToast(`Order moved to ${nextStatus.replace(/_/g, " ")}.`);
-    } catch (orderError) {
-      showToast(
-        orderError instanceof Error
-          ? orderError.message
-          : "We couldn't update that order right now.",
-      );
+      await fetchOrders(session);
+    } finally {
+      setIsRefreshing(false);
     }
+  }, [fetchOrders, session]);
+
+  const openOrder = (orderId: string) => {
+    router.push({
+      pathname: "/vendor/orders/[orderId]" as any,
+      params: { orderId },
+    });
   };
 
   if (isCheckingVendorAccess) {
     return (
-      <VendorScreenShell title="Vendor Orders" loading loadingLabel="Loading vendor orders..." />
+      <VendorScreenShell title="Orders" loading loadingLabel="Loading orders..." />
     );
   }
 
@@ -84,38 +90,40 @@ export default function VendorOrdersScreen() {
     return null;
   }
 
-  const showLoader = isLoadingOrders && orders.length === 0;
-
-  if (showLoader) {
-    return (
-      <VendorScreenShell title="Vendor Orders" loading loadingLabel="Loading vendor orders..." />
-    );
+  if (isLoadingOrders && orders.length === 0) {
+    return <VendorScreenShell title="Orders" loading loadingLabel="Loading orders..." />;
   }
 
   return (
-    <VendorScreenShell title="Vendor Orders">
+    <VendorScreenShell title="Orders">
       <FlatList
-        data={orders}
+        data={filteredOrders}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
+        }
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           vendorStyles.listContent,
           { paddingBottom: insets.bottom + rV(28) },
         ]}
         ListHeaderComponent={
-          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth, gap: rV(14) }]}>
             <VendorPageIntro
-              title="Fulfillment queue"
-              subtitle="Vendor-facing orders only. Update status as each order moves from confirmation to delivery."
+              title="Order command center"
+              subtitle="New orders first, with wait times and full customer details one tap away."
               stats={[
-                { value: orders.length, label: "Orders" },
-                {
-                  value: orders.filter((o) => o.status !== "delivered").length,
-                  label: "Active",
-                },
+                { value: counts.new, label: "New" },
+                { value: counts.active, label: "Active" },
+                { value: counts.done, label: "Done" },
               ]}
               error={error}
+            />
+            <VendorOrderQueueTabs
+              activeTab={activeTab}
+              counts={counts}
+              onChange={setActiveTab}
             />
           </View>
         }
@@ -123,90 +131,34 @@ export default function VendorOrdersScreen() {
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <AccountEmptyState
               icon="receipt-outline"
-              title="No vendor orders yet"
-              message="Orders placed for your approved store will appear here with customer and fulfillment details."
+              title={
+                activeTab === "new"
+                  ? "No new orders"
+                  : activeTab === "active"
+                    ? "Nothing in progress"
+                    : "No completed orders yet"
+              }
+              message={
+                activeTab === "new"
+                  ? "New shopper orders will appear here with wait timers and alert badges."
+                  : activeTab === "active"
+                    ? "Orders you confirm will move here while you prepare and deliver them."
+                    : "Delivered and cancelled orders will show up in this history view."
+              }
             />
           </View>
         }
-        renderItem={({ item }) => {
-          const nextStatus = NEXT_STATUS[item.status];
-
-          return (
-            <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
-              <AccountListCard style={styles.orderCard}>
-                <View style={styles.headerRow}>
-                  <View style={styles.headerCopy}>
-                    <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-                    <Text style={styles.customerName}>
-                      {item.customerName || "ODOS Customer"}
-                    </Text>
-                  </View>
-                  <AccountBadge
-                    label={item.status.replace(/_/g, " ")}
-                    tone={orderStatusTone(item.status)}
-                  />
-                </View>
-
-                <View style={styles.metaGrid}>
-                  <Text style={styles.metaText}>Items: {item.productCount}</Text>
-                  <Text style={styles.metaText}>Total: GHS {item.totalAmount.toFixed(2)}</Text>
-                  <Text style={styles.metaText}>
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-
-                {nextStatus ? (
-                  <AccountActionButton
-                    label={
-                      isUpdatingOrder
-                        ? "Updating..."
-                        : `Mark as ${nextStatus.replace(/_/g, " ")}`
-                    }
-                    variant="primary"
-                    onPress={() => handleAdvance(item.id, item.status)}
-                    disabled={isUpdatingOrder}
-                  />
-                ) : null}
-              </AccountListCard>
-            </View>
-          );
-        }}
+        renderItem={({ item }) => (
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+            <VendorOrderCard order={item} onPress={() => openOrder(item.id)} />
+            {isUpdatingOrder && updatingOrderId === item.id ? (
+              <View style={{ marginTop: rV(8), alignItems: "center" }}>
+                <ScreenLoader label="Updating order" />
+              </View>
+            ) : null}
+          </View>
+        )}
       />
     </VendorScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  orderCard: {
-    marginBottom: rV(10),
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(12),
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  orderNumber: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  customerName: {
-    marginTop: rV(4),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    color: "#6B7280",
-  },
-  metaGrid: {
-    marginTop: rV(12),
-    gap: rV(5),
-  },
-  metaText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    color: "#6B7280",
-  },
-});

@@ -241,6 +241,24 @@ export function createChatStyles(c: ThemeColors) {
     fontSize: rMS(10),
     textAlign: "right",
   },
+  quickReplyRow: {
+    gap: rS(8),
+    paddingHorizontal: rS(16),
+    paddingBottom: rV(8),
+  },
+  quickReplyChip: {
+    borderRadius: rMS(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
+    backgroundColor: c.surfaceMuted,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(8),
+  },
+  quickReplyLabel: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    color: c.textSecondary,
+  },
   composerWrap: {
     backgroundColor: c.card,
     borderTopWidth: StyleSheet.hairlineWidth,

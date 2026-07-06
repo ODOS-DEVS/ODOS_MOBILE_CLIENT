@@ -1,14 +1,14 @@
-import AddToCartBtn from "@/components/buttons/AddToCartBtn";
-import AddToWishList from "@/components/buttons/AddToWishList";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import ProductImageGalleryModal from "@/components/media/ProductImageGalleryModal";
+import ProductDetailBottomBar from "@/components/product/ProductDetailBottomBar";
 import ProductDetailRecommendations from "@/components/product/ProductDetailRecommendations";
 import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import { useStore } from "@/hooks/useCommerce";
 import { useCatalogProduct } from "@/hooks/useCatalog";
+import { useDeliveryQuote } from "@/hooks/useDeliveryQuote";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useForYouRecommendations, useSimilarProducts } from "@/hooks/useRecommendations";
 import { useProfile } from "@/context/ProfileContext";
@@ -272,6 +272,15 @@ export default function ProductDetail() {
   const category = product.category;
   const subcategory = product.subcategory;
   const price = product.price ?? 0;
+  const {
+    options: deliveryOptions,
+    isLoading: isLoadingDelivery,
+    error: deliveryQuoteError,
+  } = useDeliveryQuote({
+    subtotal: price,
+    region: selectedAddress?.region,
+    selectedMethod: "economy",
+  });
   const oldPrice = product.oldPrice ?? 0;
   const baseRating = product.rating ?? 0;
   const baseReviews = product.reviews;
@@ -501,7 +510,7 @@ export default function ProductDetail() {
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={{
-              paddingBottom: insets.bottom + rV(138),
+              paddingBottom: insets.bottom + rV(72),
             }}
             showsVerticalScrollIndicator={false}
           >
@@ -838,6 +847,9 @@ export default function ProductDetail() {
                   <DeliveryOptionsCard
                     subtotal={price}
                     region={selectedAddress?.region}
+                    options={deliveryOptions}
+                    isLoading={isLoadingDelivery}
+                    statusMessage={deliveryQuoteError}
                     defaultExpanded={false}
                   />
                 ) : null}
@@ -871,65 +883,34 @@ export default function ProductDetail() {
             </View>
           </ScrollView>
 
-          <View
-            style={[
-              styles.bottomBar,
-              {
-                paddingBottom: Math.max(insets.bottom, rV(12)),
-                paddingHorizontal: horizontalPadding,
-              },
-            ]}
-          >
-            <View style={styles.bottomPriceWrap}>
-              <Text style={styles.bottomPriceLabel}>Total</Text>
-              <Text style={styles.bottomPriceValue}>{formatPrice(price)}</Text>
-              {activeColor?.label || activeSize ? (
-                <Text style={styles.bottomVariantText}>
-                  {[activeColor?.label, activeSize].filter(Boolean).join(" · ")}
-                </Text>
-              ) : null}
-            </View>
-
-            <View style={styles.bottomActionsRow}>
-              <AddToWishList
-                product={{
-                  id,
-                  image: product.image,
-                  title,
-                  category,
-                  price,
-                  oldPrice,
-                  rating,
-                  reviews,
-                }}
-                size={18}
-                iconColor={colors.text}
-                activeIconColor="#DC2626"
-                containerStyle={styles.bottomIconButton}
-              />
-              <AddToCartBtn
-                variant="stepper"
-                item={{
-                  id,
-                  title,
-                  category,
-                  price,
-                  image: product.image,
-                  imageKey: product.imageKey,
-                }}
-                iconSize={20}
-                iconColor={AppColors.white}
-                containerStyle={styles.bottomCartButton}
-              />
-              <TouchableOpacity
-                style={styles.buyNowBtn}
-                activeOpacity={0.85}
-                onPress={handleBuyNow}
-              >
-                <Text style={styles.buyNowText}>Buy Now</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <ProductDetailBottomBar
+            priceLabel={formatPrice(price)}
+            variantLabel={
+              activeColor?.label || activeSize
+                ? [activeColor?.label, activeSize].filter(Boolean).join(" · ")
+                : undefined
+            }
+            horizontalPadding={horizontalPadding}
+            wishlistProduct={{
+              id,
+              image: product.image,
+              title,
+              category,
+              price,
+              oldPrice,
+              rating,
+              reviews,
+            }}
+            cartItem={{
+              id,
+              title,
+              category,
+              price,
+              image: product.image,
+              imageKey: product.imageKey,
+            }}
+            onBuyNow={handleBuyNow}
+          />
 
           <ProductImageGalleryModal
             visible={isGalleryOpen}

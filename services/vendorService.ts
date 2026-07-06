@@ -3,6 +3,7 @@ import { appendImageToFormData } from "@/utils/media";
 import type {
   VendorApplication,
   VendorApplicationInput,
+  VendorAnalytics,
   VendorDashboardStats,
   VendorPayoutInstitution,
   VendorPayoutDetailsInput,
@@ -75,6 +76,22 @@ type VendorDashboardApi = {
   pending_withdrawal_balance?: number;
   lifetime_earnings?: number;
   total_commission?: number;
+};
+
+type VendorAnalyticsApi = {
+  currency?: string;
+  today_sales?: number;
+  week_sales?: number;
+  today_orders?: number;
+  week_orders?: number;
+  open_returns?: number;
+  top_products?: Array<{
+    product_id?: string;
+    product_title?: string;
+    product_image_url?: string | null;
+    units_sold?: number;
+    gross_sales?: number;
+  }>;
 };
 
 type VendorWalletTransactionApi = {
@@ -242,6 +259,25 @@ function mapDashboard(payload: VendorDashboardApi): VendorDashboardStats {
     pendingWithdrawalBalance: payload.pending_withdrawal_balance ?? 0,
     lifetimeEarnings: payload.lifetime_earnings ?? 0,
     totalCommission: payload.total_commission ?? 0,
+  };
+}
+
+function mapAnalytics(payload: VendorAnalyticsApi): VendorAnalytics {
+  return {
+    currency: payload.currency ?? "GHS",
+    todaySales: payload.today_sales ?? 0,
+    weekSales: payload.week_sales ?? 0,
+    todayOrders: payload.today_orders ?? 0,
+    weekOrders: payload.week_orders ?? 0,
+    openReturns: payload.open_returns ?? 0,
+    topProducts:
+      payload.top_products?.map((item) => ({
+        productId: item.product_id ?? "",
+        productTitle: item.product_title ?? "Product",
+        productImageUrl: item.product_image_url ?? undefined,
+        unitsSold: item.units_sold ?? 0,
+        grossSales: item.gross_sales ?? 0,
+      })) ?? [],
   };
 }
 
@@ -460,6 +496,23 @@ export async function fetchVendorDashboard(session: VendorSessionContext) {
 
   const payload = await parseResponse<VendorDashboardApi>(response);
   return payload ? mapDashboard(payload) : null;
+}
+
+export async function fetchVendorAnalytics(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/analytics`, {
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorAnalyticsApi>(response);
+  if (!payload) {
+    throw new Error("The vendor analytics response was empty.");
+  }
+  return mapAnalytics(payload);
 }
 
 export async function fetchVendorWallet(session: VendorSessionContext) {

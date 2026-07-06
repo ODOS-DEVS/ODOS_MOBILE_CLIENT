@@ -1,0 +1,237 @@
+import { AccountBadge } from "@/components/account/AccountUi";
+import {
+  AccountActionButton,
+  AccountActionRow,
+  AccountListCard,
+} from "@/components/account/AccountUi";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
+import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
+import type { VendorProduct } from "@/types/store";
+import {
+  canDeleteVendorProduct,
+  canHideVendorProduct,
+  canUnhideVendorProduct,
+  isLowStockProduct,
+} from "@/utils/vendorProductCatalog";
+import { rMS, rS, rV } from "@/styles/responsive";
+import React from "react";
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+type VendorProductCardProps = {
+  product: VendorProduct;
+  isUpdating?: boolean;
+  onEdit: () => void;
+  onHide: () => void;
+  onUnhide: () => void;
+  onDelete: () => void;
+  onAdjustStock: (nextStock: number) => void;
+};
+
+function productStatusTone(status: string): "success" | "warning" | "neutral" {
+  if (status === "active") return "success";
+  if (status === "pending") return "warning";
+  return "neutral";
+}
+
+export default function VendorProductCard({
+  product,
+  isUpdating = false,
+  onEdit,
+  onHide,
+  onUnhide,
+  onDelete,
+  onAdjustStock,
+}: VendorProductCardProps) {
+  const { colors, isDark } = useTheme();
+  const lowStock = isLowStockProduct(product);
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "Remove this product?",
+      "This permanently deletes the listing from your catalog.",
+      [
+        { text: "Keep product", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: onDelete },
+      ],
+    );
+  };
+
+  return (
+    <AccountListCard style={styles.card}>
+      <View style={styles.cardRow}>
+        <Image source={product.image} style={styles.image} resizeMode="cover" />
+        <View style={styles.cardBody}>
+          <View style={styles.cardHeader}>
+            <Text numberOfLines={1} style={[styles.productTitle, { color: colors.text }]}>
+              {product.name}
+            </Text>
+            <AccountBadge
+              label={
+                product.status === "pending"
+                  ? "pending approval"
+                  : product.status.replace(/_/g, " ")
+              }
+              tone={productStatusTone(product.status)}
+            />
+          </View>
+          <Text numberOfLines={2} style={[styles.description, { color: colors.textMuted }]}>
+            {product.description}
+          </Text>
+          <View style={styles.metaRow}>
+            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+              {product.category}
+            </Text>
+            <Text style={[styles.price, { color: colors.text }]}>
+              GHS {product.price.toFixed(2)}
+            </Text>
+          </View>
+          {lowStock ? <AccountBadge label="Low stock" tone="warning" /> : null}
+        </View>
+      </View>
+
+      <View style={styles.stockRow}>
+        <Text style={[styles.stockLabel, { color: colors.textMuted }]}>Stock</Text>
+        <View style={styles.stockControls}>
+          <TouchableOpacity
+            style={[styles.stockButton, { borderColor: colors.cardBorder }]}
+            disabled={isUpdating || product.stock <= 0}
+            onPress={() => onAdjustStock(Math.max(0, product.stock - 1))}
+          >
+            <Text style={[styles.stockButtonLabel, { color: colors.text }]}>−</Text>
+          </TouchableOpacity>
+          <Text style={[styles.stockValue, { color: colors.text }]}>{product.stock}</Text>
+          <TouchableOpacity
+            style={[styles.stockButton, { borderColor: colors.cardBorder }]}
+            disabled={isUpdating}
+            onPress={() => onAdjustStock(product.stock + 1)}
+          >
+            <Text style={[styles.stockButtonLabel, { color: colors.text }]}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {isUpdating ? <ScreenLoader label="Updating product" /> : null}
+
+      <AccountActionRow>
+        <AccountActionButton label="Edit" variant="secondary" onPress={onEdit} disabled={isUpdating} />
+        {canHideVendorProduct(product) ? (
+          <AccountActionButton
+            label="Hide"
+            variant="secondary"
+            onPress={onHide}
+            disabled={isUpdating}
+          />
+        ) : null}
+        {canUnhideVendorProduct(product) ? (
+          <AccountActionButton
+            label="Relist"
+            variant="secondary"
+            onPress={onUnhide}
+            disabled={isUpdating}
+          />
+        ) : null}
+      </AccountActionRow>
+
+      {canDeleteVendorProduct(product) ? (
+        <AccountActionButton
+          label="Delete product"
+          variant="secondary"
+          onPress={confirmDelete}
+          disabled={isUpdating}
+        />
+      ) : null}
+    </AccountListCard>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    marginBottom: rV(10),
+    gap: rV(12),
+  },
+  cardRow: {
+    flexDirection: "row",
+    gap: rS(12),
+  },
+  image: {
+    width: rS(88),
+    height: rS(88),
+    borderRadius: rMS(16),
+    backgroundColor: "#F3F4F6",
+  },
+  cardBody: {
+    flex: 1,
+    gap: rV(6),
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
+  productTitle: {
+    flex: 1,
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  description: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    lineHeight: rMS(17),
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
+  metaText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
+  },
+  price: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  stockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  stockLabel: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12.5),
+  },
+  stockControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  stockButton: {
+    width: rMS(34),
+    height: rMS(34),
+    borderRadius: rMS(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stockButtonLabel: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(18),
+    lineHeight: rMS(20),
+  },
+  stockValue: {
+    minWidth: rS(28),
+    textAlign: "center",
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(15),
+  },
+});

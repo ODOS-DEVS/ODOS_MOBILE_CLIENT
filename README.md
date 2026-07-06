@@ -85,7 +85,7 @@ When testing on a physical phone, use your Mac’s LAN IP (not `127.0.0.1`) and 
 | `EXPO_PUBLIC_SHARE_WEB_BASE_URL` | Optional | Product share links |
 | `EXPO_PUBLIC_APP_DOWNLOAD_URL` | Optional | App download CTA in shares |
 
-The assistant is powered by the backend (`/api/assistant/chat`). Add `OPENAI_API_KEY` on the API for full AI responses; without it, guided fallback answers still work.
+The assistant is powered by the backend (`/api/assistant/chat`). Set `GEMINI_API_KEY` on the API (free via [Google AI Studio](https://aistudio.google.com/apikey)) for full AI responses; without it, guided fallback answers still work.
 
 Maps are injected into the native build via `app.config.js`. Changing map keys requires a **new native build**, not just a Metro refresh.
 

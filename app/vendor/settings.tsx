@@ -75,6 +75,11 @@ export default function VendorSettingsScreen() {
       onPress: () => router.push("/vendor/vouchers" as any),
     },
     {
+      label: "Flash sales",
+      subtitle: "Nominate products for featured ODOS events.",
+      onPress: () => router.push("/vendor/flash-sales" as any),
+    },
+    {
       label: "Shopper Chats",
       subtitle: "Reply to product questions and buying conversations.",
       onPress: () => router.push("/vendor/chats" as any),

@@ -18,6 +18,14 @@ import {
 
 export type ActivityRoute =
   | { type: "order"; orderId: string }
+  | { type: "vendor_order"; orderId?: string }
+  | {
+      type: "vendor_chat";
+      threadId: string;
+      storeId: string;
+      storeName?: string;
+    }
+  | { type: "vendor_flash_sale" }
   | { type: "profile" }
   | { type: "orders" }
   | { type: "vendor_wallet" };
@@ -37,7 +45,8 @@ export type ActivityItem = {
     | "mail-outline"
     | "wallet-outline"
     | "cash-outline"
-    | "refresh-circle-outline";
+    | "refresh-circle-outline"
+    | "receipt-outline";
   accent: "neutral" | "success" | "warning";
   isRead?: boolean;
   productImage?: any;
@@ -161,6 +170,9 @@ function mapRoute(
   }
   if (routeType === "vendor_wallet") {
     return { type: "vendor_wallet" };
+  }
+  if (routeType === "vendor_order") {
+    return { type: "vendor_order", orderId: routeTargetId ?? undefined };
   }
   return undefined;
 }

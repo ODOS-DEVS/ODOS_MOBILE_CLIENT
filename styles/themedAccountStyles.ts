@@ -505,10 +505,18 @@ function buildProfileHeroStyles(c: ThemeColors) {
   return StyleSheet.create({
     card: {
       alignItems: "center",
-      paddingVertical: rV(22),
+      paddingHorizontal: 0,
+      paddingTop: 0,
+      paddingBottom: rV(22),
+      overflow: "hidden",
+    },
+    coverWrap: {
+      width: "100%",
     },
     avatarWrap: {
       position: "relative",
+      marginTop: -rS(48),
+      zIndex: 2,
     },
     editBtn: {
       position: "absolute",
@@ -525,6 +533,7 @@ function buildProfileHeroStyles(c: ThemeColors) {
     },
     name: {
       marginTop: rV(14),
+      paddingHorizontal: rS(16),
       fontFamily: Fonts.titleBold,
       fontSize: rMS(18),
       color: c.text,
@@ -532,6 +541,7 @@ function buildProfileHeroStyles(c: ThemeColors) {
     },
     email: {
       marginTop: rV(4),
+      paddingHorizontal: rS(16),
       fontFamily: Fonts.text,
       fontSize: rMS(13),
       color: c.textMuted,

@@ -23,6 +23,7 @@ export default function NotificationSettingsScreen() {
   const [allowNotifications, setAllowNotifications] = useState(false);
   const [discounts, setDiscounts] = useState(true);
   const [store, setStore] = useState(false);
+  const [vendorOrders, setVendorOrders] = useState(true);
   const [system, setSystem] = useState(false);
   const [location, setLocation] = useState(false);
   const [locationUpdates, setLocationUpdates] = useState(false);
@@ -35,6 +36,7 @@ export default function NotificationSettingsScreen() {
     setAllowNotifications(user.allow_notifications);
     setDiscounts(user.discount_notifications);
     setStore(user.store_notifications);
+    setVendorOrders(user.vendor_order_notifications);
     setSystem(user.system_notifications);
     setLocation(user.location_notifications);
     setLocationUpdates(user.location_updates);
@@ -45,6 +47,7 @@ export default function NotificationSettingsScreen() {
       allowNotifications,
       discountNotifications: discounts,
       storeNotifications: store,
+      vendorOrderNotifications: vendorOrders,
       systemNotifications: system,
       locationNotifications: location,
       locationUpdates,
@@ -59,6 +62,8 @@ export default function NotificationSettingsScreen() {
 
     showToast("Notification settings updated.");
   };
+
+  const isVendor = Boolean(user?.roles?.includes("vendor"));
 
   return (
     <View style={accountStyles.screen}>
@@ -83,6 +88,7 @@ export default function NotificationSettingsScreen() {
               if (!value) {
                 setDiscounts(false);
                 setStore(false);
+                setVendorOrders(false);
                 setSystem(false);
                 setLocation(false);
                 setLocationUpdates(false);
@@ -92,6 +98,14 @@ export default function NotificationSettingsScreen() {
           />
           {allowNotifications ? (
             <>
+              {isVendor ? (
+                <AccountSettingToggle
+                  title="New order alerts"
+                  description="Custom sound, vibration, push, and repeat reminders until you fulfil the order."
+                  value={vendorOrders}
+                  onValueChange={setVendorOrders}
+                />
+              ) : null}
               <AccountSettingToggle
                 title="Deals & vouchers"
                 description="Sales and limited-time offers."

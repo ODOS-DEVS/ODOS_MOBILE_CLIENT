@@ -1,36 +1,89 @@
+import { getProfileCoverPalette } from "@/utils/profileCover";
+import { resolveApiMediaUrl } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Image, ImageStyle, StyleProp, View, ViewStyle } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Image,
+  ImageStyle,
+  StyleProp,
+  View,
+  ViewStyle,
+} from "react-native";
 
 type UserAvatarProps = {
   avatarUrl?: string | null;
+  gender?: string | null;
   size: number;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
+  bordered?: boolean;
 };
+
+function DefaultUserIcon({
+  gender,
+  size,
+  bordered,
+}: {
+  gender?: string | null;
+  size: number;
+  bordered?: boolean;
+}) {
+  const palette = useMemo(() => getProfileCoverPalette(gender), [gender]);
+  const borderWidth = bordered ? Math.max(3, Math.round(size * 0.04)) : 1;
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: palette.avatarBackground,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth,
+        borderColor: bordered ? palette.avatarBorder : "#D8DEE6",
+        shadowColor: "#0F172A",
+        shadowOpacity: bordered ? 0.12 : 0.06,
+        shadowRadius: bordered ? 6 : 3,
+        shadowOffset: { width: 0, height: bordered ? 3 : 1 },
+        elevation: bordered ? 3 : 1,
+      }}
+    >
+      <Ionicons
+        name="person"
+        size={Math.round(size * 0.44)}
+        color={palette.avatarIcon}
+      />
+    </View>
+  );
+}
 
 export default function UserAvatar({
   avatarUrl,
+  gender,
   size,
   style,
   imageStyle,
+  bordered = false,
 }: UserAvatarProps) {
-  const hasAvatar = Boolean(avatarUrl?.trim());
+  const palette = useMemo(() => getProfileCoverPalette(gender), [gender]);
+  const resolvedAvatarUrl = useMemo(
+    () => resolveApiMediaUrl(avatarUrl) ?? avatarUrl?.trim() ?? "",
+    [avatarUrl],
+  );
+  const [imageFailed, setImageFailed] = useState(false);
+  const borderWidth = bordered ? Math.max(3, Math.round(size * 0.04)) : 0;
+  const showRemoteAvatar = Boolean(resolvedAvatarUrl) && !imageFailed;
 
-  if (hasAvatar) {
+  useEffect(() => {
+    setImageFailed(false);
+  }, [resolvedAvatarUrl]);
+
+  if (!showRemoteAvatar) {
     return (
-      <Image
-        source={{ uri: avatarUrl!.trim() }}
-        style={[
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-          },
-          imageStyle,
-          style as StyleProp<ImageStyle>,
-        ]}
-      />
+      <View style={style}>
+        <DefaultUserIcon gender={gender} size={size} bordered={bordered} />
+      </View>
     );
   }
 
@@ -41,19 +94,29 @@ export default function UserAvatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: "#EEF2F4",
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: 1,
-          borderColor: "#E1E7EC",
+          overflow: "hidden",
+          borderWidth,
+          borderColor: palette.avatarBorder,
+          shadowColor: "#0F172A",
+          shadowOpacity: bordered ? 0.12 : 0.06,
+          shadowRadius: bordered ? 6 : 3,
+          shadowOffset: { width: 0, height: bordered ? 3 : 1 },
+          elevation: bordered ? 3 : 1,
         },
         style,
       ]}
     >
-      <Ionicons
-        name="person"
-        size={size * 0.46}
-        color="#66797F"
+      <Image
+        source={{ uri: resolvedAvatarUrl }}
+        onError={() => setImageFailed(true)}
+        style={[
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          },
+          imageStyle,
+        ]}
       />
     </View>
   );

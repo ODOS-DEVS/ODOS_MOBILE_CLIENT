@@ -20,6 +20,36 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "vendor_order") {
+    if (route.orderId) {
+      router.push({
+        pathname: "/vendor/orders/[orderId]" as any,
+        params: { orderId: route.orderId },
+      });
+      return;
+    }
+    router.push("/vendor/orders" as any);
+    return;
+  }
+
+  if (route.type === "vendor_chat") {
+    router.push({
+      pathname: "/(root)/screens/productDetails/chat/[vendorId]" as any,
+      params: {
+        vendorId: route.storeId,
+        vendorName: route.storeName ?? "Shopper chat",
+        threadId: route.threadId,
+        viewer: "vendor",
+      },
+    });
+    return;
+  }
+
+  if (route.type === "vendor_flash_sale") {
+    router.push("/vendor/flash-sales" as any);
+    return;
+  }
+
   router.push("/(root)/screens/profileScreens/orders" as any);
 }
 
@@ -33,6 +63,8 @@ export function routeFromPushData(
   const routeType = readString(data.routeType);
   const routeTargetId = readString(data.routeTargetId);
   const orderId = readString(data.orderId) ?? routeTargetId;
+  const threadId = readString(data.threadId) ?? routeTargetId;
+  const storeId = readString(data.storeId);
 
   if (routeType === "order" && orderId) {
     return { type: "order", orderId };
@@ -48,6 +80,36 @@ export function routeFromPushData(
 
   if (routeType === "vendor_wallet") {
     return { type: "vendor_wallet" };
+  }
+
+  if (routeType === "vendor_order") {
+    return { type: "vendor_order", orderId: routeTargetId ?? undefined };
+  }
+
+  if (routeType === "vendor_chat" || readString(data.type) === "vendor_chat_message") {
+    if (threadId && storeId) {
+      return {
+        type: "vendor_chat",
+        threadId,
+        storeId,
+        storeName: readString(data.storeName) ?? undefined,
+      };
+    }
+  }
+
+  if (
+    routeType === "vendor_flash_sale" ||
+    readString(data.type) === "vendor_flash_sale_nomination"
+  ) {
+    return { type: "vendor_flash_sale" };
+  }
+
+  if (readString(data.type) === "vendor_order") {
+    return { type: "vendor_order", orderId: orderId ?? undefined };
+  }
+
+  if (readString(data.type) === "vendor_order_reminder") {
+    return { type: "vendor_order", orderId: orderId ?? undefined };
   }
 
   if (readString(data.type) === "order_update" && orderId) {

@@ -130,7 +130,7 @@ export default function ProductShareSheet({
 
           <Text style={styles.sheetTitle}>Share this find</Text>
           <Text style={styles.sheetSubtitle}>
-            Send the product photo, price, and ODOS link to WhatsApp, Instagram, Messages, and more.
+            Send the product photo, price, and ODOS link to Messages, Instagram, and more.
           </Text>
 
           <View style={styles.previewCard}>
@@ -168,12 +168,6 @@ export default function ProductShareSheet({
           </View>
 
           <View style={styles.channelsRow}>
-            <ShareChannel
-              icon="logo-whatsapp"
-              label="WhatsApp"
-              tint="#25D366"
-              onPress={() => void handleShare()}
-            />
             <ShareChannel
               icon="chatbubble-ellipses-outline"
               label="Messages"

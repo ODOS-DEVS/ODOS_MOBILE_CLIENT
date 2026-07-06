@@ -18,7 +18,7 @@ import { useTheme } from "@/context/ThemeContext";
 const TabsLayout = () => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { isApprovedVendor, pendingOrders } = useVendorQuickAccess();
+  const { isApprovedVendor, storeTabBadgeCount } = useVendorQuickAccess();
   const tabCount = isApprovedVendor ? 6 : 5;
   const tabMetrics = useTabBarMetrics(tabCount, insets.bottom);
 
@@ -118,7 +118,7 @@ const TabsLayout = () => {
             href: isApprovedVendor ? undefined : null,
             title: "Store",
             tabBarIcon: ({ focused }) => (
-              <VendorTabIcon focused={focused} pendingOrders={pendingOrders} />
+              <VendorTabIcon focused={focused} badgeCount={storeTabBadgeCount} />
             ),
           }}
         />

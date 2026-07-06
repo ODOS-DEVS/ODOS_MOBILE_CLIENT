@@ -6,10 +6,15 @@ import {
 } from "@/utils/activityNavigation";
 import { syncAppBadgeCount } from "@/utils/appBadge";
 import { registerPushToken, unregisterPushToken } from "@/utils/pushTokenApi";
+import {
+  emitVendorOrderAlert,
+  vendorOrderAlertFromPushData,
+} from "@/utils/vendorOrderAlertBus";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useRef } from "react";
+import { Platform } from "react-native";
 
 async function getAccessToken(currentToken: string | null) {
   return currentToken || (await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY));
@@ -96,9 +101,34 @@ export function PushNotificationsProvider({
     }
 
     let responseSubscription: { remove: () => void } | undefined;
+    let receivedSubscription: { remove: () => void } | undefined;
 
     const setupListeners = async () => {
       const Notifications = await import("expo-notifications");
+
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "General",
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+        await Notifications.setNotificationChannelAsync("vendor-orders", {
+          name: "Vendor orders",
+          description: "High-priority alerts when a shopper places a new order.",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 400, 180, 400, 180, 600],
+          lightColor: "#F59E0B",
+          sound: "vendor-order.wav",
+          enableVibrate: true,
+          bypassDnd: false,
+        });
+        await Notifications.setNotificationChannelAsync("vendor-chats", {
+          name: "Shopper messages",
+          description: "Alerts when a customer sends your store a chat message.",
+          importance: Notifications.AndroidImportance.HIGH,
+          enableVibrate: true,
+        });
+      }
+
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowBanner: true,
@@ -119,6 +149,24 @@ export function PushNotificationsProvider({
         },
       );
 
+      receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data;
+        if (!data || typeof data !== "object") {
+          return;
+        }
+
+        const payload = data as Record<string, unknown>;
+        const pushType = typeof payload.type === "string" ? payload.type : "";
+        if (pushType !== "vendor_order" && pushType !== "vendor_order_reminder") {
+          return;
+        }
+
+        const alertPayload = vendorOrderAlertFromPushData(payload);
+        if (alertPayload) {
+          emitVendorOrderAlert(alertPayload);
+        }
+      });
+
       if (!handledColdStartRef.current) {
         handledColdStartRef.current = true;
         const lastResponse = await Notifications.getLastNotificationResponseAsync();
@@ -137,6 +185,7 @@ export function PushNotificationsProvider({
 
     return () => {
       responseSubscription?.remove();
+      receivedSubscription?.remove();
     };
   }, [isExpoGo, queuePushNavigation]);
 

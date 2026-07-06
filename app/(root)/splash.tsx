@@ -1,19 +1,13 @@
-import { OdosBrandGradient, OdosBrandMark } from "@/components/launch/OdosLaunchChrome";
+import { router, SplashScreen as ExpoSplashScreen } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { rV } from "@/styles/responsive";
 import { hasCompletedOnboarding } from "@/utils/onboardingStorage";
-import { router } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const SPLASH_HOLD_MS = 900;
 
 export default function SplashScreen() {
   const { isHydrating } = useAuth();
-  const insets = useSafeAreaInsets();
   const [launchTarget, setLaunchTarget] = useState<"tabs" | "onboarding" | null>(null);
+  const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
     if (isHydrating) {
@@ -35,71 +29,23 @@ export default function SplashScreen() {
   }, [isHydrating]);
 
   useEffect(() => {
-    if (isHydrating || !launchTarget) {
+    if (isHydrating || !launchTarget || hasNavigatedRef.current) {
       return;
     }
 
-    const timer = setTimeout(() => {
+    hasNavigatedRef.current = true;
+
+    void (async () => {
       if (launchTarget === "onboarding") {
         router.replace("/(root)/(auth)/onboarding" as any);
-        return;
+      } else {
+        router.replace("./(tabs)");
       }
 
-      router.replace("./(tabs)");
-    }, SPLASH_HOLD_MS);
-
-    return () => clearTimeout(timer);
+      await ExpoSplashScreen.hideAsync();
+    })();
   }, [isHydrating, launchTarget]);
 
-  const statusLabel = isHydrating
-    ? "Preparing your account"
-    : launchTarget === "onboarding"
-      ? "First-time setup"
-      : "Opening marketplace";
-
-  return (
-    <OdosBrandGradient>
-      <StatusBar style="light" />
-      <View
-        style={[
-          styles.screen,
-          {
-            paddingTop: insets.top + rV(24),
-            paddingBottom: Math.max(insets.bottom, rV(24)),
-          },
-        ]}
-      >
-        <View style={styles.center}>
-          <OdosBrandMark />
-        </View>
-
-        <View style={styles.footer}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
-          <Text style={styles.status}>{statusLabel}</Text>
-        </View>
-      </View>
-    </OdosBrandGradient>
-  );
+  // Keep the native launch splash visible; match its black background if anything peeks through.
+  return <View style={{ flex: 1, backgroundColor: "#000000" }} />;
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  footer: {
-    alignItems: "center",
-    gap: rV(10),
-    minHeight: rV(56),
-  },
-  status: {
-    color: "rgba(255, 255, 255, 0.78)",
-    fontSize: 13,
-    letterSpacing: 0.2,
-  },
-});

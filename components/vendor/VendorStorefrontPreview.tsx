@@ -1,4 +1,5 @@
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
+import VendorStoreShareSheet from "@/components/vendor/VendorStoreShareSheet";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { ManagedStoreProfile } from "@/types/store";
@@ -7,7 +8,7 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import React, { useState } from "react";
 import {
   Image,
   StyleSheet,
@@ -37,6 +38,7 @@ export default function VendorStorefrontPreview({
 }: VendorStorefrontPreviewProps) {
   const { colors, isDark } = useTheme();
   const { cardShell, colors: commerceColors } = useCommerceTheme();
+  const [shareVisible, setShareVisible] = useState(false);
   const bannerUri = resolveApiMediaUrl(store.bannerImage);
   const logoUri = resolveApiMediaUrl(store.logoImage);
   const isLive = store.status === "active";
@@ -178,6 +180,17 @@ export default function VendorStorefrontPreview({
 
         <TouchableOpacity
           style={styles.footerButton}
+          onPress={() => setShareVisible(true)}
+          activeOpacity={0.88}
+        >
+          <Ionicons name="share-social-outline" size={rMS(18)} color={colors.primary} />
+          <Text style={[styles.footerLabel, { color: colors.text }]}>Share store</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
+
+        <TouchableOpacity
+          style={styles.footerButton}
           onPress={onEditPress}
           activeOpacity={0.88}
         >
@@ -185,6 +198,12 @@ export default function VendorStorefrontPreview({
           <Text style={[styles.footerLabel, { color: colors.text }]}>Edit profile</Text>
         </TouchableOpacity>
       </View>
+
+      <VendorStoreShareSheet
+        store={store}
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+      />
     </View>
   );
 }

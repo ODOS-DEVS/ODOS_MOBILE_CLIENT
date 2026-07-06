@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { useChat } from "@/context/ChatContext";
 import { useVendorStore } from "@/stores/vendorStore";
 import { canAccessVendorDashboard, normalizeVendorStatus } from "@/types/vendor";
 import { router } from "expo-router";
@@ -6,6 +7,7 @@ import { useCallback, useMemo } from "react";
 
 export function useVendorQuickAccess() {
   const { user } = useAuth();
+  const { vendorThreads } = useChat();
   const { vendorApplication, vendorDashboardStats } = useVendorStore();
 
   const vendorStatus = useMemo(() => {
@@ -36,12 +38,16 @@ export function useVendorQuickAccess() {
   }, []);
 
   const pendingOrders = vendorDashboardStats?.pendingOrders ?? 0;
+  const unreadChats = vendorThreads.reduce((sum, thread) => sum + thread.unreadCount, 0);
+  const storeTabBadgeCount = pendingOrders + unreadChats;
 
   return {
     vendorStatus,
     isApprovedVendor,
     storeLabel,
     pendingOrders,
+    unreadChats,
+    storeTabBadgeCount,
     vendorDashboardStats,
     openDashboard,
     openSettings,

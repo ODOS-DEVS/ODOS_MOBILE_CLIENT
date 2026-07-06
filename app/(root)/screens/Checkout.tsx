@@ -35,7 +35,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageSourcePropType,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   Text,
@@ -44,7 +43,6 @@ import {
   View,
 } from "react-native";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
-import { getKeyboardVerticalOffset } from "@/utils/keyboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (p: string | string[] | undefined) =>
@@ -115,6 +113,8 @@ export default function CheckoutScreen() {
     checkoutVoucherCode,
     setCheckoutVoucherCode,
     isSyncingProfileData,
+    customerWallet,
+    refreshProfileData,
   } = useProfile();
   const { selectedMethodId, setSelectedMethodId, resetDeliveryMethod } = useDeliveryStore();
 
@@ -219,6 +219,10 @@ export default function CheckoutScreen() {
   }, [resolvedDeliveryMethodId, selectedMethodId, setSelectedMethodId]);
   const discountAmount = appliedVoucher?.discountAmount ?? 0;
   const total = Math.max(0, subtotal + shipping - discountAmount);
+  const walletInsufficient =
+    selectedPayment?.type === "wallet" &&
+    customerWallet != null &&
+    customerWallet.available_balance + 0.001 < total;
 
   const canPlaceOrder =
     !!user &&
@@ -227,7 +231,9 @@ export default function CheckoutScreen() {
     !!accessToken &&
     checkoutItems.length > 0 &&
     !isPlacingOrder &&
-    !isApplyingVoucher;
+    !isApplyingVoucher &&
+    !isLoadingDelivery &&
+    !walletInsufficient;
 
   useEffect(() => {
     if (isHydrating) {
@@ -393,6 +399,7 @@ export default function CheckoutScreen() {
           await clearCart();
         }
         resetDeliveryMethod();
+        void refreshProfileData();
         showSuccessToast(walletResult.message);
         router.replace({
           pathname: "/(root)/screens/order-success" as any,
@@ -497,6 +504,10 @@ export default function CheckoutScreen() {
       return "Calculating delivery...";
     }
 
+    if (walletInsufficient) {
+      return "Insufficient wallet balance for this order";
+    }
+
     return undefined;
   }, [
     accessToken,
@@ -508,6 +519,7 @@ export default function CheckoutScreen() {
     selectedAddress,
     selectedPayment,
     user,
+    walletInsufficient,
   ]);
 
   const footerScrollPadding = useMemo(
@@ -555,20 +567,15 @@ export default function CheckoutScreen() {
         </View>
       ) : (
         <>
-          <KeyboardAvoidingView
-            style={styles.flex}
-            behavior={Platform.OS === "ios" ? "padding" : "padding"}
-            keyboardVerticalOffset={getKeyboardVerticalOffset(insets.top, 52)}
+          <KeyboardAwareScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              accountStyles.content,
+              styles.scrollContent,
+              { paddingBottom: footerScrollPadding },
+            ]}
+            showsVerticalScrollIndicator={false}
           >
-            <KeyboardAwareScrollView
-              style={styles.scroll}
-              contentContainerStyle={[
-                accountStyles.content,
-                styles.scrollContent,
-                { paddingBottom: footerScrollPadding },
-              ]}
-              showsVerticalScrollIndicator={false}
-            >
             <AccountSectionCard
               title={checkoutMode === "cart" ? "Cart summary" : "Order summary"}
             >
@@ -853,7 +860,6 @@ export default function CheckoutScreen() {
             onPrimaryPress={handlePlaceOrder}
             disabled={!canPlaceOrder}
           />
-          </KeyboardAvoidingView>
         </>
       )}
     </View>

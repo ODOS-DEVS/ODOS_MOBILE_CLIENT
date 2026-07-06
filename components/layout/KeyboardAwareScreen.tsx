@@ -1,7 +1,6 @@
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import React from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
   StyleSheet,
   View,
@@ -12,31 +11,29 @@ import {
 
 type KeyboardAwareScreenProps = ScrollViewProps & {
   style?: StyleProp<ViewStyle>;
-  keyboardVerticalOffset?: number;
   avoidKeyboard?: boolean;
+  enableAutomaticInsets?: boolean;
 };
 
 export default function KeyboardAwareScreen({
   style,
-  keyboardVerticalOffset = 0,
   avoidKeyboard = true,
+  enableAutomaticInsets,
   children,
   ...scrollProps
 }: KeyboardAwareScreenProps) {
-  const scroll = <KeyboardAwareScrollView {...scrollProps}>{children}</KeyboardAwareScrollView>;
-
-  if (!avoidKeyboard) {
-    return <View style={[styles.flex, style]}>{scroll}</View>;
-  }
+  const shouldUseInsets =
+    avoidKeyboard && (enableAutomaticInsets ?? Platform.OS === "ios");
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, style]}
-      behavior={Platform.OS === "ios" ? "padding" : "padding"}
-      keyboardVerticalOffset={keyboardVerticalOffset}
-    >
-      {scroll}
-    </KeyboardAvoidingView>
+    <View style={[styles.flex, style]}>
+      <KeyboardAwareScrollView
+        {...scrollProps}
+        enableAutomaticInsets={shouldUseInsets}
+      >
+        {children}
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 

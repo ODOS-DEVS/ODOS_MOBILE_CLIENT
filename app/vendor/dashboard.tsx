@@ -1,9 +1,8 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
+import VendorAnalyticsPanel from "@/components/vendor/VendorAnalyticsPanel";
+import { AccountEmptyState } from "@/components/account/AccountUi";
 import {
-  AccountEmptyState,
   formatVendorCurrency,
   QuickActionCard,
-  StatCard,
   VendorFinanceCard,
   VendorFocusCard,
   VendorHelpCard,
@@ -13,9 +12,12 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
+import { useVendorAnalytics } from "@/hooks/useVendorAnalytics";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
+import type { VendorDashboardStats } from "@/types/vendor";
+import { buildVendorDashboardStatsFallback } from "@/utils/vendorAnalytics";
 import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
 import React, { useEffect, useMemo } from "react";
@@ -28,9 +30,10 @@ export default function VendorDashboardScreen() {
   const { hasVendorAccess, isCheckingVendorAccess, session, vendorProfile, vendorStatus } =
     useRequireVendor();
   const { user } = useVendorSession();
-  const { fetchStoreProfile, storeProfile } = useStoreStore();
+  const { fetchStoreProfile, fetchOrders, orders, storeProfile } = useStoreStore();
   const { error, fetchVendorDashboard, refreshVendorState, vendorDashboardStats } =
     useVendorStore();
+  const { insights } = useVendorAnalytics(session, hasVendorAccess);
 
   useEffect(() => {
     if (!hasVendorAccess) {
@@ -40,13 +43,30 @@ export default function VendorDashboardScreen() {
     void refreshVendorState(session);
     void fetchVendorDashboard(session);
     void fetchStoreProfile(session);
+    void fetchOrders(session);
   }, [
+    fetchOrders,
     fetchStoreProfile,
     fetchVendorDashboard,
     hasVendorAccess,
     refreshVendorState,
     session,
   ]);
+
+  const resolvedDashboardStats = useMemo<VendorDashboardStats | null>(() => {
+    if (vendorDashboardStats) {
+      return vendorDashboardStats;
+    }
+
+    if (orders.length === 0 && !storeProfile?.name && !vendorProfile?.storeName) {
+      return null;
+    }
+
+    return buildVendorDashboardStatsFallback(
+      orders,
+      storeProfile?.name || vendorProfile?.storeName,
+    );
+  }, [orders, storeProfile?.name, vendorDashboardStats, vendorProfile?.storeName]);
 
   const storeLocation = useMemo(() => {
     const locationParts = [
@@ -58,30 +78,30 @@ export default function VendorDashboardScreen() {
   }, [storeProfile?.city, storeProfile?.location, storeProfile?.region]);
 
   const focusState = useMemo(() => {
-    if (!vendorDashboardStats) {
+    if (!resolvedDashboardStats) {
       return null;
     }
 
-    const { currency } = vendorDashboardStats;
+    const { currency } = resolvedDashboardStats;
 
-    if (vendorDashboardStats.pendingOrders > 0) {
+    if (resolvedDashboardStats.pendingOrders > 0) {
       return {
         eyebrow: "Priority now",
         title: "Fulfil your pending orders",
-        body: `${vendorDashboardStats.pendingOrders} order${
-          vendorDashboardStats.pendingOrders === 1 ? "" : "s"
+        body: `${resolvedDashboardStats.pendingOrders} order${
+          resolvedDashboardStats.pendingOrders === 1 ? "" : "s"
         } still need attention before they move closer to delivery.`,
         actionLabel: "Open orders",
         onPress: () => router.push("/vendor/orders" as any),
       };
     }
 
-    if (vendorDashboardStats.availableBalance > 0) {
+    if (resolvedDashboardStats.availableBalance > 0) {
       return {
         eyebrow: "Money ready",
         title: "Move settled funds into payout review",
         body: `${formatVendorCurrency(
-          vendorDashboardStats.availableBalance,
+          resolvedDashboardStats.availableBalance,
           currency,
         )} is available in your wallet right now.`,
         actionLabel: "Open wallet",
@@ -90,7 +110,7 @@ export default function VendorDashboardScreen() {
     }
 
     const inactiveCount =
-      vendorDashboardStats.totalProducts - vendorDashboardStats.activeProducts;
+      resolvedDashboardStats.totalProducts - resolvedDashboardStats.activeProducts;
 
     if (inactiveCount > 0) {
       return {
@@ -109,10 +129,18 @@ export default function VendorDashboardScreen() {
       actionLabel: "Edit store profile",
       onPress: () => router.push("/vendor/store" as any),
     };
-  }, [vendorDashboardStats]);
+  }, [resolvedDashboardStats]);
 
   const businessActions = useMemo(
     () => [
+      {
+        icon: "bar-chart-outline" as const,
+        title: "Analytics",
+        subtitle: "Trends, top products, and fulfillment health.",
+        tag: "Insights",
+        highlight: true,
+        onPress: () => router.push("/vendor/analytics" as any),
+      },
       {
         icon: "wallet-outline" as const,
         title: "Wallet",
@@ -149,8 +177,17 @@ export default function VendorDashboardScreen() {
         tag: "Growth",
         onPress: () => router.push("/vendor/vouchers" as any),
       },
+      {
+        icon: "return-down-back-outline" as const,
+        title: "Returns",
+        subtitle: insights.operations.openReturns
+          ? `${insights.operations.openReturns} open return request${insights.operations.openReturns === 1 ? "" : "s"}`
+          : "Monitor shopper return and refund requests.",
+        tag: "Operations",
+        onPress: () => router.push("/vendor/returns" as any),
+      },
     ],
-    [],
+    [insights.operations.openReturns],
   );
 
   const relationshipActions = useMemo(
@@ -198,14 +235,14 @@ export default function VendorDashboardScreen() {
     return null;
   }
 
-  if (!vendorDashboardStats) {
+  if (!resolvedDashboardStats) {
     return (
       <VendorScreenShell title="Vendor Dashboard">
         <View style={styles.emptyWrap}>
           <AccountEmptyState
             icon="analytics-outline"
             title="Dashboard not ready yet"
-            message="Your vendor profile is approved, but the dashboard data is still being prepared. Check your store profile in the meantime."
+            message="Your vendor profile is approved, but we could not load dashboard data yet. Open your store profile or pull to refresh on the Store tab."
             actionLabel="Open Store Profile"
             onAction={() => router.push("/vendor/store" as any)}
           />
@@ -214,7 +251,7 @@ export default function VendorDashboardScreen() {
     );
   }
 
-  const currency = vendorDashboardStats.currency;
+  const currency = resolvedDashboardStats.currency;
 
   return (
     <VendorScreenShell title="Vendor Dashboard">
@@ -228,24 +265,30 @@ export default function VendorDashboardScreen() {
       >
         <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth, gap: rV(14) }]}>
           <VendorHeroCard
-            storeName={storeProfile?.name || vendorDashboardStats.storeName}
+            storeName={storeProfile?.name || resolvedDashboardStats.storeName}
             businessName={vendorProfile?.businessName || user?.full_name || "ODOS Vendor"}
             status={vendorStatus}
             category={storeProfile?.category || "Store"}
             location={storeLocation}
             totalSalesLabel={formatVendorCurrency(
-              vendorDashboardStats.totalSales,
+              resolvedDashboardStats.totalSales,
               currency,
             )}
-            completedOrders={vendorDashboardStats.completedOrders}
+            completedOrders={resolvedDashboardStats.completedOrders}
             error={error}
           />
 
           {focusState ? <VendorFocusCard {...focusState} /> : null}
 
+          <VendorAnalyticsPanel
+            insights={insights}
+            variant="compact"
+            onPress={() => router.push("/vendor/analytics" as any)}
+          />
+
           <VendorFinanceCard
             balanceLabel={formatVendorCurrency(
-              vendorDashboardStats.availableBalance,
+              resolvedDashboardStats.availableBalance,
               currency,
             )}
             body="This balance is what ODOS has already settled for withdrawal after delivered orders are processed."
@@ -253,14 +296,14 @@ export default function VendorDashboardScreen() {
               {
                 label: "Pending withdrawals",
                 value: formatVendorCurrency(
-                  vendorDashboardStats.pendingWithdrawalBalance,
+                  resolvedDashboardStats.pendingWithdrawalBalance,
                   currency,
                 ),
               },
               {
                 label: "Lifetime earnings",
                 value: formatVendorCurrency(
-                  vendorDashboardStats.lifetimeEarnings,
+                  resolvedDashboardStats.lifetimeEarnings,
                   currency,
                 ),
               },
@@ -271,45 +314,9 @@ export default function VendorDashboardScreen() {
 
           <View style={vendorStyles.sectionBlock}>
             <VendorSectionHeader
-              eyebrow="Performance"
-              title="Operations snapshot"
-              description="A quick read on your catalog, order flow, and what is already working."
-            />
-            <View style={vendorStyles.statsRow}>
-              <StatCard
-                label="Total Products"
-                value={String(vendorDashboardStats.totalProducts)}
-                hint="All products attached to your store"
-                tone="accent"
-              />
-              <StatCard
-                label="Active Products"
-                value={String(vendorDashboardStats.activeProducts)}
-                hint="Live products visible to shoppers"
-                tone="success"
-              />
-            </View>
-            <View style={vendorStyles.statsRow}>
-              <StatCard
-                label="Pending Orders"
-                value={String(vendorDashboardStats.pendingOrders)}
-                hint="Orders still moving through fulfillment"
-                tone="warning"
-              />
-              <StatCard
-                label="Completed Orders"
-                value={String(vendorDashboardStats.completedOrders)}
-                hint="Delivered orders recorded by the app"
-                tone="default"
-              />
-            </View>
-          </View>
-
-          <View style={vendorStyles.sectionBlock}>
-            <VendorSectionHeader
               eyebrow="Execution"
               title="Run your store"
-              description="The core actions you will use most often to manage sales and catalog growth."
+              description="Jump into the tools you use most."
             />
             <View style={[vendorStyles.actionsGrid, isTablet && styles.actionsGridTablet]}>
               {businessActions.map((action) => (

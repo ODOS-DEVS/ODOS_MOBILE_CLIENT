@@ -23,7 +23,7 @@ import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { usePromoBanners } from "@/hooks/usePromoBanners";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { rS, rV, useResponsive } from "@/styles/responsive";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -109,7 +109,8 @@ const HomeScreen = () => {
     placement: "flash-sale",
   });
   const { primaryEvent: primaryFlashSaleEvent } = useFlashSaleEvents();
-  const { banners: promoBanners, isLoading: isLoadingPromoBanners } = usePromoBanners();
+  const { banners: promoBanners, isLoading: isLoadingPromoBanners, refresh: refreshPromoBanners } =
+    usePromoBanners();
   const {
     feed: recommendationFeed,
     products: recommendationProducts,
@@ -154,11 +155,17 @@ const HomeScreen = () => {
   const handleRefreshHome = useCallback(async () => {
     setIsRefreshingHome(true);
     try {
-      await refreshRecommendations();
+      await Promise.all([refreshRecommendations(), refreshPromoBanners()]);
     } finally {
       setIsRefreshingHome(false);
     }
-  }, [refreshRecommendations]);
+  }, [refreshPromoBanners, refreshRecommendations]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPromoBanners();
+    }, [refreshPromoBanners]),
+  );
 
   const handleOpenDeals = useCallback(() => {
     router.push("../screens/deals");
