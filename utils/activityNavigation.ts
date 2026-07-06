@@ -20,6 +20,11 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "customer_wallet") {
+    router.push("/(root)/screens/profileScreens/Account/Wallet" as any);
+    return;
+  }
+
   if (route.type === "vendor_order") {
     if (route.orderId) {
       router.push({
@@ -82,6 +87,10 @@ export function routeFromPushData(
     return { type: "vendor_wallet" };
   }
 
+  if (routeType === "customer_wallet") {
+    return { type: "customer_wallet" };
+  }
+
   if (routeType === "vendor_order") {
     return { type: "vendor_order", orderId: routeTargetId ?? undefined };
   }
@@ -102,6 +111,10 @@ export function routeFromPushData(
     readString(data.type) === "vendor_flash_sale_nomination"
   ) {
     return { type: "vendor_flash_sale" };
+  }
+
+  if (readString(data.type) === "wallet_topup") {
+    return { type: "customer_wallet" };
   }
 
   if (readString(data.type) === "vendor_order") {

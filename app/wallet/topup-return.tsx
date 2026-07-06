@@ -1,6 +1,7 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
@@ -33,6 +34,7 @@ export default function WalletTopupReturnScreen() {
   const params = useLocalSearchParams();
   const { accessToken, isHydrating } = useAuth();
   const { refreshProfileData } = useProfile();
+  const { refreshActivity } = useActivityFeed();
   const { showSuccessToast } = useToast();
   const [state, setState] = useState<TopupState>("verifying");
   const [errorMessage, setErrorMessage] = useState("");
@@ -40,6 +42,7 @@ export default function WalletTopupReturnScreen() {
     amount: number;
     currency: string;
     paymentLabel: string | null;
+    balanceAfter: number | null;
   } | null>(null);
 
   const reference = getParam(params.reference) ?? getParam(params.trxref) ?? "";
@@ -108,9 +111,11 @@ export default function WalletTopupReturnScreen() {
           amount: result.amount,
           currency: result.currency,
           paymentLabel: result.payment_label,
+          balanceAfter: result.wallet?.available_balance ?? null,
         });
         if (result.status === "paid") {
           setState("success");
+          void refreshActivity({ silent: true });
           showSuccessToast("Wallet funded successfully.");
           return;
         }
@@ -139,7 +144,7 @@ export default function WalletTopupReturnScreen() {
     return () => {
       isMounted = false;
     };
-  }, [accessToken, isCancelled, isHydrating, reference, refreshProfileData, showSuccessToast]);
+  }, [accessToken, isCancelled, isHydrating, reference, refreshActivity, refreshProfileData, showSuccessToast]);
 
   if (state === "verifying") {
     return <ScreenLoader label="Confirming your wallet top-up..." />;
@@ -161,6 +166,14 @@ export default function WalletTopupReturnScreen() {
               {resultMeta.currency} {resultMeta.amount.toFixed(2)}
               {resultMeta.paymentLabel ? ` via ${resultMeta.paymentLabel}` : ""}
             </Text>
+            {resultMeta.balanceAfter != null ? (
+              <>
+                <Text style={[styles.metaLabel, styles.metaLabelSpaced]}>New balance</Text>
+                <Text style={styles.metaValue}>
+                  {resultMeta.currency} {resultMeta.balanceAfter.toFixed(2)}
+                </Text>
+              </>
+            ) : null}
           </View>
         ) : null}
 
@@ -246,6 +259,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  metaLabelSpaced: { marginTop: rV(12) },
   metaValue: {
     marginTop: rV(8),
     fontSize: rMS(13),
