@@ -1,106 +1,33 @@
+import {
+  ActivityCard,
+  ActivityEmptyState,
+  ActivityFilter,
+  ActivityFilterChips,
+  ActivityHero,
+  ActivityMarkAllRead,
+  ActivitySectionHeader,
+  ActivitySignedOutState,
+  filterActivitySections,
+} from "@/components/activity/ActivityUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { ActivityItem, useActivityFeed } from "@/hooks/useActivityFeed";
-import { activityKindUsesProductImage } from "@/utils/activityImages";
-import { openSignInFromApp } from "@/utils/authNavigation";
-import { rMS, rS, rV } from "@/styles/responsive";
-import { useNotificationStyles } from "@/styles/themedNotificationStyles";
-import { Ionicons } from "@expo/vector-icons";
+import { rS, rV } from "@/styles/responsive";
 import { openActivityRoute } from "@/utils/activityNavigation";
+import { openSignInFromApp } from "@/utils/authNavigation";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback } from "react";
-import {
-  Image,
-  RefreshControl,
-  SectionList,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-function activityAccentStyles(
-  accent: ActivityItem["accent"],
-  isDark: boolean,
-) {
-  if (accent === "success") {
-    return {
-      iconBg: isDark ? "#14532D" : "#ECFDF3",
-      iconColor: isDark ? "#86EFAC" : "#15803D",
-    };
-  }
-  if (accent === "warning") {
-    return {
-      iconBg: isDark ? "#422006" : "#FFF7ED",
-      iconColor: isDark ? "#FCD34D" : "#B45309",
-    };
-  }
-  return {
-    iconBg: isDark ? "#1E293B" : "#F3F4F6",
-    iconColor: isDark ? "#93C5FD" : "#4F46E5",
-  };
-}
-
-const ActivityRow = React.memo(function ActivityRow({
-  item,
-  onOpen,
-  styles,
-  isDark,
-}: {
-  item: ActivityItem;
-  onOpen: (item: ActivityItem) => void;
-  styles: ReturnType<typeof useNotificationStyles>;
-  isDark: boolean;
-}) {
-  const accent = activityAccentStyles(item.accent, isDark);
-  const showProductThumb =
-    Boolean(item.productImage) && activityKindUsesProductImage(item.kind);
-
-  return (
-    <TouchableOpacity
-      style={[styles.itemRow, !item.isRead ? styles.itemRowUnread : null]}
-      activeOpacity={0.86}
-      onPress={() => onOpen(item)}
-    >
-      {showProductThumb ? (
-        <View style={styles.productThumbWrap}>
-          <Image source={item.productImage} style={styles.productThumb} resizeMode="cover" />
-        </View>
-      ) : (
-        <View style={[styles.iconCircle, { backgroundColor: accent.iconBg }]}>
-          <Ionicons name={item.icon} size={rMS(18)} color={accent.iconColor} />
-        </View>
-      )}
-
-      <View style={styles.middle}>
-        <View style={styles.titleRow}>
-          <Text
-            style={[styles.itemTitle, !item.isRead ? styles.itemTitleUnread : null]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          {!item.isRead ? <View style={styles.unreadDot} /> : null}
-        </View>
-        <Text style={styles.itemBody} numberOfLines={2}>
-          {item.body}
-        </Text>
-        <Text style={styles.time}>{item.relativeTime}</Text>
-      </View>
-
-      <Ionicons name="chevron-forward" size={rMS(16)} color={styles.chevronColor} />
-    </TouchableOpacity>
-  );
-});
+import React, { useCallback, useMemo, useState } from "react";
+import { RefreshControl, SectionList, StyleSheet, View } from "react-native";
 
 export default function NotificationScreen() {
-  const styles = useNotificationStyles();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { user } = useAuth();
+  const [filter, setFilter] = useState<ActivityFilter>("all");
   const {
     sections,
+    items,
     unreadCount,
     hasLoadedOnce,
     isInitialLoading,
@@ -110,10 +37,39 @@ export default function NotificationScreen() {
     refreshActivity,
   } = useActivityFeed();
 
+  const screenStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.screen,
+        },
+        listContent: {
+          paddingHorizontal: rS(16),
+          paddingTop: rV(8),
+          paddingBottom: rV(36),
+          gap: rV(10),
+        },
+        headerBlock: {
+          gap: rV(12),
+          marginBottom: rV(4),
+        },
+        sectionGap: {
+          gap: rV(10),
+        },
+      }),
+    [colors.screen],
+  );
+
   useFocusEffect(
     useCallback(() => {
       void refreshActivity({ silent: true });
     }, [refreshActivity]),
+  );
+
+  const filteredSections = useMemo(
+    () => filterActivitySections(sections, filter),
+    [filter, sections],
   );
 
   const openItem = useCallback(
@@ -131,82 +87,73 @@ export default function NotificationScreen() {
     [markAsRead],
   );
 
-  const markAllRead = useCallback(() => {
-    const ids = sections.flatMap((section) => section.data.map((item) => item.id));
-    void markAsRead(ids);
-  }, [markAsRead, sections]);
+  const markItemRead = useCallback(
+    (id: string) => {
+      void markAsRead([id]);
+    },
+    [markAsRead],
+  );
 
-  const headerRight =
-    unreadCount > 0 ? (
-      <TouchableOpacity onPress={markAllRead} activeOpacity={0.85} hitSlop={8}>
-        <Text style={[styles.headerAction, { color: colors.primary }]}>Mark all read</Text>
-      </TouchableOpacity>
-    ) : null;
+  const markAllRead = useCallback(() => {
+    const ids = items.filter((item) => !item.isRead).map((item) => item.id);
+    void markAsRead(ids);
+  }, [items, markAsRead]);
 
   if (!user) {
     return (
-      <View style={styles.container}>
+      <View style={screenStyles.container}>
         <ProfileHeader title="Activity" />
-        <View style={styles.emptyState}>
-          <UserAvatar size={rS(56)} />
-          <Text style={styles.emptyTitle}>Sign in to see activity</Text>
-          <Text style={styles.emptyText}>
-            Orders, account updates, and shopping moments appear here once you are logged in.
-          </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.88}
-            onPress={() => openSignInFromApp(router)}
-          >
-            <Text style={styles.primaryButtonText}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
+        <ActivitySignedOutState onSignIn={() => openSignInFromApp(router)} />
       </View>
     );
   }
 
   const showInitialLoader = isInitialLoading && !hasLoadedOnce;
-  const showEmpty = hasLoadedOnce && sections.length === 0;
+  const showEmpty = hasLoadedOnce && filteredSections.length === 0;
 
   return (
-    <View style={styles.container}>
-      <ProfileHeader title="Activity" rightNode={headerRight} />
+    <View style={screenStyles.container}>
+      <ProfileHeader title="Activity" />
 
       {showInitialLoader ? (
         <ScreenLoader label="Loading activity…" />
       ) : showEmpty ? (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconWrap}>
-            <Ionicons name="notifications-outline" size={rMS(26)} color={colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>No activity yet</Text>
-          <Text style={styles.emptyText}>
-            When you place orders or update your account, updates will show up here.
-          </Text>
-        </View>
+        <ActivityEmptyState
+          filter={filter}
+          onShowAll={filter === "unread" ? () => setFilter("all") : undefined}
+        />
       ) : (
         <SectionList
-          sections={sections}
+          sections={filteredSections}
           keyExtractor={(item) => item.id}
           renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <ActivitySectionHeader title={section.title} count={section.data.length} />
           )}
-          renderItem={({ item }) => (
-            <ActivityRow item={item} onOpen={openItem} styles={styles} isDark={isDark} />
+          renderItem={({ item, index }) => (
+            <ActivityCard
+              item={item}
+              index={index}
+              onOpen={openItem}
+              onMarkRead={markItemRead}
+            />
           )}
           ListHeaderComponent={
-            unreadCount > 0 ? (
-              <Text style={styles.listIntro}>
-                {unreadCount} unread update{unreadCount === 1 ? "" : "s"}
-              </Text>
-            ) : (
-              <Text style={styles.listIntro}>Orders and account updates</Text>
-            )
+            <View style={screenStyles.headerBlock}>
+              <ActivityHero totalCount={items.length} unreadCount={unreadCount} />
+              <ActivityMarkAllRead unreadCount={unreadCount} onPress={markAllRead} />
+              <ActivityFilterChips
+                active={filter}
+                onChange={setFilter}
+                unreadCount={unreadCount}
+                totalCount={items.length}
+              />
+            </View>
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={screenStyles.listContent}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           removeClippedSubviews={false}
+          ItemSeparatorComponent={() => <View style={{ height: rV(10) }} />}
           refreshControl={
             <RefreshControl
               refreshing={isPullRefreshing}

@@ -504,8 +504,8 @@ export default function ProfileScreen() {
               }}
             />
             <MenuItem
-              icon="card-outline"
-              label="Payment Method"
+              icon="wallet-outline"
+              label="Wallet & Payment"
               onPress={() => {
                 router.push("../screens/profileScreens/Account/Wallet" as any);
               }}
@@ -550,15 +550,6 @@ export default function ProfileScreen() {
               onPress={() => {
                 router.push(
                   "../screens/profileScreens/personalization/Preferences" as any,
-                );
-              }}
-            />
-            <MenuItem
-              icon="language-outline"
-              label="Language"
-              onPress={() => {
-                router.push(
-                  "../screens/profileScreens/personalization/Language" as any,
                 );
               }}
             />

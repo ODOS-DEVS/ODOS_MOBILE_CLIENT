@@ -3,6 +3,7 @@ import {
   AssistantQuickPrompts,
   AssistantTypingIndicator,
 } from "@/components/assistant/AssistantUi";
+import { AssistantAvatar } from "@/components/assistant/AssistantAnimations";
 import {
   ChatComposer,
   ChatScreenHeader,
@@ -19,6 +20,7 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -29,6 +31,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
 
 export default function AssistantScreen() {
   const { colors } = useTheme();
@@ -49,6 +52,11 @@ export default function AssistantScreen() {
   const [input, setInput] = useState("");
   const listRef = useRef<FlatList<AssistantMessage>>(null);
 
+  const lastMessage = messages[messages.length - 1];
+  const isStreamingReply =
+    isSending && lastMessage?.role === "assistant" && lastMessage.id !== "welcome";
+  const showTypingIndicator = isSending && !isStreamingReply;
+
   const showQuickPrompts =
     messages.length === 1 && (messages[0]?.id === "welcome" || Boolean(nudge));
   const connectionState = status?.enabled ? "connected" : "disconnected";
@@ -63,7 +71,7 @@ export default function AssistantScreen() {
     if (isSending) {
       scrollToEnd();
     }
-  }, [isSending, scrollToEnd]);
+  }, [isSending, messages, scrollToEnd]);
 
   const handleSend = async () => {
     const value = input.trim();
@@ -88,20 +96,68 @@ export default function AssistantScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
+        gradient: {
+          flex: 1,
+        },
         list: {
           flex: 1,
         },
         listContent: {
           flexGrow: 1,
-          paddingBottom: rV(8),
+          paddingBottom: rV(12),
+        },
+        hero: {
+          marginHorizontal: rS(16),
+          marginTop: rV(10),
+          marginBottom: rV(6),
+          borderRadius: rMS(20),
+          overflow: "hidden",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        heroInner: {
+          paddingHorizontal: rS(16),
+          paddingVertical: rV(16),
+          gap: rV(6),
+        },
+        heroTitle: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(16),
+          color: colors.text,
+        },
+        heroText: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(13),
+          lineHeight: rMS(20),
+          color: colors.textMuted,
+        },
+        heroBadges: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: rS(8),
+          marginTop: rV(8),
+        },
+        heroBadge: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(4),
+          paddingHorizontal: rS(10),
+          paddingVertical: rV(5),
+          borderRadius: 999,
+          backgroundColor: "rgba(255,255,255,0.72)",
+        },
+        heroBadgeText: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11),
+          color: colors.textSecondary,
         },
         errorBanner: {
-          marginHorizontal: 16,
+          marginHorizontal: rS(16),
           marginTop: rV(8),
           marginBottom: rV(4),
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 12,
+          paddingHorizontal: rS(14),
+          paddingVertical: rV(11),
+          borderRadius: rMS(14),
           backgroundColor: "#FEF2F2",
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: "#FECACA",
@@ -113,29 +169,25 @@ export default function AssistantScreen() {
           lineHeight: rMS(17),
         },
         footer: {
-          paddingTop: rV(4),
-          paddingBottom: rV(12),
+          paddingTop: rV(8),
+          paddingBottom: rV(14),
           alignItems: "center",
         },
         footerLink: {
           flexDirection: "row",
           alignItems: "center",
-          gap: 4,
-          paddingVertical: rV(8),
-          paddingHorizontal: rS(12),
+          gap: rS(6),
+          paddingVertical: rV(10),
+          paddingHorizontal: rS(16),
+          borderRadius: 999,
+          backgroundColor: colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
         },
         footerLinkText: {
           fontFamily: Fonts.text,
-          fontSize: rMS(12),
+          fontSize: rMS(12.5),
           color: colors.textMuted,
-        },
-        headerAvatar: {
-          width: rMS(44),
-          height: rMS(44),
-          borderRadius: rMS(16),
-          backgroundColor: colors.primary,
-          alignItems: "center",
-          justifyContent: "center",
         },
         resetBadge: {
           flexDirection: "row",
@@ -157,15 +209,53 @@ export default function AssistantScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: AssistantMessage }) => (
-      <AssistantMessageItem message={item} onFeedback={submitFeedback} />
+      <AssistantMessageItem
+        message={item}
+        onFeedback={submitFeedback}
+        isStreaming={isStreamingReply && item.id === lastMessage?.id}
+        showAvatar={item.role === "assistant"}
+      />
     ),
-    [submitFeedback],
+    [isStreamingReply, lastMessage?.id, submitFeedback],
   );
+
+  const listHeader = useMemo(() => {
+    if (!showQuickPrompts) {
+      return null;
+    }
+    return (
+      <Reanimated.View entering={FadeInDown.duration(320)} style={styles.hero}>
+        <LinearGradient
+          colors={[colors.accentSoft, "#FFFFFF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroInner}
+        >
+          <Text style={styles.heroTitle}>
+            {status?.enabled ? "Your ODOS shopping companion" : "Guided shopping help"}
+          </Text>
+          <Text style={styles.heroText}>
+            {user
+              ? "Ask about orders, delivery, vouchers, products, or stores — I'll use your real account data when I can."
+              : "Browse help freely, or sign in for personal order and voucher answers."}
+          </Text>
+          <View style={styles.heroBadges}>
+            {["Orders", "Delivery", "Deals", "Stores"].map((label) => (
+              <View key={label} style={styles.heroBadge}>
+                <Ionicons name="checkmark-circle" size={rMS(12)} color={colors.primary} />
+                <Text style={styles.heroBadgeText}>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </LinearGradient>
+      </Reanimated.View>
+    );
+  }, [colors, showQuickPrompts, status?.enabled, styles, user]);
 
   const listFooter = useMemo(
     () => (
       <View>
-        <AssistantTypingIndicator visible={isSending} />
+        <AssistantTypingIndicator visible={showTypingIndicator} />
         {showQuickPrompts ? (
           <AssistantQuickPrompts
             disabled={isSending}
@@ -179,10 +269,10 @@ export default function AssistantScreen() {
           <View style={styles.footer}>
             <TouchableOpacity
               style={styles.footerLink}
-              activeOpacity={0.7}
+              activeOpacity={0.78}
               onPress={openSupport}
             >
-              <Ionicons name="headset-outline" size={rMS(14)} color={colors.textMuted} />
+              <Ionicons name="headset-outline" size={rMS(15)} color={colors.primary} />
               <Text style={styles.footerLinkText}>Talk to human support</Text>
             </TouchableOpacity>
           </View>
@@ -190,97 +280,102 @@ export default function AssistantScreen() {
       </View>
     ),
     [
+      colors.primary,
       colors.textMuted,
       isSending,
+      nudge?.prompt,
       openSupport,
+      screenContext,
       sendMessage,
       showQuickPrompts,
-      nudge?.prompt,
+      showTypingIndicator,
       styles.footer,
       styles.footerLink,
       styles.footerLinkText,
-      screenContext,
     ],
   );
 
   return (
     <ChatScreenShell>
       <StatusBar barStyle="dark-content" />
-
-      <ChatScreenHeader
-        title="ODOS Assistant"
-        subtitle={
-          user
-            ? "Orders, delivery, vouchers & account help"
-            : "Shopping help · sign in for order details"
-        }
-        onBack={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
-        connectionState={connectionState}
-        avatar={
-          <View style={styles.headerAvatar}>
-            <Ionicons name="sparkles" size={rMS(20)} color="#FFFFFF" />
-          </View>
-        }
-        badges={
-          <>
-            <ChatStatusBadge
-              label={status?.enabled ? "AI ready" : "Guided help"}
-              icon={status?.enabled ? "sparkles-outline" : "book-outline"}
-              backgroundColor={status?.enabled ? "#EEF2FF" : colors.surfaceMuted}
-              color={status?.enabled ? AppColors.primary : colors.textMuted}
-            />
-            <TouchableOpacity
-              style={styles.resetBadge}
-              activeOpacity={0.75}
-              onPress={resetConversation}
-              accessibilityLabel="New conversation"
-            >
-              <Ionicons name="refresh-outline" size={rMS(12)} color={colors.textMuted} />
-              <Text style={styles.resetBadgeText}>New</Text>
-            </TouchableOpacity>
-          </>
-        }
-      />
-
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      <FlatList
-        ref={listRef}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListFooterComponent={listFooter}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={scrollToEnd}
-      />
-
-      <ChatComposer
-        placeholder="Ask anything…"
-        value={input}
-        onChangeText={setInput}
-        onSend={() => void handleSend()}
-        disabled={isSending}
-        isSending={isSending}
-        voiceSupported={isSupported}
-        isListening={isListening}
-        onVoicePress={() => {
-          if (isListening) {
-            stopListening();
-            return;
+      <LinearGradient
+        colors={["#F8FAFC", colors.accentSoft, "#FFFFFF"]}
+        locations={[0, 0.45, 1]}
+        style={styles.gradient}
+      >
+        <ChatScreenHeader
+          title="ODOS Assistant"
+          subtitle={
+            user
+              ? "Orders, delivery, vouchers & account help"
+              : "Shopping help · sign in for order details"
           }
-          void startListening((transcript) => {
-            setInput(transcript);
-            stopListening();
-          });
-        }}
-      />
+          onBack={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
+          connectionState={connectionState}
+          avatar={<AssistantAvatar size={rMS(44)} pulse={Boolean(status?.enabled)} />}
+          badges={
+            <>
+              <ChatStatusBadge
+                label={status?.enabled ? "AI ready" : "Guided help"}
+                icon={status?.enabled ? "sparkles-outline" : "book-outline"}
+                backgroundColor={status?.enabled ? "#EEF2FF" : colors.surfaceMuted}
+                color={status?.enabled ? AppColors.primary : colors.textMuted}
+              />
+              <TouchableOpacity
+                style={styles.resetBadge}
+                activeOpacity={0.75}
+                onPress={resetConversation}
+                accessibilityLabel="New conversation"
+              >
+                <Ionicons name="refresh-outline" size={rMS(12)} color={colors.textMuted} />
+                <Text style={styles.resetBadgeText}>New</Text>
+              </TouchableOpacity>
+            </>
+          }
+        />
+
+        {error ? (
+          <Reanimated.View entering={FadeInDown.duration(220)} style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Reanimated.View>
+        ) : null}
+
+        <FlatList
+          ref={listRef}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToEnd}
+        />
+
+        <ChatComposer
+          hint="Ask about orders, delivery, vouchers, products, or stores"
+          placeholder="Message ODOS Assistant…"
+          value={input}
+          onChangeText={setInput}
+          onSend={() => void handleSend()}
+          disabled={isSending}
+          isSending={isSending}
+          voiceSupported={isSupported}
+          isListening={isListening}
+          onVoicePress={() => {
+            if (isListening) {
+              stopListening();
+              return;
+            }
+            void startListening((transcript) => {
+              setInput(transcript);
+              stopListening();
+            });
+          }}
+        />
+      </LinearGradient>
     </ChatScreenShell>
   );
 }

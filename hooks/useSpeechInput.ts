@@ -1,5 +1,6 @@
+import Constants from "expo-constants";
 import { useCallback, useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { NativeModules, Platform } from "react-native";
 
 type SpeechModule = {
   requestPermissionsAsync: () => Promise<{ granted: boolean }>;
@@ -14,16 +15,32 @@ type SpeechModule = {
 
 let speechModule: SpeechModule | null | undefined;
 
+function isExpoGo(): boolean {
+  return Constants.appOwnership === "expo";
+}
+
+function hasNativeSpeechModule(): boolean {
+  return Boolean((NativeModules as Record<string, unknown>).ExpoSpeechRecognition);
+}
+
 function getSpeechModule(): SpeechModule | null {
   if (speechModule !== undefined) {
     return speechModule;
   }
+
+  speechModule = null;
+
+  // expo-speech-recognition requires a dev/production build — not Expo Go.
+  if (isExpoGo() || !hasNativeSpeechModule()) {
+    return null;
+  }
+
   try {
-    // Optional native module — assistant still works without it.
     speechModule = require("expo-speech-recognition") as SpeechModule;
   } catch {
     speechModule = null;
   }
+
   return speechModule;
 }
 
@@ -32,22 +49,41 @@ export function useSpeechInput() {
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    const module = getSpeechModule();
-    if (!module) {
+    if (isExpoGo() || !hasNativeSpeechModule()) {
       setIsSupported(false);
       return;
     }
-    const available =
-      typeof module.isRecognitionAvailable === "function"
-        ? module.isRecognitionAvailable()
-        : Platform.OS !== "web";
-    setIsSupported(Boolean(available));
+
+    try {
+      const module = getSpeechModule();
+      if (!module) {
+        setIsSupported(false);
+        return;
+      }
+      const available =
+        typeof module.isRecognitionAvailable === "function"
+          ? module.isRecognitionAvailable()
+          : Platform.OS !== "web";
+      setIsSupported(Boolean(available));
+    } catch {
+      setIsSupported(false);
+    }
   }, []);
 
   const startListening = useCallback(
     async (onResult: (text: string) => void) => {
-      const module = getSpeechModule();
-      if (!module || isListening) {
+      if (isExpoGo() || isListening) {
+        return;
+      }
+
+      let module: SpeechModule | null = null;
+      try {
+        module = getSpeechModule();
+      } catch {
+        module = null;
+      }
+
+      if (!module) {
         return;
       }
 
@@ -85,8 +121,11 @@ export function useSpeechInput() {
   );
 
   const stopListening = useCallback(() => {
-    const module = getSpeechModule();
-    module?.stop();
+    try {
+      getSpeechModule()?.stop();
+    } catch {
+      // Native module may be unavailable.
+    }
     setIsListening(false);
   }, []);
 

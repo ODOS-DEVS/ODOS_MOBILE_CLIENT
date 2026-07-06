@@ -1,6 +1,10 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
 import { fetchCustomerWalletRequest, type CustomerWallet } from "@/hooks/useOrders";
+import {
+  buildWalletPaymentMethod,
+  WALLET_CHECKOUT_PAYMENT_ID,
+} from "@/utils/checkoutPayment";
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
@@ -146,14 +150,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   );
   const defaultPayment = useMemo(
     () => {
-      const walletPayment: PaymentMethod | null = customerWallet
-        ? {
-            id: "wallet",
-            type: "wallet",
-            label: `Wallet (${customerWallet.currency} ${customerWallet.available_balance.toFixed(2)})`,
-            isDefault: false,
-          }
-        : null;
+      const walletPayment = buildWalletPaymentMethod(customerWallet);
       const savedDefault =
         paymentMethods.find((payment) => payment.isDefault) ?? paymentMethods[0] ?? null;
       return savedDefault ?? walletPayment;
@@ -169,16 +166,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, [addresses, checkoutAddressId, defaultAddress]);
 
   const selectedPayment = useMemo(() => {
-    const walletPayment: PaymentMethod | null = customerWallet
-      ? {
-          id: "wallet",
-          type: "wallet",
-          label: `Wallet (${customerWallet.currency} ${customerWallet.available_balance.toFixed(2)})`,
-          isDefault: false,
-        }
-      : null;
+    const walletPayment = buildWalletPaymentMethod(customerWallet);
 
-    if (checkoutPaymentId === "wallet") {
+    if (checkoutPaymentId === WALLET_CHECKOUT_PAYMENT_ID) {
       return walletPayment;
     }
 

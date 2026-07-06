@@ -26,43 +26,70 @@ function TrendBars({
   insights,
   height = rV(56),
   compact = false,
+  onHero = true,
 }: {
   insights: VendorAnalyticsInsights;
   height?: number;
   compact?: boolean;
+  onHero?: boolean;
 }) {
   const { colors, isDark } = useTheme();
   const maxSales = Math.max(...insights.dailyTrend.map((day) => day.sales), 1);
 
   return (
-    <View style={[styles.trendWrap, compact && styles.trendWrapCompact]}>
+    <View
+      style={[
+        styles.trendWrap,
+        compact && styles.trendWrapCompact,
+        onHero ? styles.trendWrapHero : null,
+      ]}
+    >
       {insights.dailyTrend.map((day) => {
-        const barHeight = Math.max((day.sales / maxSales) * height, day.orders > 0 ? rV(6) : rV(3));
+        const barHeight = Math.max(
+          (day.sales / maxSales) * height,
+          day.orders > 0 ? rV(6) : rV(3),
+        );
         const isToday = day === insights.dailyTrend[insights.dailyTrend.length - 1];
+
+        const trackColor = onHero
+          ? "rgba(255,255,255,0.16)"
+          : isDark
+            ? colors.surfaceMuted
+            : "#EEF2FF";
+
+        const barColor = onHero
+          ? isToday
+            ? "#FFFFFF"
+            : "rgba(255,255,255,0.58)"
+          : isToday
+            ? colors.primary
+            : isDark
+              ? "rgba(99, 102, 241, 0.72)"
+              : "rgba(99, 102, 241, 0.42)";
+
+        const labelColor = onHero
+          ? isToday
+            ? "#FFFFFF"
+            : "rgba(255,255,255,0.78)"
+          : isToday
+            ? colors.primary
+            : colors.textMuted;
 
         return (
           <View key={day.label} style={styles.trendColumn}>
-            <View
-              style={[
-                styles.trendBar,
-                {
-                  height: barHeight,
-                  backgroundColor: isToday
-                    ? colors.primary
-                    : isDark
-                      ? "rgba(99, 102, 241, 0.45)"
-                      : "rgba(99, 102, 241, 0.28)",
-                },
-              ]}
-            />
-            <Text
-              style={[
-                styles.trendLabel,
-                { color: isToday ? colors.primary : colors.textMuted },
-              ]}
-            >
-              {day.label}
-            </Text>
+            <View style={[styles.trendTrack, { height, backgroundColor: trackColor }]}>
+              <View
+                style={[
+                  styles.trendBar,
+                  {
+                    height: barHeight,
+                    backgroundColor: barColor,
+                  },
+                  onHero && isToday ? styles.trendBarTodayHero : null,
+                ]}
+              />
+            </View>
+            <Text style={[styles.trendLabel, { color: labelColor }]}>{day.label}</Text>
           </View>
         );
       })}
@@ -177,7 +204,15 @@ export default function VendorAnalyticsPanel({
             </View>
           ) : null}
         </View>
-        <TrendBars insights={insights} height={rV(variant === "compact" ? 44 : 64)} compact={variant === "compact"} />
+        <View style={styles.heroChartPanel}>
+          <Text style={styles.heroChartTitle}>Daily sales</Text>
+          <TrendBars
+            insights={insights}
+            height={rV(variant === "compact" ? 44 : 64)}
+            compact={variant === "compact"}
+            onHero
+          />
+        </View>
       </LinearGradient>
 
       <View style={styles.body}>
@@ -333,14 +368,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.16)",
   },
+  heroChartPanel: {
+    borderRadius: rMS(14),
+    paddingHorizontal: rS(10),
+    paddingTop: rV(10),
+    paddingBottom: rV(8),
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
+    gap: rV(8),
+  },
+  heroChartTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(10.5),
+    letterSpacing: 0.35,
+    textTransform: "uppercase",
+    color: "rgba(255,255,255,0.82)",
+  },
   trendWrap: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
     gap: rS(6),
-    paddingTop: rV(4),
   },
   trendWrapCompact: {
+    paddingTop: 0,
+  },
+  trendWrapHero: {
     paddingTop: 0,
   },
   trendColumn: {
@@ -348,13 +402,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: rV(6),
   },
-  trendBar: {
+  trendTrack: {
     width: "100%",
     maxWidth: rS(28),
     borderRadius: rMS(6),
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  trendBar: {
+    width: "100%",
+    borderRadius: rMS(6),
+  },
+  trendBarTodayHero: {
+    shadowColor: "#000000",
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   trendLabel: {
-    fontFamily: Fonts.text,
+    fontFamily: Fonts.titleBold,
     fontSize: rMS(10),
   },
   body: {
