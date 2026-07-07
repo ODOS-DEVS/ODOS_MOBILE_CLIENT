@@ -24,6 +24,7 @@ import { useCart } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
 import { getDeliveryMethodLabel } from "@/utils/delivery";
+import { formatOrderTimelineDate, getOrderTimelineSteps } from "@/utils/orderTracking";
 import { useReviews } from "@/hooks/useReviews";
 import { useAppReview } from "@/hooks/useAppReview";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -97,124 +98,6 @@ function getStatusMeta(order: Order) {
     textColor: "#1D4ED8",
     helperText: order.tracking_eta || "Estimated delivery in 2–3 days",
   };
-}
-
-function formatTimelineDate(value?: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  return new Date(value).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function getTimelineSteps(order: Order) {
-  const placedAt = formatTimelineDate(order.placed_at);
-  const deliveredAt = formatTimelineDate(order.delivered_at);
-  const cancelledAt = formatTimelineDate(order.cancelled_at);
-
-  if (order.status === "pending_payment") {
-    return [
-      {
-        key: "placed",
-        title: "Order reserved",
-        caption: placedAt || "Your order has been created",
-        state: "done" as const,
-      },
-      {
-        key: "payment",
-        title: "Awaiting payment confirmation",
-        caption:
-          order.payment_status === "failed"
-            ? "Payment failed, so preparation has not started."
-            : "We’ll start preparing this order after payment clears.",
-        state: "active" as const,
-      },
-      {
-        key: "processing",
-        title: "Preparation starts",
-        caption: "This begins once payment is verified.",
-        state: "pending" as const,
-      },
-    ];
-  }
-
-  if (order.status === "cancelled") {
-    return [
-      {
-        key: "placed",
-        title: "Order placed",
-        caption: placedAt || "Your order was created",
-        state: "done" as const,
-      },
-      {
-        key: "cancelled",
-        title: "Order cancelled",
-        caption: cancelledAt || order.cancellation_reason || "Cancelled by customer",
-        state: "cancelled" as const,
-      },
-    ];
-  }
-
-  if (order.status === "delivered") {
-    return [
-      {
-        key: "placed",
-        title: "Order placed",
-        caption: placedAt || "Your order was created",
-        state: "done" as const,
-      },
-      {
-        key: "processing",
-        title: "Prepared for delivery",
-        caption: "Packed and moved into delivery",
-        state: "done" as const,
-      },
-      {
-        key: "delivered",
-        title: "Delivered",
-        caption: deliveredAt || "Delivered successfully",
-        state: "done" as const,
-      },
-    ];
-  }
-
-  return [
-    {
-      key: "placed",
-      title: "Order placed",
-      caption: placedAt || "Your order was created",
-      state: "done" as const,
-    },
-    {
-      key: "processing",
-      title: "Preparing your order",
-      caption: order.tracking_eta || "We’re getting your items ready",
-      state: (order.progress ?? 0) >= 0.9 ? ("done" as const) : ("active" as const),
-    },
-    {
-      key: "out_for_delivery",
-      title: "Out for delivery",
-      caption:
-        (order.progress ?? 0) >= 0.9 || (order.tracking_eta ?? "").toLowerCase().includes("out for delivery")
-          ? order.tracking_eta || "Your package is on the way"
-          : "We’ll notify you when the courier is en route",
-      state:
-        (order.progress ?? 0) >= 0.9 || (order.tracking_eta ?? "").toLowerCase().includes("out for delivery")
-          ? ("active" as const)
-          : ("pending" as const),
-    },
-    {
-      key: "delivered",
-      title: "Delivery confirmation",
-      caption: "Confirm once the package arrives",
-      state: "pending" as const,
-    },
-  ];
 }
 
 const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
@@ -385,9 +268,10 @@ export default function OrderDetailScreen() {
     try {
       await confirmDelivery(order.id);
       await refreshOrder();
+      void maybePromptAfterDelivery(order.id);
       Alert.alert(
         "Order delivered",
-        "Nice — this order has been moved to your delivered list.",
+        "Thanks for confirming. You can leave a review anytime from your account.",
       );
     } catch (error) {
       handleError(
@@ -527,7 +411,7 @@ export default function OrderDetailScreen() {
 
   const statusMeta = getStatusMeta(order);
   const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const timelineSteps = getTimelineSteps(order);
+  const timelineSteps = getOrderTimelineSteps(order);
 
   return (
     <View style={accountStyles.screen}>
@@ -764,7 +648,7 @@ export default function OrderDetailScreen() {
 
                       <View style={styles.returnRequestFooter}>
                         <Text style={styles.returnRequestTimestamp}>
-                          Sent {formatTimelineDate(request.created_at) || "just now"}
+                          Sent {formatOrderTimelineDate(request.created_at) || "just now"}
                         </Text>
                         {request.refund_amount !== null && request.refund_amount !== undefined ? (
                           <Text style={styles.returnRequestRefund}>

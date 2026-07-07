@@ -1,12 +1,12 @@
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
-import type { StoreItem } from "@/hooks/useCommerce";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
+import type { StoreItem } from "@/hooks/useCommerce";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { hasStoreSocialLinks, listStoreSocialLinks } from "@/utils/social";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { type RefObject, useMemo } from "react";
+import React, { useMemo, type RefObject } from "react";
 import {
   Animated,
   Image,
@@ -32,7 +32,7 @@ type StorefrontHeroProps = {
   onShare: () => void;
   onChat: () => void;
   onMap?: () => void;
-  productCount: number;
+  productBadge?: string | null;
 };
 
 export function StorefrontHero({
@@ -47,11 +47,12 @@ export function StorefrontHero({
   onShare,
   onChat,
   onMap,
-  productCount,
+  productBadge,
 }: StorefrontHeroProps) {
   const { colors } = useTheme();
   const isVerified = store.status === "active";
-  const hasRating = typeof store.rating === "number" && Number.isFinite(store.rating);
+  const hasRating =
+    typeof store.rating === "number" && Number.isFinite(store.rating);
   const socialItems = listStoreSocialLinks({
     instagramUrl: store.instagramUrl,
     facebookUrl: store.facebookUrl,
@@ -105,19 +106,31 @@ export function StorefrontHero({
           style={[
             styles.coverMotion,
             {
-              transform: [{ scale: coverScale }, { translateY: coverTranslateY }],
+              transform: [
+                { scale: coverScale },
+                { translateY: coverTranslateY },
+              ],
             },
           ]}
         >
-          {store.imageBanner ?? store.image ? (
+          {(store.imageBanner ?? store.image) ? (
             <Image
               source={(store.imageBanner ?? store.image) as any}
               style={styles.coverImage}
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.coverFallback, { backgroundColor: colors.surfaceMuted }]}>
-              <Ionicons name="storefront" size={rS(40)} color={colors.iconMuted} />
+            <View
+              style={[
+                styles.coverFallback,
+                { backgroundColor: colors.surfaceMuted },
+              ]}
+            >
+              <Ionicons
+                name="storefront"
+                size={rS(40)}
+                color={colors.iconMuted}
+              />
             </View>
           )}
         </Animated.View>
@@ -129,10 +142,18 @@ export function StorefrontHero({
         />
 
         <View style={[styles.topBar, { top: headerButtonTop }]}>
-          <TouchableOpacity onPress={onBack} style={styles.glassButton} activeOpacity={0.88}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.glassButton}
+            activeOpacity={0.88}
+          >
             <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onShare} style={styles.glassButton} activeOpacity={0.88}>
+          <TouchableOpacity
+            onPress={onShare}
+            style={styles.glassButton}
+            activeOpacity={0.88}
+          >
             <Ionicons name="share-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -142,19 +163,41 @@ export function StorefrontHero({
         <View style={styles.logoFloat}>
           <View style={[styles.logoRing, { borderColor: colors.screen }]}>
             {store.image ? (
-              <Image source={store.image} style={styles.logoImage} resizeMode="cover" />
+              <Image
+                source={store.image}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
             ) : (
-              <View style={[styles.logoFallback, { backgroundColor: colors.surfaceMuted }]}>
-                <Ionicons name="storefront-outline" size={rS(28)} color={colors.iconMuted} />
+              <View
+                style={[
+                  styles.logoFallback,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
+              >
+                <Ionicons
+                  name="storefront-outline"
+                  size={rS(28)}
+                  color={colors.iconMuted}
+                />
               </View>
             )}
           </View>
-          {isVerified ? <VerifiedSeal size={rS(24)} style={styles.verifiedBadge} /> : null}
+          {isVerified ? (
+            <VerifiedSeal size={rS(24)} style={styles.verifiedBadge} />
+          ) : null}
         </View>
 
-        <View ref={nameAnchorRef} collapsable={false} onLayout={handleNameLayout}>
+        <View
+          ref={nameAnchorRef}
+          collapsable={false}
+          onLayout={handleNameLayout}
+        >
           <Animated.Text
-            style={[styles.storeTitle, { color: colors.text, opacity: inlineNameOpacity }]}
+            style={[
+              styles.storeTitle,
+              { color: colors.text, opacity: inlineNameOpacity },
+            ]}
             numberOfLines={2}
           >
             {store.title}
@@ -162,22 +205,35 @@ export function StorefrontHero({
         </View>
 
         {trustLine ? (
-          <Text style={[styles.trustLine, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text
+            style={[styles.trustLine, { color: colors.textMuted }]}
+            numberOfLines={1}
+          >
             {isVerified ? "Verified store  ·  " : ""}
             {trustLine}
           </Text>
         ) : null}
 
         {store.description ? (
-          <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
+          <Text
+            style={[styles.description, { color: colors.textSecondary }]}
+            numberOfLines={3}
+          >
             {store.description}
           </Text>
         ) : null}
 
-        {productCount > 0 ? (
+        {productBadge ? (
           <View style={[styles.countChip, { backgroundColor: colors.pill }]}>
-            <Text style={[styles.countChipText, { color: colors.textSecondary }]}>
-              {productCount} product{productCount === 1 ? "" : "s"}
+            <Ionicons
+              name="bag-handle-outline"
+              size={rMS(13)}
+              color={colors.textSecondary}
+            />
+            <Text
+              style={[styles.countChipText, { color: colors.textSecondary }]}
+            >
+              {productBadge}
             </Text>
           </View>
         ) : null}
@@ -188,21 +244,40 @@ export function StorefrontHero({
             activeOpacity={0.9}
             onPress={onChat}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={rS(17)} color={colors.onPrimary} />
-            <Text style={[styles.primaryActionText, { color: colors.onPrimary }]}>Message</Text>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={rS(17)}
+              color={colors.onPrimary}
+            />
+            <Text
+              style={[styles.primaryActionText, { color: colors.onPrimary }]}
+            >
+              Message
+            </Text>
           </TouchableOpacity>
 
           {onMap ? (
             <TouchableOpacity
               style={[
                 styles.secondaryAction,
-                { backgroundColor: colors.card, borderColor: colors.borderStrong },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.borderStrong,
+                },
               ]}
               activeOpacity={0.9}
               onPress={onMap}
             >
-              <Ionicons name="location-outline" size={rS(17)} color={colors.text} />
-              <Text style={[styles.secondaryActionText, { color: colors.text }]}>Visit</Text>
+              <Ionicons
+                name="location-outline"
+                size={rS(17)}
+                color={colors.text}
+              />
+              <Text
+                style={[styles.secondaryActionText, { color: colors.text }]}
+              >
+                Visit
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -212,7 +287,13 @@ export function StorefrontHero({
             {socialItems.map((item) => (
               <TouchableOpacity
                 key={item.platform}
-                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                style={[
+                  styles.socialButton,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
                 activeOpacity={0.86}
                 onPress={() => void Linking.openURL(item.url)}
               >
@@ -231,7 +312,10 @@ type StorefrontSectionTitleProps = {
   trailing?: React.ReactNode;
 };
 
-export function StorefrontSectionTitle({ title, trailing }: StorefrontSectionTitleProps) {
+export function StorefrontSectionTitle({
+  title,
+  trailing,
+}: StorefrontSectionTitleProps) {
   const { colors } = useTheme();
 
   return (
@@ -341,6 +425,9 @@ const styles = StyleSheet.create({
     borderRadius: rS(999),
     paddingHorizontal: rS(14),
     paddingVertical: rS(6),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(6),
   },
   countChipText: {
     fontFamily: Fonts.title,

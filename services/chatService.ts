@@ -257,3 +257,28 @@ export async function createChatMessage(
 
   return mapMessage((await response.json()) as ChatMessageApi);
 }
+
+export async function updateSupportThreadStatus(
+  threadId: string,
+  status: "resolved" | "waiting_on_admin" | "waiting_on_customer",
+  accessToken?: string | null,
+) {
+  const token = await requireAccessToken(accessToken);
+  const response = await fetch(
+    `${API_BASE_URL}/chat/threads/${encodeURIComponent(threadId)}/support-status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return mapThread((await response.json()) as ChatThreadApi);
+}

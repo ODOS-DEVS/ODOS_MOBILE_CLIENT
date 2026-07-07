@@ -18,7 +18,7 @@ import React, {
 
 export interface WishlistProduct {
   id: string;
-  image: any;
+  image?: any;
   title: string;
   category?: string;
   price?: number;

@@ -1,9 +1,10 @@
+import { AssistantAvatar } from "@/components/assistant/AssistantAnimations";
 import {
+  AssistantCopyFeedback,
   AssistantMessageItem,
   AssistantQuickPrompts,
   AssistantTypingIndicator,
 } from "@/components/assistant/AssistantUi";
-import { AssistantAvatar } from "@/components/assistant/AssistantAnimations";
 import {
   ChatComposer,
   ChatScreenHeader,
@@ -22,22 +23,46 @@ import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  FlatList,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Reanimated, { FadeInDown } from "react-native-reanimated";
+import { FlatList as GestureFlatList } from "react-native-gesture-handler";
+
+function getAssistantMessageLayout(
+  messages: AssistantMessage[],
+  index: number,
+) {
+  const current = messages[index];
+  const prev = index > 0 ? messages[index - 1] : null;
+  const next = index < messages.length - 1 ? messages[index + 1] : null;
+  const sameRoleAsPrev = prev?.role === current.role;
+  const sameRoleAsNext = next?.role === current.role;
+
+  return {
+    showAvatar: current.role === "assistant" && !sameRoleAsPrev,
+    showTimestamp: !sameRoleAsNext,
+    compactTop: sameRoleAsPrev,
+    animate: !sameRoleAsPrev,
+  };
+}
 
 export default function AssistantScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
-  const screenContext = typeof screenParam === "string" ? screenParam : "assistant";
+  const screenContext =
+    typeof screenParam === "string" ? screenParam : "assistant";
   const {
     messages,
     status,
@@ -48,27 +73,69 @@ export default function AssistantScreen() {
     submitFeedback,
     resetConversation,
   } = useAssistant(screenContext);
-  const { isListening, isSupported, startListening, stopListening } = useSpeechInput();
+  const { isListening, isSupported, startListening, stopListening } =
+    useSpeechInput();
   const [input, setInput] = useState("");
-  const listRef = useRef<FlatList<AssistantMessage>>(null);
+  const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<GestureFlatList<AssistantMessage>>(null);
+  const isNearBottomRef = useRef(true);
+
+  const showCopyFeedback = useCallback(() => {
+    if (copyFeedbackTimerRef.current) {
+      clearTimeout(copyFeedbackTimerRef.current);
+    }
+    setCopyFeedbackVisible(true);
+    copyFeedbackTimerRef.current = setTimeout(() => {
+      setCopyFeedbackVisible(false);
+      copyFeedbackTimerRef.current = null;
+    }, 1200);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimerRef.current) {
+        clearTimeout(copyFeedbackTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const lastMessage = messages[messages.length - 1];
   const isStreamingReply =
-    isSending && lastMessage?.role === "assistant" && lastMessage.id !== "welcome";
+    isSending &&
+    lastMessage?.role === "assistant" &&
+    lastMessage.id !== "welcome";
   const showTypingIndicator = isSending && !isStreamingReply;
 
   const showQuickPrompts =
     messages.length === 1 && (messages[0]?.id === "welcome" || Boolean(nudge));
   const connectionState = status?.enabled ? "connected" : "disconnected";
 
-  const scrollToEnd = useCallback(() => {
+  const scrollToEnd = useCallback((animated = true) => {
     requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd({ animated: true });
+      listRef.current?.scrollToEnd({ animated });
     });
   }, []);
 
+  const handleScroll = useCallback(
+    (event: {
+      nativeEvent: {
+        layoutMeasurement: { height: number };
+        contentOffset: { y: number };
+        contentSize: { height: number };
+      };
+    }) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      isNearBottomRef.current = distanceFromBottom < 120;
+    },
+    [],
+  );
+
   useEffect(() => {
-    if (isSending) {
+    if (isSending || isNearBottomRef.current) {
       scrollToEnd();
     }
   }, [isSending, messages, scrollToEnd]);
@@ -108,17 +175,17 @@ export default function AssistantScreen() {
         },
         hero: {
           marginHorizontal: rS(16),
-          marginTop: rV(10),
-          marginBottom: rV(6),
-          borderRadius: rMS(20),
+          marginTop: rV(8),
+          marginBottom: rV(4),
+          borderRadius: rMS(18),
           overflow: "hidden",
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
         },
         heroInner: {
           paddingHorizontal: rS(16),
-          paddingVertical: rV(16),
-          gap: rV(6),
+          paddingVertical: rV(14),
+          gap: rV(5),
         },
         heroTitle: {
           fontFamily: Fonts.titleBold,
@@ -144,7 +211,9 @@ export default function AssistantScreen() {
           paddingHorizontal: rS(10),
           paddingVertical: rV(5),
           borderRadius: 999,
-          backgroundColor: "rgba(255,255,255,0.72)",
+          backgroundColor: "rgba(255,255,255,0.85)",
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
         },
         heroBadgeText: {
           fontFamily: Fonts.text,
@@ -208,15 +277,22 @@ export default function AssistantScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: AssistantMessage }) => (
-      <AssistantMessageItem
-        message={item}
-        onFeedback={submitFeedback}
-        isStreaming={isStreamingReply && item.id === lastMessage?.id}
-        showAvatar={item.role === "assistant"}
-      />
-    ),
-    [isStreamingReply, lastMessage?.id, submitFeedback],
+    ({ item, index }: { item: AssistantMessage; index: number }) => {
+      const layout = getAssistantMessageLayout(messages, index);
+      return (
+        <AssistantMessageItem
+          message={item}
+          onFeedback={submitFeedback}
+          onCopied={showCopyFeedback}
+          isStreaming={isStreamingReply && item.id === lastMessage?.id}
+          showAvatar={layout.showAvatar}
+          showTimestamp={layout.showTimestamp}
+          compactTop={layout.compactTop}
+          animate={layout.animate}
+        />
+      );
+    },
+    [isStreamingReply, lastMessage?.id, messages, showCopyFeedback, submitFeedback],
   );
 
   const listHeader = useMemo(() => {
@@ -224,7 +300,7 @@ export default function AssistantScreen() {
       return null;
     }
     return (
-      <Reanimated.View entering={FadeInDown.duration(320)} style={styles.hero}>
+      <View style={styles.hero}>
         <LinearGradient
           colors={[colors.accentSoft, "#FFFFFF"]}
           start={{ x: 0, y: 0 }}
@@ -232,7 +308,9 @@ export default function AssistantScreen() {
           style={styles.heroInner}
         >
           <Text style={styles.heroTitle}>
-            {status?.enabled ? "Your ODOS shopping companion" : "Guided shopping help"}
+            {status?.enabled
+              ? "Your ODOS shopping companion"
+              : "Guided shopping help"}
           </Text>
           <Text style={styles.heroText}>
             {user
@@ -242,13 +320,17 @@ export default function AssistantScreen() {
           <View style={styles.heroBadges}>
             {["Orders", "Delivery", "Deals", "Stores"].map((label) => (
               <View key={label} style={styles.heroBadge}>
-                <Ionicons name="checkmark-circle" size={rMS(12)} color={colors.primary} />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={rMS(12)}
+                  color={colors.primary}
+                />
                 <Text style={styles.heroBadgeText}>{label}</Text>
               </View>
             ))}
           </View>
         </LinearGradient>
-      </Reanimated.View>
+      </View>
     );
   }, [colors, showQuickPrompts, status?.enabled, styles, user]);
 
@@ -272,7 +354,11 @@ export default function AssistantScreen() {
               activeOpacity={0.78}
               onPress={openSupport}
             >
-              <Ionicons name="headset-outline" size={rMS(15)} color={colors.primary} />
+              <Ionicons
+                name="headset-outline"
+                size={rMS(15)}
+                color={colors.primary}
+              />
               <Text style={styles.footerLinkText}>Talk to human support</Text>
             </TouchableOpacity>
           </View>
@@ -312,13 +398,15 @@ export default function AssistantScreen() {
           }
           onBack={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           connectionState={connectionState}
-          avatar={<AssistantAvatar size={rMS(44)} pulse={Boolean(status?.enabled)} />}
+          avatar={<AssistantAvatar size={rMS(44)} />}
           badges={
             <>
               <ChatStatusBadge
                 label={status?.enabled ? "AI ready" : "Guided help"}
                 icon={status?.enabled ? "sparkles-outline" : "book-outline"}
-                backgroundColor={status?.enabled ? "#EEF2FF" : colors.surfaceMuted}
+                backgroundColor={
+                  status?.enabled ? "#EEF2FF" : colors.surfaceMuted
+                }
                 color={status?.enabled ? AppColors.primary : colors.textMuted}
               />
               <TouchableOpacity
@@ -327,7 +415,11 @@ export default function AssistantScreen() {
                 onPress={resetConversation}
                 accessibilityLabel="New conversation"
               >
-                <Ionicons name="refresh-outline" size={rMS(12)} color={colors.textMuted} />
+                <Ionicons
+                  name="refresh-outline"
+                  size={rMS(12)}
+                  color={colors.textMuted}
+                />
                 <Text style={styles.resetBadgeText}>New</Text>
               </TouchableOpacity>
             </>
@@ -335,12 +427,12 @@ export default function AssistantScreen() {
         />
 
         {error ? (
-          <Reanimated.View entering={FadeInDown.duration(220)} style={styles.errorBanner}>
+          <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{error}</Text>
-          </Reanimated.View>
+          </View>
         ) : null}
 
-        <FlatList
+        <GestureFlatList
           ref={listRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
@@ -351,7 +443,14 @@ export default function AssistantScreen() {
           ListFooterComponent={listFooter}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          onContentSizeChange={scrollToEnd}
+          removeClippedSubviews={false}
+          onContentSizeChange={() => {
+            if (isNearBottomRef.current || isSending) {
+              scrollToEnd();
+            }
+          }}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
 
         <ChatComposer
@@ -375,6 +474,8 @@ export default function AssistantScreen() {
             });
           }}
         />
+
+        <AssistantCopyFeedback visible={copyFeedbackVisible} />
       </LinearGradient>
     </ChatScreenShell>
   );

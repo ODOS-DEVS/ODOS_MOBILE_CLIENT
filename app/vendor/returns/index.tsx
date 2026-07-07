@@ -8,12 +8,12 @@ import {
 } from "@/components/vendor/VendorUi";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { fetchVendorReturns } from "@/services/storeService";
+import { rV, useResponsive } from "@/styles/responsive";
 import type { VendorReturnQueueTab, VendorReturnRequest } from "@/types/store";
 import {
   filterVendorReturnsByTab,
   isOpenVendorReturn,
 } from "@/utils/vendorReturns";
-import { rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
@@ -22,7 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function VendorReturnsScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
-  const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
+  const { hasVendorAccess, isCheckingVendorAccess, session } =
+    useRequireVendor();
   const [returns, setReturns] = useState<VendorReturnRequest[]>([]);
   const [activeTab, setActiveTab] = useState<VendorReturnQueueTab>("open");
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +61,8 @@ export default function VendorReturnsScreen() {
   const counts = useMemo(
     () => ({
       open: returns.filter((item) => isOpenVendorReturn(item.status)).length,
-      resolved: returns.filter((item) => !isOpenVendorReturn(item.status)).length,
+      resolved: returns.filter((item) => !isOpenVendorReturn(item.status))
+        .length,
     }),
     [returns],
   );
@@ -81,7 +83,11 @@ export default function VendorReturnsScreen() {
 
   if (isCheckingVendorAccess) {
     return (
-      <VendorScreenShell title="Returns" loading loadingLabel="Loading returns..." />
+      <VendorScreenShell
+        title="Returns"
+        loading
+        loadingLabel="Loading returns..."
+      />
     );
   }
 
@@ -90,7 +96,13 @@ export default function VendorReturnsScreen() {
   }
 
   if (isLoading && returns.length === 0) {
-    return <VendorScreenShell title="Returns" loading loadingLabel="Loading returns..." />;
+    return (
+      <VendorScreenShell
+        title="Returns"
+        loading
+        loadingLabel="Loading returns..."
+      />
+    );
   }
 
   return (
@@ -99,7 +111,10 @@ export default function VendorReturnsScreen() {
         data={filteredReturns}
         keyExtractor={(item) => item.id}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => void handleRefresh()}
+          />
         }
         contentContainerStyle={[
           vendorStyles.content,
@@ -113,9 +128,8 @@ export default function VendorReturnsScreen() {
         ListHeaderComponent={
           <View style={vendorStyles.sectionBlock}>
             <VendorPageIntro
-              eyebrow="Returns inbox"
               title="Track shopper return requests"
-              body="See return and refund requests for your products. ODOS admin reviews and resolves each case."
+              subtitle="Review return and refund requests for your products and update their status."
               error={error}
             />
             <VendorReturnQueueTabs
@@ -140,7 +154,11 @@ export default function VendorReturnsScreen() {
         ListEmptyComponent={
           <AccountEmptyState
             icon="return-down-back-outline"
-            title={activeTab === "open" ? "No open returns" : "No resolved returns yet"}
+            title={
+              activeTab === "open"
+                ? "No open returns"
+                : "No resolved returns yet"
+            }
             message={
               activeTab === "open"
                 ? "When shoppers request a return on your products, it will appear here."

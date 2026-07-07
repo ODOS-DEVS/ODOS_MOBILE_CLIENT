@@ -12,8 +12,10 @@ interface StoreCardProps {
   imageBannerUrl?: string;
   title: string;
   category?: string;
+  city?: string;
   rating?: number;
   reviews?: string;
+  status?: string;
   /** Optional width override to match product cards */
   cardWidth?: number;
   /** Optional override for horizontal spacing (margin-right) */
@@ -28,8 +30,10 @@ const StoreCard: React.FC<StoreCardProps> = ({
   imageBannerUrl,
   title,
   category,
+  city,
   rating,
   reviews,
+  status,
   cardWidth,
   horizontalSpacing,
 }) => {
@@ -39,9 +43,12 @@ const StoreCard: React.FC<StoreCardProps> = ({
   const imageHeight = rV(130);
   const spacingRight = horizontalSpacing ?? rS(12);
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
+  const isVerified = status === "active";
+  const subtitle = category || city;
 
   return (
     <TouchableOpacity
+      activeOpacity={0.9}
       onPress={() =>
         router.push({
           pathname: "/(root)/screens/stores/[id]" as any,
@@ -126,40 +133,38 @@ const StoreCard: React.FC<StoreCardProps> = ({
                   flexDirection: "row",
                   alignItems: "center",
                   flexShrink: 0,
+                  gap: rS(2),
                 }}
               >
-                <Ionicons name="star" size={rS(14)} color="#facc15" />
+                <Ionicons name="star" size={rS(13)} color="#facc15" />
                 <Text
-                  className="text-subtext-200 font-montserrat-extraBold"
-                  style={{ fontSize: rS(11), marginLeft: rS(4) }}
+                  style={{ ...textStyles.category, fontSize: rS(11), marginLeft: rS(2) }}
                 >
                   {rating!.toFixed(1)}
                 </Text>
               </View>
+            ) : isVerified ? (
+              <Ionicons name="checkmark-circle" size={rS(14)} color={colors.textMuted} />
             ) : null}
           </View>
 
-          <View style={{ flexDirection: "column", gap: 4, marginTop: rV(3), }}>
-            {category && (
-              <Text
-                style={{ ...textStyles.category, fontSize: rS(11) }}
-                numberOfLines={1}
-              >
-                {category}
-              </Text>
-            )}
-            {/* {rating && (
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="star" size={rS(14)} color="#facc15" />
+          {subtitle || reviews ? (
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: rV(3), gap: rS(4) }}>
+              {subtitle ? (
                 <Text
-                  className="text-subtext-200 font-montserrat-extraBold"
-                  style={{ fontSize: rS(11), marginLeft: rS(4) }}
+                  style={{ ...textStyles.category, fontSize: rS(11), flex: 1 }}
+                  numberOfLines={1}
                 >
-                  {rating.toFixed(1)}
+                  {subtitle}
                 </Text>
-              </View>
-            )} */}
-          </View>
+              ) : null}
+              {reviews ? (
+                <Text style={{ ...textStyles.category, fontSize: rS(10.5) }}>
+                  {reviews}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>

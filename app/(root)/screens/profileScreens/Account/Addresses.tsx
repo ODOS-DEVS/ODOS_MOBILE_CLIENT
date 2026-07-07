@@ -17,6 +17,7 @@ import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import { formatPhoneInput, validateGhanaPhone } from "@/utils/phone";
+import { looksLikeGhanaGpsCode, normalizeGhanaGpsCode } from "@/utils/location";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
@@ -27,7 +28,7 @@ const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
 type AddressFieldErrors = Partial<
-  Record<"label" | "fullName" | "phone" | "street" | "city" | "region", string>
+  Record<"label" | "fullName" | "phone" | "street" | "gpsCode" | "city" | "region", string>
 >;
 
 function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
@@ -45,6 +46,9 @@ function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
   }
   if (!form.street.trim() || form.street.trim().length < 3) {
     errors.street = "Enter a delivery street address.";
+  }
+  if (form.gpsCode?.trim() && !looksLikeGhanaGpsCode(form.gpsCode)) {
+    errors.gpsCode = "Use a GhanaPost GPS code like GA-144-1234.";
   }
   if (!form.city.trim() || form.city.trim().length < 2) {
     errors.city = "Enter the city or town.";
@@ -82,6 +86,7 @@ export default function AddressScreen() {
     fullName: "",
     phone: "",
     street: "",
+    gpsCode: "",
     city: "",
     region: "",
     isDefault: false,
@@ -102,6 +107,7 @@ export default function AddressScreen() {
       fullName: "",
       phone: "",
       street: "",
+      gpsCode: "",
       city: "",
       region: "",
       isDefault: false,
@@ -126,10 +132,16 @@ export default function AddressScreen() {
 
     setIsSaving(true);
     try {
+      const payload = {
+        ...form,
+        gpsCode: form.gpsCode?.trim()
+          ? normalizeGhanaGpsCode(form.gpsCode)
+          : undefined,
+      };
       if (editingId) {
-        await updateAddress(editingId, form);
+        await updateAddress(editingId, payload);
       } else {
-        const newId = await addAddress(form);
+        const newId = await addAddress(payload);
         if (fromCheckout && newId) {
           setCheckoutAddressId(newId);
         }
@@ -228,6 +240,11 @@ export default function AddressScreen() {
 
                   <View style={accountStyles.cardBody}>
                     <Text style={accountStyles.cardLine}>{address.street}</Text>
+                    {address.gpsCode ? (
+                      <Text style={[accountStyles.cardLine, { opacity: 0.72 }]}>
+                        GPS: {address.gpsCode}
+                      </Text>
+                    ) : null}
                     <Text style={accountStyles.cardMuted}>
                       {address.city}, {address.region}
                     </Text>
@@ -362,6 +379,17 @@ export default function AddressScreen() {
             setFieldErrors((current) => ({ ...current, street: undefined }));
           }}
           error={fieldErrors.street}
+        />
+        <AccountFormField
+          label="GhanaPost GPS (optional)"
+          placeholder="e.g. GA-144-1234"
+          value={form.gpsCode ?? ""}
+          autoCapitalize="characters"
+          onChangeText={(value) => {
+            setForm({ ...form, gpsCode: value.toUpperCase() });
+            setFieldErrors((current) => ({ ...current, gpsCode: undefined }));
+          }}
+          error={fieldErrors.gpsCode}
         />
         <AccountFormField
           label="City / town"

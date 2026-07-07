@@ -8,7 +8,7 @@ import { StyleProp, TouchableOpacity, ViewStyle } from "react-native";
 interface AddToWishListProps {
   product: {
     id: string;
-    image: any;
+    image?: any;
     title: string;
     category?: string;
     price?: number;

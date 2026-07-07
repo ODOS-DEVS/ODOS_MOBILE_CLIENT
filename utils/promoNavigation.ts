@@ -10,7 +10,8 @@ type PromoNavigationInput = Pick<
 function inferLinkTypeFromLegacyLink(link?: string | null): string {
   const trimmed = link?.trim().toLowerCase() ?? "";
   if (!trimmed) return "deals";
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return "external";
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://"))
+    return "external";
   if (trimmed.includes("flash")) return "flash_sales";
   if (trimmed.includes("popular")) return "popular";
   if (trimmed.includes("voucher")) return "vouchers";
@@ -22,7 +23,9 @@ function inferLinkTypeFromLegacyLink(link?: string | null): string {
   return "screen";
 }
 
-export function extractPromoDiscountPercent(banner: PromoNavigationInput): number | undefined {
+export function extractPromoDiscountPercent(
+  banner: PromoNavigationInput,
+): number | undefined {
   if (banner.linkType === "discounted_products") {
     const parsed = Number.parseInt(banner.ctaLink?.trim() ?? "", 10);
     if (Number.isFinite(parsed) && parsed > 0 && parsed <= 90) {
@@ -66,7 +69,9 @@ export function navigateFromPromoBanner(
   const target = banner.ctaLink?.trim() || "";
   const campaignTag = banner.campaignTag?.trim() || "";
   const linkType =
-    rawLinkType === "screen" && target ? inferLinkTypeFromLegacyLink(target) : rawLinkType;
+    rawLinkType === "screen" && target
+      ? inferLinkTypeFromLegacyLink(target)
+      : rawLinkType;
   const inferredDiscount = extractPromoDiscountPercent(banner);
 
   switch (linkType) {
@@ -109,7 +114,10 @@ export function navigateFromPromoBanner(
       break;
     case "product":
       if (target) {
-        router.push(`../screens/productDetails/${target}` as never);
+        router.push({
+          pathname: "/(root)/screens/[id]" as never,
+          params: { id: target },
+        });
         return;
       }
       break;
@@ -134,7 +142,10 @@ export function navigateFromPromoBanner(
   fallback?.();
 }
 
-export function navigateFromPromoLink(link?: string | null, fallback?: () => void) {
+export function navigateFromPromoLink(
+  link?: string | null,
+  fallback?: () => void,
+) {
   const trimmed = link?.trim();
   if (!trimmed) {
     fallback?.();

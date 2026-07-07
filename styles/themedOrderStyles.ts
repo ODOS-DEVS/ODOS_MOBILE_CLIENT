@@ -95,6 +95,27 @@ export function buildOrderStyles(c: ThemeColors) {
       backgroundColor: c.text,
       borderRadius: 999,
     },
+    trackingPreview: {
+      marginTop: rV(10),
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(8),
+    },
+    trackingPreviewCopy: {
+      flex: 1,
+      gap: rV(2),
+    },
+    trackingPreviewTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12.5),
+      color: c.text,
+    },
+    trackingPreviewCaption: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(17),
+      color: c.textMuted,
+    },
     reasonRow: {
       marginTop: rV(10),
       flexDirection: "row",

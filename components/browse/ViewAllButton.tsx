@@ -31,8 +31,7 @@ export function ViewAllButton({
 }: ViewAllButtonProps) {
   const { colors, isDark } = useTheme();
 
-  const displayLabel =
-    count != null ? `${label} (${count})` : label;
+  const displayLabel = count != null ? `${label} (${count})` : label;
 
   const styles = useMemo(
     () =>
@@ -55,7 +54,12 @@ export function ViewAllButton({
           color: colors.text,
           letterSpacing: 0.15,
         },
-        arrow: Platform.OS === "ios" ? { marginTop: 0.5 } : undefined,
+        arrow:
+          Platform.OS === "ios"
+            ? ({
+                marginTop: 0.5,
+              } as const)
+            : ({} as const),
       }),
     [colors, isDark],
   );

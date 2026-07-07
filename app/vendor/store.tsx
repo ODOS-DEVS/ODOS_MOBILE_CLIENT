@@ -1,9 +1,8 @@
+import TextInputField from "@/components/TextInputField";
+import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import StoreLocationPicker, {
   type StoreLocationValue,
 } from "@/components/location/StoreLocationPicker";
-import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
-import TextInputField from "@/components/TextInputField";
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountActionButton,
   AccountSectionCard,
@@ -20,17 +19,12 @@ import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { ManagedStoreUpdateInput } from "@/types/store";
-import { getStoreLocationValidationError } from "@/utils/location";
 import { pickCroppedImage } from "@/utils/imagePicker";
+import { getStoreLocationValidationError } from "@/utils/location";
 import { resolveImageSource } from "@/utils/media";
+import { normalizeStoreSocialLinks } from "@/utils/social";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type StoreErrors = Partial<Record<keyof ManagedStoreUpdateInput, string>>;
@@ -80,9 +74,16 @@ export default function VendorStoreScreen() {
   const { contentMaxWidth } = useResponsive();
   const { showToast } = useToast();
   const { markets: availableMarkets } = useMarkets();
-  const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
-  const { error, fetchStoreProfile, isLoadingStore, isSavingStore, storeProfile, updateStoreProfile } =
-    useStoreStore();
+  const { hasVendorAccess, isCheckingVendorAccess, session } =
+    useRequireVendor();
+  const {
+    error,
+    fetchStoreProfile,
+    isLoadingStore,
+    isSavingStore,
+    storeProfile,
+    updateStoreProfile,
+  } = useStoreStore();
 
   const [form, setForm] = useState<ManagedStoreUpdateInput>({
     name: "",
@@ -242,186 +243,189 @@ export default function VendorStoreScreen() {
           { paddingBottom: insets.bottom + rV(36) },
         ]}
       >
-          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
-            <VendorPageIntro
-              title="Store profile"
-              subtitle="Update the storefront details, visuals, and location shoppers see first."
+        <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <VendorPageIntro
+            title="Store profile"
+            subtitle="Update the storefront details, visuals, and location shoppers see first."
+          />
+          <AccountSectionCard title="Customer-facing store details">
+            <TextInputField
+              label="Store Name *"
+              icon="storefront-outline"
+              placeholder="Your store name"
+              value={form.name}
+              onChangeText={(text) => handleChange("name", text)}
+              errorMessage={fieldErrors.name}
             />
-            <AccountSectionCard title="Customer-facing store details">
-              <TextInputField
-                label="Store Name *"
-                icon="storefront-outline"
-                placeholder="Your store name"
-                value={form.name}
-                onChangeText={(text) => handleChange("name", text)}
-                errorMessage={fieldErrors.name}
-              />
-              <TextInputField
-                label="Description *"
-                icon="document-text-outline"
-                placeholder="What shoppers should know about this store"
-                value={form.description}
-                onChangeText={(text) => handleChange("description", text)}
-                errorMessage={fieldErrors.description}
-                multiline
-                numberOfLines={4}
-              />
-              <TextInputField
-                label="Category *"
-                icon="pricetag-outline"
-                placeholder="e.g. Fashion & Accessories"
-                value={form.category}
-                onChangeText={(text) => handleChange("category", text)}
-                errorMessage={fieldErrors.category}
-              />
-              <Text style={styles.fieldLabel}>Store audiences</Text>
-              <Text style={styles.helperText}>
-                Choose the shopper groups this store should appear under. You can
-                select more than one.
-              </Text>
-              <View style={styles.chipsRow}>
-                {STORE_AUDIENCE_OPTIONS.map((audience) => {
-                  const isSelected = form.audienceSlugs?.includes(audience.value);
-                  return (
-                    <TouchableOpacity
-                      key={audience.value}
-                      style={[styles.chip, isSelected && styles.chipSelected]}
-                      onPress={() => toggleAudience(audience.value)}
-                      activeOpacity={0.82}
+            <TextInputField
+              label="Description *"
+              icon="document-text-outline"
+              placeholder="What shoppers should know about this store"
+              value={form.description}
+              onChangeText={(text) => handleChange("description", text)}
+              errorMessage={fieldErrors.description}
+              multiline
+              numberOfLines={4}
+            />
+            <TextInputField
+              label="Category *"
+              icon="pricetag-outline"
+              placeholder="e.g. Fashion & Accessories"
+              value={form.category}
+              onChangeText={(text) => handleChange("category", text)}
+              errorMessage={fieldErrors.category}
+            />
+            <Text style={styles.fieldLabel}>Store audiences</Text>
+            <Text style={styles.helperText}>
+              Choose the shopper groups this store should appear under. You can
+              select more than one.
+            </Text>
+            <View style={styles.chipsRow}>
+              {STORE_AUDIENCE_OPTIONS.map((audience) => {
+                const isSelected = form.audienceSlugs?.includes(audience.value);
+                return (
+                  <TouchableOpacity
+                    key={audience.value}
+                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    onPress={() => toggleAudience(audience.value)}
+                    activeOpacity={0.82}
+                  >
+                    <Text
+                      style={[
+                        styles.chipLabel,
+                        isSelected && styles.chipLabelSelected,
+                      ]}
                     >
-                      <Text
-                        style={[
-                          styles.chipLabel,
-                          isSelected && styles.chipLabelSelected,
-                        ]}
-                      >
-                        {audience.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <TextInputField
-                label="Region *"
-                icon="map-outline"
-                placeholder="e.g. Greater Accra"
-                value={form.region}
-                onChangeText={(text) => handleChange("region", text)}
-                errorMessage={fieldErrors.region}
-              />
-              <TextInputField
-                label="City *"
-                icon="location-outline"
-                placeholder="e.g. Accra"
-                value={form.city}
-                onChangeText={(text) => handleChange("city", text)}
-                errorMessage={fieldErrors.city}
-              />
-              <TextInputField
-                label="Store phone"
-                icon="call-outline"
-                placeholder="Number customers can call"
-                value={form.phone ?? ""}
-                onChangeText={(text) => handleChange("phone", text)}
-                keyboardType="phone-pad"
-              />
-              <StoreLocationPicker
-                value={{
-                  address: form.location ?? "",
-                  latitude: form.latitude ?? null,
-                  longitude: form.longitude ?? null,
-                }}
-                onChange={(value: StoreLocationValue) => {
-                  setForm((current) => ({
-                    ...current,
-                    location: value.address,
-                    latitude: value.latitude,
-                    longitude: value.longitude,
-                  }));
-                  setFieldErrors((current) => ({
-                    ...current,
-                    location: undefined,
-                  }));
-                }}
-                errorMessage={fieldErrors.location}
-                city={form.city}
-                region={form.region}
-              />
-              <Text style={styles.fieldLabel}>Preferred Market</Text>
-              <View style={styles.chipsRow}>
-                {availableMarkets.map((market) => {
-                  const isSelected = form.marketId === market.id;
-                  return (
-                    <TouchableOpacity
-                      key={market.id}
-                      style={[styles.chip, isSelected && styles.chipSelected]}
-                      onPress={() => handleChange("marketId", market.id)}
-                      activeOpacity={0.82}
+                      {audience.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TextInputField
+              label="Region *"
+              icon="map-outline"
+              placeholder="e.g. Greater Accra"
+              value={form.region}
+              onChangeText={(text) => handleChange("region", text)}
+              errorMessage={fieldErrors.region}
+            />
+            <TextInputField
+              label="City *"
+              icon="location-outline"
+              placeholder="e.g. Accra"
+              value={form.city}
+              onChangeText={(text) => handleChange("city", text)}
+              errorMessage={fieldErrors.city}
+            />
+            <TextInputField
+              label="Store phone"
+              icon="call-outline"
+              placeholder="Number customers can call"
+              value={form.phone ?? ""}
+              onChangeText={(text) => handleChange("phone", text)}
+              keyboardType="phone-pad"
+            />
+            <StoreLocationPicker
+              value={{
+                address: form.location ?? "",
+                latitude: form.latitude ?? null,
+                longitude: form.longitude ?? null,
+              }}
+              onChange={(value: StoreLocationValue) => {
+                setForm((current) => ({
+                  ...current,
+                  location: value.address,
+                  latitude: value.latitude,
+                  longitude: value.longitude,
+                }));
+                setFieldErrors((current) => ({
+                  ...current,
+                  location: undefined,
+                }));
+              }}
+              errorMessage={fieldErrors.location}
+              city={form.city}
+              region={form.region}
+            />
+            <Text style={styles.fieldLabel}>Preferred Market</Text>
+            <View style={styles.chipsRow}>
+              {availableMarkets.map((market) => {
+                const isSelected = form.marketId === market.id;
+                return (
+                  <TouchableOpacity
+                    key={market.id}
+                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    onPress={() => handleChange("marketId", market.id)}
+                    activeOpacity={0.82}
+                  >
+                    <Text
+                      style={[
+                        styles.chipLabel,
+                        isSelected && styles.chipLabelSelected,
+                      ]}
                     >
-                      <Text
-                        style={[
-                          styles.chipLabel,
-                          isSelected && styles.chipLabelSelected,
-                        ]}
-                      >
-                        {market.title}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                      {market.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            </AccountSectionCard>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          </AccountSectionCard>
 
-            <AccountSectionCard title="Store branding">
-              <Text style={styles.helperText}>
-                These images are shown on the customer side, so use a crisp logo and a banner that represents the storefront well.
-              </Text>
+          <AccountSectionCard title="Store branding">
+            <Text style={styles.helperText}>
+              These images are shown on the customer side, so use a crisp logo
+              and a banner that represents the storefront well.
+            </Text>
 
-              <View style={styles.uploadGrid}>
-                {[
-                  {
-                    key: "logoImage" as const,
-                    label: "Store Logo",
-                    value: form.logoImage || storeProfile?.logoImage,
-                    actionLabel: "Change Logo",
-                  },
-                  {
-                    key: "bannerImage" as const,
-                    label: "Store Banner",
-                    value: form.bannerImage || storeProfile?.bannerImage,
-                    actionLabel: "Change Banner",
-                  },
-                ].map((upload) => (
-                  <View key={upload.key} style={styles.uploadCard}>
-                    <Text style={styles.uploadTitle}>{upload.label}</Text>
-                    <View style={styles.uploadPreview}>
-                      <Image
-                        source={resolveImageSource(upload.value, "bag")}
-                        style={styles.uploadPreviewImage}
-                        resizeMode="cover"
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={styles.uploadButton}
-                      onPress={() => handlePickImage(upload.key)}
-                      activeOpacity={0.82}
-                    >
-                      <Text style={styles.uploadButtonLabel}>{upload.actionLabel}</Text>
-                    </TouchableOpacity>
+            <View style={styles.uploadGrid}>
+              {[
+                {
+                  key: "logoImage" as const,
+                  label: "Store Logo",
+                  value: form.logoImage || storeProfile?.logoImage,
+                  actionLabel: "Change Logo",
+                },
+                {
+                  key: "bannerImage" as const,
+                  label: "Store Banner",
+                  value: form.bannerImage || storeProfile?.bannerImage,
+                  actionLabel: "Change Banner",
+                },
+              ].map((upload) => (
+                <View key={upload.key} style={styles.uploadCard}>
+                  <Text style={styles.uploadTitle}>{upload.label}</Text>
+                  <View style={styles.uploadPreview}>
+                    <Image
+                      source={resolveImageSource(upload.value, "bag")}
+                      style={styles.uploadPreviewImage}
+                      resizeMode="cover"
+                    />
                   </View>
-                ))}
-              </View>
-            </AccountSectionCard>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={() => handlePickImage(upload.key)}
+                    activeOpacity={0.82}
+                  >
+                    <Text style={styles.uploadButtonLabel}>
+                      {upload.actionLabel}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </AccountSectionCard>
 
-            <AccountActionButton
-              label={isSavingStore ? "Saving Store..." : "Save Store Profile"}
-              variant="primary"
-              onPress={handleSave}
-              disabled={isSavingStore}
-            />
-          </View>
+          <AccountActionButton
+            label={isSavingStore ? "Saving Store..." : "Save Store Profile"}
+            variant="primary"
+            onPress={handleSave}
+            disabled={isSavingStore}
+          />
+        </View>
       </KeyboardAwareScreen>
     </VendorScreenShell>
   );

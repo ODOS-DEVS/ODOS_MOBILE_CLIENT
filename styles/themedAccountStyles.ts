@@ -1,10 +1,9 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { lightTheme, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useMemo } from "react";
-import { StyleSheet } from "react-native";
-import { lightTheme, type ThemeColors } from "@/constants/theme";
+import { StyleSheet, type TextStyle, type ViewStyle } from "react-native";
 
 function buildAccountStyles(c: ThemeColors) {
   return StyleSheet.create({
@@ -256,7 +255,7 @@ function buildEmptyStyles(c: ThemeColors) {
 }
 
 function buildBadgeStyles(c: ThemeColors) {
-  return StyleSheet.create({
+  const shared = StyleSheet.create({
     base: {
       borderRadius: 999,
       paddingHorizontal: rS(10),
@@ -266,17 +265,34 @@ function buildBadgeStyles(c: ThemeColors) {
       fontFamily: Fonts.title,
       fontSize: rMS(10.5),
     },
+  });
+
+  const tones: Record<
+    "neutral" | "dark" | "success" | "warning" | "danger" | "info",
+    { wrap: ViewStyle; text: TextStyle }
+  > = {
     neutral: { wrap: { backgroundColor: c.pill }, text: { color: c.pillText } },
     dark: { wrap: { backgroundColor: c.text }, text: { color: c.onPrimary } },
-    success: { wrap: { backgroundColor: "#DCFCE7" }, text: { color: "#166534" } },
-    warning: { wrap: { backgroundColor: "#FEF3C7" }, text: { color: "#92400E" } },
-    danger: { wrap: { backgroundColor: "#FEE2E2" }, text: { color: "#B91C1C" } },
+    success: {
+      wrap: { backgroundColor: "#DCFCE7" },
+      text: { color: "#166534" },
+    },
+    warning: {
+      wrap: { backgroundColor: "#FEF3C7" },
+      text: { color: "#92400E" },
+    },
+    danger: {
+      wrap: { backgroundColor: "#FEE2E2" },
+      text: { color: "#B91C1C" },
+    },
     info: { wrap: { backgroundColor: "#DBEAFE" }, text: { color: "#1D4ED8" } },
-  });
+  };
+
+  return { ...shared, ...tones };
 }
 
 function buildActionStyles(c: ThemeColors) {
-  return StyleSheet.create({
+  const shared = StyleSheet.create({
     base: {
       minHeight: rV(44),
       borderRadius: rMS(14),
@@ -293,6 +309,12 @@ function buildActionStyles(c: ThemeColors) {
     disabled: {
       opacity: 0.45,
     },
+  });
+
+  const variants: Record<
+    "primary" | "secondary" | "danger" | "ghost",
+    { btn: ViewStyle; text: TextStyle; iconColor: string }
+  > = {
     primary: {
       btn: { backgroundColor: c.text },
       text: { color: c.onPrimary },
@@ -321,7 +343,9 @@ function buildActionStyles(c: ThemeColors) {
       text: { color: c.primary },
       iconColor: c.primary,
     },
-  });
+  };
+
+  return { ...shared, ...variants };
 }
 
 function buildIconShellStyles() {

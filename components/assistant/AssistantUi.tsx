@@ -1,5 +1,10 @@
 import ProductCard from "@/components/cards/ProductCard";
-import { AnimatedChatMessageWrap, TypingDots } from "@/components/chat/ChatAnimations";
+import {
+  AnimatedChatMessageWrap,
+  CHAT_FADE_IN_MS,
+  CHAT_FADE_OUT_MS,
+  TypingDots,
+} from "@/components/chat/ChatAnimations";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -11,9 +16,10 @@ import type {
 } from "@/types/assistant";
 import { getAssistantQuickPrompts } from "@/utils/assistantQuickPrompts";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Image,
   Pressable,
@@ -21,13 +27,11 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
-import Reanimated, {
-  FadeIn,
-  FadeInDown,
-  FadeInRight,
-  ZoomIn,
-} from "react-native-reanimated";
+import { Pressable as GesturePressable } from "react-native-gesture-handler";
+import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
 import {
   AssistantAvatar,
   AssistantSectionLabel,
@@ -110,6 +114,7 @@ export function AssistantQuickPrompts({
           fontSize: rMS(12),
           color: colors.textMuted,
           paddingHorizontal: rS(16),
+          marginBottom: rV(2),
         },
         scrollContent: {
           paddingHorizontal: rS(16),
@@ -121,16 +126,11 @@ export function AssistantQuickPrompts({
           alignItems: "center",
           gap: rS(8),
           paddingHorizontal: rS(14),
-          paddingVertical: rV(11),
-          borderRadius: rMS(18),
+          paddingVertical: rV(10),
+          borderRadius: rMS(16),
           backgroundColor: colors.card,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
-          shadowColor: colors.shadow,
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 2,
           opacity: disabled ? 0.55 : 1,
         },
         chipPrimary: {
@@ -152,11 +152,11 @@ export function AssistantQuickPrompts({
 
   return (
     <View style={styles.wrap}>
-      <Reanimated.View entering={FadeInDown.duration(280)} style={styles.titleRow}>
+      <View style={styles.titleRow}>
         <Ionicons name="flash-outline" size={rMS(16)} color={colors.primary} />
         <Text style={styles.title}>Quick questions</Text>
-      </Reanimated.View>
-      <Text style={styles.subtitle}>Tap one to get started instantly</Text>
+      </View>
+      <Text style={styles.subtitle}>Tap a suggestion to start</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -166,12 +166,13 @@ export function AssistantQuickPrompts({
         {quickPrompts.map((item, index) => {
           const isPrimary = index === 0 && Boolean(nudgePrompt);
           return (
-            <Reanimated.View
-              key={item.label}
-              entering={FadeInRight.delay(index * 70).springify().damping(18)}
-            >
+            <View key={item.label}>
               <Pressable
-                style={[styles.chip, isPrimary ? styles.chipPrimary : null]}
+                style={({ pressed }) => [
+                  styles.chip,
+                  isPrimary ? styles.chipPrimary : null,
+                  pressed && !disabled ? { opacity: 0.82 } : null,
+                ]}
                 disabled={disabled}
                 onPress={() => onSelect(item.prompt)}
               >
@@ -184,7 +185,7 @@ export function AssistantQuickPrompts({
                   {item.label}
                 </Text>
               </Pressable>
-            </Reanimated.View>
+            </View>
           );
         })}
       </ScrollView>
@@ -205,13 +206,15 @@ export function AssistantTypingIndicator({ visible }: AssistantTypingIndicatorPr
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(180)}
+      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
+      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       style={{
         flexDirection: "row",
         alignItems: "flex-end",
         gap: rS(8),
         paddingHorizontal: rS(16),
-        paddingVertical: rV(6),
+        paddingTop: rV(2),
+        paddingBottom: rV(4),
       }}
     >
       <AssistantAvatar size={rMS(28)} pulse />
@@ -220,25 +223,13 @@ export function AssistantTypingIndicator({ visible }: AssistantTypingIndicatorPr
           backgroundColor: colors.card,
           borderRadius: rMS(18),
           borderBottomLeftRadius: rMS(6),
-          paddingHorizontal: rS(16),
-          paddingVertical: rV(12),
+          paddingHorizontal: rS(14),
+          paddingVertical: rV(11),
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
-          minWidth: rS(72),
         }}
       >
         <TypingDots color={colors.textMuted} />
-        <Text
-          style={{
-            marginTop: rV(4),
-            fontFamily: Fonts.text,
-            fontSize: rMS(10),
-            color: colors.textMuted,
-            textAlign: "center",
-          }}
-        >
-          ODOS is thinking
-        </Text>
       </View>
     </Reanimated.View>
   );
@@ -250,7 +241,7 @@ function AssistantProductCarousel({ products }: { products: AssistantProduct[] }
   }
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(60).duration(280)}>
+    <View>
       <AssistantSectionLabel label="Suggested for you" />
       <ScrollView
         horizontal
@@ -262,11 +253,8 @@ function AssistantProductCarousel({ products }: { products: AssistantProduct[] }
           gap: rS(12),
         }}
       >
-        {products.map((product, index) => (
-          <Reanimated.View
-            key={product.id}
-            entering={ZoomIn.delay(index * 55).springify().damping(16)}
-          >
+        {products.map((product) => (
+          <View key={product.id}>
             <ProductCard
               id={product.id}
               image={product.image_url ? { uri: product.image_url } : undefined}
@@ -284,10 +272,10 @@ function AssistantProductCarousel({ products }: { products: AssistantProduct[] }
               storeId={product.store_id ?? undefined}
               trackingEvent="product_click"
             />
-          </Reanimated.View>
+          </View>
         ))}
       </ScrollView>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -307,15 +295,10 @@ function AssistantStoreCarousel({ stores }: { stores: AssistantStore[] }) {
           alignItems: "center",
           gap: rS(10),
           padding: rS(12),
-          borderRadius: rMS(16),
+          borderRadius: rMS(14),
           backgroundColor: colors.card,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
-          shadowColor: colors.shadow,
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
         },
         image: {
           width: rMS(48),
@@ -343,13 +326,13 @@ function AssistantStoreCarousel({ stores }: { stores: AssistantStore[] }) {
   }
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(60).duration(280)}>
+    <View>
       <AssistantSectionLabel label="Matching stores" />
       <View style={styles.wrap}>
-        {stores.map((store, index) => (
-          <Reanimated.View key={store.id} entering={FadeInRight.delay(index * 50).duration(240)}>
+        {stores.map((store) => (
+          <View key={store.id}>
             <Pressable
-              style={styles.card}
+              style={({ pressed }) => [styles.card, pressed ? { opacity: 0.88 } : null]}
               onPress={() =>
                 router.push({
                   pathname: "/screens/stores/[id]",
@@ -372,10 +355,10 @@ function AssistantStoreCarousel({ stores }: { stores: AssistantStore[] }) {
               </View>
               <Ionicons name="arrow-forward-circle" size={rMS(22)} color={colors.primary} />
             </Pressable>
-          </Reanimated.View>
+          </View>
         ))}
       </View>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -436,7 +419,7 @@ function AssistantFeedbackRow({ messageId, rating, onFeedback }: AssistantFeedba
   }
 
   return (
-    <Reanimated.View entering={FadeIn.delay(120).duration(220)} style={styles.row}>
+    <View style={styles.row}>
       <Text style={styles.label}>Helpful?</Text>
       <Pressable
         style={[styles.button, rating === 1 ? styles.buttonActive : null]}
@@ -460,7 +443,7 @@ function AssistantFeedbackRow({ messageId, rating, onFeedback }: AssistantFeedba
         />
         <Text style={[styles.buttonText, rating === -1 ? styles.buttonTextActive : null]}>No</Text>
       </Pressable>
-    </Reanimated.View>
+    </View>
   );
 }
 
@@ -505,33 +488,142 @@ function AssistantActionChips({ message, actions }: { message: AssistantMessage;
       style={styles.scroll}
       contentContainerStyle={styles.content}
     >
-      {actions.map((action, index) => (
-        <Reanimated.View key={`${message.id}-${action.label}`} entering={FadeInRight.delay(index * 45)}>
-          <Pressable style={styles.chip} onPress={() => navigateAssistantAction(action)}>
+      {actions.map((action) => (
+        <View key={`${message.id}-${action.label}`}>
+          <Pressable style={({ pressed }) => [styles.chip, pressed ? { opacity: 0.86 } : null]} onPress={() => navigateAssistantAction(action)}>
             <Text style={styles.chipText}>{action.label}</Text>
             <Ionicons name="arrow-forward" size={rMS(12)} color={colors.primary} />
           </Pressable>
-        </Reanimated.View>
+        </View>
       ))}
     </ScrollView>
+  );
+}
+
+type AssistantCopyFeedbackProps = {
+  visible: boolean;
+};
+
+export function AssistantCopyFeedback({ visible }: AssistantCopyFeedbackProps) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Reanimated.View
+      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
+      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: rV(96),
+        alignItems: "center",
+        zIndex: 30,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          paddingHorizontal: rS(14),
+          paddingVertical: rV(8),
+          borderRadius: 999,
+          backgroundColor: "rgba(15, 23, 42, 0.92)",
+          shadowColor: "#000000",
+          shadowOpacity: 0.18,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        }}
+      >
+        <Ionicons name="checkmark" size={rMS(14)} color="#FFFFFF" />
+        <Text
+          style={{
+            fontFamily: Fonts.titleBold,
+            fontSize: rMS(13),
+            color: "#FFFFFF",
+            letterSpacing: 0.2,
+          }}
+        >
+          Copied
+        </Text>
+      </View>
+    </Reanimated.View>
+  );
+}
+
+type CopyableMessageBubbleProps = {
+  children: React.ReactNode;
+  enabled: boolean;
+  onCopy: () => void;
+  style: StyleProp<ViewStyle>;
+};
+
+function CopyableMessageBubble({
+  children,
+  enabled,
+  onCopy,
+  style,
+}: CopyableMessageBubbleProps) {
+  const handleLongPress = useCallback(() => {
+    if (!enabled) {
+      return;
+    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onCopy();
+  }, [enabled, onCopy]);
+
+  return (
+    <GesturePressable
+      onLongPress={handleLongPress}
+      delayLongPress={400}
+      disabled={!enabled}
+      style={({ pressed }) => [style, enabled && pressed ? { opacity: 0.88 } : null]}
+      accessibilityRole="button"
+      accessibilityHint="Long press to copy"
+    >
+      {children}
+    </GesturePressable>
   );
 }
 
 type AssistantMessageItemProps = {
   message: AssistantMessage;
   onFeedback?: (messageId: string, rating: number) => void;
+  onCopied?: () => void;
   isStreaming?: boolean;
   showAvatar?: boolean;
+  showTimestamp?: boolean;
+  compactTop?: boolean;
+  animate?: boolean;
 };
 
 export function AssistantMessageItem({
   message,
   onFeedback,
+  onCopied,
   isStreaming = false,
   showAvatar = true,
+  showTimestamp = true,
+  compactTop = false,
+  animate = true,
 }: AssistantMessageItemProps) {
   const { colors } = useTheme();
   const isUser = message.role === "user";
+  const canCopy = Boolean(message.content.trim()) && !isStreaming;
+
+  const copyMessage = useCallback(() => {
+    const text = message.content.trim();
+    if (!text) {
+      return;
+    }
+    void Clipboard.setStringAsync(text).then(() => {
+      onCopied?.();
+    });
+  }, [message.content, onCopied]);
 
   const styles = useMemo(
     () =>
@@ -541,33 +633,27 @@ export function AssistantMessageItem({
           alignItems: "flex-end",
           gap: rS(8),
           paddingHorizontal: rS(16),
-          paddingVertical: rV(4),
+          paddingTop: compactTop ? rV(1) : rV(6),
+          paddingBottom: rV(2),
         },
         rowMine: {
           justifyContent: "flex-end",
         },
         bubbleColumn: {
-          maxWidth: "78%",
-          gap: rV(4),
+          maxWidth: "80%",
+          gap: rV(3),
         },
         bubbleColumnMine: {
           alignItems: "flex-end",
         },
         assistantBubble: {
-          overflow: "hidden",
+          backgroundColor: colors.card,
           borderBottomLeftRadius: rMS(6),
           borderBottomRightRadius: rMS(18),
           borderTopLeftRadius: rMS(18),
           borderTopRightRadius: rMS(18),
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
-          shadowColor: colors.shadow,
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 2,
-        },
-        assistantGradient: {
           paddingHorizontal: rS(14),
           paddingVertical: rV(11),
         },
@@ -579,11 +665,6 @@ export function AssistantMessageItem({
           borderTopRightRadius: rMS(18),
           paddingHorizontal: rS(14),
           paddingVertical: rV(11),
-          shadowColor: colors.primary,
-          shadowOpacity: 0.22,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 3,
         },
         text: {
           fontFamily: Fonts.text,
@@ -602,39 +683,42 @@ export function AssistantMessageItem({
           alignItems: "flex-end",
         },
       }),
-    [colors],
+    [colors, compactTop],
   );
 
   const bubble = (
     <View style={[styles.bubbleColumn, isUser ? styles.bubbleColumnMine : null]}>
       {isUser ? (
-        <View style={styles.userBubble}>
+        <CopyableMessageBubble
+          enabled={canCopy}
+          onCopy={copyMessage}
+          style={styles.userBubble}
+        >
           <Text style={[styles.text, { color: "#FFFFFF" }]}>{message.content}</Text>
-        </View>
+        </CopyableMessageBubble>
       ) : (
-        <View style={styles.assistantBubble}>
-          <LinearGradient
-            colors={["#FFFFFF", colors.accentSoft]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.assistantGradient}
-          >
-            <View style={styles.textRow}>
-              <Text style={[styles.text, { color: colors.text }]}>{message.content}</Text>
-              <AssistantStreamingCursor visible={isStreaming && Boolean(message.content)} />
-            </View>
-          </LinearGradient>
-        </View>
+        <CopyableMessageBubble
+          enabled={canCopy}
+          onCopy={copyMessage}
+          style={styles.assistantBubble}
+        >
+          <View style={styles.textRow}>
+            <Text style={[styles.text, { color: colors.text }]}>{message.content}</Text>
+            <AssistantStreamingCursor visible={isStreaming && Boolean(message.content)} />
+          </View>
+        </CopyableMessageBubble>
       )}
-      <Text style={[styles.meta, isUser ? { textAlign: "right" } : null]}>
-        {formatMessageTime(message.createdAt)}
-      </Text>
+      {showTimestamp ? (
+        <Text style={[styles.meta, isUser ? { textAlign: "right" } : null]}>
+          {formatMessageTime(message.createdAt)}
+        </Text>
+      ) : null}
     </View>
   );
 
   return (
     <>
-      <AnimatedChatMessageWrap isMine={isUser}>
+      <AnimatedChatMessageWrap isMine={isUser} animate={animate}>
         <View style={[styles.row, isUser ? styles.rowMine : null]}>
           {!isUser && showAvatar ? <AssistantAvatar size={rMS(32)} /> : null}
           {!isUser && !showAvatar ? <View style={{ width: rMS(32) }} /> : null}
@@ -664,12 +748,14 @@ export function AssistantMessageItem({
 type AssistantMessageListProps = {
   messages: AssistantMessage[];
   onFeedback?: (messageId: string, rating: number) => void;
+  onCopied?: () => void;
   streamingMessageId?: string | null;
 };
 
 export function AssistantMessageList({
   messages,
   onFeedback,
+  onCopied,
   streamingMessageId,
 }: AssistantMessageListProps) {
   return (
@@ -679,6 +765,7 @@ export function AssistantMessageList({
           key={message.id}
           message={message}
           onFeedback={onFeedback}
+          onCopied={onCopied}
           isStreaming={message.id === streamingMessageId}
         />
       ))}

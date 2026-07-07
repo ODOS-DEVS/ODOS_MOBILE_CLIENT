@@ -113,8 +113,8 @@ assert.equal(
   4,
 );
 
-assert.equal(formatStoreProductCount(12, false), "Explore products (12)");
-assert.equal(formatStoreProductCount(20, true), "Explore products (20+)");
+assert.equal(formatStoreProductCount(12, false), "Browse all products (12)");
+assert.equal(formatStoreProductCount(20, true), "Browse all products (20+)");
 
 const landing = pickStoreLandingProducts(catalog, storeA);
 assert.equal(landing.featured.length, 3);

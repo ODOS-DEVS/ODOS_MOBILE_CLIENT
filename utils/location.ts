@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import type { Region } from "react-native-maps";
 
 export const DEFAULT_MAP_REGION = {
   latitude: 5.6037,
@@ -39,14 +40,14 @@ export function buildMapRegion(
   latitude?: number | null,
   longitude?: number | null,
   delta = 0.02,
-) {
+): Region {
   if (!hasStoreCoordinates(latitude, longitude)) {
     return DEFAULT_MAP_REGION;
   }
 
   return {
-    latitude,
-    longitude,
+    latitude: latitude as number,
+    longitude: longitude as number,
     latitudeDelta: delta,
     longitudeDelta: delta,
   };
@@ -114,13 +115,17 @@ export async function geocodeStoreAddress(
 
   const granted = await ensureLocationPermission();
   if (!granted) {
-    throw new Error("Allow location access so ODOS can find your store on the map.");
+    throw new Error(
+      "Allow location access so ODOS can find your store on the map.",
+    );
   }
 
   const normalizedGps = looksLikeGhanaGpsCode(trimmed)
     ? normalizeGhanaGpsCode(trimmed)
     : null;
-  const locality = [context?.city?.trim(), context?.region?.trim()].filter(Boolean).join(", ");
+  const locality = [context?.city?.trim(), context?.region?.trim()]
+    .filter(Boolean)
+    .join(", ");
 
   const attempts = [
     normalizedGps && locality ? `${normalizedGps}, ${locality}, Ghana` : null,
@@ -128,7 +133,10 @@ export async function geocodeStoreAddress(
     locality ? `${trimmed}, ${locality}, Ghana` : null,
     `${trimmed}, Ghana`,
     trimmed,
-  ].filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
+  ].filter(
+    (value, index, list): value is string =>
+      Boolean(value) && list.indexOf(value) === index,
+  );
 
   for (const attempt of attempts) {
     try {
@@ -186,4 +194,59 @@ export function getStoreLocationValidationError(
   }
 
   return undefined;
+}
+
+/** Great-circle distance in kilometres between two coordinates. */
+export function distanceKmBetween(
+  from: StoreCoordinates,
+  to: StoreCoordinates,
+): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(to.latitude - from.latitude);
+  const dLon = toRad(to.longitude - from.longitude);
+  const lat1 = toRad(from.latitude);
+  const lat2 = toRad(to.latitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function formatDistanceKm(distanceKm: number) {
+  if (!Number.isFinite(distanceKm)) {
+    return null;
+  }
+  if (distanceKm < 1) {
+    return `${Math.max(100, Math.round(distanceKm * 1000))} m away`;
+  }
+  if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1)} km away`;
+  }
+  return `${Math.round(distanceKm)} km away`;
+}
+
+type StoreWithCoords = {
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export function sortStoresByDistance<T extends StoreWithCoords>(
+  stores: T[],
+  origin: StoreCoordinates,
+) {
+  return stores
+    .map((store) => {
+      if (!hasStoreCoordinates(store.latitude, store.longitude)) {
+        return { store, distanceKm: Number.POSITIVE_INFINITY };
+      }
+      return {
+        store,
+        distanceKm: distanceKmBetween(origin, {
+          latitude: store.latitude,
+          longitude: store.longitude!,
+        }),
+      };
+    })
+    .sort((left, right) => left.distanceKm - right.distanceKm);
 }

@@ -2,13 +2,11 @@ import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -16,6 +14,7 @@ import Animated, {
 
 type AssistantAvatarProps = {
   size?: number;
+  /** Soft breathing ring — use only while assistant is thinking. */
   pulse?: boolean;
 };
 
@@ -25,13 +24,13 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
 
   useEffect(() => {
     if (!pulse) {
-      ring.value = 0;
+      ring.value = withTiming(0, { duration: 200 });
       return;
     }
     ring.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 0 }),
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,
       false,
@@ -39,8 +38,8 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
   }, [pulse, ring]);
 
   const ringStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + ring.value * 0.22,
-    transform: [{ scale: 1 + ring.value * 0.35 }],
+    opacity: 0.08 + ring.value * 0.14,
+    transform: [{ scale: 1 + ring.value * 0.12 }],
   }));
 
   return (
@@ -50,9 +49,9 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
           style={[
             styles.pulseRing,
             {
-              width: size + rS(8),
-              height: size + rS(8),
-              borderRadius: (size + rS(8)) / 2,
+              width: size + rS(6),
+              height: size + rS(6),
+              borderRadius: (size + rS(6)) / 2,
               backgroundColor: colors.primary,
             },
             ringStyle,
@@ -86,12 +85,13 @@ export function AssistantStreamingCursor({ visible }: AssistantStreamingCursorPr
 
   useEffect(() => {
     if (!visible) {
+      opacity.value = 1;
       return;
     }
     opacity.value = withRepeat(
       withSequence(
-        withTiming(0.15, { duration: 420 }),
-        withTiming(1, { duration: 420 }),
+        withTiming(0.35, { duration: 520, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 520, easing: Easing.inOut(Easing.quad) }),
       ),
       -1,
       true,
@@ -108,7 +108,6 @@ export function AssistantStreamingCursor({ visible }: AssistantStreamingCursorPr
 
   return (
     <Animated.View
-      entering={FadeIn.duration(120)}
       style={[
         styles.cursor,
         { backgroundColor: colors.primary },
@@ -119,10 +118,11 @@ export function AssistantStreamingCursor({ visible }: AssistantStreamingCursorPr
 }
 
 export function AssistantSectionLabel({ label }: { label: string }) {
+  const { colors } = useTheme();
   return (
-    <Animated.Text entering={FadeIn.delay(80).duration(220)} style={styles.sectionLabel}>
+    <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
       {label}
-    </Animated.Text>
+    </Text>
   );
 }
 
@@ -138,10 +138,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   cursor: {
     width: rS(2),
@@ -149,15 +149,14 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     marginLeft: rS(2),
     alignSelf: "flex-end",
+    marginBottom: rMS(2),
   },
   sectionLabel: {
     marginHorizontal: rS(16),
-    marginTop: rV(6),
+    marginTop: rV(8),
     marginBottom: rV(4),
-    fontSize: rMS(11),
+    fontSize: rMS(11.5),
     fontWeight: "600",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    color: "#94A3B8",
+    letterSpacing: 0.2,
   },
 });

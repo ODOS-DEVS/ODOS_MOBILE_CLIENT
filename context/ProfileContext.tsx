@@ -21,6 +21,7 @@ export interface Address {
   fullName: string;
   phone: string;
   street: string;
+  gpsCode?: string;
   city: string;
   region: string;
   isDefault?: boolean;
@@ -84,6 +85,7 @@ type AddressApiItem = {
   full_name: string;
   phone: string;
   street: string;
+  gps_code?: string | null;
   city: string;
   region: string;
   is_default: boolean;
@@ -110,6 +112,7 @@ function mapAddress(item: AddressApiItem): Address {
     fullName: item.full_name,
     phone: item.phone,
     street: item.street,
+    gpsCode: item.gps_code ?? undefined,
     city: item.city,
     region: item.region,
     isDefault: item.is_default,
@@ -261,6 +264,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           full_name: address.fullName,
           phone: address.phone,
           street: address.street,
+          gps_code: address.gpsCode ?? null,
           city: address.city,
           region: address.region,
           is_default: address.isDefault ?? false,
@@ -305,6 +309,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           full_name: address.fullName,
           phone: address.phone,
           street: address.street,
+          gps_code: address.gpsCode ?? null,
           city: address.city,
           region: address.region,
           is_default: address.isDefault,

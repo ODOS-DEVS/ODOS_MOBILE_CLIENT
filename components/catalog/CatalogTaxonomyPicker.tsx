@@ -47,8 +47,9 @@ export function CatalogTaxonomyPicker({
         <Ionicons name="grid-outline" size={rMS(22)} color="#9CA3AF" />
         <Text style={styles.emptyTitle}>No categories available yet</Text>
         <Text style={styles.emptyText}>
-          Categories are managed by the ODOS admin team. Once they are published,
-          they will appear here for product listings and the shopper category tab.
+          Categories are managed by the ODOS admin team. Once they are
+          published, they will appear here for product listings and the shopper
+          category tab.
         </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
@@ -59,15 +60,15 @@ export function CatalogTaxonomyPicker({
     <View style={styles.wrap}>
       <Text style={styles.sectionLabel}>Category *</Text>
       <Text style={styles.helperText}>
-        Choose the same category shoppers see on the Explore tab. This keeps your
-        product discoverable in the right place.
+        Choose the same category shoppers see on the Explore tab. This keeps
+        your product discoverable in the right place.
       </Text>
       <AccountFilterChips
         options={categories.map((entry) => ({
           key: entry.slug,
           label: entry.title,
         }))}
-        activeKey={categorySlug || null}
+        activeKey={categorySlug ?? ""}
         onChange={(slug) => {
           const nextCategory = categories.find((entry) => entry.slug === slug);
           if (nextCategory) {
@@ -75,9 +76,13 @@ export function CatalogTaxonomyPicker({
           }
         }}
       />
-      {categoryError ? <Text style={styles.errorText}>{categoryError}</Text> : null}
+      {categoryError ? (
+        <Text style={styles.errorText}>{categoryError}</Text>
+      ) : null}
 
-      <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>Subcategory</Text>
+      <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+        Subcategory
+      </Text>
       <Text style={styles.helperText}>
         {selectedCategory
           ? `Optional. Pick a subcategory under ${selectedCategory.title}.`

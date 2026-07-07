@@ -1,5 +1,5 @@
-import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import ProductCard from "@/components/cards/ProductCard";
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import {
   AccountEmptyState,
   CategoryDetailMetaLine,
@@ -8,6 +8,7 @@ import {
 import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import SearchLauncher from "@/components/search/SearchLauncher";
+import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCatalogCategories } from "@/hooks/useCatalog";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
@@ -23,7 +24,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AppColors } from "@/constants/Colors";
 
 const DEFAULT_SUBCATEGORY = "All";
 
@@ -36,7 +36,9 @@ function parseSubcategoriesParam(value?: string | string[]) {
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim())
+      ? parsed.filter(
+          (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+        )
       : [];
   } catch {
     return [];
@@ -57,8 +59,10 @@ export function CategoryBrowseScreen({
 }: CategoryBrowseScreenProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [selectedSubcategory, setSelectedSubcategory] = useState(DEFAULT_SUBCATEGORY);
-  const { gridCardWidth, horizontalPadding, responsiveColumns } = useResponsive();
+  const [selectedSubcategory, setSelectedSubcategory] =
+    useState(DEFAULT_SUBCATEGORY);
+  const { gridCardWidth, horizontalPadding, responsiveColumns } =
+    useResponsive();
   const numColumns = responsiveColumns;
   const gridGap = rS(10);
   const gridPadding = horizontalPadding;
@@ -100,7 +104,9 @@ export function CategoryBrowseScreen({
   }, [catalogCategory?.subcategories, parsedSubcategoriesFromParams]);
 
   const apiSubcategory =
-    selectedSubcategory === DEFAULT_SUBCATEGORY ? undefined : selectedSubcategory;
+    selectedSubcategory === DEFAULT_SUBCATEGORY
+      ? undefined
+      : selectedSubcategory;
 
   const {
     products: categoryProducts,
@@ -203,7 +209,9 @@ export function CategoryBrowseScreen({
             tintColor={AppColors.primary}
           />
         }
-        ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
+        ListFooterComponent={
+          <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+        }
         columnWrapperStyle={
           numColumns > 1
             ? {
@@ -226,7 +234,11 @@ export function CategoryBrowseScreen({
               paddingHorizontal: numColumns === 1 ? gridPadding : 0,
             }}
           >
-            <ProductCard {...item} cardWidth={cardWidth} horizontalSpacing={0} />
+            <ProductCard
+              {...item}
+              cardWidth={cardWidth}
+              horizontalSpacing={0}
+            />
           </View>
         )}
         ListEmptyComponent={
@@ -244,7 +256,9 @@ export function CategoryBrowseScreen({
                   : "Try another subcategory or browse all items in this category."
               }
               actionLabel={
-                selectedSubcategory !== DEFAULT_SUBCATEGORY ? "Show all" : undefined
+                selectedSubcategory !== DEFAULT_SUBCATEGORY
+                  ? "Show all"
+                  : undefined
               }
               onAction={
                 selectedSubcategory !== DEFAULT_SUBCATEGORY

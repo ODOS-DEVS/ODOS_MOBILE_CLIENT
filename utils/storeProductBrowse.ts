@@ -306,15 +306,25 @@ export function countActiveStoreBrowseFilters(
 
 export function formatStoreProductCount(count: number, hasMore: boolean) {
   if (count <= 0) {
-    return "Explore products";
+    return "Browse products";
   }
   if (hasMore) {
-    return `Explore products (${count}+)`;
+    return `Browse all products (${count}+)`;
   }
-  return `Explore products (${count})`;
+  return `Browse all products (${count})`;
 }
 
-const LANDING_FEATURED_COUNT = 3;
+export function formatStoreProductBadge(count: number, hasMore: boolean) {
+  if (count <= 0) {
+    return null;
+  }
+  if (hasMore) {
+    return `${count}+ products`;
+  }
+  return `${count} product${count === 1 ? "" : "s"}`;
+}
+
+const LANDING_FEATURED_COUNT = 4;
 const LANDING_PREVIEW_COUNT = 3;
 
 function rankStoreLandingProducts(products: CatalogProductItem[]) {
