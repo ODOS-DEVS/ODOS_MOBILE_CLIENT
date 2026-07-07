@@ -1,26 +1,36 @@
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
 import { StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
+import StoreDealsShowcase from "@/components/store/StoreDealsShowcase";
 import StoreExploreBar from "@/components/store/StoreExploreBar";
 import StoreFeaturedShowcase from "@/components/store/StoreFeaturedShowcase";
+import StoreInfoPanel from "@/components/store/StoreInfoPanel";
+import StoreVouchersStrip from "@/components/store/StoreVouchersStrip";
+import AssistantEntryButton from "@/components/assistant/AssistantEntryButton";
 import {
-  StorefrontHero,
   STOREFRONT_COVER_HEIGHT,
+  StorefrontHero,
 } from "@/components/store/StorefrontExperience";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
-import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useStore } from "@/hooks/useCommerce";
+import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rS, rV, useResponsive } from "@/styles/responsive";
-import { formatStoreProductCount } from "@/utils/storeProductBrowse";
 import { hasStoreCoordinates } from "@/utils/location";
-import { goBackOr } from "@/utils/navigation";
 import { resolveApiMediaUrl } from "@/utils/media";
+import { goBackOr } from "@/utils/navigation";
 import { shareStore } from "@/utils/shareStore";
+import { formatStoreProductBadge, formatStoreProductCount } from "@/utils/storeProductBrowse";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Image,
@@ -38,7 +48,9 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const StoreLandingScreen = () => {
   const { colors } = useTheme();
-  const [stickyThreshold, setStickyThreshold] = useState(STOREFRONT_COVER_HEIGHT + 120);
+  const [stickyThreshold, setStickyThreshold] = useState(
+    STOREFRONT_COVER_HEIGHT + 120,
+  );
   const [stickyActive, setStickyActive] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const contentRef = useRef<View>(null);
@@ -47,7 +59,11 @@ const StoreLandingScreen = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const storeId =
-    typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
+    typeof params.id === "string"
+      ? params.id
+      : Array.isArray(params.id)
+        ? params.id[0]
+        : "";
   const paramTitle =
     typeof params.title === "string"
       ? params.title
@@ -73,7 +89,9 @@ const StoreLandingScreen = () => {
       slug: paramTitle.toLowerCase().replace(/\s+/g, "-"),
       title: paramTitle,
       status: "active",
-      image: resolveApiMediaUrl(paramImage) ? { uri: resolveApiMediaUrl(paramImage)! } : null,
+      image: resolveApiMediaUrl(paramImage)
+        ? { uri: resolveApiMediaUrl(paramImage)! }
+        : null,
       imageBanner: resolveApiMediaUrl(paramImageBanner)
         ? { uri: resolveApiMediaUrl(paramImageBanner)! }
         : null,
@@ -81,15 +99,24 @@ const StoreLandingScreen = () => {
     [paramImage, paramImageBanner, paramTitle, storeId],
   );
 
-  const { store, isLoading, error: storeError } = useStore({
+  const {
+    store,
+    isLoading,
+    error: storeError,
+    refresh,
+  } = useStore({
     storeId,
     fallback: fallbackStore,
   });
 
-  const { products: storeProducts, hasMore: hasMoreStoreProducts } = useInfiniteCatalogProducts({
-    storeId,
-    enabled: Boolean(storeId),
-  });
+  const {
+    products: storeProducts,
+    hasMore: hasMoreStoreProducts,
+    isLoading: productsLoading,
+  } = useInfiniteCatalogProducts({
+      storeId,
+      enabled: Boolean(storeId),
+    });
 
   const insets = useSafeAreaInsets();
   const { horizontalPadding, width } = useResponsive();
@@ -112,7 +139,8 @@ const StoreLandingScreen = () => {
     if (!contentRef.current || !nameAnchorRef.current) return;
     nameAnchorRef.current.measureLayout(
       contentRef.current,
-      (_x, y) => setStickyThreshold(Math.max(0, y - (insets.top + STICKY_BAR_HEIGHT))),
+      (_x, y) =>
+        setStickyThreshold(Math.max(0, y - (insets.top + STICKY_BAR_HEIGHT))),
       () => undefined,
     );
   }, [insets.top]);
@@ -149,7 +177,10 @@ const StoreLandingScreen = () => {
     }
     router.push({
       pathname: "/screens/productDetails/chat/[vendorId]",
-      params: { vendorId: store.id, vendorName: String(store.title ?? "Store") },
+      params: {
+        vendorId: store.id,
+        vendorName: String(store.title ?? "Store"),
+      },
     } as any);
   }, [showToast, store, user]);
 
@@ -174,13 +205,42 @@ const StoreLandingScreen = () => {
     return (
       <View style={[styles.screen, { backgroundColor: colors.screen }]}>
         <StatusBar style="dark" />
-        <View style={[styles.emptyState, { paddingTop: insets.top }]}>
+        <View style={[styles.emptyState, { paddingTop: insets.top + rV(24) }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.pill }]}>
+            <Ionicons name="storefront-outline" size={rS(28)} color={colors.textMuted} />
+          </View>
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
             {storeError ?? "We couldn't load this store"}
           </Text>
-          <Text style={[styles.emptyStateSubtitle, { color: colors.textMuted }]}>
-            Reopen the store from the live catalog and try again.
+          <Text
+            style={[styles.emptyStateSubtitle, { color: colors.textMuted }]}
+          >
+            Check your connection and try again, or go back to browse other stores.
           </Text>
+          <View style={styles.emptyActions}>
+            <TouchableOpacity
+              style={[styles.emptyPrimary, { backgroundColor: colors.text }]}
+              activeOpacity={0.9}
+              onPress={() => void refresh()}
+            >
+              <Text style={[styles.emptyPrimaryText, { color: colors.onPrimary }]}>
+                Try again
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.emptySecondary, { borderColor: colors.borderStrong }]}
+              activeOpacity={0.86}
+              onPress={() =>
+                goBackOr(router, {
+                  fallback: "/(root)/screens/stores/stores" as any,
+                })
+              }
+            >
+              <Text style={[styles.emptySecondaryText, { color: colors.text }]}>
+                Back to stores
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -195,35 +255,57 @@ const StoreLandingScreen = () => {
     Boolean(store.address || store.city || store.distanceKm);
 
   const stickyHeaderOpacity = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 24), Math.max(1, stickyThreshold)],
+    inputRange: [
+      Math.max(0, stickyThreshold - 24),
+      Math.max(1, stickyThreshold),
+    ],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
 
   const inlineNameOpacity = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 24), Math.max(1, stickyThreshold)],
+    inputRange: [
+      Math.max(0, stickyThreshold - 24),
+      Math.max(1, stickyThreshold),
+    ],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const stickyHeaderTranslateY = scrollY.interpolate({
-    inputRange: [Math.max(0, stickyThreshold - 24), Math.max(1, stickyThreshold)],
+    inputRange: [
+      Math.max(0, stickyThreshold - 24),
+      Math.max(1, stickyThreshold),
+    ],
     outputRange: [-rS(8), 0],
     extrapolate: "clamp",
   });
 
-  const exploreLabel = formatStoreProductCount(storeProducts.length, hasMoreStoreProducts);
+  const exploreLabel = formatStoreProductCount(
+    storeProducts.length,
+    hasMoreStoreProducts,
+  );
+  const productBadge = formatStoreProductBadge(
+    storeProducts.length,
+    hasMoreStoreProducts,
+  );
+  const hasProducts = storeProducts.length > 0;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
       <StatusBar style="light" translucent />
       <AnimatedScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + EXPLORE_BAR_SPACE }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + EXPLORE_BAR_SPACE,
+        }}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          useNativeDriver: true,
-        })}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: true,
+          },
+        )}
       >
         <View
           ref={contentRef}
@@ -240,24 +322,63 @@ const StoreLandingScreen = () => {
             nameAnchorRef={nameAnchorRef}
             onMeasureName={measureStickyThreshold}
             onBack={() =>
-              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+              goBackOr(router, {
+                fallback: "/(root)/screens/stores/stores" as any,
+              })
             }
             onShare={() => void handleShareStore()}
             onChat={openStoreChat}
             onMap={hasMap ? openStoreLocation : undefined}
-            productCount={0}
+            productBadge={productBadge}
           />
+
+          <StoreInfoPanel
+            store={store}
+            horizontalPadding={horizontalPadding}
+            onMap={hasMap ? openStoreLocation : undefined}
+          />
+
+          <StoreVouchersStrip storeId={storeId} horizontalPadding={horizontalPadding} />
+
+          <StoreDealsShowcase
+            products={storeProducts}
+            storeId={storeId}
+            horizontalPadding={horizontalPadding}
+            onBrowseAll={openStoreProducts}
+          />
+
+          <View style={{ paddingHorizontal: horizontalPadding, marginTop: rV(8) }}>
+            <AssistantEntryButton
+              screen="store"
+              label="Ask about this store"
+              compact
+            />
+          </View>
 
           <StoreFeaturedShowcase
             products={storeProducts}
             storeId={storeId}
             storeTitle={store.title}
             horizontalPadding={horizontalPadding}
+            productsLoading={productsLoading}
+            hasMoreProducts={hasMoreStoreProducts}
+            onBrowseAll={openStoreProducts}
           />
         </View>
       </AnimatedScrollView>
 
-      <StoreExploreBar label={exploreLabel} onPress={openStoreProducts} />
+      <StoreExploreBar
+        label={exploreLabel}
+        sublabel={
+          hasProducts
+            ? "Search, filter, and shop the full catalog"
+            : productsLoading
+              ? "Loading this store's catalog…"
+              : "Open the catalog to check for new arrivals"
+        }
+        loading={productsLoading && storeProducts.length === 0}
+        onPress={openStoreProducts}
+      />
 
       <Animated.View
         pointerEvents={stickyActive ? "box-none" : "none"}
@@ -280,7 +401,9 @@ const StoreLandingScreen = () => {
         >
           <TouchableOpacity
             onPress={() =>
-              goBackOr(router, { fallback: "/(root)/screens/stores/stores" as any })
+              goBackOr(router, {
+                fallback: "/(root)/screens/stores/stores" as any,
+              })
             }
             style={[styles.stickyIconButton, { backgroundColor: colors.pill }]}
             activeOpacity={0.82}
@@ -290,13 +413,29 @@ const StoreLandingScreen = () => {
 
           <View style={styles.stickyTitleWrap}>
             {store.image ? (
-              <Image source={store.image} style={styles.stickyLogo} resizeMode="cover" />
+              <Image
+                source={store.image}
+                style={styles.stickyLogo}
+                resizeMode="cover"
+              />
             ) : (
-              <View style={[styles.stickyLogoPlaceholder, { backgroundColor: colors.pill }]}>
-                <Ionicons name="storefront-outline" size={rS(14)} color={colors.iconMuted} />
+              <View
+                style={[
+                  styles.stickyLogoPlaceholder,
+                  { backgroundColor: colors.pill },
+                ]}
+              >
+                <Ionicons
+                  name="storefront-outline"
+                  size={rS(14)}
+                  color={colors.iconMuted}
+                />
               </View>
             )}
-            <Text style={[styles.stickyTitle, { color: colors.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.stickyTitle, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {store.title}
             </Text>
             {isVerified ? <VerifiedSeal size={rS(15)} /> : null}
@@ -326,6 +465,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(24),
     alignItems: "center",
     justifyContent: "center",
+    gap: rV(10),
+  },
+  emptyIcon: {
+    width: rS(64),
+    height: rS(64),
+    borderRadius: rS(22),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: rV(4),
   },
   emptyStateTitle: {
     fontFamily: "Montserrat-ExtraBold",
@@ -333,11 +481,37 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   emptyStateSubtitle: {
-    marginTop: rS(8),
     fontFamily: "Montserrat-Regular",
     fontSize: rS(12.5),
     lineHeight: rS(19),
     textAlign: "center",
+    maxWidth: rS(280),
+  },
+  emptyActions: {
+    marginTop: rV(12),
+    width: "100%",
+    gap: rV(10),
+  },
+  emptyPrimary: {
+    minHeight: rV(48),
+    borderRadius: rS(14),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyPrimaryText: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: rS(14),
+  },
+  emptySecondary: {
+    minHeight: rV(48),
+    borderRadius: rS(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptySecondaryText: {
+    fontFamily: "Montserrat-SemiBold",
+    fontSize: rS(14),
   },
   stickyHeader: {
     position: "absolute",

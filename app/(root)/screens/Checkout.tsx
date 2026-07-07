@@ -1,3 +1,4 @@
+import AssistantEntryButton from "@/components/assistant/AssistantEntryButton";
 import CheckoutPaymentSection from "@/components/checkout/CheckoutPaymentSection";
 import CheckoutProcessingOverlay, {
   type CheckoutProcessingMode,
@@ -88,7 +89,7 @@ export default function CheckoutScreen() {
   const { accessToken } = useAuth();
   const { cart, clearCart } = useCart();
   const { showSuccessToast, showErrorToast, showInfoToast } = useToast();
-  const { previewVoucher, suggestVouchers } = useVouchers();
+  const { previewVoucher, suggestVouchers, calculatePromotions } = useVouchers();
   const params = useLocalSearchParams();
   const id = String(getParam(params.id) ?? "");
   const imageKey = getParam(params.imageKey);
@@ -363,6 +364,31 @@ export default function CheckoutScreen() {
 
     void applyVoucherCode(appliedVoucher.code, { silent: true });
   }, [applyVoucherCode, appliedVoucher?.code, subtotal]);
+
+  useEffect(() => {
+    if (!user || appliedVoucher || checkoutItems.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    void calculatePromotions({
+      items: checkoutItems,
+      shippingAmount: shipping,
+      includeAutoApply: true,
+    }).then((result) => {
+      if (cancelled || !result?.appliedPromotions.length) {
+        return;
+      }
+      const best = result.appliedPromotions[0];
+      if (best?.code) {
+        void applyVoucherCode(best.code, { silent: true });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyVoucherCode, appliedVoucher, calculatePromotions, checkoutItems, shipping, user]);
 
   useEffect(() => {
     if (!user || appliedVoucher || checkoutItems.length === 0) {
@@ -912,6 +938,10 @@ export default function CheckoutScreen() {
               />
               <OrderSummaryRow label="Total" value={formatOrderMoney(total)} last />
             </AccountSectionCard>
+
+            <View style={{ paddingHorizontal: rS(16), paddingTop: rV(8) }}>
+              <AssistantEntryButton screen="checkout" label="Need help before you pay?" compact />
+            </View>
 
           </KeyboardAwareScrollView>
 

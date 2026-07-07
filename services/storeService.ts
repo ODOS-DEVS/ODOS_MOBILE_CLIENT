@@ -684,3 +684,35 @@ export async function fetchVendorReturn(
   }
   return mapReturnRequest(payload);
 }
+
+export async function updateVendorReturn(
+  session: VendorSessionContext,
+  returnRequestId: string,
+  input: { status: string; vendorNote?: string },
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/returns/${encodeURIComponent(returnRequestId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        ...buildHeaders(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: input.status,
+        vendor_note: input.vendorNote ?? null,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorReturnRequestApi>(response);
+  if (!payload) {
+    throw new Error("That return update could not be saved.");
+  }
+  return mapReturnRequest(payload);
+}

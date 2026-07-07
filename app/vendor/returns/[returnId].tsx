@@ -4,7 +4,7 @@ import { formatVendorCurrency, VendorScreenShell } from "@/components/vendor/Ven
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
-import { fetchVendorReturn } from "@/services/storeService";
+import { fetchVendorReturn, updateVendorReturn } from "@/services/storeService";
 import type { VendorReturnRequest } from "@/types/store";
 import {
   formatVendorReturnStatus,
@@ -14,7 +14,7 @@ import { resolveApiMediaUrl } from "@/utils/media";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
@@ -29,6 +29,7 @@ export default function VendorReturnDetailScreen() {
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
   const [item, setItem] = useState<VendorReturnRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReturn = useCallback(async () => {
@@ -56,6 +57,28 @@ export default function VendorReturnDetailScreen() {
     setIsLoading(true);
     void loadReturn();
   }, [loadReturn]);
+
+  const handleStatusUpdate = useCallback(
+    async (status: string) => {
+      if (!returnId) {
+        return;
+      }
+      setIsUpdating(true);
+      try {
+        const next = await updateVendorReturn(session, returnId, { status });
+        setItem(next);
+      } catch (updateError) {
+        setError(
+          updateError instanceof Error
+            ? updateError.message
+            : "We couldn't update this return request.",
+        );
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [returnId, session],
+  );
 
   if (isCheckingVendorAccess) {
     return (
@@ -157,12 +180,88 @@ export default function VendorReturnDetailScreen() {
           </AccountListCard>
         ) : null}
 
+        {item.status === "requested" || item.status === "under_review" ? (
+          <AccountListCard>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Take action</Text>
+            <View style={styles.actionRow}>
+              <ActionButton
+                label="Reviewing"
+                colors={colors}
+                disabled={isUpdating}
+                onPress={() => void handleStatusUpdate("under_review")}
+              />
+              <ActionButton
+                label="Approve"
+                colors={colors}
+                primary
+                disabled={isUpdating}
+                onPress={() => void handleStatusUpdate("approved")}
+              />
+              <ActionButton
+                label="Decline"
+                colors={colors}
+                disabled={isUpdating}
+                onPress={() => void handleStatusUpdate("rejected")}
+              />
+            </View>
+          </AccountListCard>
+        ) : null}
+
+        {item.status === "approved" ? (
+          <AccountListCard>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Refund customer</Text>
+            <Text style={[styles.footerNote, { color: colors.textMuted, marginBottom: rV(10) }]}>
+              Mark refunded after the customer receives their money or wallet credit.
+            </Text>
+            <ActionButton
+              label={isUpdating ? "Updating…" : "Mark refunded"}
+              colors={colors}
+              primary
+              disabled={isUpdating}
+              onPress={() => void handleStatusUpdate("refunded")}
+            />
+          </AccountListCard>
+        ) : null}
+
         <Text style={[styles.footerNote, { color: colors.textMuted }]}>
-          Return decisions are handled by ODOS admin. You can monitor status here and follow up via
-          admin support if needed.
+          Customers are notified automatically when you update a return request.
         </Text>
       </ScrollView>
     </VendorScreenShell>
+  );
+}
+
+function ActionButton({
+  label,
+  colors,
+  primary = false,
+  disabled = false,
+  onPress,
+}: {
+  label: string;
+  colors: { text: string; onPrimary: string; card: string; border: string };
+  primary?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.actionButton,
+        {
+          backgroundColor: primary ? colors.text : colors.card,
+          borderColor: colors.border,
+          opacity: disabled ? 0.6 : 1,
+        },
+      ]}
+      disabled={disabled}
+      activeOpacity={0.88}
+      onPress={onPress}
+    >
+      <Text style={{ color: primary ? colors.onPrimary : colors.text, fontFamily: Fonts.textBold }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -259,5 +358,16 @@ const styles = StyleSheet.create({
     fontSize: rMS(12.5),
     lineHeight: rMS(18),
     paddingHorizontal: rS(4),
+  },
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+  },
+  actionButton: {
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(10),
+    borderRadius: rMS(12),
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

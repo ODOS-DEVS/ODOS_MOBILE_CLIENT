@@ -19,10 +19,11 @@ import { useRealtime } from "@/context/RealtimeContext";
 import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { updateSupportThreadStatus } from "@/services/chatService";
 import { rMS } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { type Href, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -39,7 +40,7 @@ export default function SupportChatScreen() {
   const chatStyles = useChatStyles();
   const { colors } = useTheme();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const { requireAuth } = useRequireAuth();
   const { showToast } = useToast();
   const { connectionState } = useRealtime();
@@ -57,13 +58,14 @@ export default function SupportChatScreen() {
   } = useChat();
 
   const requestedSubject = getParam(params.subject) ?? "";
-  const fallback = (getParam(params.fallback) ?? "/(root)/(tabs)/profile") as const;
+  const fallback = (getParam(params.fallback) ?? "/(root)/(tabs)/profile") as Href;
   const initialThreadId = getParam(params.threadId) ?? "";
 
   const [resolvedThreadId, setResolvedThreadId] = useState(initialThreadId);
   const [input, setInput] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const listRef = useRef<FlatList>(null);
   const messagesByThreadRef = useRef(messagesByThread);
@@ -205,6 +207,25 @@ export default function SupportChatScreen() {
     }
   };
 
+  const onMarkResolved = async () => {
+    if (!resolvedThreadId || thread?.supportStatus === "resolved") {
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    try {
+      await updateSupportThreadStatus(resolvedThreadId, "resolved", accessToken);
+      await loadSupportThreads({ silent: true });
+      showToast("Support thread marked as resolved.");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't update this support thread.",
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const headerSubtitle =
     thread?.assignedAdminName
       ? `${thread.assignedAdminName} is handling this thread`
@@ -315,6 +336,16 @@ export default function SupportChatScreen() {
                 </Text>
               </View>
             </View>
+            {thread && thread.supportStatus !== "resolved" ? (
+              <AccountActionButton
+                label={isUpdatingStatus ? "Updating..." : "Mark resolved"}
+                variant="secondary"
+                disabled={isUpdatingStatus}
+                onPress={() => {
+                  void onMarkResolved();
+                }}
+              />
+            ) : null}
           </View>
         </View>
       </View>

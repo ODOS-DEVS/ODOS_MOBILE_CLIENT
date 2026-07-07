@@ -1,30 +1,33 @@
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
+import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
+import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProductImageGalleryModal from "@/components/media/ProductImageGalleryModal";
 import ProductDetailBottomBar from "@/components/product/ProductDetailBottomBar";
 import ProductDetailRecommendations from "@/components/product/ProductDetailRecommendations";
-import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
-import { AppColors } from "@/constants/Colors";
-import { useTheme } from "@/context/ThemeContext";
-import { useStore } from "@/hooks/useCommerce";
-import { useCatalogProduct } from "@/hooks/useCatalog";
-import { useDeliveryQuote } from "@/hooks/useDeliveryQuote";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useForYouRecommendations, useSimilarProducts } from "@/hooks/useRecommendations";
-import { useProfile } from "@/context/ProfileContext";
-import { useProductReviews } from "@/hooks/useReviews";
 import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
-import { createProductDetailStyles } from "@/styles/productDetailStyles";
 import ProductShareSheet from "@/components/share/ProductShareSheet";
-import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
-import { getSecondsRemaining } from "@/utils/countdown";
-import { goBackOr } from "@/utils/navigation";
+import { AppColors } from "@/constants/Colors";
+import { useProfile } from "@/context/ProfileContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useCatalogProduct } from "@/hooks/useCatalog";
+import { useStore } from "@/hooks/useCommerce";
+import { useDeliveryQuote } from "@/hooks/useDeliveryQuote";
+import {
+  useForYouRecommendations,
+  useSimilarProducts,
+} from "@/hooks/useRecommendations";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useProductReviews } from "@/hooks/useReviews";
 import {
   BEHAVIOR_EVENT_TYPES,
   trackBehaviorEvent,
 } from "@/services/behaviorTracking";
+import { createProductDetailStyles } from "@/styles/productDetailStyles";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { getSecondsRemaining } from "@/utils/countdown";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
+import { goBackOr } from "@/utils/navigation";
 import type { ProductSharePayload } from "@/utils/shareCatalog";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -246,7 +249,14 @@ export default function ProductDetail() {
         price: product.price,
       },
     });
-  }, [isLoading, product.category, product.categorySlugs, product.id, product.price, product.storeId]);
+  }, [
+    isLoading,
+    product.category,
+    product.categorySlugs,
+    product.id,
+    product.price,
+    product.storeId,
+  ]);
 
   const {
     products: relatedProducts,
@@ -288,13 +298,16 @@ export default function ProductDetail() {
   const stock = product.stock ?? 0;
   const flashSaleEndsAt = product.flashSaleEndsAt;
   const isLowStock = stock > 0 && stock <= 5;
-  const hasLiveFlashSale = Boolean(flashSaleEndsAt && getSecondsRemaining(flashSaleEndsAt) > 0);
+  const hasLiveFlashSale = Boolean(
+    flashSaleEndsAt && getSecondsRemaining(flashSaleEndsAt) > 0,
+  );
   const hasDiscount = oldPrice > 0 && oldPrice > price;
   const savingsAmount = hasDiscount ? oldPrice - price : 0;
   const localReviewCount = productReviews.length;
   const localAverageRating =
     localReviewCount > 0
-      ? productReviews.reduce((total, item) => total + item.rating, 0) / localReviewCount
+      ? productReviews.reduce((total, item) => total + item.rating, 0) /
+        localReviewCount
       : 0;
   const rating = localReviewCount > 0 ? localAverageRating : baseRating;
   const reviews = localReviewCount > 0 ? String(localReviewCount) : baseReviews;
@@ -330,15 +343,17 @@ export default function ProductDetail() {
       .filter((value): value is string => Boolean(value?.trim()));
     const primaryImageUrl =
       resolveApiMediaUrl(product.imageUrl) ??
-      resolveApiMediaUrl(typeof paramImage === "string" ? paramImage : undefined);
-    const primaryImage =
-      primaryImageUrl
-        ? { uri: primaryImageUrl }
-        : product.image ??
-          resolveImageSource(
-            product.imageUrl ?? (typeof paramImage === "string" ? paramImage : undefined),
-            product.imageKey ?? paramImageKey,
-          );
+      resolveApiMediaUrl(
+        typeof paramImage === "string" ? paramImage : undefined,
+      );
+    const primaryImage = primaryImageUrl
+      ? { uri: primaryImageUrl }
+      : (product.image ??
+        resolveImageSource(
+          product.imageUrl ??
+            (typeof paramImage === "string" ? paramImage : undefined),
+          product.imageKey ?? paramImageKey,
+        ));
 
     const remoteSources = backendImages.map((value) => ({ uri: value }));
     const merged = [primaryImage, ...remoteSources].filter(Boolean);
@@ -373,8 +388,8 @@ export default function ProductDetail() {
   ]);
 
   const taxonomyLabels = useMemo(() => {
-    const labels = [category, subcategory].filter(
-      (value): value is string => Boolean(value?.trim()),
+    const labels = [category, subcategory].filter((value): value is string =>
+      Boolean(value?.trim()),
     );
     if (store?.category?.trim()) {
       labels.push(store.category.trim());
@@ -383,8 +398,9 @@ export default function ProductDetail() {
   }, [category, store?.category, subcategory]);
 
   const storeMeta = useMemo(() => {
-    const locationBits = [store?.city, titleFromSlug(store?.marketSlug)]
-      .filter((value): value is string => Boolean(value?.trim()));
+    const locationBits = [store?.city, titleFromSlug(store?.marketSlug)].filter(
+      (value): value is string => Boolean(value?.trim()),
+    );
     return locationBits.join(", ");
   }, [store?.city, store?.marketSlug]);
 
@@ -517,53 +533,66 @@ export default function ProductDetail() {
             <View style={styles.heroSection}>
               <View style={styles.heroBackdrop} />
               <View style={styles.galleryShell}>
-              <FlatList
-                ref={galleryRef}
-                data={productImages}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(_, index) => `${id}-gallery-${index}`}
-                getItemLayout={(_, index) => ({
-                  length: screenWidth - rS(32),
-                  offset: (screenWidth - rS(32)) * index,
-                  index,
-                })}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(
-                    event.nativeEvent.contentOffset.x / (screenWidth - rS(32)),
-                  );
-                  setActiveImageIndex(index);
-                }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.imageSlide}
-                    activeOpacity={0.96}
-                    onPress={() => setIsGalleryOpen(true)}
-                  >
-                    <Image source={item as any} style={styles.heroImage} resizeMode="cover" />
-                  </TouchableOpacity>
-                )}
-              />
+                <FlatList
+                  ref={galleryRef}
+                  data={productImages}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(_, index) => `${id}-gallery-${index}`}
+                  getItemLayout={(_, index) => ({
+                    length: screenWidth - rS(32),
+                    offset: (screenWidth - rS(32)) * index,
+                    index,
+                  })}
+                  onMomentumScrollEnd={(event) => {
+                    const index = Math.round(
+                      event.nativeEvent.contentOffset.x /
+                        (screenWidth - rS(32)),
+                    );
+                    setActiveImageIndex(index);
+                  }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.imageSlide}
+                      activeOpacity={0.96}
+                      onPress={() => setIsGalleryOpen(true)}
+                    >
+                      <Image
+                        source={item as any}
+                        style={styles.heroImage}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  )}
+                />
 
-              <View style={styles.galleryOverlayRow}>
-                <View style={styles.galleryCountBadge}>
-                  <Ionicons name="images-outline" size={rMS(13)} color={AppColors.white} />
-                  <Text style={styles.galleryCountText}>
-                    {activeImageIndex + 1}/{productImages.length}
-                  </Text>
-                </View>
-                {discount ? (
-                  <View style={styles.discountPill}>
-                    <Text style={styles.discountPillText}>{discount}</Text>
+                <View style={styles.galleryOverlayRow}>
+                  <View style={styles.galleryCountBadge}>
+                    <Ionicons
+                      name="images-outline"
+                      size={rMS(13)}
+                      color={AppColors.white}
+                    />
+                    <Text style={styles.galleryCountText}>
+                      {activeImageIndex + 1}/{productImages.length}
+                    </Text>
                   </View>
-                ) : null}
+                  {discount ? (
+                    <View style={styles.discountPill}>
+                      <Text style={styles.discountPillText}>{discount}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.expandHintWrap}>
+                  <Ionicons
+                    name="expand-outline"
+                    size={rMS(14)}
+                    color={AppColors.white}
+                  />
+                  <Text style={styles.expandHintText}>Tap to view</Text>
+                </View>
               </View>
-              <View style={styles.expandHintWrap}>
-                <Ionicons name="expand-outline" size={rMS(14)} color={AppColors.white} />
-                <Text style={styles.expandHintText}>Tap to view</Text>
-              </View>
-            </View>
             </View>
 
             {productImages.length > 1 ? (
@@ -583,18 +612,30 @@ export default function ProductDetail() {
                       activeOpacity={0.8}
                       onPress={() => {
                         setActiveImageIndex(index);
-                        galleryRef.current?.scrollToIndex({ index, animated: true });
+                        galleryRef.current?.scrollToIndex({
+                          index,
+                          animated: true,
+                        });
                       }}
-                      style={[styles.thumbnailWrap, active && styles.thumbnailWrapActive]}
+                      style={[
+                        styles.thumbnailWrap,
+                        active && styles.thumbnailWrapActive,
+                      ]}
                     >
-                      <Image source={item as any} style={styles.thumbnailImage} resizeMode="cover" />
+                      <Image
+                        source={item as any}
+                        style={styles.thumbnailImage}
+                        resizeMode="cover"
+                      />
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
             ) : null}
 
-            <View style={[styles.content, { paddingHorizontal: horizontalPadding }]}>
+            <View
+              style={[styles.content, { paddingHorizontal: horizontalPadding }]}
+            >
               <View style={styles.infoShell}>
                 <View style={styles.taxonomyRow}>
                   {taxonomyLabels.map((label) => (
@@ -622,7 +663,11 @@ export default function ProductDetail() {
                     />
                   ) : null}
                   <ProductMetaChip
-                    icon={stock > 0 ? "checkmark-circle-outline" : "close-circle-outline"}
+                    icon={
+                      stock > 0
+                        ? "checkmark-circle-outline"
+                        : "close-circle-outline"
+                    }
                     styles={styles}
                     mutedColor={colors.textMuted}
                     label={
@@ -676,7 +721,9 @@ export default function ProductDetail() {
                     <View style={styles.priceRow}>
                       <Text style={styles.price}>{formatPrice(price)}</Text>
                       {oldPrice > 0 ? (
-                        <Text style={styles.oldPrice}>{formatPrice(oldPrice)}</Text>
+                        <Text style={styles.oldPrice}>
+                          {formatPrice(oldPrice)}
+                        </Text>
                       ) : null}
                     </View>
                   </View>
@@ -690,13 +737,17 @@ export default function ProductDetail() {
                 </View>
               </View>
 
-              {!isVoucher && (productColorOptions.length > 0 || productSizeOptions.length > 0) ? (
+              {!isVoucher &&
+              (productColorOptions.length > 0 ||
+                productSizeOptions.length > 0) ? (
                 <View style={styles.variantCard}>
                   {productColorOptions.length > 0 ? (
                     <>
                       <View style={styles.variantHeader}>
                         <Text style={styles.variantTitle}>Choose Color</Text>
-                        <Text style={styles.variantValue}>{activeColor?.label ?? "Select"}</Text>
+                        <Text style={styles.variantValue}>
+                          {activeColor?.label ?? "Select"}
+                        </Text>
                       </View>
                       <View style={styles.colorRow}>
                         {productColorOptions.map((item) => {
@@ -704,12 +755,22 @@ export default function ProductDetail() {
                           return (
                             <TouchableOpacity
                               key={item.id}
-                              style={[styles.colorBtn, active && styles.colorBtnActive]}
+                              style={[
+                                styles.colorBtn,
+                                active && styles.colorBtnActive,
+                              ]}
                               activeOpacity={0.82}
                               onPress={() => setSelectedColor(item.id)}
                             >
-                              <View style={[styles.colorDot, { backgroundColor: item.hex }]} />
-                              <Text style={styles.colorLabel}>{item.label}</Text>
+                              <View
+                                style={[
+                                  styles.colorDot,
+                                  { backgroundColor: item.hex },
+                                ]}
+                              />
+                              <Text style={styles.colorLabel}>
+                                {item.label}
+                              </Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -731,7 +792,10 @@ export default function ProductDetail() {
                           return (
                             <TouchableOpacity
                               key={item}
-                              style={[styles.sizeBtn, active && styles.sizeBtnActive]}
+                              style={[
+                                styles.sizeBtn,
+                                active && styles.sizeBtnActive,
+                              ]}
                               activeOpacity={0.82}
                               onPress={() => setSelectedSize(item)}
                             >
@@ -756,24 +820,36 @@ export default function ProductDetail() {
                 <View style={styles.storeHeaderRow}>
                   <View style={styles.storeTitleWrap}>
                     <View style={styles.storeIconWrap}>
-                      <Ionicons name="storefront-outline" size={rMS(18)} color={AppColors.primary} />
+                      <Ionicons
+                        name="storefront-outline"
+                        size={rMS(18)}
+                        color={AppColors.primary}
+                      />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.storeEyebrow}>Sold by</Text>
-                      <Text style={styles.storeTitle}>{store?.title ?? "Store"}</Text>
-                      {storeMeta ? <Text style={styles.storeMeta}>{storeMeta}</Text> : null}
+                      <Text style={styles.storeTitle}>
+                        {store?.title ?? "Store"}
+                      </Text>
+                      {storeMeta ? (
+                        <Text style={styles.storeMeta}>{storeMeta}</Text>
+                      ) : null}
                     </View>
                   </View>
                   {typeof store?.rating === "number" ? (
                     <View style={styles.storeRatingPill}>
                       <Ionicons name="star" size={rMS(12)} color="#FACC15" />
-                      <Text style={styles.storeRatingText}>{store.rating.toFixed(1)}</Text>
+                      <Text style={styles.storeRatingText}>
+                        {store.rating.toFixed(1)}
+                      </Text>
                     </View>
                   ) : null}
                 </View>
 
                 {store?.description ? (
-                  <Text style={styles.storeDescription}>{store.description}</Text>
+                  <Text style={styles.storeDescription}>
+                    {store.description}
+                  </Text>
                 ) : null}
 
                 <View style={styles.storeActionsRow}>
@@ -793,7 +869,9 @@ export default function ProductDetail() {
                           })
                         }
                       >
-                        <Text style={styles.storePrimaryActionText}>Visit Store</Text>
+                        <Text style={styles.storePrimaryActionText}>
+                          Visit Store
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.storeSecondaryAction}
@@ -806,13 +884,20 @@ export default function ProductDetail() {
                               vendorName: String(store.title ?? "Store"),
                               productId: id,
                               productTitle: title,
-                              productImageUrl: product.imageUrl ?? productImages[0]?.uri,
+                              productImageUrl:
+                                product.imageUrl ?? productImages[0]?.uri,
                             },
                           } as any)
                         }
                       >
-                        <Ionicons name="chatbubble-outline" size={rMS(16)} color={colors.onInverseSurface} />
-                        <Text style={styles.storeSecondaryActionText}>Chat Store</Text>
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={rMS(16)}
+                          color={colors.onInverseSurface}
+                        />
+                        <Text style={styles.storeSecondaryActionText}>
+                          Chat Store
+                        </Text>
                       </TouchableOpacity>
                     </>
                   ) : null}
@@ -894,8 +979,8 @@ export default function ProductDetail() {
             wishlistProduct={{
               id,
               image: product.image,
-              title,
-              category,
+              title: title ?? "",
+              category: category ?? "",
               price,
               oldPrice,
               rating,
@@ -903,8 +988,8 @@ export default function ProductDetail() {
             }}
             cartItem={{
               id,
-              title,
-              category,
+              title: title ?? "",
+              category: category ?? "",
               price,
               image: product.image,
               imageKey: product.imageKey,

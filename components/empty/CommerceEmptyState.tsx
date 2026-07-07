@@ -1,6 +1,6 @@
 import { AppColors } from "@/constants/Colors";
-import { useCommerceEmptyStyles } from "@/styles/themedCommerce";
 import { rS } from "@/styles/responsive";
+import { useCommerceEmptyStyles } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
@@ -9,8 +9,8 @@ type CommerceEmptyStateProps = {
   icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   message: string;
-  primaryLabel: string;
-  onPrimaryPress: () => void;
+  primaryLabel?: string;
+  onPrimaryPress?: () => void;
   secondaryLabel?: string;
   onSecondaryPress?: () => void;
 };
@@ -34,13 +34,15 @@ export default function CommerceEmptyState({
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
 
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={onPrimaryPress}
-        activeOpacity={0.88}
-      >
-        <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
-      </TouchableOpacity>
+      {primaryLabel && onPrimaryPress ? (
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={onPrimaryPress}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {secondaryLabel && onSecondaryPress ? (
         <TouchableOpacity

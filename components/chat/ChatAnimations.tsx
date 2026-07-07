@@ -3,14 +3,18 @@ import { useChatStyles } from "@/styles/themedChatStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import Reanimated, { FadeIn, FadeInDown, FadeInUp, FadeOut } from "react-native-reanimated";
+import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
+
+/** Short opacity-only entrance — no slide or spring. */
+export const CHAT_FADE_IN_MS = 140;
+export const CHAT_FADE_OUT_MS = 100;
 
 type TypingDotsProps = {
   color?: string;
   dotSize?: number;
 };
 
-export function TypingDots({ color = "#94A3B8", dotSize = rS(6) }: TypingDotsProps) {
+export function TypingDots({ color = "#94A3B8", dotSize = rS(5.5) }: TypingDotsProps) {
   const dotOne = useRef(new Animated.Value(0)).current;
   const dotTwo = useRef(new Animated.Value(0)).current;
   const dotThree = useRef(new Animated.Value(0)).current;
@@ -22,14 +26,14 @@ export function TypingDots({ color = "#94A3B8", dotSize = rS(6) }: TypingDotsPro
           Animated.delay(delayMs),
           Animated.timing(value, {
             toValue: 1,
-            duration: 340,
-            easing: Easing.out(Easing.quad),
+            duration: 380,
+            easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
           Animated.timing(value, {
             toValue: 0,
-            duration: 340,
-            easing: Easing.in(Easing.quad),
+            duration: 380,
+            easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
         ]),
@@ -37,8 +41,8 @@ export function TypingDots({ color = "#94A3B8", dotSize = rS(6) }: TypingDotsPro
 
     const loops = [
       buildLoop(dotOne, 0),
-      buildLoop(dotTwo, 130),
-      buildLoop(dotThree, 260),
+      buildLoop(dotTwo, 160),
+      buildLoop(dotThree, 320),
     ];
 
     loops.forEach((loop) => loop.start());
@@ -56,16 +60,8 @@ export function TypingDots({ color = "#94A3B8", dotSize = rS(6) }: TypingDotsPro
         backgroundColor: color,
         opacity: value.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.35, 1],
+          outputRange: [0.28, 0.95],
         }),
-        transform: [
-          {
-            translateY: value.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -rS(3.5)],
-            }),
-          },
-        ],
       }}
     />
   );
@@ -101,8 +97,8 @@ export function ChatTypingIndicator({
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(180)}
-      exiting={FadeOut.duration(140)}
+      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
+      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       style={[
         chatStyles.messageRow,
         isOutgoing ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
@@ -134,20 +130,20 @@ export function ChatTypingIndicator({
 type AnimatedChatMessageWrapProps = {
   isMine: boolean;
   children: React.ReactNode;
+  /** Skip entrance when re-rendering grouped follow-ups. */
+  animate?: boolean;
 };
 
 export function AnimatedChatMessageWrap({
-  isMine,
   children,
+  animate = true,
 }: AnimatedChatMessageWrapProps) {
+  if (!animate) {
+    return <View>{children}</View>;
+  }
+
   return (
-    <Reanimated.View
-      entering={
-        isMine
-          ? FadeInUp.springify().damping(20).stiffness(220).duration(260)
-          : FadeInDown.springify().damping(20).stiffness(220).duration(260)
-      }
-    >
+    <Reanimated.View entering={FadeIn.duration(CHAT_FADE_IN_MS)}>
       {children}
     </Reanimated.View>
   );
@@ -158,12 +154,8 @@ type AnimatedChatThreadWrapProps = {
   children: React.ReactNode;
 };
 
-export function AnimatedChatThreadWrap({ index, children }: AnimatedChatThreadWrapProps) {
-  return (
-    <Reanimated.View entering={FadeIn.delay(Math.min(index * 45, 240)).duration(220)}>
-      {children}
-    </Reanimated.View>
-  );
+export function AnimatedChatThreadWrap({ children }: AnimatedChatThreadWrapProps) {
+  return <View>{children}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -171,12 +163,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: rS(5),
-    minHeight: rV(18),
+    gap: rS(4),
+    minHeight: rV(16),
     paddingHorizontal: rS(2),
   },
   typingBubble: {
-    minWidth: rS(64),
+    minWidth: rS(56),
     paddingVertical: rV(10),
   },
   typingLabel: {

@@ -9,7 +9,10 @@ import {
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import { useStores } from "@/hooks/useCommerce";
+import { useDeviceLocation } from "@/hooks/useDeviceLocation";
+import { formatDistanceKm, sortStoresByDistance } from "@/utils/location";
 import { rS, rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
@@ -29,7 +32,10 @@ const StoreScreen = () => {
   const { horizontalPadding, sectionSpacing, gridCardWidth } = useResponsive();
   const [activeCategory, setActiveCategory] = useState("All");
   const [isSearching, setIsSearching] = useState(false);
+  const [sortMode, setSortMode] = useState<"default" | "near_me">("default");
   const { stores: storeItems, isLoading } = useStores({});
+  const { coords, isLoading: isLoadingLocation, refresh: refreshLocation } =
+    useDeviceLocation(sortMode === "near_me");
   const [searchResults, setSearchResults] = useState(storeItems);
   const [searchSessionKey, setSearchSessionKey] = useState(0);
 
@@ -75,7 +81,16 @@ const StoreScreen = () => {
     );
   }, [activeCategory, storeItems]);
 
-  const displayedStores = isSearching ? searchResults : filteredByCategory;
+  const displayedStores = useMemo(() => {
+    const base = isSearching ? searchResults : filteredByCategory;
+    if (sortMode !== "near_me" || !coords) {
+      return base.map((store) => ({ store, distanceLabel: null as string | null }));
+    }
+    return sortStoresByDistance(base, coords).map(({ store, distanceKm }) => ({
+      store,
+      distanceLabel: formatDistanceKm(distanceKm),
+    }));
+  }, [coords, filteredByCategory, isSearching, searchResults, sortMode]);
 
   const handleCategoryPress = (category: string) => {
     setActiveCategory(category);
@@ -134,6 +149,22 @@ const StoreScreen = () => {
           onChange={handleCategoryPress}
         />
 
+        <View style={{ flexDirection: "row", gap: rS(8), marginBottom: rV(8) }}>
+          <DiscoveryFilterChip
+            label="All stores"
+            active={sortMode === "default"}
+            onPress={() => setSortMode("default")}
+          />
+          <DiscoveryFilterChip
+            label={isLoadingLocation ? "Finding you…" : "Near me"}
+            active={sortMode === "near_me"}
+            onPress={() => {
+              setSortMode("near_me");
+              void refreshLocation();
+            }}
+          />
+        </View>
+
         <View style={screenStyles.contentBlock}>
           <CommerceSeeAllSectionHeader
             title="Browse stores"
@@ -158,14 +189,15 @@ const StoreScreen = () => {
           ) : (
             <FlatList
               data={displayedStores}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.store.id}
               numColumns={2}
               scrollEnabled={false}
               columnWrapperStyle={{ columnGap: rS(12) }}
               renderItem={({ item }) => (
                 <StoreCard
-                  {...item}
-                  category={normalizeStoreCategory(item.category)}
+                  {...item.store}
+                  category={normalizeStoreCategory(item.store.category)}
+                  city={item.distanceLabel ?? item.store.city}
                   cardWidth={gridCardWidth(2, rS(12))}
                   horizontalSpacing={0}
                 />

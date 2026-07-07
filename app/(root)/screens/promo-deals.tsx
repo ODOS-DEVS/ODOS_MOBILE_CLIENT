@@ -1,19 +1,19 @@
-import RecommendationCard from "@/components/cards/RecommendationCard";
-import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import {
   CommerceSeeAllEmptyState,
   CommerceSeeAllHero,
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import RecommendationCard from "@/components/cards/RecommendationCard";
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { AppColors } from "@/constants/Colors";
 import { useDealProducts } from "@/hooks/useDealProducts";
 import { rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
-import { AppColors } from "@/constants/Colors";
 
 function parseParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -88,7 +88,8 @@ export default function PromoDealsScreen() {
         stats={[
           { value: products.length, label: "products" },
           {
-            value: products.filter((item) => Boolean(item.discount?.trim())).length,
+            value: products.filter((item) => Boolean(item.discount?.trim()))
+              .length,
             label: "marked down",
           },
         ]}
@@ -114,10 +115,12 @@ export default function PromoDealsScreen() {
             paddingBottom: sectionSpacing,
           }}
         >
-          <ProductListSkeleton rows={6} />
+          <ProductListSkeleton count={6} />
         </View>
       ) : error && products.length === 0 ? (
-        <View style={{ paddingHorizontal: horizontalPadding, paddingTop: rV(12) }}>
+        <View
+          style={{ paddingHorizontal: horizontalPadding, paddingTop: rV(12) }}
+        >
           <CommerceSeeAllEmptyState
             icon="alert-circle-outline"
             title="Couldn't load deals"
@@ -142,11 +145,7 @@ export default function PromoDealsScreen() {
             />
           }
           ListFooterComponent={
-            <CatalogScrollFooter
-              isLoadingMore={isLoadingMore}
-              hasMore={hasMore}
-              itemCount={products.length}
-            />
+            <CatalogScrollFooter isLoadingMore={isLoadingMore} />
           }
           contentContainerStyle={{
             paddingHorizontal: horizontalPadding,

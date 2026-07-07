@@ -4,6 +4,7 @@ import {
 import { resolveOrderItemImageSource } from "@/utils/orderImages";
 import Fonts from "@/constants/Fonts";
 import type { Order } from "@/hooks/useOrders";
+import { getActiveOrderTimelineStep } from "@/utils/orderTracking";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useOrderStyles } from "@/styles/themedOrderStyles";
 import { Ionicons } from "@expo/vector-icons";
@@ -134,6 +135,46 @@ export function OrderProgressBar({ progress, eta }: OrderProgressBarProps) {
         <View style={[orderStyles.trackFill, { width: `${percent}%` }]} />
       </View>
     </>
+  );
+}
+
+type OrderTrackingPreviewProps = {
+  order: Order;
+};
+
+export function OrderTrackingPreview({ order }: OrderTrackingPreviewProps) {
+  const orderStyles = useOrderStyles();
+  const { colors } = useTheme();
+  const activeStep = getActiveOrderTimelineStep(order);
+
+  if (!activeStep) {
+    return null;
+  }
+
+  const iconName =
+    activeStep.state === "done"
+      ? "checkmark-circle"
+      : activeStep.state === "cancelled"
+        ? "close-circle"
+        : "radio-button-on";
+
+  const iconColor =
+    activeStep.state === "done"
+      ? "#16A34A"
+      : activeStep.state === "cancelled"
+        ? "#DC2626"
+        : colors.text;
+
+  return (
+    <View style={orderStyles.trackingPreview}>
+      <Ionicons name={iconName} size={rMS(16)} color={iconColor} />
+      <View style={orderStyles.trackingPreviewCopy}>
+        <Text style={orderStyles.trackingPreviewTitle}>{activeStep.title}</Text>
+        <Text style={orderStyles.trackingPreviewCaption} numberOfLines={2}>
+          {activeStep.caption}
+        </Text>
+      </View>
+    </View>
   );
 }
 

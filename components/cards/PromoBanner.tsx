@@ -1,10 +1,10 @@
-import Fonts from "@/constants/Fonts";
 import { CarouselDots } from "@/components/ui/CarouselDots";
+import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useCarouselAutoPlay } from "@/hooks/useCarouselAutoPlay";
 import type { PromoBannerItem } from "@/hooks/usePromoBanners";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
-import { useResponsive, rMS, rS, rV } from "@/styles/responsive";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { resolveApiMediaUrl } from "@/utils/media";
 import { navigateFromPromoBanner } from "@/utils/promoNavigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,7 +35,10 @@ type PromoBannerProps = {
   inset?: boolean;
 };
 
-function getGradientColors(accent: PromoBannerItem["accent"], isDark: boolean) {
+function getGradientColors(
+  accent: PromoBannerItem["accent"],
+  isDark: boolean,
+): readonly [string, string, string] {
   if (accent === "teal") {
     return isDark
       ? ["#0F172A", "#134E4A", "#1F2937"]
@@ -163,7 +166,11 @@ function PromoBannerCard({
   };
 
   return (
-    <TouchableOpacity activeOpacity={0.92} onPress={handlePress} style={styles.shell}>
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={handlePress}
+      style={styles.shell}
+    >
       <LinearGradient
         colors={getGradientColors(banner?.accent, isDark)}
         start={{ x: 0, y: 0 }}
@@ -190,7 +197,11 @@ function PromoBannerCard({
         </View>
 
         <View style={styles.artWrap}>
-          <Image source={imageSource} style={styles.artImage} resizeMode="contain" />
+          <Image
+            source={imageSource}
+            style={styles.artImage}
+            resizeMode="contain"
+          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -236,7 +247,9 @@ export default function PromoBanner({
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
+      const nextIndex = Math.round(
+        event.nativeEvent.contentOffset.x / slideWidth,
+      );
       const clamped = Math.max(0, Math.min(nextIndex, banners.length - 1));
       activeIndexRef.current = clamped;
       setActiveIndex(clamped);

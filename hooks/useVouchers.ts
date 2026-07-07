@@ -60,6 +60,20 @@ export type VoucherPreview = {
   totalAmount: number;
 };
 
+export type PromotionCalculation = {
+  subtotalAmount: number;
+  shippingAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  eligibleSubtotalAmount: number;
+  appliedPromotions: Array<{
+    voucherId: string;
+    code: string;
+    title: string;
+    discountAmount: number;
+  }>;
+};
+
 type VoucherWalletApiItem = {
   id: string;
   code: string;
@@ -321,6 +335,67 @@ export function useVouchers() {
     return payload.map(mapStoreVoucher);
   }, []);
 
+  const calculatePromotions = useCallback(
+    async (input: {
+      items: VoucherPreviewItemPayload[];
+      shippingAmount?: number;
+      voucherCode?: string | null;
+      includeAutoApply?: boolean;
+    }) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        return null;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/vouchers/calculate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: input.items,
+          shipping_amount: input.shippingAmount ?? 0,
+          voucher_code: input.voucherCode ?? null,
+          include_auto_apply: input.includeAutoApply ?? true,
+        }),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = (await response.json()) as {
+        subtotal_amount: number;
+        shipping_amount: number;
+        discount_amount: number;
+        total_amount: number;
+        eligible_subtotal_amount: number;
+        applied_promotions: Array<{
+          voucher_id: string;
+          code: string;
+          title: string;
+          discount_amount: number;
+        }>;
+      };
+
+      return {
+        subtotalAmount: payload.subtotal_amount,
+        shippingAmount: payload.shipping_amount,
+        discountAmount: payload.discount_amount,
+        totalAmount: payload.total_amount,
+        eligibleSubtotalAmount: payload.eligible_subtotal_amount,
+        appliedPromotions: payload.applied_promotions.map((item) => ({
+          voucherId: item.voucher_id,
+          code: item.code,
+          title: item.title,
+          discountAmount: item.discount_amount,
+        })),
+      } satisfies PromotionCalculation;
+    },
+    [accessToken],
+  );
+
   const claimVoucher = useCallback(
     async (voucherId: string) => {
       const token = await getAccessToken(accessToken);
@@ -359,6 +434,7 @@ export function useVouchers() {
     previewVoucher,
     suggestVouchers,
     fetchStoreVouchers,
+    calculatePromotions,
     claimVoucher,
   };
 }

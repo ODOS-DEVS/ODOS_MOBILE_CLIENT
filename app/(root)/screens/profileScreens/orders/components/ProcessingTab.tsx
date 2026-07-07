@@ -9,6 +9,7 @@ import {
   getOrderStatusPresentation,
   OrderProgressBar,
   OrderThumbnail,
+  OrderTrackingPreview,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { Order } from "@/hooks/useOrders";
@@ -58,6 +59,8 @@ export default function ProcessingTab({
                 progress={order.progress ?? 0.18}
                 eta={order.tracking_eta}
               />
+
+              <OrderTrackingPreview order={order} />
 
               <AccountActionRow>
                 <AccountActionButton

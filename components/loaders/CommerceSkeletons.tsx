@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { STOREFRONT_COVER_HEIGHT } from "@/components/store/StorefrontExperience";
 import {
   SkeletonLine,
   SkeletonListRow,
@@ -174,17 +175,22 @@ export function StoreGridSkeleton({ count = 4 }: { count?: number }) {
 export function StoreProfileSkeleton() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailContainer}>
-      <SkeletonTile height={rV(176)} radius={0} delay={0} />
+      <SkeletonTile height={STOREFRONT_COVER_HEIGHT} radius={0} delay={0} />
       <View style={styles.storeProfileShell}>
         <SkeletonTile
-          width={rS(80)}
-          height={rS(80)}
-          radius={20}
+          width={rS(96)}
+          height={rS(96)}
+          radius={rS(30)}
           delay={80}
           style={styles.pullUpLogo}
         />
-        <SkeletonLine width="46%" height={rV(15)} delay={120} />
-        <SkeletonLine width="30%" delay={160} />
+        <SkeletonLine width="52%" height={rV(18)} delay={120} />
+        <SkeletonLine width="34%" delay={160} />
+        <SkeletonLine width="78%" delay={200} />
+        <View style={{ flexDirection: "row", gap: rS(10), marginTop: rV(8) }}>
+          <SkeletonTile width="48%" height={rV(48)} radius={rS(14)} delay={240} />
+          <SkeletonTile width="48%" height={rV(48)} radius={rS(14)} delay={280} />
+        </View>
         <ProductGridSkeleton count={2} />
       </View>
     </ScrollView>
