@@ -117,7 +117,7 @@ export function PushNotificationsProvider({
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 400, 180, 400, 180, 600],
           lightColor: "#F59E0B",
-          sound: "vendor-order.wav",
+          sound: "vendor_order.wav",
           enableVibrate: true,
           bypassDnd: false,
         });

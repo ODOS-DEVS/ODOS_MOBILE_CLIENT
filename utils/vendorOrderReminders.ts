@@ -112,7 +112,7 @@ export async function scheduleVendorOrderReminders(payload: VendorOrderAlertPayl
               ? `Urgent · Order #${payload.orderNumber}`
               : `Reminder · Order #${payload.orderNumber}`,
           body: `This order has been waiting ${minutes} minutes. Open Orders to fulfil it now.`,
-          sound: "vendor-order.wav",
+          sound: "vendor_order.wav",
           priority: Notifications.AndroidNotificationPriority.MAX,
           data: {
             type: "vendor_order_reminder",
