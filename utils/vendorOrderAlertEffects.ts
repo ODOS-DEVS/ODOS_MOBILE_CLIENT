@@ -30,7 +30,7 @@ async function ensureSoundLoaded() {
         interruptionModeIOS: InterruptionModeIOS.DoNotMix,
       });
       const { sound } = await Audio.Sound.createAsync(
-        require("@/assets/sounds/vendor-order.wav"),
+        require("@/assets/sounds/vendor_order.wav"),
         { shouldPlay: false, volume: 1 },
       );
       soundInstance = sound;
