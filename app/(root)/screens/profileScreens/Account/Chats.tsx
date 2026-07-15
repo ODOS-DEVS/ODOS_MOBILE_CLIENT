@@ -32,9 +32,11 @@ export default function ChatsScreen() {
 
       {customerThreads.length > 0 ? (
         <FlatList
+          style={{ flex: 1 }}
           data={customerThreads}
           keyExtractor={(thread) => thread.id}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
           contentContainerStyle={accountStyles.content}
           ListHeaderComponent={
             <AccountInsightCard

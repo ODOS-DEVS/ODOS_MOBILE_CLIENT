@@ -4,6 +4,7 @@ import {
   fetchMyVendorApplication,
   fetchVendorDashboard,
   fetchVendorProfile,
+  normalizeVendorDashboardStats,
   submitVendorApplication,
 } from "@/services/vendorService";
 import {
@@ -23,6 +24,7 @@ type VendorStoreState = {
   vendorApplication: VendorApplication | null;
   vendorDashboardStats: VendorDashboardStats | null;
   isLoading: boolean;
+  hasLoadedVendorState: boolean;
   isSubmitting: boolean;
   error: string | null;
   lastLoadedUserId: string | null;
@@ -57,6 +59,7 @@ const initialState = {
   vendorApplication: null,
   vendorDashboardStats: null,
   isLoading: false,
+  hasLoadedVendorState: false,
   isSubmitting: false,
   error: null,
   lastLoadedUserId: null,
@@ -85,6 +88,13 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
   refreshVendorState: async (session) => {
     if (!session.userId) {
       set({ ...initialState });
+      return;
+    }
+
+    if (
+      get().hasLoadedVendorState &&
+      get().lastLoadedUserId === session.userId
+    ) {
       return;
     }
 
@@ -120,12 +130,14 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
         vendorDashboardStats,
         vendorStatus,
         isLoading: false,
+        hasLoadedVendorState: true,
         error: null,
         lastLoadedUserId: session.userId,
       });
     } catch (error) {
       set({
         isLoading: false,
+        hasLoadedVendorState: true,
         error:
           error instanceof Error
             ? error.message
@@ -206,11 +218,14 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
     }
   },
 
-  setRealtimeVendorDashboard: (vendorDashboardStats) => {
-    set({
-      vendorDashboardStats,
+  setRealtimeVendorDashboard: (incoming) => {
+    set((state) => ({
+      vendorDashboardStats: normalizeVendorDashboardStats(
+        incoming,
+        state.vendorDashboardStats,
+      ),
       error: null,
-    });
+    }));
   },
 
   submitVendorApplication: async (session, input) => {
@@ -223,6 +238,7 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
         vendorDashboardStats: null,
         vendorStatus: vendorApplication.status,
         isSubmitting: false,
+        hasLoadedVendorState: true,
         lastLoadedUserId: session.userId,
       });
       return vendorApplication;

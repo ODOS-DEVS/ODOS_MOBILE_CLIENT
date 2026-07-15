@@ -105,6 +105,7 @@ export default function PopularProductsScreen() {
         </View>
       ) : displayed.length === 0 ? (
         <FlatList
+          style={{ flex: 1 }}
           data={[]}
           renderItem={() => null}
           ListHeaderComponent={listHeader}
@@ -126,6 +127,7 @@ export default function PopularProductsScreen() {
         />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={displayed}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={listHeader}

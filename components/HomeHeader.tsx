@@ -91,21 +91,23 @@ export const HomeHeader = () => {
           <View
             style={{
               position: "absolute",
-              top: -2,
-              right: -2,
-              minWidth: rS(16),
-              height: rS(16),
-              borderRadius: rS(8),
-              backgroundColor: "#E53935",
+              top: -4,
+              right: -6,
+              minWidth: rS(18),
+              height: rS(18),
+              borderRadius: rS(9),
+              backgroundColor: colors.dangerText,
               alignItems: "center",
               justifyContent: "center",
-              paddingHorizontal: rS(3),
+              paddingHorizontal: rS(4),
+              borderWidth: 2,
+              borderColor: colors.screen,
             }}
           >
             <Text
               style={{
-                color: "#fff",
-                fontSize: rS(9),
+                color: "#FFFFFF",
+                fontSize: rS(10),
                 fontFamily: "Montserrat-SemiBold",
               }}
             >

@@ -303,7 +303,9 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
         updatingOrderId: null,
       }));
       if (status === "delivered" || status === "cancelled") {
-        await acknowledgeVendorOrder(orderId);
+        queueMicrotask(() => {
+          void acknowledgeVendorOrder(orderId);
+        });
       }
       return updatedOrder;
     } catch (error) {
@@ -367,8 +369,24 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
         return { orders: [order, ...state.orders] };
       }
 
+      const existing = state.orders[existingIndex];
+      const mergedOrder = {
+        ...existing,
+        ...order,
+        items: order.items.length > 0 ? order.items : existing.items,
+      };
+
+      if (
+        existing.status === mergedOrder.status &&
+        existing.totalAmount === mergedOrder.totalAmount &&
+        existing.productCount === mergedOrder.productCount &&
+        existing.items.length === mergedOrder.items.length
+      ) {
+        return state;
+      }
+
       const next = [...state.orders];
-      next[existingIndex] = order;
+      next[existingIndex] = mergedOrder;
       return { orders: next };
     });
   },

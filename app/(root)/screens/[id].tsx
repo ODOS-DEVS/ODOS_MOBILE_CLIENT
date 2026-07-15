@@ -13,12 +13,14 @@ import { useTheme } from "@/context/ThemeContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
 import { useStore } from "@/hooks/useCommerce";
 import { useDeliveryQuote } from "@/hooks/useDeliveryQuote";
+import { useOrders } from "@/hooks/useOrders";
 import {
   useForYouRecommendations,
   useSimilarProducts,
 } from "@/hooks/useRecommendations";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useProductReviews } from "@/hooks/useReviews";
+import { useProductReviews, useReviews } from "@/hooks/useReviews";
+import { useToast } from "@/context/ToastContext";
 import {
   BEHAVIOR_EVENT_TYPES,
   trackBehaviorEvent,
@@ -28,10 +30,14 @@ import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { getSecondsRemaining } from "@/utils/countdown";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { goBackOr } from "@/utils/navigation";
+import {
+  buildReviewComposerRoute,
+  resolveProductReviewTarget,
+} from "@/utils/reviewNavigation";
 import type { ProductSharePayload } from "@/utils/shareCatalog";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -135,17 +141,29 @@ function ProductMetaChip({
   label,
   styles,
   mutedColor,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   styles: ReturnType<typeof createProductDetailStyles>;
   mutedColor: string;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.metaChip}>
+  const content = (
+    <>
       <Ionicons name={icon} size={rMS(13)} color={mutedColor} />
       <Text style={styles.metaChipText}>{label}</Text>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={styles.metaChip}>{content}</View>;
+  }
+
+  return (
+    <TouchableOpacity style={styles.metaChip} activeOpacity={0.86} onPress={onPress}>
+      {content}
+    </TouchableOpacity>
   );
 }
 
@@ -170,6 +188,7 @@ export default function ProductDetail() {
   const { colors } = useTheme();
   const styles = useMemo(() => createProductDetailStyles(colors), [colors]);
   const { requireAuth } = useRequireAuth();
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useResponsive();
   const params = useLocalSearchParams();
@@ -277,6 +296,8 @@ export default function ProductDetail() {
     storeId: product.storeId,
   });
   const { reviews: productReviews } = useProductReviews(id);
+  const { orders } = useOrders();
+  const { reviews: userReviews } = useReviews();
 
   const title = product.title;
   const category = product.category;
@@ -318,6 +339,49 @@ export default function ProductDetail() {
   const hasRatingsInfo = Boolean(
     (!Number.isNaN(rating) && rating > 0) || reviewsLabel.trim(),
   );
+
+  const reviewTarget = useMemo(
+    () =>
+      resolveProductReviewTarget({
+        productId: id,
+        productTitle: title,
+        productCategory: subcategory ?? category,
+        imageKey: product.imageKey,
+        imageUrl: product.imageUrl,
+        orders,
+        userReviews,
+      }),
+    [
+      category,
+      id,
+      orders,
+      product.imageKey,
+      product.imageUrl,
+      subcategory,
+      title,
+      userReviews,
+    ],
+  );
+
+  const handleOpenProductReview = useCallback(() => {
+    if (
+      !requireAuth({
+        title: "Sign in to review",
+        message:
+          "Log in or create an account to rate products you've received.",
+      })
+    ) {
+      return;
+    }
+
+    if (!reviewTarget) {
+      showToast("Reviews unlock after your order is delivered.");
+      router.push("/(root)/screens/profileScreens/Account/Reviews" as any);
+      return;
+    }
+
+    router.push(buildReviewComposerRoute(reviewTarget));
+  }, [requireAuth, reviewTarget, showToast]);
 
   const productColorOptions = useMemo(
     () => buildColorOptions(product.colorOptions),
@@ -653,6 +717,7 @@ export default function ProductDetail() {
                       icon="star"
                       styles={styles}
                       mutedColor={colors.textMuted}
+                      onPress={handleOpenProductReview}
                       label={
                         rating > 0 && reviewsLabel.trim()
                           ? `${rating.toFixed(1)} · ${reviewsLabel}`
@@ -910,6 +975,8 @@ export default function ProductDetail() {
                   reviewsLabel={reviewsLabel}
                   reviewCount={localReviewCount}
                   reviews={productReviews}
+                  onWriteReviewPress={handleOpenProductReview}
+                  writeReviewLabel={reviewTarget?.mode === "edit" ? "Edit review" : "Write review"}
                 />
               </View>
 

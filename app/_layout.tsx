@@ -24,12 +24,14 @@ import {
 } from "@/utils/vendorOrderAlertBus";
 import { useFonts } from "expo-font";
 import { SplashScreen as ExpoSplashScreen, Stack } from "expo-router";
+import { AppState, InteractionManager, View } from "react-native";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { enableFreeze } from "react-native-screens";
 import "./global.css";
 
 ExpoSplashScreen.preventAutoHideAsync();
+enableFreeze(true);
 
 function VendorStateBridge() {
   const { accessToken, user } = useAuth();
@@ -105,7 +107,9 @@ function VendorRealtimeBridge() {
       );
 
       if (!isStillActive && alertPayload) {
-        void cancelVendorOrderReminders(alertPayload.orderId);
+        InteractionManager.runAfterInteractions(() => {
+          void cancelVendorOrderReminders(alertPayload.orderId);
+        });
       }
 
       if (alertPayload && isNewOrder) {
@@ -114,12 +118,14 @@ function VendorRealtimeBridge() {
 
       if (alertPayload) {
         const mappedOrder = mapRealtimeVendorOrderPayload(payload);
-        upsertRealtimeOrder(mappedOrder);
+        InteractionManager.runAfterInteractions(() => {
+          upsertRealtimeOrder(mappedOrder);
+        });
       } else {
-        void fetchOrders(session);
+        InteractionManager.runAfterInteractions(() => {
+          void fetchOrders(session);
+        });
       }
-
-      void fetchVendorDashboard(session);
     });
 
     const unsubscribeProduct = subscribe("vendor.product.updated", (event) => {

@@ -195,6 +195,7 @@ export function CategoryBrowseScreen({
       <StatusBar barStyle="dark-content" />
       <ProfileHeader title={resolvedTitle} />
       <FlatList
+        style={{ flex: 1 }}
         data={filteredProducts}
         key={numColumns}
         numColumns={numColumns}

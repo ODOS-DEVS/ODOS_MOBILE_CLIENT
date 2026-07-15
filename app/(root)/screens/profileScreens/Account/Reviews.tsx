@@ -13,13 +13,13 @@ import {
   type ReviewListItemData,
 } from "@/components/reviews/ReviewUi";
 import { useToast } from "@/context/ToastContext";
-import { Order } from "@/hooks/useOrders";
-import { useOrders } from "@/hooks/useOrders";
+import { Order, useOrders } from "@/hooks/useOrders";
 import {
   type ReviewDraft,
   type StoredReview,
   useReviews,
 } from "@/hooks/useReviews";
+import { findDeliveredOrderForProduct } from "@/utils/reviewNavigation";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, ScrollView, View } from "react-native";
@@ -115,6 +115,7 @@ export default function ReviewsScreen() {
   const params = useLocalSearchParams<{
     orderId?: string;
     productId?: string;
+    openComposer?: string;
   }>();
   const { orders, isLoadingOrders } = useOrders();
   const { showToast } = useToast();
@@ -256,9 +257,43 @@ export default function ReviewsScreen() {
       return;
     }
 
-    const orderId = getParam(params.orderId)?.trim();
     const productId = getParam(params.productId)?.trim();
-    if (!orderId || !productId) {
+    let orderId = getParam(params.orderId)?.trim();
+    const shouldOpenComposer =
+      getParam(params.openComposer) === "1" || Boolean(orderId && productId);
+
+    if (!productId) {
+      return;
+    }
+
+    if (!orderId) {
+      const pendingByProduct = pendingItems.find(
+        (item) => item.productId === productId,
+      );
+      if (pendingByProduct) {
+        orderId = pendingByProduct.orderId;
+      } else {
+        const publishedByProduct = publishedItems.find(
+          (item) => item.productId === productId,
+        );
+        if (publishedByProduct) {
+          orderId = publishedByProduct.orderId;
+        } else {
+          const deliveredMatch = findDeliveredOrderForProduct(orders, productId);
+          orderId = deliveredMatch?.order.id;
+        }
+      }
+    }
+
+    if (!orderId) {
+      if (shouldOpenComposer) {
+        deepLinkHandled.current = true;
+        showToast("Reviews unlock after your order is delivered.");
+      }
+      return;
+    }
+
+    if (!shouldOpenComposer) {
       return;
     }
 
@@ -279,8 +314,21 @@ export default function ReviewsScreen() {
       deepLinkHandled.current = true;
       setActiveFilter("published");
       openComposer(publishedMatch);
+      return;
     }
-  }, [isLoading, params.orderId, params.productId, pendingItems, publishedItems]);
+
+    deepLinkHandled.current = true;
+    showToast("We couldn't find that review item. Check My Reviews for eligible orders.");
+  }, [
+    isLoading,
+    orders,
+    params.openComposer,
+    params.orderId,
+    params.productId,
+    pendingItems,
+    publishedItems,
+    showToast,
+  ]);
 
   if (isLoading) {
     return (

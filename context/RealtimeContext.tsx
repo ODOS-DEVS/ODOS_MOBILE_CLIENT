@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
-import { AppState } from "react-native";
+import { AppState, InteractionManager } from "react-native";
 import React, {
   createContext,
   useCallback,
@@ -63,9 +63,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   const dispatchEvent = useCallback((event: RealtimeEventEnvelope) => {
     const exactListeners = listenersRef.current.get(event.type);
-    exactListeners?.forEach((handler) => handler(event));
+    if (exactListeners?.size) {
+      Array.from(exactListeners).forEach((handler) => handler(event));
+    }
+
     const wildcardListeners = listenersRef.current.get("*");
-    wildcardListeners?.forEach((handler) => handler(event));
+    if (wildcardListeners?.size) {
+      Array.from(wildcardListeners).forEach((handler) => handler(event));
+    }
   }, []);
 
   const scheduleReconnect = useCallback(() => {
@@ -89,7 +94,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     async (raw: string) => {
       try {
         const event = JSON.parse(raw) as RealtimeEventEnvelope;
-        dispatchEvent(event);
+
+        InteractionManager.runAfterInteractions(() => {
+          dispatchEvent(event);
+        });
 
         const shouldRefreshAccount =
           latestAuthenticatedRef.current &&

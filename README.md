@@ -31,7 +31,10 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 - Delivery speed selection at checkout (standard, express, same-day where available)
 - Store profiles with location map and directions
 - Product sharing, **dark mode** (system or manual), pull-to-refresh across main feeds
+- Product **review deep-linking** — tap Write review or the rating chip to open My Reviews with the composer ready
+- Order detail **sticky reorder footer** that stays above the home indicator on all devices
 - **Push notifications** for orders and activity (tap opens the relevant screen)
+- **Activity feed** with paginated notifications and accurate unread badge sync
 - **First-launch onboarding** before sign-in
 - **Google Sign-In** (native build / TestFlight; configure client IDs in `.env` and EAS)
 - **ODOS Assistant** — in-app AI guide for orders, checkout, delivery, vouchers, returns, and navigation (with human support handoff)

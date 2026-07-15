@@ -106,8 +106,21 @@ export default function PhoneVerificationPanel({
         <Text style={[styles.title, { color: colors.text }]}>Verify number</Text>
       </View>
       <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-        Code sent to{" "}
-        <Text style={[styles.phoneHighlight, { color: colors.text }]}>{phoneNumber}</Text>
+        {codeSent ? (
+          <>
+            Code sent to{" "}
+            <Text style={[styles.phoneHighlight, { color: colors.text }]}>
+              {phoneNumber}
+            </Text>
+          </>
+        ) : (
+          <>
+            We&apos;ll text a 6-digit code to{" "}
+            <Text style={[styles.phoneHighlight, { color: colors.text }]}>
+              {phoneNumber}
+            </Text>
+          </>
+        )}
       </Text>
 
       {error ? (

@@ -36,6 +36,7 @@ export default function StoreDealsShowcase({
           mode: "deals",
           categorySlug: "",
           subcategorySlug: "",
+          audienceSlug: "",
           priceRange: "all",
           sort: "rating",
         },

@@ -1,37 +1,43 @@
 import { AccountActionButton } from "@/components/account/AccountUi";
 import {
   ChatComposer,
-  useChatStyles,
+  ChatCopyFeedback,
   ChatLoadingCenter,
   ChatMessagesEmpty,
   ChatScreenHeader,
   ChatScreenShell,
   ChatStatusBadge,
+  ChatSupportContextPanel,
   ChatTypingIndicator,
   getSupportStatusMeta,
   renderChatMessageItem,
+  useChatStyles,
 } from "@/components/chat/ChatUi";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
-import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { updateSupportThreadStatus } from "@/services/chatService";
 import { rMS } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import { type Href, router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  type Href,
+} from "expo-router";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -58,7 +64,8 @@ export default function SupportChatScreen() {
   } = useChat();
 
   const requestedSubject = getParam(params.subject) ?? "";
-  const fallback = (getParam(params.fallback) ?? "/(root)/(tabs)/profile") as Href;
+  const fallback = (getParam(params.fallback) ??
+    "/(root)/(tabs)/profile") as Href;
   const initialThreadId = getParam(params.threadId) ?? "";
 
   const [resolvedThreadId, setResolvedThreadId] = useState(initialThreadId);
@@ -66,6 +73,8 @@ export default function SupportChatScreen() {
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const messagesByThreadRef = useRef(messagesByThread);
@@ -78,15 +87,38 @@ export default function SupportChatScreen() {
   messagesByThreadRef.current = messagesByThread;
 
   const thread = getThreadById(resolvedThreadId) ?? supportThreads[0];
-  const messages = resolvedThreadId ? messagesByThread[resolvedThreadId] ?? [] : [];
+  const messages = resolvedThreadId
+    ? (messagesByThread[resolvedThreadId] ?? [])
+    : [];
   const isSending = sendingThreadId === resolvedThreadId;
   const isLoadingMessages =
     loadingThreadId === resolvedThreadId && messages.length === 0;
-  const statusMeta = getSupportStatusMeta(thread?.supportStatus, viewerRole);
+  const statusMeta = getSupportStatusMeta(thread?.supportStatus, viewerRole, colors);
+
+  const showCopyFeedback = useCallback(() => {
+    if (copyFeedbackTimerRef.current) {
+      clearTimeout(copyFeedbackTimerRef.current);
+    }
+    setCopyFeedbackVisible(true);
+    copyFeedbackTimerRef.current = setTimeout(() => {
+      setCopyFeedbackVisible(false);
+      copyFeedbackTimerRef.current = null;
+    }, 1200);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimerRef.current) {
+        clearTimeout(copyFeedbackTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const showBootstrapLoader =
     !resolvedThreadId &&
-    (isBootstrapping || (isLoadingSupportThreads && supportThreads.length === 0));
+    (isBootstrapping ||
+      (isLoadingSupportThreads && supportThreads.length === 0));
 
   useEffect(() => {
     requireAuth({ title: "Sign in to contact support" });
@@ -123,13 +155,22 @@ export default function SupportChatScreen() {
       setResolvedThreadId(createdThread.id);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "We couldn't open support chat yet.";
+        error instanceof Error
+          ? error.message
+          : "We couldn't open support chat yet.";
       setBootstrapError(message);
       showToast(message);
     } finally {
       setIsBootstrapping(false);
     }
-  }, [ensureSupportThread, requestedSubject, resolvedThreadId, showToast, user, viewerRole]);
+  }, [
+    ensureSupportThread,
+    requestedSubject,
+    resolvedThreadId,
+    showToast,
+    user,
+    viewerRole,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -203,7 +244,11 @@ export default function SupportChatScreen() {
       await sendMessage(resolvedThreadId, input.trim());
       setInput("");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "We couldn't send that message.");
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send that message.",
+      );
     }
   };
 
@@ -214,24 +259,29 @@ export default function SupportChatScreen() {
 
     setIsUpdatingStatus(true);
     try {
-      await updateSupportThreadStatus(resolvedThreadId, "resolved", accessToken);
+      await updateSupportThreadStatus(
+        resolvedThreadId,
+        "resolved",
+        accessToken,
+      );
       await loadSupportThreads({ silent: true });
       showToast("Support thread marked as resolved.");
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "We couldn't update this support thread.",
+        error instanceof Error
+          ? error.message
+          : "We couldn't update this support thread.",
       );
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
-  const headerSubtitle =
-    thread?.assignedAdminName
-      ? `${thread.assignedAdminName} is handling this thread`
-      : viewerRole === "vendor"
-        ? "Admin help for stores, payouts, approvals, and operations"
-        : "Admin help for orders, payments, account, and delivery";
+  const headerSubtitle = thread?.assignedAdminName
+    ? `${thread.assignedAdminName} is handling this thread`
+    : viewerRole === "vendor"
+      ? "Admin help for stores, payouts, approvals, and operations"
+      : "Admin help for orders, payments, account, and delivery";
 
   const subject = thread?.subject || requestedSubject;
 
@@ -266,11 +316,15 @@ export default function SupportChatScreen() {
   if (!user) {
     return (
       <View style={authStyles.authWrap}>
-        <Ionicons name="lock-closed-outline" size={rMS(30)} color={colors.textMuted} />
+        <Ionicons
+          name="lock-closed-outline"
+          size={rMS(30)}
+          color={colors.textMuted}
+        />
         <Text style={authStyles.authTitle}>Sign in to continue</Text>
         <Text style={authStyles.authText}>
-          Support conversations stay attached to your account so the admin team can follow up
-          properly.
+          Support conversations stay attached to your account so the admin team
+          can follow up properly.
         </Text>
         <AccountActionButton
           label="Back"
@@ -307,48 +361,23 @@ export default function SupportChatScreen() {
         }
       />
 
-      <View style={chatStyles.contextWrap}>
-        <View style={chatStyles.contextCard}>
-          <View style={chatStyles.headerAvatarSupport}>
-            <Ionicons name="shield-checkmark-outline" size={rMS(20)} color="#FFFFFF" />
-          </View>
-          <View style={chatStyles.contextCopy}>
-            <Text style={chatStyles.contextLabel}>Support context</Text>
-            <Text style={chatStyles.contextTitle}>
-              {subject || "General support conversation"}
-            </Text>
-            <Text style={chatStyles.contextSub}>{statusMeta.helper}</Text>
-            <View style={chatStyles.chipRow}>
-              {thread?.assignedAdminName ? (
-                <View style={chatStyles.chip}>
-                  <Text style={chatStyles.chipText}>
-                    Assigned to {thread.assignedAdminName}
-                  </Text>
-                </View>
-              ) : null}
-              <View style={chatStyles.chip}>
-                <Text style={chatStyles.chipText}>
-                  {isLoadingSupportThreads && !thread
-                    ? "Checking your latest thread"
-                    : thread?.resolvedAt
-                      ? "Previously resolved — reply to reopen"
-                      : "Conversation stays with your account"}
-                </Text>
-              </View>
-            </View>
-            {thread && thread.supportStatus !== "resolved" ? (
-              <AccountActionButton
-                label={isUpdatingStatus ? "Updating..." : "Mark resolved"}
-                variant="secondary"
-                disabled={isUpdatingStatus}
-                onPress={() => {
-                  void onMarkResolved();
-                }}
-              />
-            ) : null}
-          </View>
-        </View>
-      </View>
+      <ChatSupportContextPanel
+        subject={subject || "General support conversation"}
+        helper={statusMeta.helper}
+        assignedAdminName={thread?.assignedAdminName}
+        statusLabel={
+          isLoadingSupportThreads && !thread
+            ? "Checking your latest thread"
+            : thread?.resolvedAt
+              ? "Previously resolved — reply to reopen"
+              : statusMeta.label
+        }
+        canMarkResolved={Boolean(thread && thread.supportStatus !== "resolved")}
+        isUpdatingStatus={isUpdatingStatus}
+        onMarkResolved={() => {
+          void onMarkResolved();
+        }}
+      />
 
       {showBootstrapLoader ? (
         <ChatLoadingCenter label="Opening support chat with the ODOS admin team..." />
@@ -363,21 +392,28 @@ export default function SupportChatScreen() {
       {resolvedThreadId ? (
         <FlatList
           ref={listRef}
+          style={chatStyles.messagesList}
           data={messages}
           keyExtractor={(message) => message.id}
           contentContainerStyle={chatStyles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={false}
           renderItem={({ item, index }) =>
             renderChatMessageItem({
               item,
               index,
               messages,
               currentUserId: user.id,
+              onCopied: showCopyFeedback,
             })
           }
           ListFooterComponent={
-            <ChatTypingIndicator visible={isSending} variant="outgoing" label="Sending" />
+            <ChatTypingIndicator
+              visible={isSending}
+              variant="outgoing"
+              label="Sending"
+            />
           }
           ListEmptyComponent={
             isLoadingMessages ? (
@@ -389,6 +425,7 @@ export default function SupportChatScreen() {
               <ChatMessagesEmpty
                 title="You're connected to support"
                 description="Share the issue clearly and we'll keep the conversation here so it's easy to pick up later."
+                icon="headset-outline"
               />
             )
           }
@@ -410,6 +447,7 @@ export default function SupportChatScreen() {
         disabled={!resolvedThreadId || showBootstrapLoader}
         isSending={isSending}
       />
+      <ChatCopyFeedback visible={copyFeedbackVisible} />
     </ChatScreenShell>
   );
 }

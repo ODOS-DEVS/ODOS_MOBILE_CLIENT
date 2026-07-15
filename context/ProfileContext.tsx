@@ -61,6 +61,7 @@ type ProfileContextType = {
   checkoutVoucherCode: string | null;
   customerWallet: CustomerWallet | null;
   isSyncingProfileData: boolean;
+  isLoadingProfileData: boolean;
   defaultAddress: Address | null;
   defaultPayment: PaymentMethod | null;
   selectedAddress: Address | null;
@@ -146,6 +147,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [checkoutVoucherCode, setCheckoutVoucherCode] = useState<string | null>(null);
   const [customerWallet, setCustomerWallet] = useState<CustomerWallet | null>(null);
   const [isSyncingProfileData, setIsSyncingProfileData] = useState(false);
+  const [hasLoadedProfileData, setHasLoadedProfileData] = useState(false);
+  const isLoadingProfileData = Boolean(user) && !hasLoadedProfileData;
 
   const defaultAddress = useMemo(
     () => addresses.find((address) => address.isDefault) ?? addresses[0] ?? null,
@@ -193,12 +196,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setCheckoutPaymentId(null);
       setCheckoutVoucherCode(null);
       setCustomerWallet(null);
+      setHasLoadedProfileData(false);
       setIsSyncingProfileData(false);
       return;
     }
 
     const token = await getToken();
     if (!token) {
+      setHasLoadedProfileData(true);
       return;
     }
 
@@ -229,6 +234,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setCustomerWallet(null);
     } finally {
       setIsSyncingProfileData(false);
+      setHasLoadedProfileData(true);
     }
   }, [getToken, user]);
 
@@ -240,11 +246,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setCheckoutPaymentId(null);
       setCheckoutVoucherCode(null);
       setCustomerWallet(null);
+      setHasLoadedProfileData(false);
       return;
     }
 
+    setHasLoadedProfileData(false);
     void refreshProfileData();
-  }, [refreshProfileData, user]);
+  }, [refreshProfileData, user?.id]);
 
   const addAddress = useCallback(
     async (address: Omit<Address, "id">) => {
@@ -506,6 +514,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       checkoutVoucherCode,
       customerWallet,
       isSyncingProfileData,
+      isLoadingProfileData,
       defaultAddress,
       defaultPayment,
       selectedAddress,
@@ -531,6 +540,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       checkoutVoucherCode,
       customerWallet,
       isSyncingProfileData,
+      isLoadingProfileData,
       defaultAddress,
       defaultPayment,
       selectedAddress,

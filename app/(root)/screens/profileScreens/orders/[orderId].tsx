@@ -25,6 +25,7 @@ import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
 import { getDeliveryMethodLabel } from "@/utils/delivery";
 import { formatOrderTimelineDate, getOrderTimelineSteps } from "@/utils/orderTracking";
+import { buildReviewComposerRoute } from "@/utils/reviewNavigation";
 import { useReviews } from "@/hooks/useReviews";
 import { useAppReview } from "@/hooks/useAppReview";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -417,14 +418,16 @@ export default function OrderDetailScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader title="Order Details" />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          accountStyles.content,
-          styles.scrollContent,
-          footerActionRows > 0 ? { paddingBottom: footerScrollPadding } : null,
-        ]}
-      >
+      <View style={styles.screenBody}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            accountStyles.content,
+            styles.scrollContent,
+            footerActionRows > 0 ? { paddingBottom: footerScrollPadding } : null,
+          ]}
+        >
         <AccountListCard>
           <View style={orderStyles.orderTopRow}>
             <View style={orderStyles.orderInfo}>
@@ -526,14 +529,20 @@ export default function OrderDetailScreen() {
                         style={styles.reviewActionButton}
                         activeOpacity={0.88}
                         onPress={() =>
-                          router.push({
-                            pathname:
-                              "/(root)/screens/profileScreens/Account/Reviews" as any,
-                            params: {
+                          router.push(
+                            buildReviewComposerRoute({
                               orderId: order.id,
+                              orderNumber: order.order_number,
                               productId: item.product_id,
-                            },
-                          })
+                              title: item.title,
+                              category: item.category,
+                              imageKey: item.image_key,
+                              imageUrl: item.image_url,
+                              mode: reviewedItemKeys.has(`${order.id}:${item.product_id}`)
+                                ? "edit"
+                                : "create",
+                            }),
+                          )
                         }
                       >
                         <Ionicons
@@ -743,7 +752,8 @@ export default function OrderDetailScreen() {
       </ScrollView>
 
       {footerActionRows > 0 ? (
-        <OrderScreenFooter>
+        <View style={styles.stickyFooterShell} pointerEvents="box-none">
+          <OrderScreenFooter>
         {order.status === "processing" ? (
           <AccountActionRow>
             <AccountActionButton
@@ -857,7 +867,9 @@ export default function OrderDetailScreen() {
           />
         ) : null}
         </OrderScreenFooter>
+        </View>
       ) : null}
+      </View>
 
       <Modal
         visible={Boolean(returnTargetItem)}
@@ -1005,6 +1017,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: rS(16),
+  },
+  screenBody: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  stickyFooterShell: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   scrollContent: {
     paddingBottom: rV(16),

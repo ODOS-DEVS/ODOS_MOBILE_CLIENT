@@ -579,6 +579,7 @@ export default function SearchScreen() {
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={filteredProducts}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
@@ -607,6 +608,7 @@ export default function SearchScreen() {
               />
             </View>
           }
+          removeClippedSubviews={false}
           renderItem={({ item }) => (
             <ProductCard
               {...item}

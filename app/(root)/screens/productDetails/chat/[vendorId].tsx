@@ -1,14 +1,15 @@
 import {
   ChatComposer,
+  ChatCopyFeedback,
   ChatContextCard,
   ChatLoadingCenter,
   ChatMessagesEmpty,
-  ChatTypingIndicator,
-  useChatStyles,
+  ChatQuickReplies,
   ChatScreenHeader,
   ChatScreenShell,
-  ChatStatusBadge,
+  ChatTypingIndicator,
   renderChatMessageItem,
+  useChatStyles,
 } from "@/components/chat/ChatUi";
 import { AppColors } from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
@@ -16,12 +17,18 @@ import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS } from "@/styles/responsive";
-import { goBackOr } from "@/utils/navigation";
 import { resolveImageSource } from "@/utils/media";
+import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  StatusBar,
+  Text,
+  View,
+} from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
@@ -63,16 +70,61 @@ export default function VendorChatScreen() {
   const [input, setInput] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const messagesByThreadRef = useRef(messagesByThread);
   messagesByThreadRef.current = messagesByThread;
   const thread = getThreadById(resolvedThreadId);
-  const messages = resolvedThreadId ? messagesByThread[resolvedThreadId] ?? [] : [];
+  const messages = resolvedThreadId
+    ? (messagesByThread[resolvedThreadId] ?? [])
+    : [];
   const isSending = sendingThreadId === resolvedThreadId;
   const isLoadingMessages =
     loadingThreadId === resolvedThreadId &&
-    (resolvedThreadId ? (messagesByThread[resolvedThreadId]?.length ?? 0) === 0 : true);
+    (resolvedThreadId
+      ? (messagesByThread[resolvedThreadId]?.length ?? 0) === 0
+      : true);
+
+  const showCopyFeedback = useCallback(() => {
+    if (copyFeedbackTimerRef.current) {
+      clearTimeout(copyFeedbackTimerRef.current);
+    }
+    setCopyFeedbackVisible(true);
+    copyFeedbackTimerRef.current = setTimeout(() => {
+      setCopyFeedbackVisible(false);
+      copyFeedbackTimerRef.current = null;
+    }, 1200);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimerRef.current) {
+        clearTimeout(copyFeedbackTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const handleQuickReply = useCallback(
+    async (reply: string) => {
+      if (!resolvedThreadId) {
+        setInput(reply);
+        return;
+      }
+      try {
+        await sendMessage(resolvedThreadId, reply);
+      } catch (error) {
+        showToast(
+          error instanceof Error
+            ? error.message
+            : "We couldn't send that message.",
+        );
+      }
+    },
+    [resolvedThreadId, sendMessage, showToast],
+  );
 
   useEffect(() => {
     if (initialThreadId && initialThreadId !== resolvedThreadId) {
@@ -97,7 +149,9 @@ export default function VendorChatScreen() {
       setResolvedThreadId(createdThread.id);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "We couldn't open the chat yet.";
+        error instanceof Error
+          ? error.message
+          : "We couldn't open the chat yet.";
       setBootstrapError(message);
       showToast(message);
     } finally {
@@ -179,7 +233,11 @@ export default function VendorChatScreen() {
       await sendMessage(resolvedThreadId, input.trim());
       setInput("");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "We couldn't send that message.");
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send that message.",
+      );
     }
   };
 
@@ -207,7 +265,10 @@ export default function VendorChatScreen() {
       />
     ) : thread?.store.imageUrl || thread?.store.imageKey ? (
       <Image
-        source={resolveImageSource(thread?.store.imageUrl, thread?.store.imageKey)}
+        source={resolveImageSource(
+          thread?.store.imageUrl,
+          thread?.store.imageKey,
+        )}
         style={chatStyles.headerAvatar}
         resizeMode="cover"
       />
@@ -263,21 +324,28 @@ export default function VendorChatScreen() {
       {!emptyState ? (
         <FlatList
           ref={listRef}
+          style={chatStyles.messagesList}
           data={messages}
           keyExtractor={(message) => message.id}
           contentContainerStyle={chatStyles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={false}
           renderItem={({ item, index }) =>
             renderChatMessageItem({
               item,
               index,
               messages,
               currentUserId: user?.id,
+              onCopied: showCopyFeedback,
             })
           }
           ListFooterComponent={
-            <ChatTypingIndicator visible={isSending} variant="outgoing" label="Sending" />
+            <ChatTypingIndicator
+              visible={isSending}
+              variant="outgoing"
+              label="Sending"
+            />
           }
           ListEmptyComponent={
             isLoadingMessages ? (
@@ -300,22 +368,13 @@ export default function VendorChatScreen() {
       ) : null}
 
       {viewer === "vendor" ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={chatStyles.quickReplyRow}
-        >
-          {VENDOR_QUICK_REPLIES.map((reply) => (
-            <TouchableOpacity
-              key={reply}
-              activeOpacity={0.88}
-              style={chatStyles.quickReplyChip}
-              onPress={() => setInput(reply)}
-            >
-              <Text style={chatStyles.quickReplyLabel}>{reply}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <ChatQuickReplies
+          replies={VENDOR_QUICK_REPLIES}
+          disabled={!resolvedThreadId || isBootstrapping || isSending}
+          onSelect={(reply) => {
+            void handleQuickReply(reply);
+          }}
+        />
       ) : null}
 
       <ChatComposer
@@ -324,7 +383,9 @@ export default function VendorChatScreen() {
             ? "Keep replies clear and helpful so shoppers can continue easily."
             : "Ask about the product, delivery, or availability here."
         }
-        placeholder={viewer === "vendor" ? "Reply to shopper..." : "Message store..."}
+        placeholder={
+          viewer === "vendor" ? "Reply to shopper..." : "Message store..."
+        }
         value={input}
         onChangeText={setInput}
         onSend={() => {
@@ -333,6 +394,7 @@ export default function VendorChatScreen() {
         disabled={!resolvedThreadId || isBootstrapping}
         isSending={isSending}
       />
+      <ChatCopyFeedback visible={copyFeedbackVisible} />
     </ChatScreenShell>
   );
 }

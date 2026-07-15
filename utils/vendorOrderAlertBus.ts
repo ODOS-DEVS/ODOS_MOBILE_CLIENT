@@ -13,6 +13,28 @@ export type VendorOrderAlertPayload = {
 type VendorOrderAlertListener = (payload: VendorOrderAlertPayload) => void;
 
 const listeners = new Set<VendorOrderAlertListener>();
+const NEW_ORDER_COOLDOWN_MS = 12_000;
+const REMINDER_COOLDOWN_MS = 60_000;
+const recentAlertKeys = new Map<string, number>();
+
+function buildAlertDedupeKey(payload: VendorOrderAlertPayload) {
+  return `${payload.orderId}:${payload.kind ?? "new"}:${payload.reminderMinutes ?? 0}`;
+}
+
+export function shouldEmitVendorOrderAlert(payload: VendorOrderAlertPayload) {
+  const cooldownKey = buildAlertDedupeKey(payload);
+  const cooldownMs =
+    payload.kind === "reminder" ? REMINDER_COOLDOWN_MS : NEW_ORDER_COOLDOWN_MS;
+  const now = Date.now();
+  const lastSeen = recentAlertKeys.get(cooldownKey) ?? 0;
+
+  if (now - lastSeen < cooldownMs) {
+    return false;
+  }
+
+  recentAlertKeys.set(cooldownKey, now);
+  return true;
+}
 
 export function subscribeVendorOrderAlerts(listener: VendorOrderAlertListener) {
   listeners.add(listener);
@@ -22,6 +44,10 @@ export function subscribeVendorOrderAlerts(listener: VendorOrderAlertListener) {
 }
 
 export function emitVendorOrderAlert(payload: VendorOrderAlertPayload) {
+  if (!shouldEmitVendorOrderAlert(payload)) {
+    return;
+  }
+
   listeners.forEach((listener) => {
     listener(payload);
   });

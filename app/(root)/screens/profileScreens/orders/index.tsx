@@ -9,7 +9,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { rS, rV } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import CancelledTab from "./components/CancelledTab";
 import DeliveredTab from "./components/delivered/DeliveredTab";
@@ -49,11 +49,24 @@ export default function OrdersScreen() {
     [cancelledOrders.length, deliveredOrders.length, processingOrders.length],
   );
 
+  if (isLoadingOrders) {
+    return (
+      <View style={accountStyles.screen}>
+        <ProfileHeader title="My Orders" />
+        <ScreenLoader label="Loading your orders..." />
+      </View>
+    );
+  }
+
   return (
     <View style={accountStyles.screen}>
       <ProfileHeader title="My Orders" />
 
-      <View style={styles.topSection}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <AccountInsightCard
           title="Order activity"
           subtitle="Track delivery status, receipts, and returns in one place."
@@ -64,39 +77,31 @@ export default function OrdersScreen() {
           activeKey={activeTab}
           onChange={setActiveTab}
         />
-      </View>
 
-      <View style={styles.content}>
-        {isLoadingOrders ? (
-          <ScreenLoader label="Loading your orders..." />
-        ) : (
-          <>
-            {activeTab === "delivered" && <DeliveredTab orders={deliveredOrders} />}
-            {activeTab === "processing" && (
-              <ProcessingTab
-                orders={processingOrders}
-                isMutatingOrder={isMutatingOrder}
-                onCancelOrder={cancelOrder}
-              />
-            )}
-            {activeTab === "cancelled" && <CancelledTab orders={cancelledOrders} />}
-          </>
-        )}
-      </View>
+        <View style={styles.tabContent}>
+          {activeTab === "delivered" && <DeliveredTab orders={deliveredOrders} />}
+          {activeTab === "processing" && (
+            <ProcessingTab
+              orders={processingOrders}
+              isMutatingOrder={isMutatingOrder}
+              onCancelOrder={cancelOrder}
+            />
+          )}
+          {activeTab === "cancelled" && <CancelledTab orders={cancelledOrders} />}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  topSection: {
+  scrollContent: {
     paddingHorizontal: rS(16),
     paddingTop: rV(12),
-    paddingBottom: rV(8),
+    paddingBottom: rV(24),
     gap: rV(12),
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(12),
+  tabContent: {
+    minHeight: rV(240),
   },
 });

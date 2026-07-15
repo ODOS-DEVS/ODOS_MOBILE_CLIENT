@@ -178,7 +178,7 @@ function PromoBannerCard({
         style={styles.gradient}
       >
         <View style={styles.copyBlock}>
-          <Text style={styles.eyebrow}>Today's deals</Text>
+          <Text style={styles.eyebrow}>Today{"'"}s deals</Text>
           <Text style={styles.title} numberOfLines={2}>
             {headline}
           </Text>

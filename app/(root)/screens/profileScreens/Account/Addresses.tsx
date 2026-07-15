@@ -2,6 +2,8 @@ import {
   AccountActionButton,
   AccountActionRow,
   AccountBadge,
+  AccountChoiceOption,
+  AccountChoiceSheet,
   AccountEmptyState,
   AccountFab,
   AccountFormField,
@@ -9,19 +11,28 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountIconShell,
+  AccountPickerField,
   useAccountStyles,
 } from "@/components/account/AccountUi";
-import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
+import ScreenLoader from "@/components/loaders/ScreenLoader";
+import PhoneVerificationField, {
+  isPhoneVerificationRequired,
+} from "@/components/profile/PhoneVerificationField";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { usePhoneVerification } from "@/hooks/usePhoneVerification";
+import {
+  GHANA_REGIONS,
+  getCitiesForRegion,
+  matchGhanaRegion,
+} from "@/utils/ghanaLocations";
 import { formatPhoneInput, validateGhanaPhone } from "@/utils/phone";
 import { looksLikeGhanaGpsCode, normalizeGhanaGpsCode } from "@/utils/location";
 import type { Address } from "@/context/ProfileContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
 
 const getParam = (p: string | string[] | undefined) =>
@@ -47,14 +58,16 @@ function validateAddressForm(form: Omit<Address, "id">): AddressFieldErrors {
   if (!form.street.trim() || form.street.trim().length < 3) {
     errors.street = "Enter a delivery street address.";
   }
-  if (form.gpsCode?.trim() && !looksLikeGhanaGpsCode(form.gpsCode)) {
+  if (!form.gpsCode?.trim()) {
+    errors.gpsCode = "Enter a GhanaPost GPS code.";
+  } else if (!looksLikeGhanaGpsCode(form.gpsCode)) {
     errors.gpsCode = "Use a GhanaPost GPS code like GA-144-1234.";
   }
-  if (!form.city.trim() || form.city.trim().length < 2) {
-    errors.city = "Enter the city or town.";
+  if (!form.city.trim()) {
+    errors.city = "Select your town or city.";
   }
-  if (!form.region.trim() || form.region.trim().length < 2) {
-    errors.region = "Enter the region or state.";
+  if (!form.region.trim()) {
+    errors.region = "Select your region.";
   }
 
   return errors;
@@ -65,8 +78,7 @@ export default function AddressScreen() {
   const {
     addresses,
     addAddress,
-    isSyncingProfileData,
-    refreshProfileData,
+    isLoadingProfileData,
     updateAddress,
     removeAddress,
     setDefaultAddress,
@@ -80,6 +92,8 @@ export default function AddressScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<AddressFieldErrors>({});
   const [form, setForm] = useState<Omit<Address, "id">>({
     label: "",
@@ -101,6 +115,11 @@ export default function AddressScreen() {
     treatAsVerifiedIf: editingAddress?.phone ?? null,
   });
 
+  const cityOptions = useMemo(
+    () => getCitiesForRegion(form.region, form.city),
+    [form.region, form.city],
+  );
+
   const resetForm = () => {
     setForm({
       label: "",
@@ -116,9 +135,17 @@ export default function AddressScreen() {
     setFieldErrors({});
   };
 
-  useEffect(() => {
-    void refreshProfileData();
-  }, [refreshProfileData]);
+  const openEditForm = (address: Address) => {
+    setForm({
+      ...address,
+      region: matchGhanaRegion(address.region) ?? address.region,
+    });
+    setEditingId(address.id);
+    setFieldErrors({});
+    setShowModal(true);
+  };
+
+  const phoneVerificationRequired = isPhoneVerificationRequired(addressPhoneVerification);
 
   const handleSave = async () => {
     const validationErrors = validateAddressForm(form);
@@ -134,9 +161,7 @@ export default function AddressScreen() {
     try {
       const payload = {
         ...form,
-        gpsCode: form.gpsCode?.trim()
-          ? normalizeGhanaGpsCode(form.gpsCode)
-          : undefined,
+        gpsCode: normalizeGhanaGpsCode(form.gpsCode ?? ""),
       };
       if (editingId) {
         await updateAddress(editingId, payload);
@@ -194,7 +219,9 @@ export default function AddressScreen() {
         fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
       />
 
-      {!isSyncingProfileData && addresses.length === 0 ? (
+      {isLoadingProfileData ? (
+        <ScreenLoader label="Loading addresses..." />
+      ) : addresses.length === 0 ? (
         <AccountEmptyState
           icon="location-outline"
           title="No saved addresses"
@@ -230,11 +257,11 @@ export default function AddressScreen() {
                       {address.label ? (
                         <View style={[accountStyles.pill, { marginBottom: 6 }]}>
                           <Text style={accountStyles.pillText}>{address.label}</Text>
-          </View>
+                        </View>
                       ) : null}
                       <Text style={accountStyles.cardTitle}>{address.fullName}</Text>
                       <Text style={accountStyles.cardSubtitle}>{address.phone}</Text>
-        </View>
+                    </View>
                     {address.isDefault ? <AccountBadge label="Default" tone="dark" /> : null}
                   </View>
 
@@ -248,9 +275,9 @@ export default function AddressScreen() {
                     <Text style={accountStyles.cardMuted}>
                       {address.city}, {address.region}
                     </Text>
-              </View>
+                  </View>
                 </View>
-            </View>
+              </View>
 
               <AccountActionRow>
                 {fromCheckout ? (
@@ -271,11 +298,7 @@ export default function AddressScreen() {
                     <AccountActionButton
                       label="Edit"
                       icon="create-outline"
-                    onPress={() => {
-                        setForm(address);
-                        setEditingId(address.id);
-                      setShowModal(true);
-                    }}
+                      onPress={() => openEditForm(address)}
                     />
                     <AccountActionButton
                       label="Delete"
@@ -283,32 +306,36 @@ export default function AddressScreen() {
                       icon="trash-outline"
                       onPress={() => handleDelete(address.id)}
                     />
-                </>
-              )}
+                  </>
+                )}
               </AccountActionRow>
             </AccountListCard>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
       )}
 
-      <AccountFab
-        onPress={() => {
-          resetForm();
-          setShowModal(true);
-        }}
-      />
+      {!isLoadingProfileData ? (
+        <AccountFab
+          onPress={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+        />
+      ) : null}
 
       <AccountFormSheet
         visible={showModal}
         title={editingId ? "Edit address" : "Add address"}
         subtitle="Use a nickname like Home or Office so the right place is easy to spot at checkout."
         onClose={() => {
-                setShowModal(false);
-                resetForm();
-              }}
+          setShowModal(false);
+          resetForm();
+        }}
         onSave={() => void handleSave()}
         saveLabel={editingId ? "Update address" : "Save address"}
         isSaving={isSaving}
+        saveDisabled={phoneVerificationRequired}
+        saveDisabledLabel="Verify number to save"
       >
         <AccountFormField
           label="Address nickname (optional)"
@@ -330,46 +357,29 @@ export default function AddressScreen() {
           }}
           error={fieldErrors.fullName}
         />
-        <AccountFormField
-          label="Phone number"
-          placeholder="0541234567"
+        <PhoneVerificationField
           value={form.phone}
-          keyboardType="phone-pad"
           onChangeText={(value) => {
             setForm({ ...form, phone: formatPhoneInput(value) });
             setFieldErrors((current) => ({ ...current, phone: undefined }));
-            addressPhoneVerification.setVerificationError("");
           }}
-          error={fieldErrors.phone}
+          fieldError={fieldErrors.phone}
+          verification={addressPhoneVerification}
+          verifiedTitle="Delivery number verified"
+          verifiedSubtitle="Riders and store partners can reach this number for this address."
+          onSendCode={async () => {
+            const result = await addressPhoneVerification.handleSendCode();
+            if (result.success) {
+              showInfoToast(result.message || "Verification code sent.");
+            }
+          }}
+          onVerify={async (code) => {
+            const result = await addressPhoneVerification.handleVerify(code);
+            if (result.success) {
+              showInfoToast("Phone number verified.");
+            }
+          }}
         />
-        {addressPhoneVerification.isVerified && addressPhoneVerification.normalizedPhone ? (
-          <Text style={{ fontSize: 12, color: "#15803D", marginTop: -4 }}>
-            Number verified
-          </Text>
-        ) : null}
-        {addressPhoneVerification.showVerificationPanel &&
-        addressPhoneVerification.normalizedPhone ? (
-          <PhoneVerificationPanel
-            phoneNumber={addressPhoneVerification.normalizedPhone}
-            codeSent={addressPhoneVerification.codeSent}
-            isSendingCode={addressPhoneVerification.isSendingCode}
-            isVerifying={addressPhoneVerification.isVerifying}
-            error={addressPhoneVerification.verificationError}
-            onDismissError={() => addressPhoneVerification.setVerificationError("")}
-            onSendCode={async () => {
-              const result = await addressPhoneVerification.handleSendCode();
-              if (result.success) {
-                showInfoToast(result.message || "Verification code sent.");
-              }
-            }}
-            onVerify={async (code) => {
-              const result = await addressPhoneVerification.handleVerify(code);
-              if (result.success) {
-                showInfoToast("Phone number verified.");
-              }
-            }}
-          />
-        ) : null}
         <AccountFormField
           label="Street address"
           placeholder="House number and street"
@@ -381,7 +391,7 @@ export default function AddressScreen() {
           error={fieldErrors.street}
         />
         <AccountFormField
-          label="GhanaPost GPS (optional)"
+          label="GhanaPost GPS"
           placeholder="e.g. GA-144-1234"
           value={form.gpsCode ?? ""}
           autoCapitalize="characters"
@@ -391,27 +401,80 @@ export default function AddressScreen() {
           }}
           error={fieldErrors.gpsCode}
         />
-        <AccountFormField
-          label="City / town"
-          placeholder="City"
-          value={form.city}
-          onChangeText={(value) => {
-            setForm({ ...form, city: value });
-            setFieldErrors((current) => ({ ...current, city: undefined }));
-          }}
-          error={fieldErrors.city}
-        />
-        <AccountFormField
-          label="Region / state"
-          placeholder="Region"
+        <AccountPickerField
+          label="Region"
           value={form.region}
-          onChangeText={(value) => {
-            setForm({ ...form, region: value });
+          placeholder="Select your region"
+          icon="map-outline"
+          error={fieldErrors.region}
+          onPress={() => {
+            setShowRegionPicker(true);
             setFieldErrors((current) => ({ ...current, region: undefined }));
           }}
-          error={fieldErrors.region}
+          onClear={() => {
+            setForm({ ...form, region: "", city: "" });
+          }}
+        />
+        <AccountPickerField
+          label="Town / city"
+          value={form.city}
+          placeholder={form.region ? "Select your town or city" : "Select a region first"}
+          icon="business-outline"
+          error={fieldErrors.city}
+          onPress={() => {
+            if (!form.region.trim()) {
+              setFieldErrors((current) => ({
+                ...current,
+                region: "Select your region first.",
+              }));
+              return;
+            }
+            setShowCityPicker(true);
+            setFieldErrors((current) => ({ ...current, city: undefined }));
+          }}
+          onClear={() => setForm({ ...form, city: "" })}
         />
       </AccountFormSheet>
+
+      <AccountChoiceSheet
+        visible={showRegionPicker}
+        title="Select region"
+        onClose={() => setShowRegionPicker(false)}
+      >
+        {GHANA_REGIONS.map((option) => (
+          <AccountChoiceOption
+            key={option}
+            label={option}
+            selected={form.region === option}
+            onPress={() => {
+              if (form.region !== option) {
+                setForm({ ...form, region: option, city: "" });
+              } else {
+                setForm({ ...form, region: option });
+              }
+              setShowRegionPicker(false);
+            }}
+          />
+        ))}
+      </AccountChoiceSheet>
+
+      <AccountChoiceSheet
+        visible={showCityPicker}
+        title={`Towns in ${form.region}`}
+        onClose={() => setShowCityPicker(false)}
+      >
+        {cityOptions.map((option) => (
+          <AccountChoiceOption
+            key={option}
+            label={option}
+            selected={form.city === option}
+            onPress={() => {
+              setForm({ ...form, city: option });
+              setShowCityPicker(false);
+            }}
+          />
+        ))}
+      </AccountChoiceSheet>
     </View>
   );
 }

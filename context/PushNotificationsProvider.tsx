@@ -127,6 +127,12 @@ export function PushNotificationsProvider({
           importance: Notifications.AndroidImportance.HIGH,
           enableVibrate: true,
         });
+        await Notifications.setNotificationChannelAsync("customer-chats", {
+          name: "Store replies",
+          description: "Alerts when a store replies to your chat message.",
+          importance: Notifications.AndroidImportance.HIGH,
+          enableVibrate: true,
+        });
       }
 
       Notifications.setNotificationHandler({

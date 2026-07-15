@@ -195,6 +195,7 @@ const WishlistScreen = () => {
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={wishlist}
           key={`wishlist-${columns}`}
           numColumns={columns}

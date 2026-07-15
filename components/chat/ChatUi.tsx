@@ -1,17 +1,20 @@
+import { AccountBadge, AccountListCard, AccountActionButton } from "@/components/account/AccountUi";
 import {
-  AccountBadge,
-  AccountEmptyState,
-  AccountInsightCard,
-  AccountListCard,
-} from "@/components/account/AccountUi";
+  AnimatedChatMessageWrap,
+  TypingDots,
+} from "@/components/chat/ChatAnimations";
 import { AppColors } from "@/constants/Colors";
-import Fonts from "@/constants/Fonts";
-import type { ChatMessage, ChatThread, SupportChatStatus } from "@/types/chat";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { useChatStyles } from "@/styles/themedChatStyles";
+import type { ChatMessage, ChatThread, SupportChatStatus } from "@/types/chat";
 import { resolveImageSource } from "@/utils/media";
-import { AnimatedChatMessageWrap, TypingDots } from "@/components/chat/ChatAnimations";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -19,15 +22,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   type ImageSourcePropType,
 } from "react-native";
+import { Pressable as GesturePressable } from "react-native-gesture-handler";
+import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useChatStyles } from "@/styles/themedChatStyles";
+import { CHAT_FADE_IN_MS, CHAT_FADE_OUT_MS } from "@/components/chat/ChatAnimations";
 
 export {
   AccountBadge,
@@ -37,7 +42,6 @@ export {
 } from "@/components/account/AccountUi";
 
 export { useAccountStyles } from "@/styles/themedAccountStyles";
-
 
 export function formatChatTime(value?: string | null) {
   if (!value) {
@@ -112,41 +116,43 @@ export function useStableConnectionState(
 
 export function getConnectionMeta(
   connectionState: "disconnected" | "connecting" | "connected",
+  colors?: ThemeColors,
 ) {
   if (connectionState === "connected") {
     return {
       label: "Live",
       icon: "wifi-outline" as const,
-      backgroundColor: "#DCFCE7",
-      color: "#166534",
+      backgroundColor: colors?.successSoft ?? "#DCFCE7",
+      color: colors?.successText ?? "#166534",
     };
   }
   if (connectionState === "connecting") {
     return {
       label: "Reconnecting",
       icon: "sync-outline" as const,
-      backgroundColor: "#FEF3C7",
-      color: "#92400E",
+      backgroundColor: colors?.warningSoft ?? "#FEF3C7",
+      color: colors?.warningText ?? "#92400E",
     };
   }
   return {
     label: "Offline",
     icon: "cloud-offline-outline" as const,
-    backgroundColor: "#FEE2E2",
-    color: "#B91C1C",
+    backgroundColor: colors?.dangerSoft ?? "#FEE2E2",
+    color: colors?.dangerText ?? "#B91C1C",
   };
 }
 
 export function getSupportStatusMeta(
   status: SupportChatStatus | null | undefined,
   viewerRole: "vendor" | "customer",
+  colors?: ThemeColors,
 ) {
   if (status === "resolved") {
     return {
       label: "Resolved",
       icon: "checkmark-circle-outline" as const,
-      backgroundColor: "#DCFCE7",
-      color: "#166534",
+      backgroundColor: colors?.successSoft ?? "#DCFCE7",
+      color: colors?.successText ?? "#166534",
       helper: "Reply to this thread any time if you need it reopened.",
     };
   }
@@ -154,16 +160,16 @@ export function getSupportStatusMeta(
     return {
       label: viewerRole === "vendor" ? "Waiting on you" : "Waiting on you",
       icon: "person-outline" as const,
-      backgroundColor: "#DBEAFE",
-      color: "#1D4ED8",
+      backgroundColor: colors?.infoSoft ?? "#DBEAFE",
+      color: colors?.infoText ?? "#1D4ED8",
       helper: "The ODOS team has responded. Send the next detail to continue.",
     };
   }
   return {
     label: "Waiting on admin",
     icon: "time-outline" as const,
-    backgroundColor: "#FEF3C7",
-    color: "#92400E",
+    backgroundColor: colors?.warningSoft ?? "#FEF3C7",
+    color: colors?.warningText ?? "#92400E",
     helper: "Your thread is in the admin queue. We'll reply here when ready.",
   };
 }
@@ -202,6 +208,7 @@ export function ChatThreadRow({
   avatarMode = "store",
 }: ChatThreadRowProps) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   const avatarSource: ImageSourcePropType =
     avatarMode === "counterpart" && thread.counterpart.avatarUrl
       ? { uri: thread.counterpart.avatarUrl }
@@ -211,7 +218,11 @@ export function ChatThreadRow({
     <TouchableOpacity activeOpacity={0.88} onPress={onPress}>
       <AccountListCard>
         <View style={chatStyles.threadRow}>
-          <Image source={avatarSource} style={chatStyles.avatar} resizeMode="cover" />
+          <Image
+            source={avatarSource}
+            style={chatStyles.avatar}
+            resizeMode="cover"
+          />
 
           <View style={chatStyles.threadCopy}>
             <View style={chatStyles.threadTop}>
@@ -233,7 +244,11 @@ export function ChatThreadRow({
           {thread.unreadCount > 0 ? (
             <AccountBadge label={String(thread.unreadCount)} tone="dark" />
           ) : (
-            <Ionicons name="chevron-forward" size={rMS(18)} color="#D1D5DB" />
+            <Ionicons
+              name="chevron-forward"
+              size={rMS(18)}
+              color={colors.placeholder}
+            />
           )}
         </View>
       </AccountListCard>
@@ -259,14 +274,19 @@ export function ChatScreenHeader({
   badges,
 }: ChatScreenHeaderProps) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const stableConnectionState = useStableConnectionState(connectionState);
-  const connectionMeta = getConnectionMeta(stableConnectionState);
+  const connectionMeta = getConnectionMeta(stableConnectionState, colors);
 
   return (
     <View style={[chatStyles.header, { paddingTop: insets.top + rV(8) }]}>
       <View style={chatStyles.headerRow}>
-        <TouchableOpacity style={chatStyles.backButton} onPress={onBack} activeOpacity={0.82}>
+        <TouchableOpacity
+          style={chatStyles.backButton}
+          onPress={onBack}
+          activeOpacity={0.82}
+        >
           <Ionicons name="arrow-back" size={rMS(20)} color={AppColors.text} />
         </TouchableOpacity>
         {avatar}
@@ -313,7 +333,11 @@ export function ChatContextCard({
   return (
     <View style={chatStyles.contextWrap}>
       <View style={chatStyles.contextCard}>
-        <Image source={imageSource} style={chatStyles.contextImage} resizeMode="cover" />
+        <Image
+          source={imageSource}
+          style={chatStyles.contextImage}
+          resizeMode="cover"
+        />
         <View style={chatStyles.contextCopy}>
           <Text style={chatStyles.contextLabel}>{label}</Text>
           <Text style={chatStyles.contextTitle} numberOfLines={2}>
@@ -345,10 +369,28 @@ type ChatMessageBubbleProps = {
   message: ChatMessage;
   isMine: boolean;
   showMeta: boolean;
+  onCopied?: () => void;
 };
 
-export function ChatMessageBubble({ message, isMine, showMeta }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({
+  message,
+  isMine,
+  showMeta,
+  onCopied,
+}: ChatMessageBubbleProps) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
+
+  const handleLongPress = useCallback(() => {
+    const text = message.text?.trim();
+    if (!text) {
+      return;
+    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void Clipboard.setStringAsync(text).then(() => {
+      onCopied?.();
+    });
+  }, [message.text, onCopied]);
 
   return (
     <AnimatedChatMessageWrap isMine={isMine}>
@@ -358,14 +400,20 @@ export function ChatMessageBubble({ message, isMine, showMeta }: ChatMessageBubb
           isMine ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
         ]}
       >
-        <View
-          style={[
+        <GesturePressable
+          onLongPress={handleLongPress}
+          delayLongPress={400}
+          style={({ pressed }) => [
             chatStyles.bubble,
             isMine ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
+            pressed ? { opacity: 0.9 } : null,
           ]}
         >
           <Text
-            style={[chatStyles.bubbleText, { color: isMine ? "#FFFFFF" : AppColors.text }]}
+            style={[
+              chatStyles.bubbleText,
+              { color: isMine ? colors.onPrimary : colors.text },
+            ]}
           >
             {message.text}
           </Text>
@@ -373,14 +421,18 @@ export function ChatMessageBubble({ message, isMine, showMeta }: ChatMessageBubb
             <Text
               style={[
                 chatStyles.bubbleMeta,
-                { color: isMine ? "rgba(255,255,255,0.88)" : "#9CA3AF" },
+                {
+                  color: isMine
+                    ? "rgba(255,255,255,0.88)"
+                    : colors.textMuted,
+                },
               ]}
             >
               {formatChatTime(message.time)}
               {isMine && message.isRead ? " · Seen" : ""}
             </Text>
           ) : null}
-        </View>
+        </GesturePressable>
       </View>
     </AnimatedChatMessageWrap>
   );
@@ -412,6 +464,7 @@ export function ChatComposer({
   voiceSupported = false,
 }: ChatComposerProps) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const canSend = Boolean(value.trim()) && !disabled && !isSending;
   const sendScale = useRef(new Animated.Value(1)).current;
@@ -426,7 +479,12 @@ export function ChatComposer({
   }, [canSend, sendScale]);
 
   return (
-    <View style={[chatStyles.composerWrap, { paddingBottom: Math.max(insets.bottom, rV(12)) }]}>
+    <View
+      style={[
+        chatStyles.composerWrap,
+        { paddingBottom: Math.max(insets.bottom, rV(12)) },
+      ]}
+    >
       {hint ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
       <View style={chatStyles.composerRow}>
         {voiceSupported && onVoicePress ? (
@@ -435,18 +493,29 @@ export function ChatComposer({
             disabled={disabled || isSending}
             style={[
               chatStyles.sendButton,
-              isListening ? chatStyles.sendButtonActive : chatStyles.sendButtonDisabled,
-              { marginRight: rS(8), backgroundColor: isListening ? "#EF4444" : "#64748B" },
+              isListening
+                ? chatStyles.sendButtonActive
+                : chatStyles.sendButtonDisabled,
+              {
+                marginRight: rS(8),
+                backgroundColor: isListening ? colors.dangerText : colors.textMuted,
+              },
             ]}
-            accessibilityLabel={isListening ? "Stop voice input" : "Start voice input"}
+            accessibilityLabel={
+              isListening ? "Stop voice input" : "Start voice input"
+            }
           >
-            <Ionicons name={isListening ? "stop" : "mic"} size={rMS(16)} color="#FFFFFF" />
+            <Ionicons
+              name={isListening ? "stop" : "mic"}
+              size={rMS(16)}
+              color="#FFFFFF"
+            />
           </Pressable>
         ) : null}
         <View style={chatStyles.composerInputWrap}>
           <TextInput
             placeholder={placeholder}
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.placeholder}
             value={value}
             onChangeText={onChangeText}
             style={chatStyles.composerInput}
@@ -460,7 +529,9 @@ export function ChatComposer({
             disabled={!canSend}
             style={[
               chatStyles.sendButton,
-              canSend ? chatStyles.sendButtonActive : chatStyles.sendButtonDisabled,
+              canSend
+                ? chatStyles.sendButtonActive
+                : chatStyles.sendButtonDisabled,
             ]}
           >
             {isSending ? (
@@ -477,17 +548,170 @@ export function ChatComposer({
 
 type ChatScreenShellProps = {
   children: React.ReactNode;
+  variant?: "default" | "assistant";
 };
 
-export function ChatScreenShell({ children }: ChatScreenShellProps) {
+export function ChatScreenShell({
+  children,
+  variant = "default",
+}: ChatScreenShellProps) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
+
   return (
     <KeyboardAvoidingView
       style={chatStyles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {children}
+      <LinearGradient
+        colors={
+          variant === "assistant"
+            ? [colors.surfaceSubtle, colors.accentSoft, colors.screen]
+            : [colors.surfaceSubtle, colors.screen, colors.screen]
+        }
+        locations={variant === "assistant" ? [0, 0.42, 1] : [0, 0.2, 1]}
+        style={chatStyles.screenBackground}
+      >
+        {children}
+      </LinearGradient>
     </KeyboardAvoidingView>
+  );
+}
+
+export function ChatCopyFeedback({ visible }: { visible: boolean }) {
+  const chatStyles = useChatStyles();
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Reanimated.View
+      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
+      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
+      pointerEvents="none"
+      style={chatStyles.copyToast}
+    >
+      <View style={chatStyles.copyToastPill}>
+        <Ionicons name="checkmark" size={rMS(14)} color="#FFFFFF" />
+        <Text style={chatStyles.copyToastText}>Copied</Text>
+      </View>
+    </Reanimated.View>
+  );
+}
+
+type ChatQuickRepliesProps = {
+  replies: string[];
+  disabled?: boolean;
+  onSelect: (reply: string) => void;
+  sendOnSelect?: boolean;
+};
+
+export function ChatQuickReplies({
+  replies,
+  disabled = false,
+  onSelect,
+}: ChatQuickRepliesProps) {
+  const chatStyles = useChatStyles();
+
+  if (!replies.length) {
+    return null;
+  }
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={chatStyles.quickReplyRow}
+      keyboardShouldPersistTaps="handled"
+    >
+      {replies.map((reply) => (
+        <TouchableOpacity
+          key={reply}
+          activeOpacity={0.86}
+          disabled={disabled}
+          style={[chatStyles.quickReplyChip, disabled ? { opacity: 0.55 } : null]}
+          onPress={() => onSelect(reply)}
+        >
+          <Text style={chatStyles.quickReplyLabel}>{reply}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+}
+
+type ChatSupportContextPanelProps = {
+  subject: string;
+  helper: string;
+  assignedAdminName?: string | null;
+  statusLabel?: string;
+  canMarkResolved?: boolean;
+  isUpdatingStatus?: boolean;
+  onMarkResolved?: () => void;
+};
+
+export function ChatSupportContextPanel({
+  subject,
+  helper,
+  assignedAdminName,
+  statusLabel,
+  canMarkResolved = false,
+  isUpdatingStatus = false,
+  onMarkResolved,
+}: ChatSupportContextPanelProps) {
+  const chatStyles = useChatStyles();
+  const { colors } = useTheme();
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={chatStyles.supportContextWrap}>
+      <View style={chatStyles.supportContextCard}>
+        <TouchableOpacity
+          activeOpacity={0.86}
+          style={chatStyles.supportContextHeader}
+          onPress={() => setExpanded((current) => !current)}
+        >
+          <View style={chatStyles.headerAvatarSupport}>
+            <Ionicons name="shield-checkmark-outline" size={rMS(18)} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1, gap: rV(2) }}>
+            <Text style={chatStyles.supportContextTitle} numberOfLines={expanded ? 2 : 1}>
+              {subject}
+            </Text>
+            {statusLabel ? (
+              <Text style={chatStyles.supportContextSub} numberOfLines={1}>
+                {statusLabel}
+              </Text>
+            ) : null}
+          </View>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={rMS(18)}
+            color={colors.textMuted}
+          />
+        </TouchableOpacity>
+        {expanded ? (
+          <View style={chatStyles.supportContextBody}>
+            <Text style={chatStyles.supportContextSub}>{helper}</Text>
+            {assignedAdminName ? (
+              <View style={chatStyles.chip}>
+                <Text style={chatStyles.chipText}>
+                  Assigned to {assignedAdminName}
+                </Text>
+              </View>
+            ) : null}
+            {canMarkResolved && onMarkResolved ? (
+              <AccountActionButton
+                label={isUpdatingStatus ? "Updating..." : "Mark resolved"}
+                variant="secondary"
+                disabled={isUpdatingStatus}
+                onPress={onMarkResolved}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -504,14 +728,19 @@ export function ChatLoadingCenter({ label }: { label: string }) {
 export function ChatMessagesEmpty({
   title,
   description,
+  icon = "chatbubbles-outline",
 }: {
   title: string;
   description: string;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   return (
     <View style={chatStyles.emptyMessages}>
-      <Ionicons name="chatbubbles-outline" size={rMS(32)} color="#9CA3AF" />
+      <View style={chatStyles.emptyMessagesIconWrap}>
+        <Ionicons name={icon} size={rMS(28)} color={colors.primary} />
+      </View>
       <Text style={chatStyles.emptyMessagesTitle}>{title}</Text>
       <Text style={chatStyles.emptyMessagesText}>{description}</Text>
     </View>
@@ -523,11 +752,13 @@ export function renderChatMessageItem({
   index,
   messages,
   currentUserId,
+  onCopied,
 }: {
   item: ChatMessage;
   index: number;
   messages: ChatMessage[];
   currentUserId?: string;
+  onCopied?: () => void;
 }) {
   const isMine = item.senderUserId === currentUserId;
   const itemTime = new Date(item.time).getTime();
@@ -537,21 +768,28 @@ export function renderChatMessageItem({
   const nextTime = next ? new Date(next.time).getTime() : 0;
   const showDay = !prev || !isSameChatDay(prevTime, itemTime);
   const nextSameSender = next?.senderUserId === item.senderUserId;
-  const nextCloseInTime = next ? Math.abs(nextTime - itemTime) < 6 * 60 * 1000 : false;
+  const nextCloseInTime = next
+    ? Math.abs(nextTime - itemTime) < 6 * 60 * 1000
+    : false;
   const showMeta = !nextSameSender || !nextCloseInTime;
 
   return (
     <React.Fragment key={item.id}>
       {showDay ? <ChatDayDivider label={formatChatDayLabel(itemTime)} /> : null}
-      <ChatMessageBubble message={item} isMine={isMine} showMeta={showMeta} />
+      <ChatMessageBubble
+        message={item}
+        isMine={isMine}
+        showMeta={showMeta}
+        onCopied={onCopied}
+      />
     </React.Fragment>
   );
 }
 
-export { useChatStyles } from "@/styles/themedChatStyles";
 export {
   AnimatedChatMessageWrap,
   AnimatedChatThreadWrap,
   ChatTypingIndicator,
   TypingDots,
 } from "@/components/chat/ChatAnimations";
+export { useChatStyles } from "@/styles/themedChatStyles";

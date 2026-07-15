@@ -1,4 +1,3 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { AccountEmptyState } from "@/components/account/AccountUi";
 import VendorOrderDetailView from "@/components/vendor/VendorOrderDetailView";
 import { VendorScreenShell, vendorStyles } from "@/components/vendor/VendorUi";
@@ -177,7 +176,6 @@ export default function VendorOrderDetailScreen() {
           },
         ]}
       >
-        {isUpdating ? <ScreenLoader label="Updating order" /> : null}
         <VendorOrderDetailView
           order={order}
           isUpdating={isUpdating}

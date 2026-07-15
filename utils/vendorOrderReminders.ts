@@ -18,6 +18,17 @@ type ReminderState = Record<
 >;
 
 const ACK_STORAGE_KEY = "odos_vendor_order_acknowledged_v1";
+let notificationOpsChain: Promise<void> = Promise.resolve();
+const pendingNotificationCancels = new Set<string>();
+
+function runSerializedNotificationOp<T>(operation: () => Promise<T>): Promise<T> {
+  const next = notificationOpsChain.then(operation, operation);
+  notificationOpsChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
 
 const ACTIVE_STATUSES = new Set([
   "pending",
@@ -49,6 +60,33 @@ async function writeState(state: ReminderState) {
 
 function reminderNotificationId(orderId: string, minutes: number) {
   return `vendor-order-reminder-${orderId}-${minutes}`;
+}
+
+async function cancelReminderNotifications(orderId: string) {
+  if (isExpoGo || Platform.OS === "web") {
+    return;
+  }
+
+  if (pendingNotificationCancels.has(orderId)) {
+    return;
+  }
+
+  pendingNotificationCancels.add(orderId);
+
+  try {
+    await runSerializedNotificationOp(async () => {
+      const Notifications = await import("expo-notifications");
+      await Promise.all(
+        REMINDER_TIERS_MINUTES.map((minutes) =>
+          Notifications.cancelScheduledNotificationAsync(
+            reminderNotificationId(orderId, minutes),
+          ).catch(() => undefined),
+        ),
+      );
+    });
+  } finally {
+    pendingNotificationCancels.delete(orderId);
+  }
 }
 
 export async function acknowledgeVendorOrder(orderId: string) {
@@ -101,10 +139,11 @@ export async function scheduleVendorOrderReminders(payload: VendorOrderAlertPayl
   await writeState(state);
 
   try {
-    const Notifications = await import("expo-notifications");
+    await runSerializedNotificationOp(async () => {
+      const Notifications = await import("expo-notifications");
 
-    for (const minutes of REMINDER_TIERS_MINUTES) {
-      await Notifications.scheduleNotificationAsync({
+      for (const minutes of REMINDER_TIERS_MINUTES) {
+        await Notifications.scheduleNotificationAsync({
         identifier: reminderNotificationId(payload.orderId, minutes),
         content: {
           title:
@@ -132,7 +171,8 @@ export async function scheduleVendorOrderReminders(payload: VendorOrderAlertPayl
           seconds: minutes * 60,
         },
       });
-    }
+      }
+    });
   } catch {
     // Scheduled reminders are best-effort on this device.
   }
@@ -142,23 +182,7 @@ export async function cancelVendorOrderReminders(orderId: string) {
   const state = await readState();
   delete state[orderId];
   await writeState(state);
-
-  if (isExpoGo || Platform.OS === "web") {
-    return;
-  }
-
-  try {
-    const Notifications = await import("expo-notifications");
-    await Promise.all(
-      REMINDER_TIERS_MINUTES.map((minutes) =>
-        Notifications.cancelScheduledNotificationAsync(
-          reminderNotificationId(orderId, minutes),
-        ),
-      ),
-    );
-  } catch {
-    // Ignore cancellation failures.
-  }
+  await cancelReminderNotifications(orderId);
 }
 
 export async function syncVendorOrderReminderState(orders: VendorOrder[]) {
@@ -167,18 +191,23 @@ export async function syncVendorOrderReminderState(orders: VendorOrder[]) {
   );
 
   const state = await readState();
-  let changed = false;
+  const staleOrderIds: string[] = [];
 
   for (const orderId of Object.keys(state)) {
     if (!activeIds.has(orderId)) {
+      staleOrderIds.push(orderId);
       delete state[orderId];
-      changed = true;
-      await cancelVendorOrderReminders(orderId);
     }
   }
 
-  if (changed) {
-    await writeState(state);
+  if (staleOrderIds.length === 0) {
+    return;
+  }
+
+  await writeState(state);
+
+  for (const orderId of staleOrderIds) {
+    await cancelReminderNotifications(orderId);
   }
 }
 

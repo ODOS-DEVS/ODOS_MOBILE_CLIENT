@@ -83,6 +83,7 @@ const filtered = browseStoreProducts(catalog, {
   mode: "all",
   categorySlug: "",
   subcategorySlug: "",
+  audienceSlug: "",
   priceRange: "all",
   sort: "relevance",
 });
@@ -94,6 +95,7 @@ const flashOnly = browseStoreProducts(catalog, {
   mode: "flash-sale",
   categorySlug: "",
   subcategorySlug: "",
+  audienceSlug: "",
   priceRange: "all",
   sort: "relevance",
 });
@@ -107,6 +109,7 @@ assert.equal(
     mode: "deals",
     categorySlug: "fashion",
     subcategorySlug: "",
+    audienceSlug: "",
     priceRange: "100_250",
     sort: "rating",
   }),

@@ -397,6 +397,14 @@ function buildSheetStyles(c: ThemeColors) {
       borderTopLeftRadius: rMS(24),
       borderTopRightRadius: rMS(24),
       paddingTop: rV(8),
+      overflow: "hidden",
+    },
+    sheetContent: {
+      maxHeight: "100%",
+    },
+    sheetScroll: {
+      flexGrow: 0,
+      flexShrink: 1,
     },
     handle: {
       alignSelf: "center",
@@ -439,7 +447,8 @@ function buildSheetStyles(c: ThemeColors) {
     },
     body: {
       paddingHorizontal: rS(18),
-      paddingBottom: rV(12),
+      paddingTop: rV(4),
+      paddingBottom: rV(20),
       gap: rV(4),
     },
     saveBtn: {
@@ -529,17 +538,12 @@ function buildProfileHeroStyles(c: ThemeColors) {
   return StyleSheet.create({
     card: {
       alignItems: "center",
-      paddingHorizontal: 0,
-      paddingTop: 0,
+      paddingHorizontal: rS(16),
+      paddingTop: rV(20),
       paddingBottom: rV(22),
-      overflow: "hidden",
-    },
-    coverWrap: {
-      width: "100%",
     },
     avatarWrap: {
       position: "relative",
-      marginTop: -rS(48),
       zIndex: 2,
     },
     editBtn: {

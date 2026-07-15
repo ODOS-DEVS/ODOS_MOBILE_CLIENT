@@ -252,13 +252,13 @@ function useOrderFooterShellStyles() {
           borderTopColor: colors.bottomBarBorder,
           paddingHorizontal: rS(16),
           paddingTop: rV(12),
-          paddingBottom: Math.max(insets.bottom, rV(12)),
+          paddingBottom: getOrderFooterBottomPadding(insets.bottom),
           gap: rV(10),
           shadowColor: colors.shadow,
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
+          shadowOpacity: 0.08,
+          shadowRadius: 14,
           shadowOffset: { width: 0, height: -4 },
-          elevation: 8,
+          elevation: 10,
         },
       }),
     [colors, insets.bottom],
@@ -277,13 +277,19 @@ export function OrderScreenFooter({ children }: OrderScreenFooterProps) {
 /** Approximate multi-row order footer height for scroll padding. */
 export function estimateOrderScreenFooterHeight(actionRows: number, bottomInset: number) {
   if (actionRows <= 0) {
-    return rV(16);
+    return rV(20);
   }
 
-  const rowHeight = rV(48);
+  const buttonHeight = rV(52);
   const gaps = Math.max(0, actionRows - 1) * rV(10);
-  const padding = rV(12) + Math.max(bottomInset, rV(12));
-  return actionRows * rowHeight + gaps + padding + rV(8);
+  const topPadding = rV(12);
+  const bottomPadding = Math.max(bottomInset + rV(12), rV(24));
+  const buffer = rV(14);
+  return actionRows * buttonHeight + gaps + topPadding + bottomPadding + buffer;
+}
+
+export function getOrderFooterBottomPadding(bottomInset: number) {
+  return Math.max(bottomInset + rV(12), rV(24));
 }
 
 type OrderStickyFooterProps = {
