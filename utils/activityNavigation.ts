@@ -50,6 +50,19 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "customer_chat") {
+    router.push({
+      pathname: "/(root)/screens/productDetails/chat/[vendorId]" as any,
+      params: {
+        vendorId: route.storeId,
+        vendorName: route.storeName ?? "Store",
+        threadId: route.threadId,
+        viewer: "customer",
+      },
+    });
+    return;
+  }
+
   if (route.type === "vendor_flash_sale") {
     router.push("/vendor/flash-sales" as any);
     return;
@@ -96,11 +109,22 @@ export function routeFromPushData(
   }
 
   if (routeType === "vendor_chat" || readString(data.type) === "vendor_chat_message") {
-    if (threadId && storeId) {
+    if (threadId) {
       return {
         type: "vendor_chat",
         threadId,
-        storeId,
+        storeId: storeId ?? "",
+        storeName: readString(data.storeName) ?? undefined,
+      };
+    }
+  }
+
+  if (routeType === "customer_chat" || readString(data.type) === "customer_chat_message") {
+    if (threadId) {
+      return {
+        type: "customer_chat",
+        threadId,
+        storeId: storeId ?? "",
         storeName: readString(data.storeName) ?? undefined,
       };
     }

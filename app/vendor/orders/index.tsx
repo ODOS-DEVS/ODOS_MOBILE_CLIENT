@@ -1,4 +1,3 @@
-import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { AccountEmptyState } from "@/components/account/AccountUi";
 import VendorOrderCard from "@/components/vendor/VendorOrderCard";
 import VendorOrderQueueTabs from "@/components/vendor/VendorOrderQueueTabs";
@@ -17,7 +16,7 @@ import {
 import { rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
@@ -152,8 +151,9 @@ export default function VendorOrdersScreen() {
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <VendorOrderCard order={item} onPress={() => openOrder(item.id)} />
             {isUpdatingOrder && updatingOrderId === item.id ? (
-              <View style={{ marginTop: rV(8), alignItems: "center" }}>
-                <ScreenLoader label="Updating order" />
+              <View style={{ marginTop: rV(8), flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <ActivityIndicator size="small" />
+                <Text style={{ fontSize: 12, color: "#6B7280" }}>Updating order...</Text>
               </View>
             ) : null}
           </View>

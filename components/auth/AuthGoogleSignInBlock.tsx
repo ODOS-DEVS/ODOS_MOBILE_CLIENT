@@ -12,27 +12,48 @@ import { View } from "react-native";
 type AuthGoogleSignInBlockProps = {
   variant: "signin" | "signup";
   disabled?: boolean;
+  /** Return false to block the Google flow (e.g. missing terms consent). */
+  beforeSignIn?: () => boolean;
 };
 
 function AuthGoogleSignInBlockFallback({
   variant,
   disabled,
+  beforeSignIn,
 }: AuthGoogleSignInBlockProps) {
   const google = useGoogleSignInFallback();
   return (
-    <AuthGoogleSignInBlockContent variant={variant} google={google} disabled={disabled} />
+    <AuthGoogleSignInBlockContent
+      variant={variant}
+      google={google}
+      disabled={disabled}
+      beforeSignIn={beforeSignIn}
+    />
   );
 }
 
 export default function AuthGoogleSignInBlock({
   variant,
   disabled,
+  beforeSignIn,
 }: AuthGoogleSignInBlockProps) {
   if (canUseGoogleAuthRequest()) {
-    return <AuthGoogleSignInBlockOAuth variant={variant} disabled={disabled} />;
+    return (
+      <AuthGoogleSignInBlockOAuth
+        variant={variant}
+        disabled={disabled}
+        beforeSignIn={beforeSignIn}
+      />
+    );
   }
 
-  return <AuthGoogleSignInBlockFallback variant={variant} disabled={disabled} />;
+  return (
+    <AuthGoogleSignInBlockFallback
+      variant={variant}
+      disabled={disabled}
+      beforeSignIn={beforeSignIn}
+    />
+  );
 }
 
 type ContentProps = AuthGoogleSignInBlockProps & {
@@ -43,6 +64,7 @@ export function AuthGoogleSignInBlockContent({
   variant,
   google,
   disabled = false,
+  beforeSignIn,
 }: ContentProps) {
   const { signIn, error, clearError, isLoading } = google;
 
@@ -59,17 +81,16 @@ export function AuthGoogleSignInBlockContent({
 
       <GoogleSignInButton
         onPress={async () => {
+          if (beforeSignIn && !beforeSignIn()) {
+            return;
+          }
           clearError();
           await signIn();
         }}
         loading={isLoading}
         disabled={disabled}
         label={label}
-        hint={
-          disabled
-            ? "Accept the terms above to continue"
-            : hint
-        }
+        hint={hint}
       />
     </View>
   );

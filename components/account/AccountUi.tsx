@@ -1,4 +1,3 @@
-import { ProfileCover } from "@/components/profile/ProfileCover";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
@@ -11,9 +10,11 @@ import {
   Keyboard,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   type StyleProp,
   type TextInputProps,
@@ -289,6 +290,7 @@ type AccountFormSheetProps = {
   saveLabel: string;
   isSaving?: boolean;
   saveDisabled?: boolean;
+  saveDisabledLabel?: string;
   children: React.ReactNode;
 };
 
@@ -301,10 +303,17 @@ export function AccountFormSheet({
   saveLabel,
   isSaving = false,
   saveDisabled = false,
+  saveDisabledLabel,
   children,
 }: AccountFormSheetProps) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { sheetStyles, colors } = useAccountUiStyles();
+  const sheetMaxHeight = windowHeight * 0.92;
+  const scrollMaxHeight = Math.max(
+    sheetMaxHeight - insets.bottom - rV(220),
+    windowHeight * 0.38,
+  );
 
   const dismissKeyboard = () => Keyboard.dismiss();
 
@@ -317,7 +326,13 @@ export function AccountFormSheet({
           accessibilityLabel="Dismiss keyboard"
           accessibilityRole="button"
         />
-        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
+        <View
+          style={[
+            sheetStyles.sheet,
+            sheetStyles.sheetContent,
+            { maxHeight: sheetMaxHeight, paddingBottom: insets.bottom + rV(12) },
+          ]}
+        >
           <View style={sheetStyles.handle} />
           <View style={sheetStyles.header}>
             <TouchableOpacity
@@ -337,7 +352,10 @@ export function AccountFormSheet({
           </View>
 
           <KeyboardAwareScrollView
+            style={[sheetStyles.sheetScroll, { maxHeight: scrollMaxHeight }]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces
             contentContainerStyle={sheetStyles.body}
           >
             {children}
@@ -355,7 +373,13 @@ export function AccountFormSheet({
             disabled={isSaving || saveDisabled}
             activeOpacity={0.9}
           >
-            <Text style={sheetStyles.saveBtnText}>{isSaving ? "Saving..." : saveLabel}</Text>
+            <Text style={sheetStyles.saveBtnText}>
+              {isSaving
+                ? "Saving..."
+                : saveDisabled && saveDisabledLabel
+                  ? saveDisabledLabel
+                  : saveLabel}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -456,7 +480,6 @@ export function AccountSectionCard({
 type AccountProfileHeroProps = {
   name: string;
   email: string;
-  gender?: string | null;
   avatarUrl?: string | null;
   avatarSize?: number;
   onEditPhoto: () => void;
@@ -467,7 +490,6 @@ type AccountProfileHeroProps = {
 export function AccountProfileHero({
   name,
   email,
-  gender,
   onEditPhoto,
   isEditingPhoto = false,
   renderAvatar,
@@ -477,9 +499,6 @@ export function AccountProfileHero({
 
   return (
     <AccountListCard style={profileHeroStyles.card}>
-      <View style={profileHeroStyles.coverWrap}>
-        <ProfileCover gender={gender} />
-      </View>
       <View style={profileHeroStyles.avatarWrap}>
         {renderAvatar(avatarSize)}
         <TouchableOpacity
@@ -525,7 +544,13 @@ export function AccountChoiceSheet({
       <View style={[choiceSheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
         <View style={choiceSheetStyles.handle} />
         <Text style={choiceSheetStyles.title}>{title}</Text>
-        {children}
+        <ScrollView
+          style={{ maxHeight: rV(420) }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
         {footer}
       </View>
     </Modal>

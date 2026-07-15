@@ -1,3 +1,4 @@
+import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import {
   ActivityCard,
   ActivityEmptyState,
@@ -25,14 +26,20 @@ export default function NotificationScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const {
     sections,
     items,
     unreadCount,
+    totalCount,
+    hasMoreActivity,
     hasLoadedOnce,
     isInitialLoading,
     isPullRefreshing,
+    isLoadingMore,
     markAsRead,
+    markAllAsRead,
+    loadMoreActivity,
     pullToRefresh,
     refreshActivity,
   } = useActivityFeed();
@@ -95,9 +102,15 @@ export default function NotificationScreen() {
   );
 
   const markAllRead = useCallback(() => {
-    const ids = items.filter((item) => !item.isRead).map((item) => item.id);
-    void markAsRead(ids);
-  }, [items, markAsRead]);
+    setIsMarkingAllRead(true);
+    void markAllAsRead().finally(() => {
+      setIsMarkingAllRead(false);
+    });
+  }, [markAllAsRead]);
+
+  const handleLoadMore = useCallback(() => {
+    void loadMoreActivity();
+  }, [loadMoreActivity]);
 
   if (!user) {
     return (
@@ -109,7 +122,9 @@ export default function NotificationScreen() {
   }
 
   const showInitialLoader = isInitialLoading && !hasLoadedOnce;
-  const showEmpty = hasLoadedOnce && filteredSections.length === 0;
+  const showFilteredEmpty = hasLoadedOnce && filteredSections.length === 0 && items.length > 0;
+  const showEmpty =
+    hasLoadedOnce && items.length === 0 && totalCount === 0;
 
   return (
     <View style={screenStyles.container}>
@@ -117,13 +132,16 @@ export default function NotificationScreen() {
 
       {showInitialLoader ? (
         <ScreenLoader label="Loading activity…" />
-      ) : showEmpty ? (
+      ) : showEmpty || showFilteredEmpty ? (
         <ActivityEmptyState
           filter={filter}
           onShowAll={filter === "unread" ? () => setFilter("all") : undefined}
         />
+      ) : items.length === 0 && hasLoadedOnce ? (
+        <ScreenLoader label="Loading activity…" />
       ) : (
         <SectionList
+          style={{ flex: 1 }}
           sections={filteredSections}
           keyExtractor={(item) => item.id}
           renderSectionHeader={({ section }) => (
@@ -139,13 +157,17 @@ export default function NotificationScreen() {
           )}
           ListHeaderComponent={
             <View style={screenStyles.headerBlock}>
-              <ActivityHero totalCount={items.length} unreadCount={unreadCount} />
-              <ActivityMarkAllRead unreadCount={unreadCount} onPress={markAllRead} />
+              <ActivityHero totalCount={totalCount} unreadCount={unreadCount} />
+              <ActivityMarkAllRead
+                unreadCount={unreadCount}
+                onPress={markAllRead}
+                disabled={isMarkingAllRead}
+              />
               <ActivityFilterChips
                 active={filter}
                 onChange={setFilter}
                 unreadCount={unreadCount}
-                totalCount={items.length}
+                totalCount={totalCount}
               />
             </View>
           }
@@ -153,6 +175,9 @@ export default function NotificationScreen() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           removeClippedSubviews={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.35}
+          ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
           ItemSeparatorComponent={() => <View style={{ height: rV(10) }} />}
           refreshControl={
             <RefreshControl

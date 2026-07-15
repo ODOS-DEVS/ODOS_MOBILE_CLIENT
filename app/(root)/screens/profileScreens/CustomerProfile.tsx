@@ -1,7 +1,6 @@
 import UserAvatar from "@/components/UserAvatar";
 import {
   AccountActionButton,
-  AccountBadge,
   AccountChoiceOption,
   AccountChoiceSheet,
   AccountFormField,
@@ -11,15 +10,17 @@ import {
   AccountSectionCard,
   useAccountStyles,
 } from "@/components/account/AccountUi";
-import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
 import DateOfBirthPicker, {
   AndroidBirthDatePicker,
 } from "@/components/profile/DateOfBirthPicker";
+import EmailVerifiedBadge from "@/components/profile/EmailVerifiedBadge";
+import PhoneVerificationField from "@/components/profile/PhoneVerificationField";
 import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import { rMS, rS, rV } from "@/styles/responsive";
 import {
   formatBirthDateForApi,
@@ -27,12 +28,18 @@ import {
   getDefaultBirthDate,
   parseBirthDateInput,
 } from "@/utils/dateOfBirth";
-import { pickCroppedImage } from "@/utils/imagePicker";
 import {
-  formatPhoneInput,
-  validateGhanaPhone,
-} from "@/utils/phone";
-import { usePhoneVerification } from "@/hooks/usePhoneVerification";
+  buildFullName,
+  parseFullName,
+  validateNameParts,
+} from "@/utils/fullName";
+import {
+  GHANA_REGIONS,
+  getCitiesForRegion,
+  matchGhanaRegion,
+} from "@/utils/ghanaLocations";
+import { pickCroppedImage } from "@/utils/imagePicker";
+import { formatPhoneInput, validateGhanaPhone } from "@/utils/phone";
 import React, { useEffect, useMemo, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
@@ -41,12 +48,10 @@ const GENDER_OPTIONS = ["Male", "Female"];
 const CustomerProfile = () => {
   const accountStyles = useAccountStyles();
   const { showToast } = useToast();
-  const {
-    isUpdatingProfile,
-    updateProfile,
-    user,
-  } = useAuth();
-  const [fullName, setFullName] = useState("");
+  const { isUpdatingProfile, updateProfile, user } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [otherNames, setOtherNames] = useState("");
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -57,9 +62,12 @@ const CustomerProfile = () => {
   const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [city, setCity] = useState("");
   const [region, setRegion] = useState("");
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
-  const [fullNameError, setFullNameError] = useState("");
+  const [firstNameError, setFirstNameError] = useState("");
+  const [lastNameError, setLastNameError] = useState("");
   const [dateOfBirthError, setDateOfBirthError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [genderError, setGenderError] = useState("");
@@ -70,24 +78,48 @@ const CustomerProfile = () => {
     linkToProfile: true,
   });
 
+  const displayName = useMemo(
+    () => buildFullName({ firstName, lastName, otherNames }),
+    [firstName, lastName, otherNames],
+  );
+
+  const cityOptions = useMemo(
+    () => getCitiesForRegion(region, city),
+    [region, city],
+  );
+
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    setFullName(user.full_name || "");
+    const parsedName = parseFullName(user.full_name || "");
+    setFirstName(parsedName.firstName);
+    setLastName(parsedName.lastName);
+    setOtherNames(parsedName.otherNames);
     setEmail(user.email || "");
     setDateOfBirth(parseBirthDateInput(user.date_of_birth));
     setPhoneNumber(user.phone_number || "");
     setGender(user.gender || "");
     setCity(user.city || "");
-    setRegion(user.region || "");
+    setRegion((matchGhanaRegion(user.region || "") ?? user.region) || "");
     setAvatarUri(user.avatar_url || null);
-  }, [user?.id, user?.full_name, user?.email, user?.date_of_birth, user?.phone_number, user?.gender, user?.city, user?.region, user?.avatar_url]);
+  }, [
+    user?.id,
+    user?.full_name,
+    user?.email,
+    user?.date_of_birth,
+    user?.phone_number,
+    user?.gender,
+    user?.city,
+    user?.region,
+    user?.avatar_url,
+  ]);
 
   const profileCompletion = useMemo(() => {
     const fields = [
-      fullName,
+      firstName,
+      lastName,
       phoneVerification.isVerified ? phoneNumber : "",
       gender,
       city,
@@ -101,7 +133,16 @@ const CustomerProfile = () => {
       return String(value ?? "").trim().length > 0;
     }).length;
     return Math.round((filled / fields.length) * 100);
-  }, [city, dateOfBirth, fullName, gender, phoneNumber, phoneVerification.isVerified, region]);
+  }, [
+    city,
+    dateOfBirth,
+    firstName,
+    gender,
+    lastName,
+    phoneNumber,
+    phoneVerification.isVerified,
+    region,
+  ]);
 
   const clearGeneralError = () => {
     if (generalError) {
@@ -112,7 +153,8 @@ const CustomerProfile = () => {
   const handleSave = async () => {
     let hasError = false;
 
-    setFullNameError("");
+    setFirstNameError("");
+    setLastNameError("");
     setDateOfBirthError("");
     setPhoneNumberError("");
     setGenderError("");
@@ -120,18 +162,20 @@ const CustomerProfile = () => {
     setRegionError("");
     setGeneralError("");
 
-    const trimmedFullName = fullName.trim();
+    const trimmedFullName = buildFullName({ firstName, lastName, otherNames });
     const trimmedPhoneNumber = phoneNumber.trim();
     const trimmedGender = gender.trim();
     const trimmedCity = city.trim();
     const trimmedRegion = region.trim();
     const formattedDateOfBirth = formatBirthDateForApi(dateOfBirth);
+    const nameError = validateNameParts({ firstName, lastName });
 
-    if (!trimmedFullName) {
-      setFullNameError("Enter your full name.");
-      hasError = true;
-    } else if (trimmedFullName.length < 2) {
-      setFullNameError("Full name must be at least 2 characters.");
+    if (nameError) {
+      if (!firstName.trim()) {
+        setFirstNameError(nameError);
+      } else {
+        setLastNameError(nameError);
+      }
       hasError = true;
     }
 
@@ -152,13 +196,13 @@ const CustomerProfile = () => {
       hasError = true;
     }
 
-    if (trimmedCity && trimmedCity.length < 2) {
-      setCityError("City must be at least 2 characters.");
+    if (!trimmedRegion) {
+      setRegionError("Select your region.");
       hasError = true;
     }
 
-    if (trimmedRegion && trimmedRegion.length < 2) {
-      setRegionError("Region must be at least 2 characters.");
+    if (!trimmedCity) {
+      setCityError("Select your town or city.");
       hasError = true;
     }
 
@@ -186,7 +230,8 @@ const CustomerProfile = () => {
       return;
     }
 
-    setFullNameError(result.fieldErrors?.fullName || "");
+    setFirstNameError(result.fieldErrors?.fullName || "");
+    setLastNameError(result.fieldErrors?.fullName || "");
     setPhoneNumberError(result.fieldErrors?.phoneNumber || "");
     setDateOfBirthError(result.fieldErrors?.dateOfBirth || "");
     setGenderError(result.fieldErrors?.gender || "");
@@ -211,7 +256,7 @@ const CustomerProfile = () => {
       setAvatarUri(selectedUri);
 
       const updateResult = await updateProfile({
-        fullName: fullName.trim(),
+        fullName: displayName,
         dateOfBirth: formatBirthDateForApi(dateOfBirth),
         gender: gender.trim(),
         city: city.trim(),
@@ -241,9 +286,8 @@ const CustomerProfile = () => {
         keyboardShouldPersistTaps="always"
       >
         <AccountProfileHero
-          name={user?.full_name || fullName || "ODOS User"}
+          name={user?.full_name || displayName || "ODOS User"}
           email={user?.email || email || "No email on file"}
-          gender={gender || user?.gender}
           onEditPhoto={() => void handlePickAvatar()}
           isEditingPhoto={isPickingAvatar}
           renderAvatar={(size) => (
@@ -268,27 +312,54 @@ const CustomerProfile = () => {
 
         <AccountSectionCard title="Basic details">
           <AccountFormField
-            label="Full name"
+            label="First name"
             icon="person-outline"
-            placeholder="Your full name"
-            value={fullName}
+            placeholder="First name"
+            value={firstName}
             onChangeText={(text) => {
-              setFullName(text);
-              setFullNameError("");
+              setFirstName(text);
+              setFirstNameError("");
               clearGeneralError();
             }}
-            error={fullNameError}
+            error={firstNameError}
             autoCapitalize="words"
           />
           <AccountFormField
-            label="Email"
-            icon="mail-outline"
-            placeholder="Email address"
-            value={email}
-            editable={false}
-            autoCapitalize="none"
-            autoCorrect={false}
+            label="Last name"
+            icon="person-outline"
+            placeholder="Last name"
+            value={lastName}
+            onChangeText={(text) => {
+              setLastName(text);
+              setLastNameError("");
+              clearGeneralError();
+            }}
+            error={lastNameError}
+            autoCapitalize="words"
           />
+          <AccountFormField
+            label="Other names (optional)"
+            icon="person-outline"
+            placeholder="Middle or other names"
+            value={otherNames}
+            onChangeText={(text) => {
+              setOtherNames(text);
+              clearGeneralError();
+            }}
+            autoCapitalize="words"
+          />
+          <View>
+            <AccountFormField
+              label="Email"
+              icon="mail-outline"
+              placeholder="Email address"
+              value={email}
+              editable={false}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {user?.is_verified ? <EmailVerifiedBadge email={email} /> : null}
+          </View>
           <AccountPickerField
             label="Date of birth"
             value={formatBirthDateForDisplay(dateOfBirth)}
@@ -307,68 +378,42 @@ const CustomerProfile = () => {
             }}
             onClear={() => setDateOfBirth(null)}
           />
-          <View>
-            <AccountFormField
-              label="Phone number"
-              icon="call-outline"
-              placeholder="0541234567"
-              value={phoneNumber}
-              onChangeText={(text) => {
-                const formatted = formatPhoneInput(text);
-                setPhoneNumber(formatted);
-                setPhoneNumberError("");
-                phoneVerification.setVerificationError("");
-                clearGeneralError();
-              }}
-              error={phoneNumberError}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={10}
-            />
-            {phoneVerification.isVerified ? (
-              <View style={styles.phoneStatusRow}>
-                <AccountBadge label="Verified" tone="success" />
-              </View>
-            ) : null}
-            {phoneVerification.showVerificationPanel &&
-            phoneVerification.normalizedPhone ? (
-              <PhoneVerificationPanel
-                phoneNumber={phoneVerification.normalizedPhone}
-                codeSent={phoneVerification.codeSent}
-                isSendingCode={phoneVerification.isSendingCode}
-                isVerifying={phoneVerification.isVerifying}
-                error={phoneVerification.verificationError}
-                onDismissError={() => phoneVerification.setVerificationError("")}
-                onSendCode={async () => {
-                  const validation = validateGhanaPhone(phoneNumber);
-                  if (validation) {
-                    setPhoneNumberError(validation);
-                    return;
-                  }
+          <PhoneVerificationField
+            value={phoneNumber}
+            onChangeText={(text) => {
+              setPhoneNumber(formatPhoneInput(text));
+              setPhoneNumberError("");
+              clearGeneralError();
+            }}
+            fieldError={phoneNumberError}
+            verification={phoneVerification}
+            verifiedTitle="Phone number verified"
+            verifiedSubtitle="This number is confirmed on your ODOS account."
+            onSendCode={async () => {
+              const validation = validateGhanaPhone(phoneNumber);
+              if (validation) {
+                setPhoneNumberError(validation);
+                return;
+              }
 
-                  const result = await phoneVerification.handleSendCode();
-                  if (!result.success) {
-                    return;
-                  }
+              const result = await phoneVerification.handleSendCode();
+              if (result.success) {
+                showToast(result.message || "Verification code sent.");
+              }
+            }}
+            onVerify={async (code) => {
+              const result = await phoneVerification.handleVerify(code);
+              if (!result.success) {
+                return;
+              }
 
-                  showToast(result.message || "Verification code sent.");
-                }}
-                onVerify={async (code) => {
-                  const result = await phoneVerification.handleVerify(code);
-                  if (!result.success) {
-                    return;
-                  }
-
-                  setPhoneNumberError("");
-                  if (result.user?.phone_number) {
-                    setPhoneNumber(result.user.phone_number);
-                  }
-                  showToast("Phone number verified.");
-                }}
-              />
-            ) : null}
-          </View>
+              setPhoneNumberError("");
+              if (result.user?.phone_number) {
+                setPhoneNumber(result.user.phone_number);
+              }
+              showToast("Phone number verified.");
+            }}
+          />
           <AccountPickerField
             label="Gender"
             value={gender}
@@ -385,31 +430,38 @@ const CustomerProfile = () => {
         </AccountSectionCard>
 
         <AccountSectionCard title="Location">
-          <AccountFormField
-            label="City"
-            icon="business-outline"
-            placeholder="Your city"
-            value={city}
-            onChangeText={(text) => {
-              setCity(text);
-              setCityError("");
-              clearGeneralError();
-            }}
-            error={cityError}
-            autoCapitalize="words"
-          />
-          <AccountFormField
-            label="Region / state"
-            icon="map-outline"
-            placeholder="Your region or state"
+          <AccountPickerField
+            label="Region"
             value={region}
-            onChangeText={(text) => {
-              setRegion(text);
+            placeholder="Select your region"
+            icon="map-outline"
+            error={regionError}
+            onPress={() => {
+              setShowRegionPicker(true);
               setRegionError("");
               clearGeneralError();
             }}
-            error={regionError}
-            autoCapitalize="words"
+            onClear={() => {
+              setRegion("");
+              setCity("");
+            }}
+          />
+          <AccountPickerField
+            label="Town / city"
+            value={city}
+            placeholder={region ? "Select your town or city" : "Select a region first"}
+            icon="business-outline"
+            error={cityError}
+            onPress={() => {
+              if (!region.trim()) {
+                setRegionError("Select your region first.");
+                return;
+              }
+              setShowCityPicker(true);
+              setCityError("");
+              clearGeneralError();
+            }}
+            onClear={() => setCity("")}
           />
         </AccountSectionCard>
 
@@ -486,6 +538,45 @@ const CustomerProfile = () => {
           />
         ))}
       </AccountChoiceSheet>
+
+      <AccountChoiceSheet
+        visible={showRegionPicker}
+        title="Select region"
+        onClose={() => setShowRegionPicker(false)}
+      >
+        {GHANA_REGIONS.map((option) => (
+          <AccountChoiceOption
+            key={option}
+            label={option}
+            selected={region === option}
+            onPress={() => {
+              if (region !== option) {
+                setCity("");
+              }
+              setRegion(option);
+              setShowRegionPicker(false);
+            }}
+          />
+        ))}
+      </AccountChoiceSheet>
+
+      <AccountChoiceSheet
+        visible={showCityPicker}
+        title={`Towns in ${region}`}
+        onClose={() => setShowCityPicker(false)}
+      >
+        {cityOptions.map((option) => (
+          <AccountChoiceOption
+            key={option}
+            label={option}
+            selected={city === option}
+            onPress={() => {
+              setCity(option);
+              setShowCityPicker(false);
+            }}
+          />
+        ))}
+      </AccountChoiceSheet>
     </View>
   );
 };
@@ -512,11 +603,5 @@ const styles = StyleSheet.create({
     gap: rS(10),
     marginTop: rV(12),
     marginBottom: rV(8),
-  },
-  phoneStatusRow: {
-    flexDirection: "row",
-    marginTop: -rV(8),
-    marginBottom: rV(8),
-    paddingLeft: rS(4),
   },
 });

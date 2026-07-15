@@ -151,7 +151,7 @@ export default function VerificationScreen() {
     >
       <AuthFormCard>
         <Text style={[styles.hint, { color: colors.textMuted }]}>
-          Codes expire after a few minutes. Keep this screen open until you're done.
+          Codes expire after a few minutes. Keep this screen open until you{"'"}re done.
         </Text>
 
         <OtpCodeInput

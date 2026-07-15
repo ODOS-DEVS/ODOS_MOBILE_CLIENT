@@ -26,6 +26,14 @@ export function normalizeGhanaPhone(value: string): string | null {
   return null;
 }
 
+export function formatGhanaPhoneDisplay(value: string) {
+  const digits = extractPhoneDigits(value);
+  if (digits.length !== 10) {
+    return value.trim() || value;
+  }
+  return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+}
+
 export function validateGhanaPhone(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) {

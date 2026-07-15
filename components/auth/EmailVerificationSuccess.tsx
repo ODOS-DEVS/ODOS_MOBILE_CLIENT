@@ -79,7 +79,7 @@ export default function EmailVerificationSuccess({
           </View>
         </Animated.View>
 
-        <Text style={[styles.title, { color: colors.text }]}>You're in!</Text>
+        <Text style={[styles.title, { color: colors.text }]}>You{"'"}re in!</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Your email is verified and your ODOS account is ready.
         </Text>

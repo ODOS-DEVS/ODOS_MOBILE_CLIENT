@@ -6,7 +6,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import SearchField from "@/components/search/SearchField";
 import StoreProductFilterSheet from "@/components/store/StoreProductFilterSheet";
-import { AppColors } from "@/constants/Colors";
+import { formatStoreAudienceLabel } from "@/constants/storeAudience";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
@@ -14,6 +14,7 @@ import { useStore } from "@/hooks/useCommerce";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import {
   browseStoreProducts,
+  buildStoreAudienceSegmentOptions,
   buildStoreProductCategoryOptions,
   buildStoreProductSubcategoryOptions,
   countActiveStoreBrowseFilters,
@@ -64,6 +65,7 @@ export default function StoreProductsBrowseScreen({
   const [priceRange, setPriceRange] = useState<StoreProductPriceRange>("all");
   const [categorySlug, setCategorySlug] = useState("");
   const [subcategorySlug, setSubcategorySlug] = useState("");
+  const [audienceSlug, setAudienceSlug] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const fallbackStore = useMemo(
@@ -100,6 +102,7 @@ export default function StoreProductsBrowseScreen({
     setPriceRange("all");
     setCategorySlug("");
     setSubcategorySlug("");
+    setAudienceSlug("");
   }, [storeId]);
 
   const categoryOptions = useMemo(
@@ -112,6 +115,11 @@ export default function StoreProductsBrowseScreen({
     [categorySlug, products, storeId],
   );
 
+  const audienceSegmentOptions = useMemo(
+    () => buildStoreAudienceSegmentOptions(store?.audienceSlugs, products, storeId),
+    [products, store?.audienceSlugs, storeId],
+  );
+
   const filteredProducts = useMemo(
     () =>
       browseStoreProducts(
@@ -122,12 +130,14 @@ export default function StoreProductsBrowseScreen({
           mode,
           categorySlug,
           subcategorySlug,
+          audienceSlug,
           priceRange,
           sort,
         },
         store?.title,
       ),
     [
+      audienceSlug,
       categorySlug,
       mode,
       priceRange,
@@ -144,6 +154,7 @@ export default function StoreProductsBrowseScreen({
     mode,
     categorySlug,
     subcategorySlug,
+    audienceSlug,
     priceRange,
     sort,
   });
@@ -171,7 +182,71 @@ export default function StoreProductsBrowseScreen({
     setPriceRange("all");
     setCategorySlug("");
     setSubcategorySlug("");
+    setAudienceSlug("");
   };
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+        },
+        listHeader: {
+          paddingHorizontal: rS(16),
+          paddingTop: rV(12),
+          paddingBottom: rV(8),
+          gap: rV(12),
+        },
+        toolbar: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: rS(10),
+        },
+        resultCount: {
+          fontFamily: Fonts.title,
+          fontSize: rMS(12.5),
+        },
+        toolbarActions: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(8),
+        },
+        toolbarChip: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          borderRadius: 999,
+          borderWidth: StyleSheet.hairlineWidth,
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(7),
+        },
+        toolbarChipText: {
+          fontFamily: Fonts.title,
+          fontSize: rMS(11.5),
+          maxWidth: rS(92),
+        },
+        badge: {
+          minWidth: rS(18),
+          height: rS(18),
+          borderRadius: rS(9),
+          backgroundColor: colors.primary,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: rS(4),
+        },
+        badgeText: {
+          fontFamily: Fonts.textBold,
+          fontSize: rMS(10),
+          color: colors.onPrimary,
+        },
+        quickModeRow: {
+          gap: rS(8),
+          paddingBottom: rV(4),
+        },
+      }),
+    [colors.onPrimary, colors.primary],
+  );
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -229,6 +304,30 @@ export default function StoreProductsBrowseScreen({
           />
         ))}
       </ScrollView>
+
+      {audienceSegmentOptions.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickModeRow}
+        >
+          <DiscoveryFilterChip
+            label="All segments"
+            active={!audienceSlug}
+            onPress={() => setAudienceSlug("")}
+          />
+          {audienceSegmentOptions.map((segment) => (
+            <DiscoveryFilterChip
+              key={segment.key}
+              label={formatStoreAudienceLabel(segment.key)}
+              active={audienceSlug === segment.key}
+              onPress={() =>
+                setAudienceSlug((current) => (current === segment.key ? "" : segment.key))
+              }
+            />
+          ))}
+        </ScrollView>
+      ) : null}
     </View>
   );
 
@@ -265,6 +364,7 @@ export default function StoreProductsBrowseScreen({
       <ProfileHeader title={store?.title ?? fallbackTitle} onBack={handleBack} />
 
       <FlatList
+        style={{ flex: 1 }}
         data={filteredProducts}
         key={numColumns}
         numColumns={numColumns}
@@ -276,7 +376,7 @@ export default function StoreProductsBrowseScreen({
           <RefreshControl
             refreshing={isLoading && products.length > 0}
             onRefresh={() => void refresh()}
-            tintColor={AppColors.primary}
+            tintColor={colors.primary}
           />
         }
         ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
@@ -294,6 +394,7 @@ export default function StoreProductsBrowseScreen({
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
         renderItem={({ item }) => (
           <View
             style={{
@@ -352,62 +453,3 @@ export default function StoreProductsBrowseScreen({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  listHeader: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(12),
-    paddingBottom: rV(8),
-    gap: rV(12),
-  },
-  toolbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  resultCount: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(12.5),
-  },
-  toolbarActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  toolbarChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-  },
-  toolbarChipText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(11.5),
-    maxWidth: rS(92),
-  },
-  badge: {
-    minWidth: rS(18),
-    height: rS(18),
-    borderRadius: rS(9),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(4),
-  },
-  badgeText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(10),
-  },
-  quickModeRow: {
-    gap: rS(8),
-    paddingBottom: rV(4),
-  },
-});

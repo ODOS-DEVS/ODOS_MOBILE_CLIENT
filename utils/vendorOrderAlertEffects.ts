@@ -1,11 +1,13 @@
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
-import { Platform, Vibration } from "react-native";
+import { AppState, Platform, Vibration } from "react-native";
 
 const isExpoGo = Constants.appOwnership === "expo";
 let soundInstance: Audio.Sound | null = null;
 let soundLoading: Promise<void> | null = null;
+let effectsChain: Promise<void> = Promise.resolve();
+let pendingHapticTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function ensureSoundLoaded() {
   if (isExpoGo || Platform.OS === "web") {
@@ -44,6 +46,36 @@ async function ensureSoundLoaded() {
   await soundLoading;
 }
 
+async function stopSoundIfPlaying() {
+  if (!soundInstance) {
+    return;
+  }
+
+  try {
+    const status = await soundInstance.getStatusAsync();
+    if (!status.isLoaded) {
+      return;
+    }
+
+    if (status.isPlaying) {
+      await soundInstance.stopAsync();
+    }
+
+    await soundInstance.setPositionAsync(0);
+  } catch {
+    // Ignore stop/seek failures before the next play attempt.
+  }
+}
+
+function clearPendingHaptic() {
+  if (!pendingHapticTimeout) {
+    return;
+  }
+
+  clearTimeout(pendingHapticTimeout);
+  pendingHapticTimeout = null;
+}
+
 export async function playVendorOrderAlertSound() {
   await ensureSoundLoaded();
   if (!soundInstance) {
@@ -51,7 +83,7 @@ export async function playVendorOrderAlertSound() {
   }
 
   try {
-    await soundInstance.setPositionAsync(0);
+    await stopSoundIfPlaying();
     await soundInstance.playAsync();
   } catch {
     // Best-effort custom alert sound.
@@ -63,20 +95,46 @@ export async function playVendorOrderAlertEffects(options?: {
   body?: string;
   isReminder?: boolean;
 }) {
-  void options;
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  const run = async () => {
+    if (AppState.currentState !== "active") {
+      return;
+    }
 
-  if (Platform.OS !== "web") {
-    Vibration.vibrate(
-      options?.isReminder ? [0, 500, 200, 500, 200, 500, 200, 700] : [0, 400, 180, 400, 180, 600],
-    );
-  }
+    clearPendingHaptic();
 
-  await playVendorOrderAlertSound();
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch {
+      // Best-effort haptic feedback.
+    }
 
-  setTimeout(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-  }, options?.isReminder ? 1200 : 900);
+    if (Platform.OS !== "web") {
+      try {
+        if (Platform.OS === "android") {
+          Vibration.cancel();
+        }
+        Vibration.vibrate(
+          options?.isReminder
+            ? [0, 500, 200, 500, 200, 500, 200, 700]
+            : [0, 400, 180, 400, 180, 600],
+        );
+      } catch {
+        // Best-effort vibration.
+      }
+    }
+
+    await playVendorOrderAlertSound();
+
+    pendingHapticTimeout = setTimeout(() => {
+      pendingHapticTimeout = null;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {
+        // Best-effort follow-up haptic.
+      });
+    }, options?.isReminder ? 1200 : 900);
+  };
+
+  effectsChain = effectsChain.then(run, run);
+  await effectsChain;
 }
 
 export async function unloadVendorOrderAlertSound() {

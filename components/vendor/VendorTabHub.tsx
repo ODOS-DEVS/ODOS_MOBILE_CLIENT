@@ -77,15 +77,17 @@ function getGreeting() {
   return "Good evening";
 }
 
-function formatCompactSales(value: number, currency: string) {
-  const abs = Math.abs(value);
+function formatCompactSales(value: number | null | undefined, currency?: string | null) {
+  const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+  const safeCurrency = currency?.trim() || "GHS";
+  const abs = Math.abs(safeValue);
   if (abs >= 1_000_000) {
-    return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
+    return `${safeCurrency} ${(safeValue / 1_000_000).toFixed(1)}M`;
   }
   if (abs >= 10_000) {
-    return `${currency} ${(value / 1000).toFixed(1)}k`;
+    return `${safeCurrency} ${(safeValue / 1000).toFixed(1)}k`;
   }
-  return `${currency} ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return `${safeCurrency} ${safeValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
 function useMetricPalette(tone: MetricTone = "default") {
@@ -498,7 +500,7 @@ export default function VendorTabHub({
         icon: "cube-outline",
         label: "Products",
         subtitle: stats
-          ? `${stats.activeProducts} active listing${stats.activeProducts === 1 ? "" : "s"}`
+          ? `${stats.activeProducts ?? 0} active listing${(stats.activeProducts ?? 0) === 1 ? "" : "s"}`
           : "Manage catalog and stock.",
         onPress: () => router.push("/vendor/products" as any),
       },
@@ -516,7 +518,7 @@ export default function VendorTabHub({
         icon: "wallet-outline",
         label: "Wallet",
         subtitle: stats
-          ? `${formatCompactSales(stats.availableBalance, stats.currency)} available`
+          ? `${formatCompactSales(stats.availableBalance ?? 0, stats.currency)} available`
           : "Payouts and balance.",
         onPress: () => router.push("/vendor/wallet" as any),
       },
@@ -580,7 +582,7 @@ export default function VendorTabHub({
         icon: "wallet-outline" as const,
         label: "Wallet",
         subtitle: stats
-          ? `${formatCompactSales(stats.availableBalance, stats.currency)} available`
+          ? `${formatCompactSales(stats.availableBalance ?? 0, stats.currency)} available`
           : "Payouts and balance.",
         onPress: () => router.push("/vendor/wallet" as any),
       },

@@ -242,7 +242,10 @@ export function ActivityMarkAllRead({
         btnText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(12),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
+        },
+        btnLoading: {
+          opacity: 0.7,
         },
         caughtUp: {
           flexDirection: "row",
@@ -308,8 +311,14 @@ export function ActivityMarkAllRead({
         disabled={disabled}
         hitSlop={6}
       >
-        <Ionicons name="checkmark-done-outline" size={rMS(14)} color="#FFFFFF" />
-        <Text style={styles.btnText}>Mark all read</Text>
+        <Ionicons
+          name={disabled ? "hourglass-outline" : "checkmark-done-outline"}
+          size={rMS(14)}
+          color={colors.onPrimary}
+        />
+        <Text style={styles.btnText}>
+          {disabled ? "Updating..." : "Mark all read"}
+        </Text>
       </Pressable>
     </Reanimated.View>
   );
@@ -661,8 +670,7 @@ export const ActivityCard = React.memo(function ActivityCard({
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(Math.min(index * 40, 240)).duration(260)}>
-      <View style={styles.wrap}>
+    <View style={styles.wrap}>
         {!item.isRead ? <View style={styles.unreadStripe} /> : null}
         <Pressable style={styles.inner} onPress={() => onOpen(item)}>
           {showProductThumb ? (
@@ -724,8 +732,7 @@ export const ActivityCard = React.memo(function ActivityCard({
             </View>
           )}
         </View>
-      </View>
-    </Reanimated.View>
+    </View>
   );
 });
 
@@ -855,7 +862,7 @@ export function ActivitySignedOutState({
           textAlign: "center",
         }}
       >
-        Orders, delivery updates, vouchers, and account moments appear here once you're logged in.
+        Orders, delivery updates, vouchers, and account moments appear here once you{"'"}re logged in.
       </Text>
       <Pressable
         onPress={onSignIn}

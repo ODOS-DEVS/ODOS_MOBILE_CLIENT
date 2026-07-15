@@ -13,6 +13,7 @@ import { useAuthScreenRedirect } from "@/hooks/useAuthScreenRedirect";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rV } from "@/styles/responsive";
 import { goToEmailVerification, goToSignIn } from "@/utils/authNavigation";
+import { buildFullName, validateNameParts } from "@/utils/fullName";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -26,12 +27,15 @@ export default function SignUpScreen() {
   useAuthScreenRedirect();
   useBlockBackNavigation(true);
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [otherNames, setOtherNames] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasConsented, setHasConsented] = useState(false);
-  const [fullNameError, setFullNameError] = useState("");
+  const [firstNameError, setFirstNameError] = useState("");
+  const [lastNameError, setLastNameError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
@@ -39,7 +43,8 @@ export default function SignUpScreen() {
   const [generalError, setGeneralError] = useState("");
 
   const canSubmitForm =
-    fullName.trim().length > 0 &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length > 0 &&
     confirmPassword.length > 0 &&
@@ -47,21 +52,24 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     let hasError = false;
-    const trimmedFullName = fullName.trim();
     const trimmedEmail = email.trim();
+    const fullName = buildFullName({ firstName, lastName, otherNames });
 
-    setFullNameError("");
+    setFirstNameError("");
+    setLastNameError("");
     setEmailError("");
     setPasswordError("");
     setConfirmPasswordError("");
     setConsentError("");
     setGeneralError("");
 
-    if (!trimmedFullName) {
-      setFullNameError("Enter your full name.");
-      hasError = true;
-    } else if (trimmedFullName.length < 2) {
-      setFullNameError("Full name must be at least 2 characters.");
+    const nameError = validateNameParts({ firstName, lastName });
+    if (nameError) {
+      if (!firstName.trim()) {
+        setFirstNameError(nameError);
+      } else {
+        setLastNameError(nameError);
+      }
       hasError = true;
     }
 
@@ -107,7 +115,8 @@ export default function SignUpScreen() {
       return;
     }
 
-    setFullNameError(result.fieldErrors?.fullName || "");
+    setFirstNameError(result.fieldErrors?.fullName || "");
+    setLastNameError(result.fieldErrors?.fullName || "");
     setEmailError(result.fieldErrors?.email || "");
     setPasswordError(result.fieldErrors?.password || "");
     setGeneralError(result.fieldErrors?.general || result.message || "");
@@ -124,16 +133,40 @@ export default function SignUpScreen() {
     >
       <AuthFormCard>
         <TextInputField
-          label="Full name"
+          label="First name"
           icon="person-outline"
-          placeholder="How should we greet you?"
-          value={fullName}
+          placeholder="First name"
+          value={firstName}
           onChangeText={(text) => {
-            setFullName(text);
-            if (fullNameError) setFullNameError("");
+            setFirstName(text);
+            if (firstNameError) setFirstNameError("");
             if (generalError) setGeneralError("");
           }}
-          errorMessage={fullNameError}
+          errorMessage={firstNameError}
+          autoCapitalize="words"
+        />
+        <TextInputField
+          label="Last name"
+          icon="person-outline"
+          placeholder="Last name"
+          value={lastName}
+          onChangeText={(text) => {
+            setLastName(text);
+            if (lastNameError) setLastNameError("");
+            if (generalError) setGeneralError("");
+          }}
+          errorMessage={lastNameError}
+          autoCapitalize="words"
+        />
+        <TextInputField
+          label="Other names (optional)"
+          icon="person-outline"
+          placeholder="Middle or other names"
+          value={otherNames}
+          onChangeText={(text) => {
+            setOtherNames(text);
+            if (generalError) setGeneralError("");
+          }}
           autoCapitalize="words"
         />
         <TextInputField
@@ -214,7 +247,19 @@ export default function SignUpScreen() {
       </View>
 
       <AuthDivider />
-      <AuthGoogleSignInBlock variant="signup" disabled={!hasConsented} />
+      <AuthGoogleSignInBlock
+        variant="signup"
+        beforeSignIn={() => {
+          if (hasConsented) {
+            if (consentError) {
+              setConsentError("");
+            }
+            return true;
+          }
+          setConsentError("Please accept the Terms and Privacy Policy to continue.");
+          return false;
+        }}
+      />
     </AuthScreenLayout>
   );
 }

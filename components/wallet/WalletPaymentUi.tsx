@@ -849,7 +849,7 @@ export function PaymentMethodCard({
             <Text style={styles.title}>{payment.label}</Text>
             <Text style={styles.subtitle}>
               {isCard
-                ? `Debit / credit · **** ${payment.cardLast4 ?? "****"}`
+                ? `${payment.cardName ? `${payment.cardName} · ` : ""}Debit / credit · **** ${payment.cardLast4 ?? "****"}${payment.expiry ? ` · ${payment.expiry}` : ""}`
                 : `${payment.network ?? "Mobile"} money · ${payment.phone ?? ""}`}
             </Text>
             {payment.isDefault ? (

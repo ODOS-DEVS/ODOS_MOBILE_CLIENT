@@ -1,4 +1,5 @@
 import type { CatalogProductItem } from "@/hooks/useCatalog";
+import { formatStoreAudienceLabel } from "@/constants/storeAudience";
 import {
   buildDiscoverySearchScore,
   buildDiscoverySearchText,
@@ -28,6 +29,7 @@ export type StoreBrowseFilters = {
   mode: StoreProductBrowseMode;
   categorySlug: string;
   subcategorySlug: string;
+  audienceSlug: string;
   priceRange: StoreProductPriceRange;
   sort: StoreProductSortMode;
 };
@@ -126,6 +128,13 @@ export function filterStoreProducts(
     const subcategorySlugs = productSubcategorySlugs(product);
     if (filters.subcategorySlug && !subcategorySlugs.includes(filters.subcategorySlug)) {
       return false;
+    }
+
+    if (filters.audienceSlug) {
+      const productAudience = normalizeCategorySlug(product.audienceSlug);
+      if (productAudience !== filters.audienceSlug) {
+        return false;
+      }
     }
 
     if (!matchesStoreProductPriceRange(product.price, filters.priceRange)) {
@@ -289,16 +298,50 @@ export function buildStoreProductSubcategoryOptions(
   );
 }
 
+export function buildStoreAudienceSegmentOptions(
+  storeAudienceSlugs: string[] | null | undefined,
+  products: CatalogProductItem[],
+  storeId: string,
+): StoreBrowseFilterOption[] {
+  const normalizedStoreSegments = (storeAudienceSlugs ?? [])
+    .map((slug) => normalizeCategorySlug(slug))
+    .filter(Boolean);
+
+  if (normalizedStoreSegments.length === 0) {
+    return [];
+  }
+
+  const scoped = restrictProductsToStore(products, storeId);
+  const counts = new Map<string, number>();
+
+  scoped.forEach((product) => {
+    const slug = normalizeCategorySlug(product.audienceSlug);
+    if (!slug || !normalizedStoreSegments.includes(slug)) {
+      return;
+    }
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  });
+
+  return normalizedStoreSegments
+    .filter((slug) => (counts.get(slug) ?? 0) > 0)
+    .map((slug) => ({
+      key: slug,
+      label: formatStoreAudienceLabel(slug),
+      count: counts.get(slug) ?? 0,
+    }));
+}
+
 export function countActiveStoreBrowseFilters(
   filters: Pick<
     StoreBrowseFilters,
-    "mode" | "categorySlug" | "subcategorySlug" | "priceRange" | "sort"
+    "mode" | "categorySlug" | "subcategorySlug" | "audienceSlug" | "priceRange" | "sort"
   >,
 ) {
   return [
     filters.mode !== "all" ? filters.mode : "",
     filters.categorySlug,
     filters.subcategorySlug,
+    filters.audienceSlug,
     filters.priceRange !== "all" ? filters.priceRange : "",
     filters.sort !== "relevance" ? filters.sort : "",
   ].filter(Boolean).length;

@@ -262,6 +262,41 @@ function mapDashboard(payload: VendorDashboardApi): VendorDashboardStats {
   };
 }
 
+function toDashboardApi(
+  payload: Partial<VendorDashboardApi> & Partial<VendorDashboardStats>,
+): VendorDashboardApi {
+  return {
+    store_name: payload.store_name ?? payload.storeName,
+    vendor_status: payload.vendor_status ?? payload.vendorStatus,
+    total_products: payload.total_products ?? payload.totalProducts,
+    active_products: payload.active_products ?? payload.activeProducts,
+    pending_orders: payload.pending_orders ?? payload.pendingOrders,
+    completed_orders: payload.completed_orders ?? payload.completedOrders,
+    total_sales: payload.total_sales ?? payload.totalSales,
+    currency: payload.currency,
+    available_balance: payload.available_balance ?? payload.availableBalance,
+    pending_withdrawal_balance:
+      payload.pending_withdrawal_balance ?? payload.pendingWithdrawalBalance,
+    lifetime_earnings: payload.lifetime_earnings ?? payload.lifetimeEarnings,
+    total_commission: payload.total_commission ?? payload.totalCommission,
+  };
+}
+
+export function normalizeVendorDashboardStats(
+  payload: unknown,
+  fallback?: VendorDashboardStats | null,
+): VendorDashboardStats | null {
+  if (!payload || typeof payload !== "object") {
+    return fallback ?? null;
+  }
+
+  const mapped = mapDashboard(
+    toDashboardApi(payload as Partial<VendorDashboardApi> & Partial<VendorDashboardStats>),
+  );
+
+  return fallback ? { ...fallback, ...mapped } : mapped;
+}
+
 function mapAnalytics(payload: VendorAnalyticsApi): VendorAnalytics {
   return {
     currency: payload.currency ?? "GHS",

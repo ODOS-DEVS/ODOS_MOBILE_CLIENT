@@ -425,6 +425,8 @@ type ProductReviewsPanelProps = {
   reviewsLabel: string;
   reviewCount: number;
   reviews: ProductReviewPreview[];
+  onWriteReviewPress: () => void;
+  writeReviewLabel?: string;
 };
 
 export function ProductReviewsPanel({
@@ -432,6 +434,8 @@ export function ProductReviewsPanel({
   reviewsLabel,
   reviewCount,
   reviews,
+  onWriteReviewPress,
+  writeReviewLabel = "Write review",
 }: ProductReviewsPanelProps) {
   return (
     <AccountListCard>
@@ -447,10 +451,10 @@ export function ProductReviewsPanel({
         <TouchableOpacity
           style={styles.manageButton}
           activeOpacity={0.86}
-          onPress={() => router.push("/(root)/screens/profileScreens/Account/Reviews" as any)}
+          onPress={onWriteReviewPress}
         >
           <Ionicons name="create-outline" size={rMS(14)} color={AppColors.text} />
-          <Text style={styles.manageButtonText}>Write review</Text>
+          <Text style={styles.manageButtonText}>{writeReviewLabel}</Text>
         </TouchableOpacity>
       </View>
 

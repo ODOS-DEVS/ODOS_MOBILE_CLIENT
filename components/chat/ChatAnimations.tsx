@@ -1,6 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
-import { useChatStyles } from "@/styles/themedChatStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
+import { useChatStyles } from "@/styles/themedChatStyles";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -14,7 +14,10 @@ type TypingDotsProps = {
   dotSize?: number;
 };
 
-export function TypingDots({ color = "#94A3B8", dotSize = rS(5.5) }: TypingDotsProps) {
+export function TypingDots({
+  color = "#94A3B8",
+  dotSize = rS(5.5),
+}: TypingDotsProps) {
   const dotOne = useRef(new Animated.Value(0)).current;
   const dotTwo = useRef(new Animated.Value(0)).current;
   const dotThree = useRef(new Animated.Value(0)).current;
@@ -116,7 +119,9 @@ export function ChatTypingIndicator({
           <Text
             style={[
               styles.typingLabel,
-              { color: isOutgoing ? "rgba(255,255,255,0.82)" : colors.textMuted },
+              {
+                color: isOutgoing ? "rgba(255,255,255,0.82)" : colors.textMuted,
+              },
             ]}
           >
             {label}
@@ -154,7 +159,9 @@ type AnimatedChatThreadWrapProps = {
   children: React.ReactNode;
 };
 
-export function AnimatedChatThreadWrap({ children }: AnimatedChatThreadWrapProps) {
+export function AnimatedChatThreadWrap({
+  children,
+}: AnimatedChatThreadWrapProps) {
   return <View>{children}</View>;
 }
 

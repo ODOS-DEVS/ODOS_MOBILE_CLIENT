@@ -39,8 +39,12 @@ export default function VendorOrderAlertOverlay({
   const insets = useSafeAreaInsets();
   const pulse = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(-24)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    animationRef.current?.stop();
+    animationRef.current = null;
+
     if (!alert) {
       return;
     }
@@ -48,7 +52,7 @@ export default function VendorOrderAlertOverlay({
     pulse.setValue(0);
     slide.setValue(-24);
 
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.spring(slide, {
         toValue: 0,
         damping: 16,
@@ -70,7 +74,17 @@ export default function VendorOrderAlertOverlay({
         ]),
         { iterations: 4 },
       ),
-    ]).start();
+    ]);
+
+    animationRef.current = animation;
+    animation.start();
+
+    return () => {
+      animation.stop();
+      if (animationRef.current === animation) {
+        animationRef.current = null;
+      }
+    };
   }, [alert, pulse, slide]);
 
   const openOrderDetail = () => {

@@ -2,7 +2,6 @@ import { AccountListCard } from "@/components/account/AccountUi";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import { MenuItem } from "@/components/MenuItem";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
-import { ProfileCover } from "@/components/profile/ProfileCover";
 import UserAvatar from "@/components/UserAvatar";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
@@ -38,7 +37,7 @@ export default function ProfileScreen() {
     handleDismiss: handleAppReviewDismiss,
   } = useAppReview();
   const { session } = useVendorSession();
-  const { isLoading, refreshVendorState, vendorApplication, vendorStatus } =
+  const { isLoading, hasLoadedVendorState, refreshVendorState, vendorApplication, vendorStatus } =
     useVendorStore();
   const hasRefreshedThisFocusRef = useRef(false);
   const authUserSnapshot = useMemo(
@@ -213,16 +212,7 @@ export default function ProfileScreen() {
     vendorApplication?.storeName,
   ]);
 
-  const hasResolvedVendorState = Boolean(
-    user &&
-      (vendorApplication ||
-        resolvedVendorStatus === "approved" ||
-        resolvedVendorStatus === "pending" ||
-        resolvedVendorStatus === "under_review" ||
-        resolvedVendorStatus === "rejected" ||
-        resolvedVendorStatus === "suspended"),
-  );
-  const isVendorSectionLoading = Boolean(user) && isLoading && !hasResolvedVendorState;
+  const isVendorSectionLoading = Boolean(user) && isLoading && !hasLoadedVendorState;
 
   const styles = useMemo(
     () =>
@@ -241,34 +231,16 @@ export default function ProfileScreen() {
         },
         profileEntryCard: {
           marginBottom: rV(14),
-          paddingHorizontal: 0,
-          paddingTop: 0,
-          paddingBottom: rV(14),
-          overflow: "hidden",
-        },
-        profileEntryHero: {
-          position: "relative",
-        },
-        profileEntryCover: {
-          width: "100%",
-        },
-        profileEntryBody: {
-          paddingHorizontal: rS(16),
-          paddingTop: rV(8),
         },
         profileEntryRow: {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: rS(10),
-        },
-        subHeader: {
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
+          gap: rS(12),
         },
         profileEntryCopy: {
           flex: 1,
+          minWidth: 0,
         },
         profileEntryHint: {
           marginTop: rV(4),
@@ -277,10 +249,7 @@ export default function ProfileScreen() {
           color: colors.primary,
         },
         avatarWrap: {
-          position: "absolute",
-          left: rS(16),
-          bottom: -rS(24),
-          zIndex: 2,
+          marginRight: rS(12),
         },
         name: {
           fontSize: rMS(16),
@@ -398,10 +367,7 @@ export default function ProfileScreen() {
         }}
       >
         <AccountListCard style={styles.profileEntryCard}>
-          <View style={styles.profileEntryHero}>
-            <View style={styles.profileEntryCover}>
-              <ProfileCover gender={user?.gender} height={rV(84)} compact />
-            </View>
+          <View style={styles.profileEntryRow}>
             <View style={styles.avatarWrap}>
               <UserAvatar
                 avatarUrl={user?.avatar_url}
@@ -410,21 +376,16 @@ export default function ProfileScreen() {
                 bordered
               />
             </View>
-          </View>
-          <View style={[styles.profileEntryBody, styles.profileEntryRow]}>
-            <View style={styles.subHeader}>
-              <View style={{ width: rS(56), marginRight: rS(12) }} />
-              <View style={styles.profileEntryCopy}>
-                <Text style={styles.name}>
-                  {user ? user.full_name || "ODOS User" : "Guest"}
-                </Text>
-                <Text style={styles.email}>
-                  {user?.email || "Sign in to view account details"}
-                </Text>
-                <Text style={styles.profileEntryHint}>
-                  {user ? "Tap to edit your profile" : "Tap to sign in"}
-                </Text>
-              </View>
+            <View style={styles.profileEntryCopy}>
+              <Text style={styles.name}>
+                {user ? user.full_name || "ODOS User" : "Guest"}
+              </Text>
+              <Text style={styles.email}>
+                {user?.email || "Sign in to view account details"}
+              </Text>
+              <Text style={styles.profileEntryHint}>
+                {user ? "Tap to edit your profile" : "Tap to sign in"}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={rMS(22)} color={colors.iconMuted} />
           </View>

@@ -1,17 +1,20 @@
 import { AssistantAvatar } from "@/components/assistant/AssistantAnimations";
 import {
   AssistantCopyFeedback,
+  AssistantEscalationBanner,
   AssistantMessageItem,
   AssistantQuickPrompts,
   AssistantTypingIndicator,
+  AssistantWelcomeHero,
 } from "@/components/assistant/AssistantUi";
 import {
   ChatComposer,
+  ChatLoadingCenter,
   ChatScreenHeader,
   ChatScreenShell,
   ChatStatusBadge,
 } from "@/components/chat/ChatUi";
-import { AppColors } from "@/constants/Colors";
+
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -21,7 +24,6 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, {
   useCallback,
@@ -67,6 +69,7 @@ export default function AssistantScreen() {
     messages,
     status,
     nudge,
+    isLoadingSession,
     isSending,
     error,
     sendMessage,
@@ -109,7 +112,10 @@ export default function AssistantScreen() {
   const showTypingIndicator = isSending && !isStreamingReply;
 
   const showQuickPrompts =
-    messages.length === 1 && (messages[0]?.id === "welcome" || Boolean(nudge));
+    !isLoadingSession &&
+    messages.length === 1 &&
+    (messages[0]?.id === "welcome" || Boolean(nudge));
+  const hasEscalation = messages.some((message) => message.escalatedToSupport);
   const connectionState = status?.enabled ? "connected" : "disconnected";
 
   const scrollToEnd = useCallback((animated = true) => {
@@ -163,114 +169,55 @@ export default function AssistantScreen() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        gradient: {
-          flex: 1,
-        },
         list: {
           flex: 1,
         },
         listContent: {
           flexGrow: 1,
-          paddingBottom: rV(12),
-        },
-        hero: {
-          marginHorizontal: rS(16),
-          marginTop: rV(8),
-          marginBottom: rV(4),
-          borderRadius: rMS(18),
-          overflow: "hidden",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-        },
-        heroInner: {
-          paddingHorizontal: rS(16),
-          paddingVertical: rV(14),
-          gap: rV(5),
-        },
-        heroTitle: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(16),
-          color: colors.text,
-        },
-        heroText: {
-          fontFamily: Fonts.text,
-          fontSize: rMS(13),
-          lineHeight: rMS(20),
-          color: colors.textMuted,
-        },
-        heroBadges: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: rS(8),
-          marginTop: rV(8),
-        },
-        heroBadge: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: rS(4),
-          paddingHorizontal: rS(10),
-          paddingVertical: rV(5),
-          borderRadius: 999,
-          backgroundColor: "rgba(255,255,255,0.85)",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-        },
-        heroBadgeText: {
-          fontFamily: Fonts.text,
-          fontSize: rMS(11),
-          color: colors.textSecondary,
+          paddingTop: rV(4),
+          paddingBottom: rV(8),
         },
         errorBanner: {
           marginHorizontal: rS(16),
-          marginTop: rV(8),
+          marginTop: rV(6),
           marginBottom: rV(4),
           paddingHorizontal: rS(14),
-          paddingVertical: rV(11),
+          paddingVertical: rV(10),
           borderRadius: rMS(14),
-          backgroundColor: "#FEF2F2",
+          backgroundColor: colors.dangerSoft,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "#FECACA",
+          borderColor: colors.dangerText,
         },
         errorText: {
           fontFamily: Fonts.text,
           fontSize: rMS(12),
-          color: "#B91C1C",
+          color: colors.dangerText,
           lineHeight: rMS(17),
         },
         footer: {
-          paddingTop: rV(8),
-          paddingBottom: rV(14),
+          paddingTop: rV(4),
+          paddingBottom: rV(10),
           alignItems: "center",
         },
         footerLink: {
           flexDirection: "row",
           alignItems: "center",
           gap: rS(6),
-          paddingVertical: rV(10),
-          paddingHorizontal: rS(16),
-          borderRadius: 999,
-          backgroundColor: colors.card,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
+          paddingVertical: rV(8),
+          paddingHorizontal: rS(14),
         },
         footerLinkText: {
           fontFamily: Fonts.text,
-          fontSize: rMS(12.5),
+          fontSize: rMS(12),
           color: colors.textMuted,
         },
-        resetBadge: {
-          flexDirection: "row",
+        resetBtn: {
+          width: rMS(34),
+          height: rMS(34),
+          borderRadius: rMS(17),
           alignItems: "center",
-          gap: rMS(4),
-          paddingHorizontal: rMS(10),
-          paddingVertical: rV(5),
-          borderRadius: 999,
+          justifyContent: "center",
           backgroundColor: colors.surfaceMuted,
-        },
-        resetBadgeText: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(10.5),
-          color: colors.textMuted,
         },
       }),
     [colors],
@@ -295,45 +242,6 @@ export default function AssistantScreen() {
     [isStreamingReply, lastMessage?.id, messages, showCopyFeedback, submitFeedback],
   );
 
-  const listHeader = useMemo(() => {
-    if (!showQuickPrompts) {
-      return null;
-    }
-    return (
-      <View style={styles.hero}>
-        <LinearGradient
-          colors={[colors.accentSoft, "#FFFFFF"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroInner}
-        >
-          <Text style={styles.heroTitle}>
-            {status?.enabled
-              ? "Your ODOS shopping companion"
-              : "Guided shopping help"}
-          </Text>
-          <Text style={styles.heroText}>
-            {user
-              ? "Ask about orders, delivery, vouchers, products, or stores — I'll use your real account data when I can."
-              : "Browse help freely, or sign in for personal order and voucher answers."}
-          </Text>
-          <View style={styles.heroBadges}>
-            {["Orders", "Delivery", "Deals", "Stores"].map((label) => (
-              <View key={label} style={styles.heroBadge}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={rMS(12)}
-                  color={colors.primary}
-                />
-                <Text style={styles.heroBadgeText}>{label}</Text>
-              </View>
-            ))}
-          </View>
-        </LinearGradient>
-      </View>
-    );
-  }, [colors, showQuickPrompts, status?.enabled, styles, user]);
-
   const listFooter = useMemo(
     () => (
       <View>
@@ -356,7 +264,7 @@ export default function AssistantScreen() {
             >
               <Ionicons
                 name="headset-outline"
-                size={rMS(15)}
+                size={rMS(14)}
                 color={colors.primary}
               />
               <Text style={styles.footerLinkText}>Talk to human support</Text>
@@ -382,49 +290,51 @@ export default function AssistantScreen() {
   );
 
   return (
-    <ChatScreenShell>
+    <ChatScreenShell variant="assistant">
       <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={["#F8FAFC", colors.accentSoft, "#FFFFFF"]}
-        locations={[0, 0.45, 1]}
-        style={styles.gradient}
-      >
         <ChatScreenHeader
           title="ODOS Assistant"
           subtitle={
             user
-              ? "Orders, delivery, vouchers & account help"
-              : "Shopping help · sign in for order details"
+              ? "Shopping, orders & account help"
+              : "Browse help · sign in for personal answers"
           }
           onBack={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           connectionState={connectionState}
-          avatar={<AssistantAvatar size={rMS(44)} />}
+          avatar={<AssistantAvatar size={rMS(40)} />}
           badges={
             <>
               <ChatStatusBadge
                 label={status?.enabled ? "AI ready" : "Guided help"}
                 icon={status?.enabled ? "sparkles-outline" : "book-outline"}
                 backgroundColor={
-                  status?.enabled ? "#EEF2FF" : colors.surfaceMuted
+                  status?.enabled ? colors.accentSoft : colors.surfaceMuted
                 }
-                color={status?.enabled ? AppColors.primary : colors.textMuted}
+                color={status?.enabled ? colors.primary : colors.textMuted}
               />
               <TouchableOpacity
-                style={styles.resetBadge}
+                style={styles.resetBtn}
                 activeOpacity={0.75}
                 onPress={resetConversation}
                 accessibilityLabel="New conversation"
               >
                 <Ionicons
                   name="refresh-outline"
-                  size={rMS(12)}
+                  size={rMS(16)}
                   color={colors.textMuted}
                 />
-                <Text style={styles.resetBadgeText}>New</Text>
               </TouchableOpacity>
             </>
           }
         />
+
+        {isLoadingSession ? (
+          <ChatLoadingCenter label="Loading your assistant conversation..." />
+        ) : (
+          <>
+        {hasEscalation ? (
+          <AssistantEscalationBanner onOpenSupport={openSupport} />
+        ) : null}
 
         {error ? (
           <View style={styles.errorBanner}>
@@ -439,7 +349,14 @@ export default function AssistantScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ListHeaderComponent={listHeader}
+          ListHeaderComponent={
+            showQuickPrompts ? (
+              <AssistantWelcomeHero
+                signedIn={Boolean(user)}
+                aiEnabled={Boolean(status?.enabled)}
+              />
+            ) : null
+          }
           ListFooterComponent={listFooter}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -454,7 +371,7 @@ export default function AssistantScreen() {
         />
 
         <ChatComposer
-          hint="Ask about orders, delivery, vouchers, products, or stores"
+          hint="Ask about orders, delivery, vouchers, or stores"
           placeholder="Message ODOS Assistant…"
           value={input}
           onChangeText={setInput}
@@ -476,7 +393,8 @@ export default function AssistantScreen() {
         />
 
         <AssistantCopyFeedback visible={copyFeedbackVisible} />
-      </LinearGradient>
+          </>
+        )}
     </ChatScreenShell>
   );
 }

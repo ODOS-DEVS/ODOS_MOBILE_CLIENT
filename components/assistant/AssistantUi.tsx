@@ -94,52 +94,45 @@ export function AssistantQuickPrompts({
     () =>
       StyleSheet.create({
         wrap: {
-          marginTop: rV(8),
-          marginBottom: rV(14),
-          gap: rV(10),
+          marginTop: rV(6),
+          marginBottom: rV(10),
+          paddingHorizontal: rS(16),
+          gap: rV(8),
         },
-        titleRow: {
+        grid: {
           flexDirection: "row",
-          alignItems: "center",
+          flexWrap: "wrap",
           gap: rS(8),
-          paddingHorizontal: rS(16),
-        },
-        title: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(13),
-          color: colors.text,
-        },
-        subtitle: {
-          fontFamily: Fonts.text,
-          fontSize: rMS(12),
-          color: colors.textMuted,
-          paddingHorizontal: rS(16),
-          marginBottom: rV(2),
-        },
-        scrollContent: {
-          paddingHorizontal: rS(16),
-          gap: rS(10),
-          paddingVertical: rV(2),
         },
         chip: {
+          width: "48.5%",
+          minHeight: rV(48),
           flexDirection: "row",
           alignItems: "center",
           gap: rS(8),
-          paddingHorizontal: rS(14),
-          paddingVertical: rV(10),
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(11),
           borderRadius: rMS(16),
           backgroundColor: colors.card,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           opacity: disabled ? 0.55 : 1,
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
         },
         chipPrimary: {
+          width: "100%",
           backgroundColor: colors.accentSoft,
           borderColor: colors.primary,
         },
         chipText: {
+          flex: 1,
           fontFamily: Fonts.text,
-          fontSize: rMS(13),
+          fontSize: rMS(12.5),
+          lineHeight: rMS(17),
           color: colors.text,
         },
         chipTextPrimary: {
@@ -152,43 +145,33 @@ export function AssistantQuickPrompts({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.titleRow}>
-        <Ionicons name="flash-outline" size={rMS(16)} color={colors.primary} />
-        <Text style={styles.title}>Quick questions</Text>
-      </View>
-      <Text style={styles.subtitle}>Tap a suggestion to start</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <AssistantSectionLabel label="Try asking" />
+      <View style={styles.grid}>
         {quickPrompts.map((item, index) => {
           const isPrimary = index === 0 && Boolean(nudgePrompt);
           return (
-            <View key={item.label}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.chip,
-                  isPrimary ? styles.chipPrimary : null,
-                  pressed && !disabled ? { opacity: 0.82 } : null,
-                ]}
-                disabled={disabled}
-                onPress={() => onSelect(item.prompt)}
-              >
-                <Ionicons
-                  name={promptIcon(item.label)}
-                  size={rMS(16)}
-                  color={isPrimary ? colors.primary : colors.textMuted}
-                />
-                <Text style={[styles.chipText, isPrimary ? styles.chipTextPrimary : null]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              key={item.label}
+              style={({ pressed }) => [
+                styles.chip,
+                isPrimary ? styles.chipPrimary : null,
+                pressed && !disabled ? { opacity: 0.82 } : null,
+              ]}
+              disabled={disabled}
+              onPress={() => onSelect(item.prompt)}
+            >
+              <Ionicons
+                name={promptIcon(item.label)}
+                size={rMS(15)}
+                color={isPrimary ? colors.primary : colors.textMuted}
+              />
+              <Text style={[styles.chipText, isPrimary ? styles.chipTextPrimary : null]}>
+                {item.label}
+              </Text>
+            </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -769,6 +752,179 @@ export function AssistantMessageList({
           isStreaming={message.id === streamingMessageId}
         />
       ))}
+    </View>
+  );
+}
+
+type AssistantWelcomeHeroProps = {
+  signedIn: boolean;
+  aiEnabled: boolean;
+};
+
+export function AssistantWelcomeHero({
+  signedIn,
+  aiEnabled,
+}: AssistantWelcomeHeroProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          marginHorizontal: rS(16),
+          marginTop: rV(10),
+          marginBottom: rV(6),
+          padding: rS(16),
+          borderRadius: rMS(20),
+          backgroundColor: colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
+          gap: rV(10),
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.05,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 2,
+        },
+        row: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(12),
+        },
+        copy: {
+          flex: 1,
+          gap: rV(4),
+        },
+        title: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(16),
+          color: colors.text,
+        },
+        text: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(13),
+          lineHeight: rMS(19),
+          color: colors.textMuted,
+        },
+        pill: {
+          alignSelf: "flex-start",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          paddingHorizontal: rS(10),
+          paddingVertical: rV(6),
+          borderRadius: 999,
+          backgroundColor: colors.accentSoft,
+        },
+        pillText: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(11),
+          color: colors.primary,
+        },
+      }),
+    [colors],
+  );
+
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.row}>
+        <AssistantAvatar size={rMS(42)} />
+        <View style={styles.copy}>
+          <Text style={styles.title}>Hi, I{"'"}m ODOS Assistant</Text>
+          <Text style={styles.text}>
+            {aiEnabled
+              ? signedIn
+                ? "Ask about orders, delivery, vouchers, stores, or account help."
+                : "Browse help now, or sign in for answers tied to your account."
+              : "Guided help is available while AI features are being set up."}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.pill}>
+        <Ionicons
+          name={aiEnabled ? "sparkles-outline" : "book-outline"}
+          size={rMS(12)}
+          color={colors.primary}
+        />
+        <Text style={styles.pillText}>
+          {aiEnabled ? "Personal shopping help" : "Guided answers"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+type AssistantEscalationBannerProps = {
+  onOpenSupport: () => void;
+};
+
+export function AssistantEscalationBanner({
+  onOpenSupport,
+}: AssistantEscalationBannerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          marginHorizontal: rS(16),
+          marginTop: rV(8),
+          marginBottom: rV(4),
+          padding: rS(14),
+          borderRadius: rMS(16),
+          backgroundColor: colors.infoSoft,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.infoBorder,
+          gap: rV(8),
+        },
+        row: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(8),
+        },
+        title: {
+          flex: 1,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(13),
+          color: colors.infoText,
+        },
+        text: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(12),
+          lineHeight: rMS(18),
+          color: colors.textSecondary,
+        },
+        button: {
+          alignSelf: "flex-start",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          paddingHorizontal: rS(12),
+          paddingVertical: rV(8),
+          borderRadius: 999,
+          backgroundColor: colors.card,
+        },
+        buttonText: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(12),
+          color: colors.primary,
+        },
+      }),
+    [colors],
+  );
+
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.row}>
+        <Ionicons name="headset-outline" size={rMS(16)} color={colors.infoText} />
+        <Text style={styles.title}>Human support recommended</Text>
+      </View>
+      <Text style={styles.text}>
+        This conversation may need the ODOS team. Continue here or open a support
+        chat and we{"'"}ll pick up from your account.
+      </Text>
+      <Pressable style={styles.button} onPress={onOpenSupport}>
+        <Text style={styles.buttonText}>Open support chat</Text>
+        <Ionicons name="arrow-forward" size={rMS(12)} color={colors.primary} />
+      </Pressable>
     </View>
   );
 }

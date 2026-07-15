@@ -1,6 +1,7 @@
 import { getGoogleAuthClientIds } from "@/constants/googleAuth";
 import { useAuth } from "@/context/AuthContext";
 import type { GoogleSignInControls } from "@/hooks/useGoogleSignIn";
+import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
@@ -18,11 +19,16 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
   const handledResponseRef = useRef<string | null>(null);
   const clientIds = getGoogleAuthClientIds();
 
+  const redirectUri = makeRedirectUri({
+    scheme: "odosmobileexpo",
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: clientIds.webClientId,
     iosClientId: clientIds.iosClientId,
     androidClientId: clientIds.androidClientId,
     scopes: ["openid", "profile", "email"],
+    redirectUri,
   });
 
   useEffect(() => {

@@ -1,12 +1,15 @@
+import ScreenLoader from "@/components/loaders/ScreenLoader";
 import {
   AccountEmptyState,
   AccountFab,
-  AccountFormField,
   AccountFormSheet,
   useAccountStyles,
 } from "@/components/account/AccountUi";
-import PhoneVerificationPanel from "@/components/profile/PhoneVerificationPanel";
+import PhoneVerificationField, {
+  isPhoneVerificationRequired,
+} from "@/components/profile/PhoneVerificationField";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import CardEntryForm from "@/components/wallet/CardEntryForm";
 import {
   PaymentMethodCard,
   PaymentMethodsSummary,
@@ -22,7 +25,6 @@ import {
   WalletTopupButton,
   WalletTopupMethodToggle,
   WalletTransactionItem,
-  WalletVerifiedHint,
   type WalletTab,
 } from "@/components/wallet/WalletPaymentUi";
 import {
@@ -35,6 +37,7 @@ import { useToast } from "@/context/ToastContext";
 import { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import { formatPhoneInput } from "@/utils/phone";
 import { createWalletTopupSessionRequest } from "@/hooks/useOrders";
+import { validateCardForm, type CardFieldErrors } from "@/utils/cardPayment";
 import { rV } from "@/styles/responsive";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
@@ -63,45 +66,30 @@ function normalizeRouteParamsFromUrl(url: string) {
   return normalizedParams;
 }
 
-type WalletFieldErrors = Partial<
-  Record<"cardName" | "cardNumber" | "expiry" | "cvv" | "network" | "phone", string>
->;
+type WalletFieldErrors = CardFieldErrors &
+  Partial<Record<"network" | "phone", string>>;
 
 function validateWalletForm(
   type: PaymentType,
   form: Record<string, string>,
 ): WalletFieldErrors {
-  const errors: WalletFieldErrors = {};
-
   if (type === "card") {
-    const cardDigits = (form.cardNumber ?? "").replace(/\D/g, "");
-    if (!form.cardName?.trim() || form.cardName.trim().length < 2) {
-      errors.cardName = "Enter the cardholder name.";
-    }
-    if (cardDigits.length < 12 || cardDigits.length > 19) {
-      errors.cardNumber = "Enter a valid card number.";
-    }
-    if (!/^\d{2}\/\d{2}$/.test(form.expiry ?? "")) {
-      errors.expiry = "Use MM/YY format.";
-    } else {
-      const month = Number((form.expiry ?? "").slice(0, 2));
-      if (month < 1 || month > 12) {
-        errors.expiry = "Expiry month must be between 01 and 12.";
-      }
-    }
-    if (!/^\d{3,4}$/.test(form.cvv ?? "")) {
-      errors.cvv = "Enter a valid CVV.";
-    }
-  } else {
-    const phoneDigits = (form.phone ?? "").replace(/\D/g, "");
-    if (!form.network) {
-      errors.network = "Choose a network.";
-    }
-    if (phoneDigits.length < 10) {
-      errors.phone = "Enter a valid MoMo number.";
-    }
+    return validateCardForm({
+      cardName: form.cardName ?? "",
+      cardNumber: form.cardNumber ?? "",
+      expiry: form.expiry ?? "",
+      cvv: form.cvv ?? "",
+    });
   }
 
+  const errors: WalletFieldErrors = {};
+  const phoneDigits = (form.phone ?? "").replace(/\D/g, "");
+  if (!form.network) {
+    errors.network = "Choose a network.";
+  }
+  if (phoneDigits.length < 10) {
+    errors.phone = "Enter a valid MoMo number.";
+  }
   return errors;
 }
 
@@ -111,8 +99,7 @@ export default function WalletScreen() {
     paymentMethods,
     customerWallet,
     addPayment,
-    isSyncingProfileData,
-    refreshProfileData,
+    isLoadingProfileData,
     removePayment,
     setDefaultPayment,
     setCheckoutPaymentId,
@@ -138,16 +125,14 @@ export default function WalletScreen() {
   const momoPhoneVerification = usePhoneVerification(form.phone ?? "", {
     linkToProfile: false,
   });
+  const momoPhoneVerificationRequired =
+    type === "momo" && isPhoneVerificationRequired(momoPhoneVerification);
 
   const resetForm = () => {
     setForm({});
     setType("card");
     setFieldErrors({});
   };
-
-  useEffect(() => {
-    void refreshProfileData();
-  }, [refreshProfileData]);
 
   const handleSave = async () => {
     const validationErrors = validateWalletForm(type, form);
@@ -164,12 +149,14 @@ export default function WalletScreen() {
       let savedPaymentId: string | null = null;
       if (type === "card") {
         const { cardName, cardNumber, expiry } = form;
+        const normalizedCardNumber = cardNumber.replace(/\D/g, "");
+        const lastFour = normalizedCardNumber.slice(-4);
         savedPaymentId = await addPayment({
           type: "card",
-          label: `**** ${cardNumber.slice(-4)}`,
+          label: `**** ${lastFour}`,
           isDefault: paymentMethods.length === 0,
-          cardName,
-          cardNumber,
+          cardName: cardName.trim(),
+          cardNumber: normalizedCardNumber,
           expiry,
         });
       } else {
@@ -311,6 +298,9 @@ export default function WalletScreen() {
         fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
       />
 
+      {isLoadingProfileData && (fromCheckout || activeTab === "methods") ? (
+        <ScreenLoader label="Loading payment methods..." />
+      ) : (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[accountStyles.content, { gap: rV(14) }]}
@@ -386,7 +376,7 @@ export default function WalletScreen() {
           </>
         ) : (
           <>
-            {!isSyncingProfileData && paymentMethods.length === 0 ? (
+            {paymentMethods.length === 0 ? (
               <AccountEmptyState
                 icon="card-outline"
                 title="No payment methods yet"
@@ -430,8 +420,9 @@ export default function WalletScreen() {
           </>
         )}
       </ScrollView>
+      )}
 
-      {activeTab === "methods" || fromCheckout ? (
+      {!isLoadingProfileData && (activeTab === "methods" || fromCheckout) ? (
         <AccountFab
           onPress={() => {
             resetForm();
@@ -443,7 +434,7 @@ export default function WalletScreen() {
       <AccountFormSheet
         visible={showModal}
         title="Add payment method"
-        subtitle="Choose card or mobile money. Details are stored securely for faster checkout."
+        subtitle="Save a card or MoMo wallet for faster checkout and wallet top-ups."
         onClose={() => {
           setShowModal(false);
           resetForm();
@@ -451,6 +442,8 @@ export default function WalletScreen() {
         onSave={() => void handleSave()}
         saveLabel="Save payment method"
         isSaving={isSaving}
+        saveDisabled={momoPhoneVerificationRequired}
+        saveDisabledLabel="Verify number to save"
       >
         <WalletPaymentTypeToggle
           type={type}
@@ -461,56 +454,21 @@ export default function WalletScreen() {
         />
 
         {type === "card" ? (
-          <>
-            <AccountFormField
-              label="Cardholder name"
-              placeholder="Name on card"
-              value={form.cardName ?? ""}
-              onChangeText={(value) => {
-                setForm({ ...form, cardName: value });
-                setFieldErrors((current) => ({ ...current, cardName: undefined }));
-              }}
-              error={fieldErrors.cardName}
-            />
-            <AccountFormField
-              label="Card number"
-              placeholder="0000 0000 0000 0000"
-              keyboardType="number-pad"
-              value={form.cardNumber ?? ""}
-              onChangeText={(value) => {
-                setForm({ ...form, cardNumber: value });
-                setFieldErrors((current) => ({ ...current, cardNumber: undefined }));
-              }}
-              error={fieldErrors.cardNumber}
-            />
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <AccountFormField
-                  label="Expiry"
-                  placeholder="MM/YY"
-                  value={form.expiry ?? ""}
-                  onChangeText={(value) => {
-                    setForm({ ...form, expiry: value });
-                    setFieldErrors((current) => ({ ...current, expiry: undefined }));
-                  }}
-                  error={fieldErrors.expiry}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <AccountFormField
-                  label="CVV"
-                  placeholder="123"
-                  keyboardType="number-pad"
-                  value={form.cvv ?? ""}
-                  onChangeText={(value) => {
-                    setForm({ ...form, cvv: value });
-                    setFieldErrors((current) => ({ ...current, cvv: undefined }));
-                  }}
-                  error={fieldErrors.cvv}
-                />
-              </View>
-            </View>
-          </>
+          <CardEntryForm
+            values={{
+              cardName: form.cardName ?? "",
+              cardNumber: form.cardNumber ?? "",
+              expiry: form.expiry ?? "",
+              cvv: form.cvv ?? "",
+            }}
+            errors={fieldErrors}
+            onChange={(field, value) => {
+              setForm((current) => ({ ...current, [field]: value }));
+            }}
+            onClearError={(field) => {
+              setFieldErrors((current) => ({ ...current, [field]: undefined }));
+            }}
+          />
         ) : (
           <>
             <WalletNetworkPicker
@@ -521,44 +479,30 @@ export default function WalletScreen() {
               }}
               error={fieldErrors.network}
             />
-            <AccountFormField
+            <PhoneVerificationField
               label="MoMo number"
-              placeholder="0541234567"
-              keyboardType="phone-pad"
               value={form.phone ?? ""}
               onChangeText={(value) => {
                 setForm({ ...form, phone: formatPhoneInput(value) });
                 setFieldErrors((current) => ({ ...current, phone: undefined }));
-                momoPhoneVerification.setVerificationError("");
               }}
-              error={fieldErrors.phone}
+              fieldError={fieldErrors.phone}
+              verification={momoPhoneVerification}
+              verifiedTitle="MoMo number verified"
+              verifiedSubtitle="This wallet is confirmed and ready to save for top-ups and checkout."
+              onSendCode={async () => {
+                const result = await momoPhoneVerification.handleSendCode();
+                if (result.success) {
+                  showInfoToast(result.message || "Verification code sent.");
+                }
+              }}
+              onVerify={async (code) => {
+                const result = await momoPhoneVerification.handleVerify(code);
+                if (result.success) {
+                  showInfoToast("MoMo number verified.");
+                }
+              }}
             />
-            {momoPhoneVerification.isVerified && momoPhoneVerification.normalizedPhone ? (
-              <WalletVerifiedHint />
-            ) : null}
-            {momoPhoneVerification.showVerificationPanel &&
-            momoPhoneVerification.normalizedPhone ? (
-              <PhoneVerificationPanel
-                phoneNumber={momoPhoneVerification.normalizedPhone}
-                codeSent={momoPhoneVerification.codeSent}
-                isSendingCode={momoPhoneVerification.isSendingCode}
-                isVerifying={momoPhoneVerification.isVerifying}
-                error={momoPhoneVerification.verificationError}
-                onDismissError={() => momoPhoneVerification.setVerificationError("")}
-                onSendCode={async () => {
-                  const result = await momoPhoneVerification.handleSendCode();
-                  if (result.success) {
-                    showInfoToast(result.message || "Verification code sent.");
-                  }
-                }}
-                onVerify={async (code) => {
-                  const result = await momoPhoneVerification.handleVerify(code);
-                  if (result.success) {
-                    showInfoToast("MoMo number verified.");
-                  }
-                }}
-              />
-            ) : null}
           </>
         )}
       </AccountFormSheet>

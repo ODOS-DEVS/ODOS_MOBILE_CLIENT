@@ -251,6 +251,7 @@ export default function RecommendationScreen() {
         </View>
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={displayed}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={listHeader}
@@ -275,6 +276,7 @@ export default function RecommendationScreen() {
             paddingBottom: sectionSpacing,
           }}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
           ListEmptyComponent={
             <CommerceSeeAllEmptyState
               icon="sparkles-outline"

@@ -18,9 +18,6 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
-const NEW_ORDER_COOLDOWN_MS = 12_000;
-const REMINDER_COOLDOWN_MS = 60_000;
-
 export function triggerVendorOrderAlert(payload: VendorOrderAlertPayload) {
   emitVendorOrderAlert(payload);
 }
@@ -43,7 +40,6 @@ export function VendorOrderAlertProvider({ children }: { children: React.ReactNo
   const fetchOrders = useStoreStore((state) => state.fetchOrders);
   const acknowledgeOrder = useStoreStore((state) => state.acknowledgeOrder);
   const [activeAlert, setActiveAlert] = useState<VendorOrderAlertPayload | null>(null);
-  const recentAlertKeysRef = useRef<Map<string, number>>(new Map());
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dismissAlert = useCallback(() => {
@@ -59,17 +55,6 @@ export function VendorOrderAlertProvider({ children }: { children: React.ReactNo
       if (!canReceiveVendorOrderAlerts(user)) {
         return;
       }
-
-      const now = Date.now();
-      const cooldownKey = `${payload.orderId}:${payload.kind ?? "new"}:${payload.reminderMinutes ?? 0}`;
-      const cooldownMs =
-        payload.kind === "reminder" ? REMINDER_COOLDOWN_MS : NEW_ORDER_COOLDOWN_MS;
-      const lastSeen = recentAlertKeysRef.current.get(cooldownKey) ?? 0;
-      if (now - lastSeen < cooldownMs) {
-        return;
-      }
-
-      recentAlertKeysRef.current.set(cooldownKey, now);
 
       const itemLabel = payload.productCount === 1 ? "item" : "items";
       void playVendorOrderAlertEffects({
@@ -137,7 +122,7 @@ export function VendorOrderAlertProvider({ children }: { children: React.ReactNo
           ? Number(kind.replace("vendor_order_reminder_", ""))
           : undefined;
 
-      showAlert({
+      triggerVendorOrderAlert({
         orderId,
         orderNumber,
         productCount: matchedOrder?.productCount ?? 1,
@@ -148,6 +133,8 @@ export function VendorOrderAlertProvider({ children }: { children: React.ReactNo
       });
     });
   }, [showAlert, subscribe, user?.roles]);
+
+  const reminderScanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!user?.roles?.includes("vendor") || !canReceiveVendorOrderAlerts(user)) {
@@ -163,20 +150,32 @@ export function VendorOrderAlertProvider({ children }: { children: React.ReactNo
         return;
       }
       due.forEach((payload) => {
-        showAlert(payload);
+        triggerVendorOrderAlert(payload);
       });
     };
 
-    void runReminderScan();
+    if (reminderScanTimeoutRef.current) {
+      clearTimeout(reminderScanTimeoutRef.current);
+    }
+
+    reminderScanTimeoutRef.current = setTimeout(() => {
+      reminderScanTimeoutRef.current = null;
+      void runReminderScan();
+    }, 400);
+
     const interval = setInterval(() => {
       void runReminderScan();
     }, 30_000);
 
     return () => {
       cancelled = true;
+      if (reminderScanTimeoutRef.current) {
+        clearTimeout(reminderScanTimeoutRef.current);
+        reminderScanTimeoutRef.current = null;
+      }
       clearInterval(interval);
     };
-  }, [orders, showAlert, user]);
+  }, [orders, user]);
 
   useEffect(() => {
     if (!user?.roles?.includes("vendor") || !session.accessToken) {
