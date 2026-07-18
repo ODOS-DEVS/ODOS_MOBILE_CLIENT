@@ -291,6 +291,8 @@ type AccountFormSheetProps = {
   isSaving?: boolean;
   saveDisabled?: boolean;
   saveDisabledLabel?: string;
+  /** Rendered inside this same modal (region/city pickers). Avoids nested Modal issues on iOS. */
+  overlay?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -304,6 +306,7 @@ export function AccountFormSheet({
   isSaving = false,
   saveDisabled = false,
   saveDisabledLabel,
+  overlay,
   children,
 }: AccountFormSheetProps) {
   const insets = useSafeAreaInsets();
@@ -361,29 +364,80 @@ export function AccountFormSheet({
             {children}
           </KeyboardAwareScrollView>
 
-          <TouchableOpacity
-            style={[
-              sheetStyles.saveBtn,
-              (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
-            ]}
-            onPress={() => {
-              dismissKeyboard();
-              onSave();
-            }}
-            disabled={isSaving || saveDisabled}
-            activeOpacity={0.9}
-          >
-            <Text style={sheetStyles.saveBtnText}>
-              {isSaving
-                ? "Saving..."
-                : saveDisabled && saveDisabledLabel
-                  ? saveDisabledLabel
-                  : saveLabel}
-            </Text>
-          </TouchableOpacity>
+          {!overlay ? (
+            <TouchableOpacity
+              style={[
+                sheetStyles.saveBtn,
+                (isSaving || saveDisabled) && sheetStyles.saveBtnDisabled,
+              ]}
+              onPress={() => {
+                dismissKeyboard();
+                onSave();
+              }}
+              disabled={isSaving || saveDisabled}
+              activeOpacity={0.9}
+            >
+              <Text style={sheetStyles.saveBtnText}>
+                {isSaving
+                  ? "Saving..."
+                  : saveDisabled && saveDisabledLabel
+                    ? saveDisabledLabel
+                    : saveLabel}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {overlay ? (
+            <View
+              style={[sheetStyles.overlay, { paddingBottom: insets.bottom + rV(12) }]}
+            >
+              {overlay}
+            </View>
+          ) : null}
         </View>
       </View>
     </Modal>
+  );
+}
+
+type AccountFormPickerOverlayProps = {
+  title: string;
+  hint?: string;
+  onBack: () => void;
+  children: React.ReactNode;
+};
+
+/** Full-height picker list for use inside AccountFormSheet.overlay */
+export function AccountFormPickerOverlay({
+  title,
+  hint,
+  onBack,
+  children,
+}: AccountFormPickerOverlayProps) {
+  const { sheetStyles, colors } = useAccountUiStyles();
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={sheetStyles.overlayHeader}>
+        <TouchableOpacity
+          style={sheetStyles.overlayBackBtn}
+          onPress={onBack}
+          activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="chevron-back" size={rMS(22)} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={sheetStyles.overlayTitle}>{title}</Text>
+      </View>
+      {hint ? <Text style={sheetStyles.overlayHint}>{hint}</Text> : null}
+      <ScrollView
+        style={sheetStyles.overlayScroll}
+        showsVerticalScrollIndicator
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -540,18 +594,20 @@ export function AccountChoiceSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={choiceSheetStyles.backdrop} onPress={onClose} />
-      <View style={[choiceSheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
-        <View style={choiceSheetStyles.handle} />
-        <Text style={choiceSheetStyles.title}>{title}</Text>
-        <ScrollView
-          style={{ maxHeight: rV(420) }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-        {footer}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Pressable style={choiceSheetStyles.backdrop} onPress={onClose} />
+        <View style={[choiceSheetStyles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
+          <View style={choiceSheetStyles.handle} />
+          <Text style={choiceSheetStyles.title}>{title}</Text>
+          <ScrollView
+            style={{ maxHeight: rV(420) }}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+          {footer}
+        </View>
       </View>
     </Modal>
   );
