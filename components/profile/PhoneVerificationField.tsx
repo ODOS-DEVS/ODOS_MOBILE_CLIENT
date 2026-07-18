@@ -6,10 +6,9 @@ import type { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import { formatGhanaPhoneDisplay } from "@/utils/phone";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Reanimated, { FadeInDown } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 type PhoneVerificationState = ReturnType<typeof usePhoneVerification>;
 
@@ -23,102 +22,62 @@ type PhoneVerificationFieldProps = {
   onSendCode: () => void | Promise<void>;
   onVerify: (code: string) => void | Promise<void>;
   verifiedTitle?: string;
-  verifiedSubtitle?: string;
 };
 
 function PhoneVerifiedBanner({
   phoneNumber,
   title,
-  subtitle,
 }: {
   phoneNumber: string;
   title: string;
-  subtitle: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        wrap: {
+        chip: {
+          alignSelf: "flex-start",
           marginTop: rV(8),
-          borderRadius: rMS(16),
-          overflow: "hidden",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: `${colors.successText}44`,
-        },
-        inner: {
           flexDirection: "row",
           alignItems: "center",
-          gap: rS(12),
-          paddingHorizontal: rS(14),
-          paddingVertical: rV(12),
+          gap: rS(6),
+          maxWidth: "100%",
+          paddingHorizontal: rS(10),
+          paddingVertical: rV(6),
+          borderRadius: rMS(999),
+          backgroundColor: colors.successSoft,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${colors.successText}28`,
         },
-        iconShell: {
-          width: rMS(42),
-          height: rMS(42),
-          borderRadius: rMS(14),
-          backgroundColor: "rgba(255,255,255,0.88)",
-          alignItems: "center",
-          justifyContent: "center",
-        },
-        copy: {
-          flex: 1,
-          minWidth: 0,
-          gap: rV(2),
-        },
-        title: {
+        label: {
           fontFamily: Fonts.titleBold,
-          fontSize: rMS(13.5),
+          fontSize: rMS(11.5),
           color: colors.successText,
         },
-        phone: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(15),
-          color: colors.text,
-          letterSpacing: 0.4,
+        divider: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11),
+          color: `${colors.successText}66`,
         },
-        subtitle: {
+        phone: {
+          flexShrink: 1,
           fontFamily: Fonts.text,
           fontSize: rMS(11.5),
-          lineHeight: rMS(16),
           color: colors.textMuted,
-        },
-        badge: {
-          paddingHorizontal: rS(8),
-          paddingVertical: rV(4),
-          borderRadius: 999,
-          backgroundColor: colors.successText,
-        },
-        badgeText: {
-          fontFamily: Fonts.titleBold,
-          fontSize: rMS(10),
-          color: "#FFFFFF",
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
         },
       }),
     [colors],
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(260)} style={styles.wrap}>
-      <LinearGradient
-        colors={[`${colors.successText}18`, `${colors.successSoft}`]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.inner}
-      >
-        <View style={styles.iconShell}>
-          <Ionicons name="shield-checkmark" size={rMS(22)} color={colors.successText} />
-        </View>
-        <View style={styles.copy}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.phone}>{formatGhanaPhoneDisplay(phoneNumber)}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>VERIFIED</Text>
-        </View>
-      </LinearGradient>
+    <Reanimated.View style={styles.chip}>
+      <Ionicons name="checkmark-circle" size={rMS(14)} color={colors.successText} />
+      <Text style={styles.label}>{title}</Text>
+      <Text style={styles.divider}>·</Text>
+      <Text style={styles.phone} numberOfLines={1}>
+        {formatGhanaPhoneDisplay(phoneNumber)}
+      </Text>
     </Reanimated.View>
   );
 }
@@ -140,8 +99,7 @@ export default function PhoneVerificationField({
   verification,
   onSendCode,
   onVerify,
-  verifiedTitle = "Number verified",
-  verifiedSubtitle = "This number is confirmed and ready to save.",
+  verifiedTitle = "Verified",
 }: PhoneVerificationFieldProps) {
   const showVerifiedBanner = Boolean(
     verification.isVerified && verification.normalizedPhone,
@@ -169,7 +127,6 @@ export default function PhoneVerificationField({
         <PhoneVerifiedBanner
           phoneNumber={verification.normalizedPhone!}
           title={verifiedTitle}
-          subtitle={verifiedSubtitle}
         />
       ) : null}
 

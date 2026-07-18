@@ -32,6 +32,7 @@ export type ActivityRoute =
       storeName?: string;
     }
   | { type: "vendor_flash_sale" }
+  | { type: "vendor_product"; productId?: string }
   | { type: "profile" }
   | { type: "orders" }
   | { type: "vendor_wallet" }

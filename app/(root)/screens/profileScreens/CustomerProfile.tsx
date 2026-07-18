@@ -387,8 +387,7 @@ const CustomerProfile = () => {
             }}
             fieldError={phoneNumberError}
             verification={phoneVerification}
-            verifiedTitle="Phone number verified"
-            verifiedSubtitle="This number is confirmed on your ODOS account."
+            verifiedTitle="Verified"
             onSendCode={async () => {
               const validation = validateGhanaPhone(phoneNumber);
               if (validation) {

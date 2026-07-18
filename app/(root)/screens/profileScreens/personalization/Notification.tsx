@@ -20,9 +20,9 @@ export default function NotificationSettingsScreen() {
   const { colors } = useTheme();
   const { user, updateProfile, isUpdatingProfile } = useAuth();
   const { showToast } = useToast();
-  const [allowNotifications, setAllowNotifications] = useState(false);
+  const [allowNotifications, setAllowNotifications] = useState(true);
   const [discounts, setDiscounts] = useState(true);
-  const [store, setStore] = useState(false);
+  const [store, setStore] = useState(true);
   const [vendorOrders, setVendorOrders] = useState(true);
   const [system, setSystem] = useState(false);
   const [location, setLocation] = useState(false);

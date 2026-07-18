@@ -11,7 +11,7 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useStore } from "@/hooks/useCommerce";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, productCardGapY, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import {
   browseStoreProducts,
   buildStoreAudienceSegmentOptions,
@@ -56,7 +56,7 @@ export default function StoreProductsBrowseScreen({
   const insets = useSafeAreaInsets();
   const { horizontalPadding, responsiveColumns, gridCardWidth } = useResponsive();
   const numColumns = responsiveColumns;
-  const gridGap = rS(10);
+  const gridGap = productCardGapX();
   const cardWidth = gridCardWidth(numColumns, gridGap);
 
   const [query, setQuery] = useState("");
@@ -399,7 +399,7 @@ export default function StoreProductsBrowseScreen({
           <View
             style={{
               width: cardWidth,
-              marginBottom: rV(10),
+              marginBottom: productCardGapY(),
               paddingHorizontal: numColumns === 1 ? horizontalPadding : 0,
             }}
           >

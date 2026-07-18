@@ -1,4 +1,5 @@
 import AddToCartBtn from "@/components/buttons/AddToCartBtn";
+import CommerceImage from "@/components/media/CommerceImage";
 import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
@@ -7,7 +8,7 @@ import { formatCurrency } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type WishlistTileCardProps = {
   id: string;
@@ -200,7 +201,12 @@ export default function WishlistTileCard({
     >
       <View style={styles.imageShell}>
         {image ? (
-          <Image source={image} style={styles.image} resizeMode="cover" />
+          <CommerceImage
+            source={image}
+            style={styles.image}
+            trackingId={`wishlist-${id}`}
+            placeholderColor={colors.imagePlaceholder}
+          />
         ) : (
           <View style={styles.imageFallback}>
             <Ionicons name="heart-outline" size={rS(20)} color="#F472B6" />

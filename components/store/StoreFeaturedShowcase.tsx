@@ -3,7 +3,7 @@ import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { openProductDetail } from "@/utils/productNavigation";
 import {
   formatStoreProductBadge,
@@ -121,7 +121,7 @@ export default function StoreFeaturedShowcase({
 }: StoreFeaturedShowcaseProps) {
   const { colors } = useTheme();
   const { gridCardWidth } = useResponsive();
-  const gridGap = rS(10);
+  const gridGap = productCardGapX();
   const cardWidth = gridCardWidth(2, gridGap);
 
   const { featured, preview } = useMemo(

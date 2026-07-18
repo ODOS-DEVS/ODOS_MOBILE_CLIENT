@@ -1,7 +1,7 @@
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -82,7 +82,7 @@ export default function StoreOfferCard({ offer, isBusy, onClaim, onUse }: Props)
 const styles = StyleSheet.create({
   card: {
     width: rS(228),
-    marginRight: rS(10),
+    marginRight: productCardGapX(),
     marginTop: rV(12),
     marginBottom: rV(8),
     paddingHorizontal: rS(14),

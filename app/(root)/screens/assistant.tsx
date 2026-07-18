@@ -1,5 +1,6 @@
 import { AssistantAvatar } from "@/components/assistant/AssistantAnimations";
 import {
+  AssistantContextChip,
   AssistantCopyFeedback,
   AssistantEscalationBanner,
   AssistantMessageItem,
@@ -22,6 +23,7 @@ import { useAssistant } from "@/hooks/useAssistant";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { rMS, rS, rV } from "@/styles/responsive";
 import type { AssistantMessage } from "@/types/assistant";
+import { assistantContextFromParams } from "@/utils/assistantContext";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -62,20 +64,39 @@ function getAssistantMessageLayout(
 export default function AssistantScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { screen: screenParam } = useLocalSearchParams<{ screen?: string }>();
+  const params = useLocalSearchParams<{
+    screen?: string;
+    storeId?: string;
+    storeName?: string;
+    marketTitle?: string;
+    vendorUserId?: string;
+    category?: string;
+  }>();
   const screenContext =
-    typeof screenParam === "string" ? screenParam : "assistant";
+    typeof params.screen === "string" ? params.screen : "assistant";
+  const referenceContext = useMemo(
+    () => assistantContextFromParams(params),
+    [
+      params.category,
+      params.marketTitle,
+      params.storeId,
+      params.storeName,
+      params.vendorUserId,
+    ],
+  );
   const {
     messages,
     status,
     nudge,
+    context: sessionContext,
     isLoadingSession,
     isSending,
     error,
     sendMessage,
     submitFeedback,
     resetConversation,
-  } = useAssistant(screenContext);
+  } = useAssistant(screenContext, referenceContext);
+  const focusedContext = sessionContext ?? referenceContext;
   const { isListening, isSupported, startListening, stopListening } =
     useSpeechInput();
   const [input, setInput] = useState("");
@@ -251,6 +272,7 @@ export default function AssistantScreen() {
             disabled={isSending}
             screen={screenContext}
             nudgePrompt={nudge?.prompt}
+            context={focusedContext}
             onSelect={(prompt) => {
               void sendMessage(prompt);
             }}
@@ -279,6 +301,7 @@ export default function AssistantScreen() {
       isSending,
       nudge?.prompt,
       openSupport,
+      focusedContext,
       screenContext,
       sendMessage,
       showQuickPrompts,
@@ -295,9 +318,11 @@ export default function AssistantScreen() {
         <ChatScreenHeader
           title="ODOS Assistant"
           subtitle={
-            user
-              ? "Shopping, orders & account help"
-              : "Browse help · sign in for personal answers"
+            focusedContext?.store_name
+              ? `Focused on ${focusedContext.store_name}`
+              : user
+                ? "Shopping, orders & account help"
+                : "Browse help · sign in for personal answers"
           }
           onBack={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           connectionState={connectionState}
@@ -342,6 +367,8 @@ export default function AssistantScreen() {
           </View>
         ) : null}
 
+        <AssistantContextChip context={focusedContext} />
+
         <GestureFlatList
           ref={listRef}
           style={styles.list}
@@ -354,6 +381,7 @@ export default function AssistantScreen() {
               <AssistantWelcomeHero
                 signedIn={Boolean(user)}
                 aiEnabled={Boolean(status?.enabled)}
+                context={focusedContext}
               />
             ) : null
           }
@@ -371,8 +399,16 @@ export default function AssistantScreen() {
         />
 
         <ChatComposer
-          hint="Ask about orders, delivery, vouchers, or stores"
-          placeholder="Message ODOS Assistant…"
+          hint={
+            focusedContext?.store_name
+              ? `Ask about ${focusedContext.store_name}, products, or delivery`
+              : "Ask about orders, delivery, vouchers, or stores"
+          }
+          placeholder={
+            focusedContext?.store_name
+              ? `Ask about ${focusedContext.store_name}…`
+              : "Message ODOS Assistant…"
+          }
           value={input}
           onChangeText={setInput}
           onSend={() => void handleSend()}

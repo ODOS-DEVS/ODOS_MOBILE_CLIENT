@@ -62,14 +62,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const dispatchEvent = useCallback((event: RealtimeEventEnvelope) => {
+    // Avoid Array.from(Set) on the hot path — Hermes crashes in TestFlight
+    // showed arrayFrom → setIterator → HadesGC write-barrier corruption.
     const exactListeners = listenersRef.current.get(event.type);
     if (exactListeners?.size) {
-      Array.from(exactListeners).forEach((handler) => handler(event));
+      for (const handler of exactListeners) {
+        handler(event);
+      }
     }
 
     const wildcardListeners = listenersRef.current.get("*");
     if (wildcardListeners?.size) {
-      Array.from(wildcardListeners).forEach((handler) => handler(event));
+      for (const handler of wildcardListeners) {
+        handler(event);
+      }
     }
   }, []);
 

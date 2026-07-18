@@ -4,7 +4,8 @@ export type VendorProductStatus =
   | "pending"
   | "active"
   | "hidden"
-  | "suspended";
+  | "suspended"
+  | "out_of_stock";
 
 export type VendorOrderStatus =
   | "pending"

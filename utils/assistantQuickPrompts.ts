@@ -1,4 +1,8 @@
-import type { AssistantAction, AssistantMessage } from "@/types/assistant";
+import type {
+  AssistantAction,
+  AssistantMessage,
+  AssistantReferenceContext,
+} from "@/types/assistant";
 
 export type AssistantQuickPrompt = {
   label: string;
@@ -45,10 +49,10 @@ const SCREEN_PROMPTS: Record<AssistantScreenContext, AssistantQuickPrompt[]> = {
     { label: "Chat the store", prompt: "How do I chat with this store?" },
   ],
   store: [
-    { label: "Browse this store", prompt: "How do I explore all products from this store?" },
-    { label: "Delivery from this store", prompt: "How long does delivery take from this store?" },
-    { label: "Chat this store", prompt: "How do I message this store?" },
-    { label: "Find deals here", prompt: "Does this store have any active deals?" },
+    { label: "Suggest products", prompt: "Suggest a few products from this store for me." },
+    { label: "Any deals here?", prompt: "Does this store have any active deals right now?" },
+    { label: "Delivery from here", prompt: "How long does delivery take from this store?" },
+    { label: "Message the store", prompt: "How do I message this store?" },
   ],
   orders: [
     { label: "Track latest order", prompt: "Where is my latest order?" },
@@ -112,8 +116,32 @@ export function deriveAssistantScreen(pathname: string): AssistantScreenContext 
   return "assistant";
 }
 
-export function getAssistantQuickPrompts(screen?: string): AssistantQuickPrompt[] {
+export function getAssistantQuickPrompts(
+  screen?: string,
+  context?: AssistantReferenceContext | null,
+): AssistantQuickPrompt[] {
   const key = (screen ?? "assistant") as AssistantScreenContext;
+  const storeName = context?.store_name?.trim();
+  if ((key === "store" || context?.store_id) && storeName) {
+    return [
+      {
+        label: "Suggest for me",
+        prompt: `Suggest a few products from ${storeName} that I might like.`,
+      },
+      {
+        label: "Deals here",
+        prompt: `What deals or discounts does ${storeName} have right now?`,
+      },
+      {
+        label: "Delivery timing",
+        prompt: `How long does delivery usually take from ${storeName}?`,
+      },
+      {
+        label: "Chat the store",
+        prompt: `How do I message ${storeName}?`,
+      },
+    ];
+  }
   return SCREEN_PROMPTS[key] ?? DEFAULT_PROMPTS;
 }
 
@@ -144,6 +172,14 @@ const WELCOME_BY_SCREEN: Partial<
       { label: "Browse deals", route: "/screens/deals" },
     ],
   },
+  store: {
+    content:
+      "I can recommend products from this store, explain delivery, find deals, or help you message them.",
+    actions: [
+      { label: "Browse deals", route: "/screens/deals" },
+      { label: "Search ODOS", route: "/screens/search" },
+    ],
+  },
   orders: {
     content: "I can help track orders, start returns, or connect you with the store.",
     actions: [
@@ -162,9 +198,31 @@ const WELCOME_BY_SCREEN: Partial<
   },
 };
 
-export function buildAssistantWelcomeMessage(screen?: string): AssistantMessage {
+export function buildAssistantWelcomeMessage(
+  screen?: string,
+  reference?: AssistantReferenceContext | null,
+): AssistantMessage {
   const context = (screen ?? "assistant") as AssistantScreenContext;
   const custom = WELCOME_BY_SCREEN[context];
+  const storeName = reference?.store_name?.trim();
+
+  if (reference?.store_id && storeName) {
+    return {
+      id: "welcome",
+      role: "assistant",
+      content: `You're looking at ${storeName}. Ask about products, deals, delivery, or how to message the store — I'll keep answers focused here.`,
+      suggestedActions: [
+        {
+          label: "Open store",
+          route: "/screens/stores/[id]",
+          params: { id: reference.store_id, title: storeName },
+        },
+        { label: "Browse deals", route: "/screens/deals" },
+      ],
+      createdAt: Date.now(),
+    };
+  }
+
   return {
     id: "welcome",
     role: "assistant",

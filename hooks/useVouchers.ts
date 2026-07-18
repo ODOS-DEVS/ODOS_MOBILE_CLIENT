@@ -105,6 +105,9 @@ type StoreVoucherApiItem = {
   min_subtotal: number;
   expires_at?: string | null;
   claimed: boolean;
+  campaign_tag?: string | null;
+  discount_type?: string | null;
+  approval_status?: string | null;
 };
 
 type VoucherPreviewApiItem = {
@@ -195,6 +198,9 @@ function mapStoreVoucher(item: StoreVoucherApiItem): StoreVoucherOffer {
     minSubtotal: item.min_subtotal,
     expiresAt: item.expires_at ?? undefined,
     claimed: item.claimed,
+    campaignTag: item.campaign_tag ?? undefined,
+    discountType: item.discount_type ?? undefined,
+    approvalStatus: item.approval_status ?? undefined,
   };
 }
 

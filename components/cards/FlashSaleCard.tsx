@@ -1,12 +1,13 @@
+import CommerceImage from "@/components/media/CommerceImage";
+import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import { rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { formatDealBadge, formatCurrency, formatSavingsAmount } from "@/utils/deals";
 import { getSecondsRemaining } from "@/utils/countdown";
-import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
@@ -96,13 +97,10 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
           }}
         >
           {image ? (
-            <Image
+            <CommerceImage
               source={image}
-              resizeMode="cover"
-              style={{
-                width: "100%",
-                height: "100%",
-              }}
+              trackingId={`flash-${id}`}
+              placeholderColor={colors.imagePlaceholder}
             />
           ) : (
             <View

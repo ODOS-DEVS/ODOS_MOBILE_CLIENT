@@ -13,7 +13,7 @@ import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import { useStores } from "@/hooks/useCommerce";
 import { useDeviceLocation } from "@/hooks/useDeviceLocation";
 import { formatDistanceKm, sortStoresByDistance } from "@/utils/location";
-import { rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rS, rV, useResponsive } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 
@@ -192,13 +192,13 @@ const StoreScreen = () => {
               keyExtractor={(item) => item.store.id}
               numColumns={2}
               scrollEnabled={false}
-              columnWrapperStyle={{ columnGap: rS(12) }}
+              columnWrapperStyle={{ columnGap: productCardGapX() }}
               renderItem={({ item }) => (
                 <StoreCard
                   {...item.store}
                   category={normalizeStoreCategory(item.store.category)}
                   city={item.distanceLabel ?? item.store.city}
-                  cardWidth={gridCardWidth(2, rS(12))}
+                  cardWidth={gridCardWidth(2, productCardGapX())}
                   horizontalSpacing={0}
                 />
               )}

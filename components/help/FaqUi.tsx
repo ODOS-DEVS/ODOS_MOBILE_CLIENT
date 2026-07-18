@@ -6,23 +6,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  LayoutAnimation,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
 } from "react-native";
-import Reanimated, { FadeInDown, FadeInRight } from "react-native-reanimated";
-
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import Reanimated from "react-native-reanimated";
 
 export type FaqItem = {
   id: string;
@@ -137,7 +128,7 @@ export function FaqHero({ totalCount, categoryCount }: FaqHeroProps) {
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(300)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <LinearGradient
         colors={[colors.accentSoft, "#FFFFFF"]}
         start={{ x: 0, y: 0 }}
@@ -210,7 +201,7 @@ export function FaqSearchBar({ value, onChangeText }: FaqSearchBarProps) {
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(60).duration(280)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <Ionicons name="search-outline" size={rMS(18)} color={colors.textMuted} />
       <TextInput
         value={value}
@@ -298,7 +289,6 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
 
   return (
     <Reanimated.ScrollView
-      entering={FadeInDown.delay(100).duration(280)}
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.scroll}
@@ -308,7 +298,7 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
         const active = activeKey === item.key;
         const count = counts[item.key] ?? 0;
         return (
-          <Reanimated.View key={item.key} entering={FadeInRight.delay(index * 40).duration(220)}>
+          <Reanimated.View key={item.key}>
             <Pressable
               style={[styles.chip, active ? styles.chipActive : null]}
               onPress={() => onChange(item.key)}
@@ -425,12 +415,11 @@ export function FaqAccordionItem({ item, expanded, onToggle, index }: FaqAccordi
   );
 
   const handleToggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggle();
   };
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(Math.min(index * 35, 280)).duration(260)}>
+    <Reanimated.View>
       <Pressable style={styles.wrap} onPress={handleToggle}>
         <View style={styles.header}>
           <View style={styles.iconShell}>
@@ -565,7 +554,7 @@ export function FaqStillNeedHelp() {
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(120).duration(300)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <LinearGradient
         colors={["#FFFFFF", colors.accentSoft]}
         style={styles.inner}
@@ -602,7 +591,6 @@ export function FaqEmptyState({ onClear }: { onClear: () => void }) {
 
   return (
     <Reanimated.View
-      entering={FadeInDown.duration(280)}
       style={{
         alignItems: "center",
         paddingVertical: rV(36),
@@ -671,12 +659,10 @@ export function useFaqAccordion(): UseFaqAccordionResult {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const toggle = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId((current) => (current === id ? null : id));
   }, []);
 
   const collapseAll = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId(null);
   }, []);
 

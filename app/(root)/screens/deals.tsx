@@ -16,10 +16,11 @@ import { useDealsHub } from "@/hooks/useDealsHub";
 import { useVouchers } from "@/hooks/useVouchers";
 import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
-import { navigateToCampaignDeals } from "@/utils/promoNavigation";
+import { navigateToCampaignDeals, navigateToMerchandisingCampaign } from "@/utils/promoNavigation";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   RefreshControl,
@@ -62,6 +63,7 @@ export default function DealsScreen() {
 
   const primaryFlashEvent = data?.flashEvents[0] ?? null;
   const dealProducts = data?.dealProducts ?? [];
+  const campaigns = data?.campaigns ?? [];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -163,6 +165,70 @@ export default function DealsScreen() {
                 dealCount={dealProducts.length}
                 inset={false}
               />
+
+              {campaigns.length > 0 ? (
+                <View style={{ gap: rV(12) }}>
+                  <CommerceSeeAllSectionHeader
+                    title="Campaigns"
+                    subtitle="Seasonal and featured marketplace campaigns"
+                    count={campaigns.length}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {campaigns.map((campaign) => (
+                      <TouchableOpacity
+                        key={campaign.id}
+                        activeOpacity={0.9}
+                        onPress={() =>
+                          navigateToMerchandisingCampaign(campaign.slug, campaign.title)
+                        }
+                        style={{
+                          width: 200,
+                          marginRight: 10,
+                          borderRadius: 16,
+                          overflow: "hidden",
+                          backgroundColor: "#FFFFFF",
+                          borderWidth: 1,
+                          borderColor: "#E5E7EB",
+                        }}
+                      >
+                        {campaign.thumbnailImageUrl || campaign.bannerImageUrl ? (
+                          <Image
+                            source={{
+                              uri: campaign.thumbnailImageUrl || campaign.bannerImageUrl,
+                            }}
+                            style={{ width: "100%", height: 96 }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: "100%",
+                              height: 96,
+                              backgroundColor: "#F3F4F6",
+                            }}
+                          />
+                        )}
+                        <View style={{ padding: 12, gap: 4 }}>
+                          <Text
+                            numberOfLines={1}
+                            style={{ fontFamily: Fonts.titleBold, fontSize: 13, color: "#111827" }}
+                          >
+                            {campaign.title}
+                          </Text>
+                          {campaign.subtitle ? (
+                            <Text
+                              numberOfLines={2}
+                              style={{ fontFamily: Fonts.text, fontSize: 11, color: "#64748B" }}
+                            >
+                              {campaign.subtitle}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
 
               {primaryFlashEvent ? (
                 <View style={{ gap: rV(10) }}>

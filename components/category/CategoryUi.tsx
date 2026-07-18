@@ -6,7 +6,7 @@ import {
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import type { CatalogCategoryItem } from "@/hooks/useCatalog";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { productCardGapY, rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
 import ProductCard from "@/components/cards/ProductCard";
@@ -380,7 +380,7 @@ export const categoryStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    rowGap: rV(10),
+    rowGap: productCardGapY(),
   },
 });
 

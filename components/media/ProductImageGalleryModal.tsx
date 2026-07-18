@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  cancelAnimation,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -59,9 +60,14 @@ export default function ProductImageGalleryModal({
 
   useEffect(() => {
     if (visible) {
+      cancelAnimation(translateY);
+      cancelAnimation(backdropOpacity);
       translateY.value = 0;
       backdropOpacity.value = 1;
+      return;
     }
+    cancelAnimation(translateY);
+    cancelAnimation(backdropOpacity);
   }, [backdropOpacity, translateY, visible]);
 
   const dismiss = useCallback(() => {

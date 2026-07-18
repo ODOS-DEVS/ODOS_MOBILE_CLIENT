@@ -5,6 +5,7 @@ import type {
   AssistantMessage,
   AssistantNudge,
   AssistantProduct,
+  AssistantReferenceContext,
   AssistantStatus,
   AssistantStore,
 } from "@/types/assistant";
@@ -37,6 +38,7 @@ type AssistantSessionApiResponse = {
     created_at?: string;
   }>;
   nudge?: AssistantNudge | null;
+  context?: AssistantReferenceContext | null;
 };
 
 function createMessageId() {
@@ -78,25 +80,50 @@ function mapSessionMessage(item: NonNullable<AssistantSessionApiResponse["messag
   };
 }
 
-function buildWelcome(screen?: string, nudge?: AssistantNudge | null): AssistantMessage {
+function buildWelcome(
+  screen?: string,
+  nudge?: AssistantNudge | null,
+  context?: AssistantReferenceContext | null,
+): AssistantMessage {
   if (nudge?.message) {
+    const storeActions: AssistantAction[] = [];
+    if (context?.store_id) {
+      storeActions.push({
+        label: "Open store",
+        route: "/screens/stores/[id]",
+        params: {
+          id: context.store_id,
+          ...(context.store_name ? { title: context.store_name } : {}),
+        },
+      });
+    }
     return {
       id: "welcome",
       role: "assistant",
       content: nudge.message,
       suggestedActions: [
+        ...storeActions,
         { label: "Tell me more", route: "/screens/assistant" },
         { label: "Browse deals", route: "/screens/deals" },
-      ],
+      ].slice(0, 3),
       createdAt: Date.now(),
     };
   }
-  return buildAssistantWelcomeMessage(screen);
+  return buildAssistantWelcomeMessage(screen, context);
 }
 
-export function useAssistant(screen?: string) {
+export function useAssistant(
+  screen?: string,
+  referenceContext?: AssistantReferenceContext | null,
+) {
   const { accessToken } = useAuth();
-  const welcomeMessage = useMemo(() => buildWelcome(screen), [screen]);
+  const [activeContext, setActiveContext] = useState<AssistantReferenceContext | null>(
+    referenceContext ?? null,
+  );
+  const welcomeMessage = useMemo(
+    () => buildWelcome(screen, null, referenceContext),
+    [referenceContext, screen],
+  );
   const [messages, setMessages] = useState<AssistantMessage[]>([welcomeMessage]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [nudge, setNudge] = useState<AssistantNudge | null>(null);
@@ -105,6 +132,10 @@ export function useAssistant(screen?: string) {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveContext(referenceContext ?? null);
+  }, [referenceContext]);
 
   const getToken = useCallback(async () => {
     return accessToken || (await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY));
@@ -144,6 +175,18 @@ export function useAssistant(screen?: string) {
       if (screen) {
         params.set("screen", screen);
       }
+      if (referenceContext?.store_id) {
+        params.set("store_id", referenceContext.store_id);
+        if (referenceContext.store_name) {
+          params.set("store_name", referenceContext.store_name);
+        }
+        if (referenceContext.market_title) {
+          params.set("market_title", referenceContext.market_title);
+        }
+        if (referenceContext.vendor_user_id) {
+          params.set("vendor_user_id", referenceContext.vendor_user_id);
+        }
+      }
       const query = params.toString();
       const response = await fetch(
         `${API_BASE_URL}/assistant/session${query ? `?${query}` : ""}`,
@@ -156,19 +199,21 @@ export function useAssistant(screen?: string) {
       if (payload.conversation_id) {
         setConversationId(payload.conversation_id);
       }
+      const resolvedContext = payload.context ?? referenceContext ?? null;
+      setActiveContext(resolvedContext);
       setNudge(payload.nudge ?? null);
       const restored = (payload.messages ?? []).map(mapSessionMessage);
       if (restored.length > 0) {
         setMessages(restored);
       } else {
-        setMessages([buildWelcome(screen, payload.nudge)]);
+        setMessages([buildWelcome(screen, payload.nudge, resolvedContext)]);
       }
     } catch {
-      setMessages([buildWelcome(screen)]);
+      setMessages([buildWelcome(screen, null, referenceContext)]);
     } finally {
       setIsLoadingSession(false);
     }
-  }, [getToken, screen]);
+  }, [getToken, referenceContext, screen]);
 
   useEffect(() => {
     void refreshStatus();
@@ -218,6 +263,7 @@ export function useAssistant(screen?: string) {
           history,
           screen: screen ?? null,
           conversation_id: conversationId,
+          context: activeContext ?? referenceContext ?? null,
         });
 
         const streamAssistantId = createMessageId();
@@ -336,7 +382,16 @@ export function useAssistant(screen?: string) {
         setIsSending(false);
       }
     },
-    [conversationId, getToken, isSending, messages, screen, status?.enabled],
+    [
+      activeContext,
+      conversationId,
+      getToken,
+      isSending,
+      messages,
+      referenceContext,
+      screen,
+      status?.enabled,
+    ],
   );
 
   const submitFeedback = useCallback(
@@ -376,14 +431,15 @@ export function useAssistant(screen?: string) {
 
   const resetConversation = useCallback(() => {
     setConversationId(null);
-    setMessages([buildWelcome(screen, nudge)]);
+    setMessages([buildWelcome(screen, nudge, activeContext ?? referenceContext)]);
     setError(null);
-  }, [nudge, screen]);
+  }, [activeContext, nudge, referenceContext, screen]);
 
   return {
     messages,
     status,
     nudge,
+    context: activeContext,
     conversationId,
     isLoadingStatus,
     isLoadingSession,

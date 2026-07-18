@@ -1,5 +1,6 @@
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
+import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import {
   CommerceFilterChips,
   CommerceSeeAllEmptyState,
@@ -11,7 +12,8 @@ import {
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { type CatalogProductItem } from "@/hooks/useCatalog";
 import { useForYouRecommendations } from "@/hooks/useRecommendations";
-import { rV, useResponsive } from "@/styles/responsive";
+import { productCardGapY, rV, useResponsive } from "@/styles/responsive";
+import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
@@ -172,6 +174,17 @@ export default function RecommendationScreen() {
     }
   }, [params.filter]);
 
+  const imageReadyResetKey = useMemo(
+    () => buildImageReadyResetKey(displayed, 6),
+    [displayed],
+  );
+
+  useEffect(() => {
+    if (displayed.length > 0) {
+      prefetchCommerceImages(displayed, 6);
+    }
+  }, [displayed]);
+
   const listHeader = (
     <View style={{ gap: rV(14) }}>
       <CommerceSeeAllHero
@@ -250,47 +263,64 @@ export default function RecommendationScreen() {
           <ProductListSkeleton count={2} />
         </View>
       ) : (
-        <FlatList
-          style={{ flex: 1 }}
-          data={displayed}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={listHeader}
-          refreshControl={
-            <RefreshControl refreshing={isLoading} onRefresh={() => void refresh()} />
+        <ImageReadyScreenGate
+          resetKey={imageReadyResetKey}
+          enabled={displayed.length > 0}
+          skeleton={
+            <View
+              style={{
+                paddingHorizontal: horizontalPadding,
+                paddingTop: rV(8),
+                paddingBottom: sectionSpacing,
+              }}
+            >
+              {listHeader}
+              <ProductListSkeleton count={2} />
+            </View>
           }
-          ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-          renderItem={({ item }) => (
-            <RecommendationCard
-              {...item}
-              badgeLabel={feed.personalized ? "For you" : "ODOS Pick"}
-              sourceScreen="recommendations_hub"
-              storeId={item.storeId}
-              reviews={
-                item.reviews !== undefined ? Number(item.reviews) : undefined
-              }
-            />
-          )}
-          contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingTop: rV(8),
-            paddingBottom: sectionSpacing,
-          }}
-          showsVerticalScrollIndicator={false}
-          removeClippedSubviews={false}
-          ListEmptyComponent={
-            <CommerceSeeAllEmptyState
-              icon="sparkles-outline"
-              title={error ? "We couldn't load recommendations" : "Nothing here yet"}
-              subtitle={
-                error
-                  ? "Pull to refresh, or open search to browse the full catalog."
-                  : isSearching
-                    ? "Try a broader search or switch to another recommendation view."
-                    : "Shop, save, and buy more on ODOS to sharpen these picks."
-              }
-            />
-          }
-        />
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            data={displayed}
+            keyExtractor={(item) => item.id}
+            ListHeaderComponent={listHeader}
+            refreshControl={
+              <RefreshControl refreshing={isLoading} onRefresh={() => void refresh()} />
+            }
+            ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
+            renderItem={({ item }) => (
+              <RecommendationCard
+                {...item}
+                badgeLabel={feed.personalized ? "For you" : "ODOS Pick"}
+                sourceScreen="recommendations_hub"
+                storeId={item.storeId}
+                reviews={
+                  item.reviews !== undefined ? Number(item.reviews) : undefined
+                }
+              />
+            )}
+            contentContainerStyle={{
+              paddingHorizontal: horizontalPadding,
+              paddingTop: rV(8),
+              paddingBottom: sectionSpacing,
+            }}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={false}
+            ListEmptyComponent={
+              <CommerceSeeAllEmptyState
+                icon="sparkles-outline"
+                title={error ? "We couldn't load recommendations" : "Nothing here yet"}
+                subtitle={
+                  error
+                    ? "Pull to refresh, or open search to browse the full catalog."
+                    : isSearching
+                      ? "Try a broader search or switch to another recommendation view."
+                      : "Shop, save, and buy more on ODOS to sharpen these picks."
+                }
+              />
+            }
+          />
+        </ImageReadyScreenGate>
       )}
     </View>
   );

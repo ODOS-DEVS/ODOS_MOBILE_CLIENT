@@ -12,7 +12,7 @@ import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCatalogCategories } from "@/hooks/useCatalog";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
-import { rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rS, rV, useResponsive } from "@/styles/responsive";
 import { productMatchesCatalogSubcategory } from "@/utils/catalogTaxonomy";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -64,7 +64,7 @@ export function CategoryBrowseScreen({
   const { gridCardWidth, horizontalPadding, responsiveColumns } =
     useResponsive();
   const numColumns = responsiveColumns;
-  const gridGap = rS(10);
+  const gridGap = productCardGapX();
   const gridPadding = horizontalPadding;
   const cardWidth = gridCardWidth(numColumns, gridGap);
 

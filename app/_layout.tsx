@@ -31,7 +31,9 @@ import { enableFreeze } from "react-native-screens";
 import "./global.css";
 
 ExpoSplashScreen.preventAutoHideAsync();
-enableFreeze(true);
+// Freeze + Reanimated + Fabric stack pops caused TestFlight SIGSEGV/SIGBUS
+// (RNSScreen snapshot vs Reanimated commit). Keep freeze off in production builds.
+enableFreeze(false);
 
 function VendorStateBridge() {
   const { accessToken, user } = useAuth();
@@ -200,6 +202,10 @@ export default function RootLayout() {
                               <Stack
                                 screenOptions={{
                                   headerShown: false,
+                                  freezeOnBlur: false,
+                                  animation: "default",
+                                  // Avoid snapshot/detach races with Reanimated during stack pop.
+                                  fullScreenGestureEnabled: false,
                                 }}
                               />
                             </ThemedAppShell>

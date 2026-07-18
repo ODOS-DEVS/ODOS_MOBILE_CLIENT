@@ -1,6 +1,8 @@
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
+import type { AssistantReferenceContext } from "@/types/assistant";
+import { assistantContextToParams } from "@/utils/assistantContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -9,15 +11,24 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 type AssistantEntryButtonProps = {
   screen: string;
   label?: string;
+  subtitle?: string;
   compact?: boolean;
+  context?: AssistantReferenceContext | null;
 };
 
 export default function AssistantEntryButton({
   screen,
   label = "Ask ODOS Assistant",
+  subtitle,
   compact = false,
+  context = null,
 }: AssistantEntryButtonProps) {
   const { colors } = useTheme();
+  const resolvedSubtitle =
+    subtitle ??
+    (context?.store_name
+      ? `Answers and picks from ${context.store_name}`
+      : "Delivery, vouchers, and order help");
 
   return (
     <TouchableOpacity
@@ -33,7 +44,10 @@ export default function AssistantEntryButton({
       onPress={() =>
         router.push({
           pathname: "/(root)/screens/assistant" as never,
-          params: { screen },
+          params: {
+            screen,
+            ...assistantContextToParams(context),
+          },
         })
       }
     >
@@ -44,7 +58,11 @@ export default function AssistantEntryButton({
         <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
         {!compact ? (
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Delivery, vouchers, and order help
+            {resolvedSubtitle}
+          </Text>
+        ) : context?.store_name ? (
+          <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={1}>
+            Focused on {context.store_name}
           </Text>
         ) : null}
       </View>

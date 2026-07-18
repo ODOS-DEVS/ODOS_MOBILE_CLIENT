@@ -365,8 +365,7 @@ export default function AddressScreen() {
           }}
           fieldError={fieldErrors.phone}
           verification={addressPhoneVerification}
-          verifiedTitle="Delivery number verified"
-          verifiedSubtitle="Riders and store partners can reach this number for this address."
+          verifiedTitle="Verified"
           onSendCode={async () => {
             const result = await addressPhoneVerification.handleSendCode();
             if (result.success) {

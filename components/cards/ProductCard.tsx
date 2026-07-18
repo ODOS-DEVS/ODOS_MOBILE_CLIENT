@@ -1,8 +1,9 @@
-import { rS, rV } from "@/styles/responsive";
+import CommerceImage from "@/components/media/CommerceImage";
+import { productCardGapX, productCardGapY, rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { openProductDetail } from "@/utils/productNavigation";
 import { Ionicons } from "@expo/vector-icons";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
 
@@ -59,7 +60,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
-  const spacingRight = horizontalSpacing ?? rS(12);
+  const spacingRight = horizontalSpacing ?? productCardGapX();
 
   return (
     <TouchableOpacity
@@ -94,8 +95,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
           width,
           borderRadius: rS(16),
           marginRight: spacingRight,
-          marginBottom: rV(16),
-          marginTop: rV(4),
+          marginBottom: productCardGapY(),
+          marginTop: rV(2),
           ...cardShell,
         }}
       >
@@ -113,10 +114,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }}
         >
           {image ? (
-            <Image
+            <CommerceImage
               source={image}
-              className="w-full h-full bg-tertiary"
-              resizeMode="cover"
+              trackingId={`product-${id}`}
+              recyclingKey={imageKey || imageUrl || id}
+              placeholderColor={colors.imagePlaceholder}
             />
           ) : (
             <View

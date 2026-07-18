@@ -68,6 +68,14 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "vendor_product") {
+    router.push({
+      pathname: "/vendor/products" as any,
+      params: route.productId ? { highlightId: route.productId } : undefined,
+    });
+    return;
+  }
+
   router.push("/(root)/screens/profileScreens/orders" as any);
 }
 
@@ -137,7 +145,21 @@ export function routeFromPushData(
     return { type: "vendor_flash_sale" };
   }
 
-  if (readString(data.type) === "wallet_topup") {
+  if (
+    routeType === "vendor_product" ||
+    readString(data.type) === "vendor_low_stock" ||
+    readString(data.type) === "vendor_out_of_stock"
+  ) {
+    return {
+      type: "vendor_product",
+      productId: routeTargetId ?? readString(data.productId) ?? undefined,
+    };
+  }
+
+  if (
+    readString(data.type) === "wallet_topup" ||
+    readString(data.type) === "wallet_refund"
+  ) {
     return { type: "customer_wallet" };
   }
 
@@ -149,7 +171,11 @@ export function routeFromPushData(
     return { type: "vendor_order", orderId: orderId ?? undefined };
   }
 
-  if (readString(data.type) === "order_update" && orderId) {
+  if (
+    (readString(data.type) === "order_update" ||
+      readString(data.type) === "return_update") &&
+    orderId
+  ) {
     return { type: "order", orderId };
   }
 

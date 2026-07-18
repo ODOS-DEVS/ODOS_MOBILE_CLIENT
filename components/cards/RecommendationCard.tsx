@@ -1,3 +1,4 @@
+import CommerceImage from "@/components/media/CommerceImage";
 import { AppColors } from "@/constants/Colors";
 import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
@@ -7,7 +8,6 @@ import { openProductDetail } from "@/utils/productNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Image,
   Platform,
   StyleSheet,
   Text,
@@ -127,7 +127,13 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
           ]}
         >
           {image ? (
-            <Image source={image} style={styles.image} resizeMode="cover" />
+            <CommerceImage
+              source={image}
+              style={styles.image}
+              trackingId={`recommendation-${id}`}
+              recyclingKey={imageKey || imageUrl || id}
+              placeholderColor={colors.imagePlaceholder}
+            />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Ionicons name="image-outline" size={rMS(22)} color={colors.iconMuted} />

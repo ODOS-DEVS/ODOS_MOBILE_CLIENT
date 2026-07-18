@@ -1,5 +1,12 @@
 import { useTheme } from "@/context/ThemeContext";
-import { gridCardWidth, rMS, rS, rV } from "@/styles/responsive";
+import {
+  gridCardWidth,
+  productCardGapX,
+  productCardGapY,
+  rMS,
+  rS,
+  rV,
+} from "@/styles/responsive";
 import React, { useMemo } from "react";
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -302,7 +309,11 @@ export function WishlistGridSkeleton({
   columns?: number;
   count?: number;
 }) {
-  const cardWidth = gridCardWidth(Dimensions.get("window").width, columns, rS(12));
+  const cardWidth = gridCardWidth(
+    Dimensions.get("window").width,
+    columns,
+    productCardGapX(),
+  );
   const safeCount = Math.min(count, columns);
 
   return (
@@ -343,15 +354,15 @@ const styles = StyleSheet.create({
   },
   strip: {
     flexDirection: "row",
-    gap: rS(12),
+    gap: productCardGapX(),
   },
   stackGap: {
-    gap: rV(12),
+    gap: productCardGapY(),
   },
   gridWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: rS(12),
+    gap: productCardGapX(),
   },
   detailContainer: {
     paddingBottom: rV(72),
@@ -374,7 +385,7 @@ const styles = StyleSheet.create({
   wishlistGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: rS(12),
+    gap: productCardGapX(),
     paddingHorizontal: rS(16),
     paddingTop: rV(16),
   },

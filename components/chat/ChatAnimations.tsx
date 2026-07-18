@@ -3,7 +3,7 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { useChatStyles } from "@/styles/themedChatStyles";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 /** Short opacity-only entrance — no slide or spring. */
 export const CHAT_FADE_IN_MS = 140;
@@ -100,8 +100,6 @@ export function ChatTypingIndicator({
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
-      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       style={[
         chatStyles.messageRow,
         isOutgoing ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
@@ -148,7 +146,7 @@ export function AnimatedChatMessageWrap({
   }
 
   return (
-    <Reanimated.View entering={FadeIn.duration(CHAT_FADE_IN_MS)}>
+    <Reanimated.View>
       {children}
     </Reanimated.View>
   );

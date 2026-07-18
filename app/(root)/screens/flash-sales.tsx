@@ -1,6 +1,7 @@
 import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
+import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import {
   CommerceFilterChips,
   CommerceSeeAllEmptyState,
@@ -15,8 +16,9 @@ import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { computeSavingsPercent, isDealProduct } from "@/utils/deals";
 import { formatCountdownLabel } from "@/utils/countdown";
-import { rV, useResponsive } from "@/styles/responsive";
-import React, { useMemo, useState } from "react";
+import { productCardGapY, rV, useResponsive } from "@/styles/responsive";
+import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
+import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 
 type FlashFilter = "all" | "deals" | "topRated";
@@ -67,6 +69,17 @@ export default function FlashSalesScreen() {
         return sourceProducts;
     }
   }, [activeFilter, sourceProducts]);
+
+  const imageReadyResetKey = useMemo(
+    () => buildImageReadyResetKey(displayed, 6),
+    [displayed],
+  );
+
+  useEffect(() => {
+    if (displayed.length > 0) {
+      prefetchCommerceImages(displayed, 6);
+    }
+  }, [displayed]);
 
   const averageSavings = useMemo(() => {
     const savings = dealProducts
@@ -197,29 +210,46 @@ export default function FlashSalesScreen() {
           }
         />
       ) : (
-        <FlatList
-          data={displayed}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={listHeader}
-          onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.45}
-          ListFooterComponent={
-            isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+        <ImageReadyScreenGate
+          resetKey={imageReadyResetKey}
+          enabled
+          skeleton={
+            <View
+              style={{
+                paddingHorizontal: horizontalPadding,
+                paddingTop: rV(8),
+                paddingBottom: sectionSpacing,
+              }}
+            >
+              {listHeader}
+              <ProductListSkeleton count={2} />
+            </View>
           }
-          ItemSeparatorComponent={() => <View style={{ height: rV(12) }} />}
-          renderItem={({ item }) => (
-            <RecommendationCard
-              {...item}
-              reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
-            />
-          )}
-          contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingTop: rV(8),
-            paddingBottom: sectionSpacing,
-          }}
-          showsVerticalScrollIndicator={false}
-        />
+        >
+          <FlatList
+            data={displayed}
+            keyExtractor={(item) => item.id}
+            ListHeaderComponent={listHeader}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={0.45}
+            ListFooterComponent={
+              isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+            }
+            ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
+            renderItem={({ item }) => (
+              <RecommendationCard
+                {...item}
+                reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
+              />
+            )}
+            contentContainerStyle={{
+              paddingHorizontal: horizontalPadding,
+              paddingTop: rV(8),
+              paddingBottom: sectionSpacing,
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        </ImageReadyScreenGate>
       )}
     </View>
   );

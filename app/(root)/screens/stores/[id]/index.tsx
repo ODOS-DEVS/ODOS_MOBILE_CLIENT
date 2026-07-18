@@ -352,6 +352,12 @@ const StoreLandingScreen = () => {
               screen="store"
               label="Ask about this store"
               compact
+              context={{
+                type: "store",
+                store_id: store.id,
+                store_name: String(store.title ?? "Store"),
+                category: store.category ? String(store.category) : null,
+              }}
             />
           </View>
 

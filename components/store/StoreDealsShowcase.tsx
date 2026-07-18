@@ -2,7 +2,7 @@ import ProductCard from "@/components/cards/ProductCard";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { browseStoreProducts } from "@/utils/storeProductBrowse";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
@@ -23,7 +23,7 @@ export default function StoreDealsShowcase({
 }: StoreDealsShowcaseProps) {
   const { colors } = useTheme();
   const { gridCardWidth } = useResponsive();
-  const gridGap = rS(10);
+  const gridGap = productCardGapX();
   const cardWidth = gridCardWidth(2, gridGap);
 
   const deals = useMemo(

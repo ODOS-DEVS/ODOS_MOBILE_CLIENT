@@ -36,6 +36,7 @@ function mapDeliveryOption(option: DeliveryOptionApi): DeliveryOption {
 export async function fetchDeliveryQuote(input: {
   subtotal: number;
   region?: string | null;
+  city?: string | null;
   selectedMethod?: DeliveryMethodId;
 }): Promise<DeliveryQuoteResponse> {
   const response = await fetch(`${API_BASE_URL}/delivery/quote`, {
@@ -44,6 +45,7 @@ export async function fetchDeliveryQuote(input: {
     body: JSON.stringify({
       subtotal: input.subtotal,
       region: input.region ?? null,
+      city: input.city ?? null,
       selected_method: input.selectedMethod ?? "economy",
     }),
   });
