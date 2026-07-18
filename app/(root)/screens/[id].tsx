@@ -204,8 +204,6 @@ export default function ProductDetail() {
   const paramRating = toNumber(params.rating);
   const paramReviews = getParam(params.reviews) ?? undefined;
   const paramDiscount = getParam(params.discount) ?? undefined;
-  const isVoucher = getParam(params.isVoucher) === "true";
-
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -310,6 +308,7 @@ export default function ProductDetail() {
   } = useDeliveryQuote({
     subtotal: price,
     region: selectedAddress?.region,
+    city: selectedAddress?.city,
     selectedMethod: "economy",
   });
   const oldPrice = product.oldPrice ?? 0;
@@ -318,7 +317,7 @@ export default function ProductDetail() {
   const discount = product.discount;
   const stock = product.stock ?? 0;
   const flashSaleEndsAt = product.flashSaleEndsAt;
-  const isLowStock = stock > 0 && stock <= 5;
+  const isLowStock = stock > 0 && stock <= 2;
   const hasLiveFlashSale = Boolean(
     flashSaleEndsAt && getSecondsRemaining(flashSaleEndsAt) > 0,
   );
@@ -802,9 +801,8 @@ export default function ProductDetail() {
                 </View>
               </View>
 
-              {!isVoucher &&
-              (productColorOptions.length > 0 ||
-                productSizeOptions.length > 0) ? (
+              {productColorOptions.length > 0 ||
+              productSizeOptions.length > 0 ? (
                 <View style={styles.variantCard}>
                   {productColorOptions.length > 0 ? (
                     <>
@@ -995,16 +993,15 @@ export default function ProductDetail() {
                   defaultExpanded
                 />
 
-                {!isVoucher ? (
-                  <DeliveryOptionsCard
-                    subtotal={price}
-                    region={selectedAddress?.region}
-                    options={deliveryOptions}
-                    isLoading={isLoadingDelivery}
-                    statusMessage={deliveryQuoteError}
-                    defaultExpanded={false}
-                  />
-                ) : null}
+                <DeliveryOptionsCard
+                  subtotal={price}
+                  region={selectedAddress?.region}
+                  city={selectedAddress?.city}
+                  options={deliveryOptions}
+                  isLoading={isLoadingDelivery}
+                  statusMessage={deliveryQuoteError}
+                  defaultExpanded={false}
+                />
 
                 <CollapsibleShippingCard
                   title="Returns & support"
@@ -1062,6 +1059,7 @@ export default function ProductDetail() {
               imageKey: product.imageKey,
             }}
             onBuyNow={handleBuyNow}
+            unavailable={stock <= 0}
           />
 
           <ProductImageGalleryModal

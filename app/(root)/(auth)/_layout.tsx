@@ -7,6 +7,8 @@ export default function AuthLayout() {
         headerShown: false,
         animation: "slide_from_right",
         gestureEnabled: true,
+        freezeOnBlur: false,
+        fullScreenGestureEnabled: false,
       }}
     >
       <Stack.Screen

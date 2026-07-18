@@ -1,9 +1,18 @@
 import type { VendorProduct, VendorProductCatalogTab } from "@/types/store";
 
-const LOW_STOCK_THRESHOLD = 5;
+/** Matches backend inventory_service.LOW_STOCK_THRESHOLD */
+export const LOW_STOCK_THRESHOLD = 2;
 
 export function isLowStockProduct(product: VendorProduct) {
-  return product.status === "active" && product.stock <= LOW_STOCK_THRESHOLD;
+  return (
+    (product.status === "active" || product.status === "out_of_stock") &&
+    product.stock > 0 &&
+    product.stock <= LOW_STOCK_THRESHOLD
+  );
+}
+
+export function isOutOfStockProduct(product: VendorProduct) {
+  return product.status === "out_of_stock" || product.stock <= 0;
 }
 
 export function filterVendorProductsByCatalogTab(
@@ -31,7 +40,12 @@ export function filterVendorProductsByCatalogTab(
   }
 
   return products
-    .filter((product) => product.status === "hidden" || product.status === "suspended")
+    .filter(
+      (product) =>
+        product.status === "hidden" ||
+        product.status === "suspended" ||
+        product.status === "out_of_stock",
+    )
     .sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
@@ -43,17 +57,23 @@ export function countVendorProductsByCatalogTab(products: VendorProduct[]) {
     live: products.filter((product) => product.status === "active").length,
     pending: products.filter((product) => product.status === "pending").length,
     hidden: products.filter(
-      (product) => product.status === "hidden" || product.status === "suspended",
+      (product) =>
+        product.status === "hidden" ||
+        product.status === "suspended" ||
+        product.status === "out_of_stock",
     ).length,
   };
 }
 
 export function canHideVendorProduct(product: VendorProduct) {
-  return product.status === "active";
+  return product.status === "active" || product.status === "out_of_stock";
 }
 
 export function canUnhideVendorProduct(product: VendorProduct) {
-  return product.status === "hidden";
+  if (product.status === "hidden") {
+    return true;
+  }
+  return product.status === "out_of_stock" && product.stock > 0;
 }
 
 export function canDeleteVendorProduct(product: VendorProduct) {

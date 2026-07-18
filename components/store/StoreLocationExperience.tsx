@@ -30,14 +30,12 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import MapView, { Marker } from "react-native-maps";
 import Animated, {
   Extrapolation,
+  cancelAnimation,
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -90,27 +88,9 @@ function StoreMapPin({
   logoSource: ReturnType<typeof resolveImageSource> | null;
   title?: string;
 }) {
-  const pulse = useSharedValue(0.55);
-
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1400 }),
-        withTiming(0.55, { duration: 1400 }),
-      ),
-      -1,
-      false,
-    );
-  }, [pulse]);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-    opacity: interpolate(pulse.value, [0.55, 1], [0.35, 0]),
-  }));
-
   return (
     <View style={pinStyles.wrap} accessibilityLabel={`${title ?? "Store"} location pin`}>
-      <Animated.View style={[pinStyles.pulse, pulseStyle]} />
+      <View style={[pinStyles.pulse, { opacity: 0.22, transform: [{ scale: 1 }] }]} />
       <View style={pinStyles.bubble}>
         {logoSource ? (
           <Image source={logoSource} style={pinStyles.logo} />
@@ -185,6 +165,13 @@ export default function StoreLocationExperience({
 
   const sheetOffset = useSharedValue(SHEET_TRAVEL);
   const dragStart = useSharedValue(SHEET_TRAVEL);
+
+  useEffect(() => {
+    return () => {
+      cancelAnimation(sheetOffset);
+      cancelAnimation(dragStart);
+    };
+  }, [dragStart, sheetOffset]);
 
   const snapTo = useCallback(
     (expanded: boolean) => {

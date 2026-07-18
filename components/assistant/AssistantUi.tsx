@@ -7,11 +7,12 @@ import {
 } from "@/components/chat/ChatAnimations";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV } from "@/styles/responsive";
 import type {
   AssistantAction,
   AssistantMessage,
   AssistantProduct,
+  AssistantReferenceContext,
   AssistantStore,
 } from "@/types/assistant";
 import { getAssistantQuickPrompts } from "@/utils/assistantQuickPrompts";
@@ -31,7 +32,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Pressable as GesturePressable } from "react-native-gesture-handler";
-import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 import {
   AssistantAvatar,
   AssistantSectionLabel,
@@ -73,6 +74,7 @@ type AssistantQuickPromptsProps = {
   disabled?: boolean;
   screen?: string;
   nudgePrompt?: string | null;
+  context?: AssistantReferenceContext | null;
 };
 
 export function AssistantQuickPrompts({
@@ -80,15 +82,16 @@ export function AssistantQuickPrompts({
   disabled = false,
   screen,
   nudgePrompt,
+  context = null,
 }: AssistantQuickPromptsProps) {
   const { colors } = useTheme();
   const quickPrompts = useMemo(() => {
-    const base = getAssistantQuickPrompts(screen);
+    const base = getAssistantQuickPrompts(screen, context);
     if (nudgePrompt?.trim()) {
       return [{ label: "Yes, help me with that", prompt: nudgePrompt.trim() }, ...base.slice(0, 3)];
     }
     return base;
-  }, [nudgePrompt, screen]);
+  }, [context, nudgePrompt, screen]);
 
   const styles = useMemo(
     () =>
@@ -189,8 +192,6 @@ export function AssistantTypingIndicator({ visible }: AssistantTypingIndicatorPr
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
-      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       style={{
         flexDirection: "row",
         alignItems: "flex-end",
@@ -233,7 +234,7 @@ function AssistantProductCarousel({ products }: { products: AssistantProduct[] }
           paddingHorizontal: rS(16),
           paddingTop: rV(4),
           paddingBottom: rV(6),
-          gap: rS(12),
+          gap: productCardGapX(),
         }}
       >
         {products.map((product) => (
@@ -494,8 +495,6 @@ export function AssistantCopyFeedback({ visible }: AssistantCopyFeedbackProps) {
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
-      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       pointerEvents="none"
       style={{
         position: "absolute",
@@ -759,13 +758,63 @@ export function AssistantMessageList({
 type AssistantWelcomeHeroProps = {
   signedIn: boolean;
   aiEnabled: boolean;
+  context?: AssistantReferenceContext | null;
 };
+
+export function AssistantContextChip({
+  context,
+}: {
+  context?: AssistantReferenceContext | null;
+}) {
+  const { colors } = useTheme();
+  if (!context?.store_id) {
+    return null;
+  }
+
+  const label = context.store_name?.trim() || "This store";
+
+  return (
+    <View
+      style={{
+        marginHorizontal: rS(16),
+        marginTop: rV(8),
+        marginBottom: rV(2),
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: rS(6),
+        paddingHorizontal: rS(10),
+        paddingVertical: rV(7),
+        borderRadius: 999,
+        backgroundColor: colors.accentSoft,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: colors.cardBorder,
+        maxWidth: "92%",
+      }}
+    >
+      <Ionicons name="storefront-outline" size={rMS(13)} color={colors.primary} />
+      <Text
+        numberOfLines={1}
+        style={{
+          flexShrink: 1,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(11.5),
+          color: colors.primary,
+        }}
+      >
+        Asking about {label}
+      </Text>
+    </View>
+  );
+}
 
 export function AssistantWelcomeHero({
   signedIn,
   aiEnabled,
+  context = null,
 }: AssistantWelcomeHeroProps) {
   const { colors } = useTheme();
+  const storeName = context?.store_name?.trim();
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -824,29 +873,43 @@ export function AssistantWelcomeHero({
     [colors],
   );
 
+  const helperText = storeName
+    ? `I'll keep recommendations and answers focused on ${storeName} unless you ask about other stores.`
+    : aiEnabled
+      ? signedIn
+        ? "Ask about orders, delivery, vouchers, stores, or account help."
+        : "Browse help now, or sign in for answers tied to your account."
+      : "Guided help is available while AI features are being set up.";
+
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
         <AssistantAvatar size={rMS(42)} />
         <View style={styles.copy}>
-          <Text style={styles.title}>Hi, I{"'"}m ODOS Assistant</Text>
-          <Text style={styles.text}>
-            {aiEnabled
-              ? signedIn
-                ? "Ask about orders, delivery, vouchers, stores, or account help."
-                : "Browse help now, or sign in for answers tied to your account."
-              : "Guided help is available while AI features are being set up."}
+          <Text style={styles.title}>
+            {storeName ? `Help with ${storeName}` : "Hi, I'm ODOS Assistant"}
           </Text>
+          <Text style={styles.text}>{helperText}</Text>
         </View>
       </View>
       <View style={styles.pill}>
         <Ionicons
-          name={aiEnabled ? "sparkles-outline" : "book-outline"}
+          name={
+            storeName
+              ? "storefront-outline"
+              : aiEnabled
+                ? "sparkles-outline"
+                : "book-outline"
+          }
           size={rMS(12)}
           color={colors.primary}
         />
         <Text style={styles.pillText}>
-          {aiEnabled ? "Personal shopping help" : "Guided answers"}
+          {storeName
+            ? "Store-focused answers"
+            : aiEnabled
+              ? "Personal shopping help"
+              : "Guided answers"}
         </Text>
       </View>
     </View>

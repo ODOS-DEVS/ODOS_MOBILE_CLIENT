@@ -1,4 +1,4 @@
-import { rS, rV } from "@/styles/responsive";
+import { productCardGapX, productCardGapY, rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -41,7 +41,7 @@ const StoreCard: React.FC<StoreCardProps> = ({
   const textStyles = useCatalogCardTextStyles();
   const width = cardWidth ?? rS(160);
   const imageHeight = rV(130);
-  const spacingRight = horizontalSpacing ?? rS(12);
+  const spacingRight = horizontalSpacing ?? productCardGapX();
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const isVerified = status === "active";
   const subtitle = category || city;
@@ -68,8 +68,8 @@ const StoreCard: React.FC<StoreCardProps> = ({
           width,
           borderRadius: rS(16),
           marginRight: spacingRight,
-          marginBottom: rV(16),
-          marginTop: rV(4),
+          marginBottom: productCardGapY(),
+          marginTop: rV(2),
           ...cardShell,
         }}
       >

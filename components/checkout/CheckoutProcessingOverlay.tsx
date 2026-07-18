@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import { Modal, StyleSheet, Text, View } from "react-native";
-import Reanimated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 export type CheckoutProcessingMode = "wallet" | "paystack";
 
@@ -131,14 +131,14 @@ export default function CheckoutProcessingOverlay({
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
-        <Reanimated.View entering={FadeInDown.duration(280)} style={styles.card}>
+        <Reanimated.View style={styles.card}>
           <LinearGradient
             colors={[colors.accentSoft, "#FFFFFF"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.inner}
           >
-            <Reanimated.View entering={FadeIn.delay(80).duration(300)} style={styles.iconWrap}>
+            <Reanimated.View style={styles.iconWrap}>
               <Ionicons
                 name={isWallet ? "wallet" : "shield-checkmark"}
                 size={rMS(28)}
@@ -152,7 +152,7 @@ export default function CheckoutProcessingOverlay({
             <Text style={styles.subtitle}>
               {isWallet
                 ? "Deducting from your ODOS wallet and placing your order…"
-                : "Securing your Paystack payment and preparing your order…"}
+                : "Confirming your payment and preparing your order…"}
             </Text>
 
             <View style={styles.breakdown}>

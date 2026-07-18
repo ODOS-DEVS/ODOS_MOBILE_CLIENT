@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Reanimated, { FadeInDown, FadeInRight } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 export type WalletTab = "wallet" | "methods";
 
@@ -111,7 +111,7 @@ export function WalletPaymentHero({
     `${currency === "GHS" ? "₵" : currency}${value.toFixed(2)}`;
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(300)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <LinearGradient
         colors={[colors.accentSoft, "#FFFFFF"]}
         start={{ x: 0, y: 0 }}
@@ -195,13 +195,12 @@ export function WalletPaymentTabs({ active, onChange }: WalletPaymentTabsProps) 
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(60).duration(260)} style={styles.row}>
+    <Reanimated.View style={styles.row}>
       {tabs.map((tab, index) => {
         const isActive = active === tab.key;
         return (
           <Reanimated.View
             key={tab.key}
-            entering={FadeInRight.delay(index * 50).duration(220)}
             style={{ flex: 1 }}
           >
             <Pressable
@@ -670,7 +669,7 @@ export function WalletTransactionItem({ tx, index }: WalletTransactionItemProps)
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(Math.min(index * 35, 200)).duration(240)}>
+    <Reanimated.View>
       <View style={styles.row}>
         <View style={styles.iconShell}>
           <Ionicons
@@ -835,7 +834,7 @@ export function PaymentMethodCard({
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(Math.min(index * 40, 240)).duration(260)}>
+    <Reanimated.View>
       <View style={styles.wrap}>
         <View style={styles.top}>
           <View style={styles.iconShell}>
@@ -896,7 +895,7 @@ export function WalletCheckoutCard({ balance, onUse }: WalletCheckoutCardProps) 
   const { colors } = useTheme();
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(280)}>
+    <Reanimated.View>
       <LinearGradient
         colors={[colors.accentSoft, colors.card]}
         style={{
@@ -961,7 +960,7 @@ export function PaymentMethodsSummary({ total, cards, momo }: PaymentMethodsSumm
   const { colors } = useTheme();
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(280)}>
+    <Reanimated.View>
       <View
         style={{
           flexDirection: "row",

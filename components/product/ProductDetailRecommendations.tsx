@@ -3,7 +3,7 @@ import { HorizontalProductRowSkeleton } from "@/components/loaders/CommerceSkele
 import type { RecommendationFeed } from "@/hooks/useRecommendations";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
 import { createProductDetailStyles } from "@/styles/productDetailStyles";
-import { rS, rV } from "@/styles/responsive";
+import { productCardGapX, rS, rV } from "@/styles/responsive";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -88,7 +88,7 @@ function RecommendationSection({
           <ProductCard
             {...item}
             cardWidth={cardWidth}
-            horizontalSpacing={rS(12)}
+            horizontalSpacing={productCardGapX()}
             sourceScreen={sourceScreen}
             storeId={item.storeId}
             reviews={

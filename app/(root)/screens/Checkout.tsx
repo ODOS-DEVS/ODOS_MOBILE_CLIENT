@@ -17,6 +17,7 @@ import {
   OrderSummaryRow,
 } from "@/components/orders/OrderUi";
 import { resolveCatalogImage } from "@/constants/catalogImages";
+import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
@@ -224,6 +225,7 @@ export default function CheckoutScreen() {
   } = useDeliveryQuote({
     subtotal,
     region: selectedAddress?.region,
+    city: selectedAddress?.city,
     selectedMethod: selectedMethodId,
   });
 
@@ -517,7 +519,7 @@ export default function CheckoutScreen() {
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
       });
-      showInfoToast("Opening secure checkout...");
+      showInfoToast("Opening secure payment...");
       setProcessingMode(null);
       const checkoutResult = await WebBrowser.openAuthSessionAsync(
         checkoutSession.authorization_url,
@@ -596,7 +598,7 @@ export default function CheckoutScreen() {
     }
 
     if (payingWithWallet) {
-      return "Instant wallet payment — no Paystack redirect";
+      return "Paid instantly from your ODOS wallet";
     }
 
     return undefined;
@@ -780,12 +782,35 @@ export default function CheckoutScreen() {
                 }
                 onPress={openAddressScreen}
               />
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: rS(6),
+                  paddingVertical: rV(8),
+                }}
+                activeOpacity={0.82}
+                onPress={openAddressScreen}
+              >
+                <Ionicons name="swap-horizontal-outline" size={rMS(14)} color={colors.primary} />
+                <Text
+                  style={{
+                    fontFamily: Fonts.titleBold,
+                    fontSize: rMS(12),
+                    color: colors.primary,
+                  }}
+                >
+                  {selectedAddress ? "Change address" : "Browse addresses"}
+                </Text>
+              </TouchableOpacity>
             </AccountSectionCard>
 
             <AccountSectionCard title="Delivery speed">
               <DeliveryOptionsCard
                 subtotal={subtotal}
                 region={selectedAddress?.region}
+                city={selectedAddress?.city}
                 selectedMethodId={selectedMethodId}
                 onSelectMethod={setSelectedMethodId}
                 options={deliveryOptions}
@@ -948,15 +973,7 @@ export default function CheckoutScreen() {
           <OrderStickyFooter
             hint={footerHint}
             amountValue={formatOrderMoney(total)}
-            primaryLabel={
-              isPlacingOrder
-                ? payingWithWallet
-                  ? "Paying with wallet..."
-                  : "Opening checkout..."
-                : payingWithWallet
-                  ? "Pay with wallet"
-                  : "Pay with Paystack"
-            }
+            primaryLabel={isPlacingOrder ? "Processing..." : "Pay"}
             onPrimaryPress={handlePlaceOrder}
             disabled={!canPlaceOrder}
           />

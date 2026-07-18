@@ -2,6 +2,7 @@ import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import ProductCard from "@/components/cards/ProductCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
 import { ProductGridSkeleton } from "@/components/loaders/CommerceSkeletons";
+import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import SearchField from "@/components/search/SearchField";
 import SearchFilterSheet, {
@@ -14,7 +15,8 @@ import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { CatalogProductItem, useCatalogCategories } from "@/hooks/useCatalog";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useSearchScreenStyles } from "@/styles/themedSearchStyles";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { goBackOr } from "@/utils/navigation";
 import {
   buildDiscoverySearchScore,
@@ -415,7 +417,18 @@ export default function SearchScreen() {
     isLoadingProducts || isLoadingCategories || isLoadingStores || isLoadingMarkets;
   const showIdleDiscovery = query.trim().length === 0 && filterCount === 0;
   const numColumns = responsiveColumns;
-  const gridGap = rS(8);
+  const gridGap = productCardGapX();
+  const imageReadyResetKey = useMemo(
+    () => buildImageReadyResetKey(filteredProducts, numColumns * 2),
+    [filteredProducts, numColumns],
+  );
+  const gateImages = !showIdleDiscovery && filteredProducts.length > 0;
+
+  useEffect(() => {
+    if (gateImages) {
+      prefetchCommerceImages(filteredProducts, numColumns * 2);
+    }
+  }, [filteredProducts, gateImages, numColumns]);
 
   const clearFilters = () => {
     setSelectedCategory("");
@@ -578,49 +591,59 @@ export default function SearchScreen() {
           <ProductGridSkeleton count={4} />
         </View>
       ) : (
-        <FlatList
-          style={{ flex: 1 }}
-          data={filteredProducts}
-          keyExtractor={(item) => item.id}
-          numColumns={numColumns}
-          key={numColumns}
-          ListHeaderComponent={listHeader}
-          onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.45}
-          ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
-          refreshing={isLoadingProducts && products.length > 0}
-          onRefresh={() => void refresh()}
-          columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
-          contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingTop: showIdleDiscovery ? 0 : rV(12),
-            paddingBottom: insets.bottom + rV(24),
-            flexGrow: 1,
-          }}
-          ListEmptyComponent={
-            <View style={{ marginTop: rV(32) }}>
-              <CommerceEmptyState
-                icon="search-outline"
-                title="No matches"
-                message="Try another keyword or loosen your filters."
-                primaryLabel="Reset search"
-                onPrimaryPress={clearAll}
-              />
+        <ImageReadyScreenGate
+          resetKey={imageReadyResetKey}
+          enabled={gateImages}
+          skeleton={
+            <View style={{ paddingHorizontal: horizontalPadding, paddingTop: rV(20) }}>
+              <ProductGridSkeleton count={4} />
             </View>
           }
-          removeClippedSubviews={false}
-          renderItem={({ item }) => (
-            <ProductCard
-              {...item}
-              cardWidth={gridCardWidth(numColumns, gridGap)}
-              horizontalSpacing={0}
-              sourceScreen="search_results"
-              storeId={item.storeId}
-              searchQuery={query}
-              trackingEvent="search_result_click"
-            />
-          )}
-        />
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            data={filteredProducts}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns}
+            key={numColumns}
+            ListHeaderComponent={listHeader}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={0.45}
+            ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
+            refreshing={isLoadingProducts && products.length > 0}
+            onRefresh={() => void refresh()}
+            columnWrapperStyle={numColumns > 1 ? { columnGap: gridGap } : undefined}
+            contentContainerStyle={{
+              paddingHorizontal: horizontalPadding,
+              paddingTop: showIdleDiscovery ? 0 : rV(12),
+              paddingBottom: insets.bottom + rV(24),
+              flexGrow: 1,
+            }}
+            ListEmptyComponent={
+              <View style={{ marginTop: rV(32) }}>
+                <CommerceEmptyState
+                  icon="search-outline"
+                  title="No matches"
+                  message="Try another keyword or loosen your filters."
+                  primaryLabel="Reset search"
+                  onPrimaryPress={clearAll}
+                />
+              </View>
+            }
+            removeClippedSubviews={false}
+            renderItem={({ item }) => (
+              <ProductCard
+                {...item}
+                cardWidth={gridCardWidth(numColumns, gridGap)}
+                horizontalSpacing={0}
+                sourceScreen="search_results"
+                storeId={item.storeId}
+                searchQuery={query}
+                trackingEvent="search_result_click"
+              />
+            )}
+          />
+        </ImageReadyScreenGate>
       )}
 
       <SearchFilterSheet

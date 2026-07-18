@@ -29,6 +29,7 @@ if (
 type DeliveryOptionsCardProps = {
   subtotal: number;
   region?: string | null;
+  city?: string | null;
   selectedMethodId?: DeliveryMethodId;
   onSelectMethod?: (methodId: DeliveryMethodId) => void;
   defaultExpanded?: boolean;
@@ -171,6 +172,7 @@ function DeliveryOptionRow({
 export default function DeliveryOptionsCard({
   subtotal,
   region,
+  city,
   selectedMethodId = "economy",
   onSelectMethod,
   defaultExpanded = false,
@@ -182,8 +184,8 @@ export default function DeliveryOptionsCard({
   const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded || variant === "inline");
   const computedOptions = useMemo(
-    () => buildDeliveryOptions({ subtotal, region }),
-    [region, subtotal],
+    () => buildDeliveryOptions({ subtotal, region, city }),
+    [city, region, subtotal],
   );
   const options = externalOptions ?? computedOptions;
   const selectable = Boolean(onSelectMethod);

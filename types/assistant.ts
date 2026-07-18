@@ -1,3 +1,21 @@
+export type AssistantReferenceContext = {
+  type: "store";
+  store_id: string;
+  store_name?: string | null;
+  market_title?: string | null;
+  vendor_user_id?: string | null;
+  category?: string | null;
+};
+
+export type AssistantReferenceContext = {
+  type: "store";
+  store_id: string;
+  store_name?: string | null;
+  market_title?: string | null;
+  vendor_user_id?: string | null;
+  category?: string | null;
+};
+
 export type AssistantMessage = {
   id: string;
   role: "user" | "assistant";
@@ -56,4 +74,5 @@ export type AssistantSession = {
   conversation_id?: string | null;
   messages: AssistantMessage[];
   nudge?: AssistantNudge | null;
+  context?: AssistantReferenceContext | null;
 };

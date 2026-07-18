@@ -6,7 +6,8 @@ export default function VendorLayout() {
       screenOptions={{
         headerShown: false,
         animation: "fade",
-        freezeOnBlur: true,
+        freezeOnBlur: false,
+        fullScreenGestureEnabled: false,
       }}
     >
       <Stack.Screen

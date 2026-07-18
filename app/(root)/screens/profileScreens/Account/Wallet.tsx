@@ -488,8 +488,7 @@ export default function WalletScreen() {
               }}
               fieldError={fieldErrors.phone}
               verification={momoPhoneVerification}
-              verifiedTitle="MoMo number verified"
-              verifiedSubtitle="This wallet is confirmed and ready to save for top-ups and checkout."
+              verifiedTitle="Verified"
               onSendCode={async () => {
                 const result = await momoPhoneVerification.handleSendCode();
                 if (result.success) {

@@ -37,7 +37,7 @@ type VendorProductCardProps = {
 
 function productStatusTone(status: string): "success" | "warning" | "neutral" {
   if (status === "active") return "success";
-  if (status === "pending") return "warning";
+  if (status === "pending" || status === "out_of_stock") return "warning";
   return "neutral";
 }
 
@@ -93,7 +93,11 @@ export default function VendorProductCard({
               GHS {product.price.toFixed(2)}
             </Text>
           </View>
-          {lowStock ? <AccountBadge label="Low stock" tone="warning" /> : null}
+          {product.status === "out_of_stock" || product.stock <= 0 ? (
+            <AccountBadge label="Out of stock" tone="warning" />
+          ) : lowStock ? (
+            <AccountBadge label="Low stock" tone="warning" />
+          ) : null}
         </View>
       </View>
 
@@ -132,9 +136,17 @@ export default function VendorProductCard({
         ) : null}
         {canUnhideVendorProduct(product) ? (
           <AccountActionButton
-            label="Relist"
+            label={product.status === "out_of_stock" ? "Republish" : "Relist"}
             variant="secondary"
             onPress={onUnhide}
+            disabled={isUpdating}
+          />
+        ) : null}
+        {product.status === "out_of_stock" && product.stock <= 0 ? (
+          <AccountActionButton
+            label="Add stock to republish"
+            variant="secondary"
+            onPress={() => onAdjustStock(product.stock + 1)}
             disabled={isUpdating}
           />
         ) : null}

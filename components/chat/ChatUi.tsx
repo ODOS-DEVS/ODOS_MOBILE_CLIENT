@@ -30,7 +30,7 @@ import {
   type ImageSourcePropType,
 } from "react-native";
 import { Pressable as GesturePressable } from "react-native-gesture-handler";
-import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CHAT_FADE_IN_MS, CHAT_FADE_OUT_MS } from "@/components/chat/ChatAnimations";
 
@@ -587,8 +587,6 @@ export function ChatCopyFeedback({ visible }: { visible: boolean }) {
 
   return (
     <Reanimated.View
-      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
-      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       pointerEvents="none"
       style={chatStyles.copyToast}
     >

@@ -21,12 +21,14 @@ type UseDeliveryQuoteResult = {
 export function useDeliveryQuote(input: {
   subtotal: number;
   region?: string | null;
+  city?: string | null;
   selectedMethod: DeliveryMethodId;
 }): UseDeliveryQuoteResult {
   const [options, setOptions] = useState<DeliveryOption[]>(() =>
     buildDeliveryOptions({
       subtotal: input.subtotal,
       region: input.region,
+      city: input.city,
     }),
   );
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(299);
@@ -39,6 +41,7 @@ export function useDeliveryQuote(input: {
     const fallback = buildDeliveryOptions({
       subtotal: input.subtotal,
       region: input.region,
+      city: input.city,
     });
 
     setOptions(fallback);
@@ -48,6 +51,7 @@ export function useDeliveryQuote(input: {
     void fetchDeliveryQuote({
       subtotal: input.subtotal,
       region: input.region,
+      city: input.city,
       selectedMethod: input.selectedMethod,
     })
       .then((quote) => {
@@ -75,7 +79,7 @@ export function useDeliveryQuote(input: {
     return () => {
       cancelled = true;
     };
-  }, [input.region, input.selectedMethod, input.subtotal]);
+  }, [input.city, input.region, input.selectedMethod, input.subtotal]);
 
   const selectedMethod = useMemo(
     () => resolveActiveDeliveryMethod(options, input.selectedMethod),

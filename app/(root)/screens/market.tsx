@@ -10,7 +10,7 @@ import {
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
-import { rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rS, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
@@ -162,11 +162,11 @@ const MarketScreen = () => {
               keyExtractor={(item) => item.id}
               numColumns={2}
               scrollEnabled={false}
-              columnWrapperStyle={{ columnGap: rS(12) }}
+              columnWrapperStyle={{ columnGap: productCardGapX() }}
               renderItem={({ item }) => (
                 <StoreCard
                   {...item}
-                  cardWidth={gridCardWidth(2, rS(12))}
+                  cardWidth={gridCardWidth(2, productCardGapX())}
                   horizontalSpacing={0}
                   category={(item as { market?: string }).market ?? item.category}
                 />

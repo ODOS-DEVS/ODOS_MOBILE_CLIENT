@@ -61,6 +61,22 @@ export function navigateToPromoDealBrowse(banner: PromoNavigationInput) {
   } as never);
 }
 
+export function navigateToMerchandisingCampaign(slug: string, fallbackTitle?: string) {
+  const cleaned = slug.trim();
+  if (!cleaned) {
+    router.push("../screens/deals" as never);
+    return;
+  }
+
+  router.push({
+    pathname: "/(root)/screens/campaigns/[slug]",
+    params: {
+      slug: cleaned,
+      title: fallbackTitle?.trim() || cleaned,
+    },
+  } as never);
+}
+
 export function navigateFromPromoBanner(
   banner: PromoNavigationInput,
   fallback?: () => void,
@@ -78,12 +94,21 @@ export function navigateFromPromoBanner(
     case "discounted_products":
       navigateToPromoDealBrowse(banner);
       return;
-    case "campaign":
-      navigateToPromoDealBrowse({
-        ...banner,
-        campaignTag: campaignTag || banner.campaignTag,
-      });
+    case "merchandising_campaign":
+      navigateToMerchandisingCampaign(
+        target || campaignTag,
+        banner.title?.trim() || undefined,
+      );
       return;
+    case "campaign": {
+      const campaignSlug = campaignTag || target;
+      if (campaignSlug) {
+        navigateToMerchandisingCampaign(campaignSlug, banner.title?.trim() || undefined);
+        return;
+      }
+      navigateToPromoDealBrowse(banner);
+      return;
+    }
     case "deals":
       if (inferredDiscount || campaignTag) {
         navigateToPromoDealBrowse(banner);
@@ -166,6 +191,11 @@ export function navigateFromPromoLink(
 }
 
 export function navigateToCampaignDeals(campaignTag: string, label?: string) {
+  const cleaned = campaignTag.trim();
+  if (cleaned) {
+    navigateToMerchandisingCampaign(cleaned, label);
+    return;
+  }
   navigateToPromoDealBrowse({
     title: label ?? "Campaign deals",
     subtitle: "Vendor-priced offers opted into this campaign",

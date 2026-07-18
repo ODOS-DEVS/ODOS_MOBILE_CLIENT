@@ -30,6 +30,7 @@ type ProductDetailBottomBarProps = {
     imageKey?: string;
   };
   onBuyNow: () => void;
+  unavailable?: boolean;
 };
 
 export default function ProductDetailBottomBar({
@@ -39,6 +40,7 @@ export default function ProductDetailBottomBar({
   wishlistProduct,
   cartItem,
   onBuyNow,
+  unavailable = false,
 }: ProductDetailBottomBarProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -80,26 +82,36 @@ export default function ProductDetailBottomBar({
         </View>
 
         <View style={styles.bottomActionsRow}>
-          <AddToCartBtn
-            variant="stepper"
-            stepperLayout="fixed"
-            stepperTone="compact"
-            stepperIdleLabel="Add"
-            item={cartItem}
-            iconSize={15}
-          />
+          {unavailable ? (
+            <View style={[styles.buyNowBtn, { opacity: 0.55, minWidth: rMS(140) }]}>
+              <Text style={styles.buyNowText} numberOfLines={1}>
+                Out of stock
+              </Text>
+            </View>
+          ) : (
+            <>
+              <AddToCartBtn
+                variant="stepper"
+                stepperLayout="fixed"
+                stepperTone="compact"
+                stepperIdleLabel="Add"
+                item={cartItem}
+                iconSize={15}
+              />
 
-          <TouchableOpacity
-            style={styles.buyNowBtn}
-            activeOpacity={0.9}
-            onPress={onBuyNow}
-            accessibilityRole="button"
-            accessibilityLabel="Buy now"
-          >
-            <Text style={styles.buyNowText} numberOfLines={1}>
-              Buy now
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.buyNowBtn}
+                activeOpacity={0.9}
+                onPress={onBuyNow}
+                accessibilityRole="button"
+                accessibilityLabel="Buy now"
+              >
+                <Text style={styles.buyNowText} numberOfLines={1}>
+                  Buy now
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </View>

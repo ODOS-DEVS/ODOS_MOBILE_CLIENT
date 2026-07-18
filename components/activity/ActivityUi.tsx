@@ -14,11 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
-import Reanimated, {
-  FadeInDown,
-  FadeInRight,
-  ZoomIn,
-} from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 export type ActivityFilter = "all" | "unread";
 
@@ -125,7 +121,7 @@ export function ActivityHero({ totalCount, unreadCount }: ActivityHeroProps) {
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.duration(300)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <LinearGradient
         colors={[colors.accentSoft, "#FFFFFF"]}
         start={{ x: 0, y: 0 }}
@@ -274,7 +270,7 @@ export function ActivityMarkAllRead({
 
   if (unreadCount === 0) {
     return (
-      <Reanimated.View entering={FadeInDown.delay(80).duration(280)} style={styles.wrap}>
+      <Reanimated.View style={styles.wrap}>
         <View style={styles.left}>
           <View style={styles.emojiBubble}>
             <Text style={styles.emoji}>✨</Text>
@@ -293,7 +289,7 @@ export function ActivityMarkAllRead({
   }
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(80).duration(280)} style={styles.wrap}>
+    <Reanimated.View style={styles.wrap}>
       <View style={styles.left}>
         <View style={styles.emojiBubble}>
           <Text style={styles.emoji}>📬</Text>
@@ -399,13 +395,12 @@ export function ActivityFilterChips({
   );
 
   return (
-    <Reanimated.View entering={FadeInDown.delay(120).duration(260)} style={styles.row}>
+    <Reanimated.View style={styles.row}>
       {chips.map((chip, index) => {
         const isActive = active === chip.key;
         return (
           <Reanimated.View
             key={chip.key}
-            entering={FadeInRight.delay(index * 50).duration(220)}
             style={{ flex: 1 }}
           >
             <Pressable
@@ -506,7 +501,7 @@ function ActivityMarkReadChip({ onPress }: ActivityMarkReadChipProps) {
   };
 
   return (
-    <Reanimated.View entering={ZoomIn.duration(220)}>
+    <Reanimated.View>
       <Pressable
         onPress={handlePress}
         hitSlop={8}
@@ -749,7 +744,6 @@ export function ActivityEmptyState({
 
   return (
     <Reanimated.View
-      entering={FadeInDown.duration(300)}
       style={{
         alignItems: "center",
         paddingVertical: rV(40),
@@ -821,7 +815,6 @@ export function ActivitySignedOutState({
 
   return (
     <Reanimated.View
-      entering={FadeInDown.duration(320)}
       style={{
         flex: 1,
         justifyContent: "center",

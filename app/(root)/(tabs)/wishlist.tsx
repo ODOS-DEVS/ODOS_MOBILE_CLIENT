@@ -1,6 +1,7 @@
 import WishlistTileCard from "@/components/cards/WishlistTileCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
 import { WishlistGridSkeleton } from "@/components/loaders/CommerceSkeletons";
+import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import { AppColors } from "@/constants/Colors";
@@ -9,10 +10,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   Alert,
   FlatList,
@@ -34,7 +36,7 @@ const WishlistScreen = () => {
   const { width, horizontalPadding, gridCardWidth } = useResponsive();
 
   const columns = width >= 700 ? 3 : 2;
-  const gap = rS(10);
+  const gap = productCardGapX();
   const cardWidth = gridCardWidth(columns, gap);
   const isEmpty = wishlist.length === 0;
   const showInitialLoader = isSyncingWishlist && isEmpty;
@@ -171,6 +173,17 @@ const WishlistScreen = () => {
     });
   };
 
+  const imageReadyResetKey = useMemo(
+    () => buildImageReadyResetKey(wishlist, columns * 2),
+    [columns, wishlist],
+  );
+
+  useEffect(() => {
+    if (!isEmpty) {
+      prefetchCommerceImages(wishlist, columns * 2);
+    }
+  }, [columns, isEmpty, wishlist]);
+
   return (
     <View style={styles.container}>
       <ProfileHeader title="Wishlist" showBackButton={false} />
@@ -194,44 +207,50 @@ const WishlistScreen = () => {
           />
         </View>
       ) : (
-        <FlatList
-          style={{ flex: 1 }}
-          data={wishlist}
-          key={`wishlist-${columns}`}
-          numColumns={columns}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={[
-            styles.listContent,
-            {
-              paddingHorizontal: horizontalPadding,
-              paddingBottom: tabBarInset,
-            },
-          ]}
-          columnWrapperStyle={columns > 1 ? { gap } : undefined}
-          refreshControl={
-            <RefreshControl
-              refreshing={isSyncingWishlist}
-              onRefresh={() => void refreshWishlist()}
-              tintColor="#F43F5E"
-            />
-          }
-          renderItem={({ item }) => (
-            <WishlistTileCard
-              id={item.id}
-              image={item.image}
-              title={item.title}
-              category={item.category}
-              oldPrice={item.oldPrice}
-              price={item.price}
-              rating={item.rating}
-              reviews={item.reviews}
-              cardWidth={cardWidth}
-              onRemove={() => void removeFromWishlist(item.id)}
-            />
-          )}
-        />
+        <ImageReadyScreenGate
+          resetKey={imageReadyResetKey}
+          enabled
+          skeleton={<WishlistGridSkeleton columns={columns} count={columns * 2} />}
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            data={wishlist}
+            key={`wishlist-${columns}`}
+            numColumns={columns}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={listHeader}
+            contentContainerStyle={[
+              styles.listContent,
+              {
+                paddingHorizontal: horizontalPadding,
+                paddingBottom: tabBarInset,
+              },
+            ]}
+            columnWrapperStyle={columns > 1 ? { gap } : undefined}
+            refreshControl={
+              <RefreshControl
+                refreshing={isSyncingWishlist}
+                onRefresh={() => void refreshWishlist()}
+                tintColor="#F43F5E"
+              />
+            }
+            renderItem={({ item }) => (
+              <WishlistTileCard
+                id={item.id}
+                image={item.image}
+                title={item.title}
+                category={item.category}
+                oldPrice={item.oldPrice}
+                price={item.price}
+                rating={item.rating}
+                reviews={item.reviews}
+                cardWidth={cardWidth}
+                onRemove={() => void removeFromWishlist(item.id)}
+              />
+            )}
+          />
+        </ImageReadyScreenGate>
       )}
     </View>
   );

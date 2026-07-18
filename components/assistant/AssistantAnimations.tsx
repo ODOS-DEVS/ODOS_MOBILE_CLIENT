@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -24,8 +25,11 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
 
   useEffect(() => {
     if (!pulse) {
+      cancelAnimation(ring);
       ring.value = withTiming(0, { duration: 200 });
-      return;
+      return () => {
+        cancelAnimation(ring);
+      };
     }
     ring.value = withRepeat(
       withSequence(
@@ -35,6 +39,9 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
       -1,
       false,
     );
+    return () => {
+      cancelAnimation(ring);
+    };
   }, [pulse, ring]);
 
   const ringStyle = useAnimatedStyle(() => ({
@@ -85,8 +92,11 @@ export function AssistantStreamingCursor({ visible }: AssistantStreamingCursorPr
 
   useEffect(() => {
     if (!visible) {
+      cancelAnimation(opacity);
       opacity.value = 1;
-      return;
+      return () => {
+        cancelAnimation(opacity);
+      };
     }
     opacity.value = withRepeat(
       withSequence(
@@ -96,6 +106,9 @@ export function AssistantStreamingCursor({ visible }: AssistantStreamingCursorPr
       -1,
       true,
     );
+    return () => {
+      cancelAnimation(opacity);
+    };
   }, [opacity, visible]);
 
   const cursorStyle = useAnimatedStyle(() => ({

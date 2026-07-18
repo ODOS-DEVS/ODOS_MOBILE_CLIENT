@@ -96,14 +96,25 @@ export const sectionSpacing = (height: number) => {
   return Math.max(min, Math.round(base * Math.min(ratio, 1.05)));
 };
 
+/** Shared product/store card grid gaps — one token for every screen. */
+export const PRODUCT_CARD_GAP_X = 8;
+export const PRODUCT_CARD_GAP_Y = 10;
+
+/** Horizontal gap between cards in a grid/list (same on iOS and Android). */
+export const productCardGapX = () => rS(PRODUCT_CARD_GAP_X);
+
+/** Vertical gap between card rows (same on iOS and Android). */
+export const productCardGapY = () => rV(PRODUCT_CARD_GAP_Y);
+
 /** Card width for 2-column grid: (screenWidth - padding*2 - gap) / 2 */
 export const gridCardWidth = (
   screenWidth: number,
   columns: number = 2,
-  gap: number = 12
+  gap?: number,
 ) => {
   const padding = horizontalPadding(screenWidth) * 2;
-  return (screenWidth - padding - gap * (columns - 1)) / columns;
+  const resolvedGap = gap ?? productCardGapX();
+  return (screenWidth - padding - resolvedGap * (columns - 1)) / columns;
 };
 
 export const responsiveColumns = (screenWidth: number) => {
@@ -158,7 +169,9 @@ export function useResponsive() {
       responsiveColumns: responsiveColumns(width),
       wp: (percent: number) => wp(percent, width),
       hp: (percent: number) => hp(percent, height),
-      gridCardWidth: (columns = 2, gap = 12) =>
+      productCardGapX: productCardGapX(),
+      productCardGapY: productCardGapY(),
+      gridCardWidth: (columns = 2, gap = productCardGapX()) =>
         gridCardWidth(width, columns, gap),
     }),
     [width, height]

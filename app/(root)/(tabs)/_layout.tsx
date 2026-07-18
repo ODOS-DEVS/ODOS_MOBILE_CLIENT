@@ -41,6 +41,8 @@ const TabsLayout = () => {
   const screenOptions = useMemo(
     () => ({
       headerShown: false as const,
+      freezeOnBlur: false as const,
+      lazy: true as const,
       tabBarShowLabel: false as const,
       tabBarHideOnKeyboard: true as const,
       tabBarAllowFontScaling: false as const,
@@ -90,7 +92,7 @@ const TabsLayout = () => {
 
   return (
     <TabBarMetricsProvider tabCount={tabCount} bottomInset={insets.bottom}>
-      <Tabs screenOptions={screenOptions}>
+      <Tabs detachInactiveScreens={false} screenOptions={screenOptions}>
         <Tabs.Screen
           name="index"
           options={{

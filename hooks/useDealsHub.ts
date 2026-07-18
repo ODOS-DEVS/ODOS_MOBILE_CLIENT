@@ -3,6 +3,7 @@ import { mapProduct, type ProductApiItem } from "@/hooks/useCatalog";
 import type { PromoBannerItem } from "@/hooks/usePromoBanners";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import type { FlashSaleEventItem } from "@/hooks/useFlashSaleEvents";
+import type { MerchandisingCampaignItem } from "@/hooks/useMerchandisingCampaigns";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { buildCatalogProductsUrl } from "@/utils/fetchCache";
 import { useCallback, useEffect, useState } from "react";
@@ -14,6 +15,7 @@ export type DealsHubSection = {
   kind: string;
   count?: number | null;
   badge?: string | null;
+  slug?: string | null;
 };
 
 export type DealsHubCampaignTag = {
@@ -26,6 +28,7 @@ export type DealsHubPayload = {
   flashEvents: FlashSaleEventItem[];
   promotions: StoreVoucherOffer[];
   dealProducts: ReturnType<typeof mapProduct>[];
+  campaigns: MerchandisingCampaignItem[];
   sections: DealsHubSection[];
   campaignTags: DealsHubCampaignTag[];
 };
@@ -81,6 +84,26 @@ function mapFlashEvent(item: Record<string, unknown>): FlashSaleEventItem {
   };
 }
 
+function mapCampaign(item: Record<string, unknown>): MerchandisingCampaignItem {
+  return {
+    id: String(item.id),
+    slug: String(item.slug),
+    title: String(item.title),
+    subtitle: (item.subtitle as string | null) ?? undefined,
+    description: (item.description as string | null) ?? undefined,
+    bannerImageUrl: (item.banner_image_url as string | null) ?? undefined,
+    thumbnailImageUrl: (item.thumbnail_image_url as string | null) ?? undefined,
+    iconKey: (item.icon_key as string | null) ?? undefined,
+    themeColor: (item.theme_color as string | null) ?? undefined,
+    isFeatured: Boolean(item.is_featured),
+    startsAt: (item.starts_at as string | null) ?? undefined,
+    endsAt: (item.ends_at as string | null) ?? undefined,
+    displayPriority: Number(item.display_priority ?? 0),
+    productCount: Number(item.product_count ?? 0),
+    secondsRemaining: Number(item.seconds_remaining ?? 0),
+  };
+}
+
 function mapDealsHubPayload(payload: Record<string, unknown>): DealsHubPayload {
   return {
     banners: Array.isArray(payload.banners)
@@ -95,6 +118,9 @@ function mapDealsHubPayload(payload: Record<string, unknown>): DealsHubPayload {
     dealProducts: Array.isArray(payload.deal_products)
       ? payload.deal_products.map((item) => mapProduct(item as ProductApiItem))
       : [],
+    campaigns: Array.isArray(payload.campaigns)
+      ? payload.campaigns.map((item) => mapCampaign(item as Record<string, unknown>))
+      : [],
     sections: Array.isArray(payload.sections)
       ? payload.sections.map((item) => {
           const section = item as Record<string, unknown>;
@@ -105,6 +131,7 @@ function mapDealsHubPayload(payload: Record<string, unknown>): DealsHubPayload {
             kind: String(section.kind),
             count: (section.count as number | null) ?? undefined,
             badge: (section.badge as string | null) ?? undefined,
+            slug: (section.slug as string | null) ?? undefined,
           };
         })
       : [],
@@ -213,6 +240,7 @@ async function fetchDealsHubFallback(): Promise<DealsHubPayload> {
     flashEvents,
     promotions,
     dealProducts,
+    campaigns: [],
     sections: buildFallbackSections(banners, flashEvents, promotions, dealProducts),
     campaignTags: [],
   };
