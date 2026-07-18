@@ -468,6 +468,45 @@ function buildSheetStyles(c: ThemeColors) {
       fontFamily: Fonts.titleBold,
       fontSize: rMS(14),
     },
+    // Nested pickers (region/city) render inside the form modal — iOS blocks second Modals.
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: c.card,
+      zIndex: 20,
+      paddingTop: rV(8),
+    },
+    overlayHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: rS(14),
+      paddingBottom: rV(10),
+      gap: rS(8),
+    },
+    overlayBackBtn: {
+      width: rS(40),
+      height: rS(40),
+      borderRadius: rS(20),
+      backgroundColor: c.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    overlayTitle: {
+      flex: 1,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(17),
+      color: c.text,
+    },
+    overlayScroll: {
+      flex: 1,
+      paddingHorizontal: rS(18),
+    },
+    overlayHint: {
+      paddingHorizontal: rS(18),
+      paddingBottom: rV(10),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      color: c.textMuted,
+    },
   });
 }
 
@@ -581,7 +620,7 @@ function buildProfileHeroStyles(c: ThemeColors) {
 function buildChoiceSheetStyles(c: ThemeColors) {
   return StyleSheet.create({
     backdrop: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: c.backdrop,
     },
     sheet: {
@@ -590,6 +629,7 @@ function buildChoiceSheetStyles(c: ThemeColors) {
       borderTopRightRadius: rMS(24),
       paddingHorizontal: rS(18),
       paddingTop: rV(8),
+      maxHeight: "78%",
     },
     handle: {
       alignSelf: "center",

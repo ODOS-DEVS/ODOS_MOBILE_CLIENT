@@ -3,10 +3,10 @@ import {
   AccountActionRow,
   AccountBadge,
   AccountChoiceOption,
-  AccountChoiceSheet,
   AccountEmptyState,
   AccountFab,
   AccountFormField,
+  AccountFormPickerOverlay,
   AccountFormSheet,
   AccountInsightCard,
   AccountListCard,
@@ -328,6 +328,8 @@ export default function AddressScreen() {
         title={editingId ? "Edit address" : "Add address"}
         subtitle="Use a nickname like Home or Office so the right place is easy to spot at checkout."
         onClose={() => {
+          setShowRegionPicker(false);
+          setShowCityPicker(false);
           setShowModal(false);
           resetForm();
         }}
@@ -336,6 +338,57 @@ export default function AddressScreen() {
         isSaving={isSaving}
         saveDisabled={phoneVerificationRequired}
         saveDisabledLabel="Verify number to save"
+        overlay={
+          showRegionPicker ? (
+            <AccountFormPickerOverlay
+              title="Select region"
+              hint="All 16 Ghana regions"
+              onBack={() => setShowRegionPicker(false)}
+            >
+              {GHANA_REGIONS.map((option) => (
+                <AccountChoiceOption
+                  key={option}
+                  label={option}
+                  selected={form.region === option}
+                  onPress={() => {
+                    if (form.region !== option) {
+                      setForm({ ...form, region: option, city: "" });
+                    } else {
+                      setForm({ ...form, region: option });
+                    }
+                    setShowRegionPicker(false);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      region: undefined,
+                    }));
+                  }}
+                />
+              ))}
+            </AccountFormPickerOverlay>
+          ) : showCityPicker ? (
+            <AccountFormPickerOverlay
+              title={`Towns in ${form.region}`}
+              hint={`${cityOptions.length} towns and cities`}
+              onBack={() => setShowCityPicker(false)}
+            >
+              {cityOptions.map((option) => (
+                <AccountChoiceOption
+                  key={option}
+                  label={option}
+                  selected={form.city === option}
+                  onPress={() => {
+                    setForm({ ...form, city: option });
+                    setShowCityPicker(false);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      city: undefined,
+                    }));
+                  }}
+                />
+              ))}
+            </AccountFormPickerOverlay>
+          ) : null
+        }
       >
         <AccountFormField
           label="Address nickname (optional)"
@@ -434,46 +487,6 @@ export default function AddressScreen() {
           onClear={() => setForm({ ...form, city: "" })}
         />
       </AccountFormSheet>
-
-      <AccountChoiceSheet
-        visible={showRegionPicker}
-        title="Select region"
-        onClose={() => setShowRegionPicker(false)}
-      >
-        {GHANA_REGIONS.map((option) => (
-          <AccountChoiceOption
-            key={option}
-            label={option}
-            selected={form.region === option}
-            onPress={() => {
-              if (form.region !== option) {
-                setForm({ ...form, region: option, city: "" });
-              } else {
-                setForm({ ...form, region: option });
-              }
-              setShowRegionPicker(false);
-            }}
-          />
-        ))}
-      </AccountChoiceSheet>
-
-      <AccountChoiceSheet
-        visible={showCityPicker}
-        title={`Towns in ${form.region}`}
-        onClose={() => setShowCityPicker(false)}
-      >
-        {cityOptions.map((option) => (
-          <AccountChoiceOption
-            key={option}
-            label={option}
-            selected={form.city === option}
-            onPress={() => {
-              setForm({ ...form, city: option });
-              setShowCityPicker(false);
-            }}
-          />
-        ))}
-      </AccountChoiceSheet>
     </View>
   );
 }
