@@ -55,6 +55,12 @@ export default function VerificationScreen() {
     }
   }, [isPasswordResetMode, router, user?.is_verified]);
 
+  useEffect(() => {
+    if (isPasswordResetMode && !routeEmail) {
+      openForgotPassword(router, undefined, { replace: true });
+    }
+  }, [isPasswordResetMode, routeEmail, router]);
+
   const handleContinue = async () => {
     if (joinedCode.length !== OTP_LENGTH) {
       setGeneralError("Enter the full 6-digit code.");
@@ -142,7 +148,7 @@ export default function VerificationScreen() {
           : `Enter the 6-digit code we sent to ${displayEmail} to activate your account.`,
         onBack: () => {
           if (isPasswordResetMode) {
-            openForgotPassword(router, routeEmail);
+            openForgotPassword(router, routeEmail, { replace: true });
             return;
           }
           goToSignIn(router);
@@ -156,6 +162,7 @@ export default function VerificationScreen() {
 
         <OtpCodeInput
           value={otp}
+          autoFocus
           onChange={(next) => {
             setOtp(next);
             if (generalError) setGeneralError("");
@@ -179,7 +186,7 @@ export default function VerificationScreen() {
 
       <View style={styles.resendBlock}>
         <Text style={[styles.resendLabel, { color: colors.textMuted }]}>
-          Didn&apos;t receive the code?
+          Didn{"'"}t receive the code?
         </Text>
         <TouchableOpacity
           onPress={handleResend}
@@ -219,7 +226,7 @@ export default function VerificationScreen() {
       <TouchableOpacity
         onPress={() => {
           if (isPasswordResetMode) {
-            openForgotPassword(router, routeEmail);
+            openForgotPassword(router, routeEmail, { replace: true });
             return;
           }
           goToSignIn(router);

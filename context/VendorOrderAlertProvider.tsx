@@ -23,10 +23,10 @@ export function triggerVendorOrderAlert(payload: VendorOrderAlertPayload) {
 }
 
 function canReceiveVendorOrderAlerts(user: ReturnType<typeof useAuth>["user"]) {
+  const notifyOrders =
+    user?.vendor_notify_orders ?? user?.vendor_order_notifications ?? false;
   return Boolean(
-    user?.roles?.includes("vendor") &&
-      user.allow_notifications &&
-      user.vendor_order_notifications,
+    user?.roles?.includes("vendor") && user.allow_notifications && notifyOrders,
   );
 }
 

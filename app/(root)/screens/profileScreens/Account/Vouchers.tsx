@@ -140,7 +140,7 @@ export default function VouchersScreen() {
   const handleUseVoucher = (voucher: VoucherWalletItem) => {
     setCheckoutVoucherCode(voucher.code);
     if (fromCheckout) {
-      goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+      goBackOr(router, { fallback: "/(root)/screens/Checkout" as any });
       return;
     }
 
@@ -151,7 +151,7 @@ export default function VouchersScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader
         title="My Vouchers"
-        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+        fallbackHref={fromCheckout ? ("/(root)/screens/Checkout" as any) : "/(root)/(tabs)/profile"}
       />
 
       {isLoadingVouchers ? (

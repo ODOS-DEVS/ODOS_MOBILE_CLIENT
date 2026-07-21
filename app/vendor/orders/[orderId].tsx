@@ -6,7 +6,7 @@ import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import { VENDOR_ORDER_NEXT_STATUS } from "@/utils/vendorOrderFulfillment";
 import { rV, useResponsive } from "@/styles/responsive";
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -113,7 +113,7 @@ export default function VendorOrderDetailScreen() {
   }
 
   if (!hasVendorAccess) {
-    return null;
+    return <Redirect href="/(root)/(tabs)/profile" />;
   }
 
   if (!orderId) {

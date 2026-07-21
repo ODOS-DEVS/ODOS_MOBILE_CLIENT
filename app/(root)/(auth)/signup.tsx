@@ -63,13 +63,10 @@ export default function SignUpScreen() {
     setConsentError("");
     setGeneralError("");
 
-    const nameError = validateNameParts({ firstName, lastName });
-    if (nameError) {
-      if (!firstName.trim()) {
-        setFirstNameError(nameError);
-      } else {
-        setLastNameError(nameError);
-      }
+    const nameErrors = validateNameParts({ firstName, lastName });
+    if (nameErrors) {
+      if (nameErrors.firstName) setFirstNameError(nameErrors.firstName);
+      if (nameErrors.lastName) setLastNameError(nameErrors.lastName);
       hasError = true;
     }
 
@@ -116,7 +113,7 @@ export default function SignUpScreen() {
     }
 
     setFirstNameError(result.fieldErrors?.fullName || "");
-    setLastNameError(result.fieldErrors?.fullName || "");
+    setLastNameError("");
     setEmailError(result.fieldErrors?.email || "");
     setPasswordError(result.fieldErrors?.password || "");
     setGeneralError(result.fieldErrors?.general || result.message || "");

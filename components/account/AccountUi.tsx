@@ -120,6 +120,7 @@ type AccountActionButtonProps = {
   flex?: number;
   compact?: boolean;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function AccountActionButton({
@@ -130,6 +131,7 @@ export function AccountActionButton({
   flex,
   compact = false,
   disabled = false,
+  style,
 }: AccountActionButtonProps) {
   const { actionStyles } = useAccountUiStyles();
   const variantStyle =
@@ -148,6 +150,7 @@ export function AccountActionButton({
         variantStyle.btn,
         compact ? null : typeof flex === "number" ? { flex } : { flex: 1 },
         disabled ? actionStyles.disabled : null,
+        style,
       ]}
       onPress={onPress}
       disabled={disabled}

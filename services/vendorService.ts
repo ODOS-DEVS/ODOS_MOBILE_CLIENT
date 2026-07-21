@@ -1,13 +1,16 @@
 import { API_BASE_URL } from "@/constants/auth";
+import { parseApiErrorMessage } from "@/services/apiClient";
 import { appendImageToFormData } from "@/utils/media";
 import type {
   VendorApplication,
   VendorApplicationInput,
   VendorAnalytics,
+  VendorCustomer,
   VendorDashboardStats,
   VendorPayoutInstitution,
   VendorPayoutDetailsInput,
   VendorProfile,
+  VendorReview,
   VendorSessionContext,
   VendorWallet,
   VendorWalletTransaction,
@@ -69,13 +72,48 @@ type VendorDashboardApi = {
   total_products?: number;
   active_products?: number;
   pending_orders?: number;
+  processing_orders?: number;
   completed_orders?: number;
+  cancelled_orders?: number;
   total_sales?: number;
+  today_sales?: number;
+  today_orders?: number;
+  low_stock_count?: number;
+  out_of_stock_count?: number;
+  avg_rating?: number | null;
+  review_count?: number;
+  customer_count?: number;
   currency?: string;
   available_balance?: number;
   pending_withdrawal_balance?: number;
   lifetime_earnings?: number;
   total_commission?: number;
+  active_voucher_count?: number;
+  is_on_vacation?: boolean;
+};
+
+type VendorReviewApi = {
+  id: string;
+  product_id?: string;
+  product_title?: string;
+  product_image_url?: string | null;
+  rating?: number;
+  comment?: string;
+  customer_name?: string | null;
+  is_hidden?: boolean;
+  created_at?: string;
+  vendor_reply?: string | null;
+  vendor_replied_at?: string | null;
+};
+
+type VendorCustomerApi = {
+  customer_key?: string;
+  customer_name?: string;
+  customer_phone?: string | null;
+  order_count?: number;
+  total_spent?: number;
+  last_order_at?: string | null;
+  currency?: string;
 };
 
 type VendorAnalyticsApi = {
@@ -85,6 +123,14 @@ type VendorAnalyticsApi = {
   today_orders?: number;
   week_orders?: number;
   open_returns?: number;
+  period?: string;
+  period_sales?: number;
+  period_orders?: number;
+  daily_points?: Array<{
+    date?: string;
+    sales?: number;
+    orders?: number;
+  }>;
   top_products?: Array<{
     product_id?: string;
     product_title?: string;
@@ -164,18 +210,12 @@ async function parseResponse<T>(response: Response) {
 }
 
 async function parseErrorMessage(response: Response) {
-  try {
-    const payload = await response.json();
-    return typeof payload?.detail === "string"
-      ? payload.detail
-      : "We couldn't complete that request.";
-  } catch {
-    return response.statusText || "We couldn't complete that request.";
-  }
+  return parseApiErrorMessage(response, "We couldn't complete that request.");
 }
 
 function buildHeaders(accessToken?: string | null): Record<string, string> {
   const headers: Record<string, string> = {
+    Accept: "application/json",
     "Content-Type": "application/json",
   };
 
@@ -252,13 +292,27 @@ function mapDashboard(payload: VendorDashboardApi): VendorDashboardStats {
     totalProducts: payload.total_products ?? 0,
     activeProducts: payload.active_products ?? 0,
     pendingOrders: payload.pending_orders ?? 0,
+    processingOrders: payload.processing_orders ?? 0,
     completedOrders: payload.completed_orders ?? 0,
+    cancelledOrders: payload.cancelled_orders ?? 0,
     totalSales: payload.total_sales ?? 0,
+    todaySales: payload.today_sales ?? 0,
+    todayOrders: payload.today_orders ?? 0,
+    lowStockCount: payload.low_stock_count ?? 0,
+    outOfStockCount: payload.out_of_stock_count ?? 0,
+    avgRating:
+      payload.avg_rating === null || payload.avg_rating === undefined
+        ? null
+        : Number(payload.avg_rating),
+    reviewCount: payload.review_count ?? 0,
+    customerCount: payload.customer_count ?? 0,
     currency: payload.currency ?? "GHS",
     availableBalance: payload.available_balance ?? 0,
     pendingWithdrawalBalance: payload.pending_withdrawal_balance ?? 0,
     lifetimeEarnings: payload.lifetime_earnings ?? 0,
     totalCommission: payload.total_commission ?? 0,
+    activeVoucherCount: payload.active_voucher_count ?? 0,
+    isOnVacation: Boolean(payload.is_on_vacation),
   };
 }
 
@@ -271,14 +325,26 @@ function toDashboardApi(
     total_products: payload.total_products ?? payload.totalProducts,
     active_products: payload.active_products ?? payload.activeProducts,
     pending_orders: payload.pending_orders ?? payload.pendingOrders,
+    processing_orders: payload.processing_orders ?? payload.processingOrders,
     completed_orders: payload.completed_orders ?? payload.completedOrders,
+    cancelled_orders: payload.cancelled_orders ?? payload.cancelledOrders,
     total_sales: payload.total_sales ?? payload.totalSales,
+    today_sales: payload.today_sales ?? payload.todaySales,
+    today_orders: payload.today_orders ?? payload.todayOrders,
+    low_stock_count: payload.low_stock_count ?? payload.lowStockCount,
+    out_of_stock_count: payload.out_of_stock_count ?? payload.outOfStockCount,
+    avg_rating: payload.avg_rating ?? payload.avgRating,
+    review_count: payload.review_count ?? payload.reviewCount,
+    customer_count: payload.customer_count ?? payload.customerCount,
     currency: payload.currency,
     available_balance: payload.available_balance ?? payload.availableBalance,
     pending_withdrawal_balance:
       payload.pending_withdrawal_balance ?? payload.pendingWithdrawalBalance,
     lifetime_earnings: payload.lifetime_earnings ?? payload.lifetimeEarnings,
     total_commission: payload.total_commission ?? payload.totalCommission,
+    active_voucher_count:
+      payload.active_voucher_count ?? payload.activeVoucherCount,
+    is_on_vacation: payload.is_on_vacation ?? payload.isOnVacation,
   };
 }
 
@@ -298,6 +364,11 @@ export function normalizeVendorDashboardStats(
 }
 
 function mapAnalytics(payload: VendorAnalyticsApi): VendorAnalytics {
+  const period =
+    payload.period === "7d" || payload.period === "30d" || payload.period === "90d"
+      ? payload.period
+      : undefined;
+
   return {
     currency: payload.currency ?? "GHS",
     todaySales: payload.today_sales ?? 0,
@@ -305,6 +376,15 @@ function mapAnalytics(payload: VendorAnalyticsApi): VendorAnalytics {
     todayOrders: payload.today_orders ?? 0,
     weekOrders: payload.week_orders ?? 0,
     openReturns: payload.open_returns ?? 0,
+    period,
+    periodSales: payload.period_sales ?? undefined,
+    periodOrders: payload.period_orders ?? undefined,
+    dailyPoints:
+      payload.daily_points?.map((point) => ({
+        date: point.date ?? "",
+        sales: point.sales ?? 0,
+        orders: point.orders ?? 0,
+      })) ?? [],
     topProducts:
       payload.top_products?.map((item) => ({
         productId: item.product_id ?? "",
@@ -533,11 +613,111 @@ export async function fetchVendorDashboard(session: VendorSessionContext) {
   return payload ? mapDashboard(payload) : null;
 }
 
-export async function fetchVendorAnalytics(session: VendorSessionContext) {
+export async function fetchVendorReviews(session: VendorSessionContext) {
   const accessToken = requireAccessToken(session);
-  const response = await fetch(`${API_BASE_URL}/vendor/analytics`, {
+  const response = await fetch(`${API_BASE_URL}/vendor/reviews`, {
     headers: buildHeaders(accessToken),
   });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorReviewApi[]>(response);
+  return (payload ?? []).map(
+    (item): VendorReview => ({
+      id: String(item.id),
+      productId: item.product_id ?? "",
+      productTitle: item.product_title ?? "Product",
+      productImageUrl: item.product_image_url ?? null,
+      rating: Number(item.rating ?? 0),
+      comment: item.comment ?? "",
+      customerName: item.customer_name ?? null,
+      isHidden: Boolean(item.is_hidden),
+      createdAt: item.created_at ?? new Date().toISOString(),
+      vendorReply: item.vendor_reply ?? null,
+      vendorRepliedAt: item.vendor_replied_at ?? null,
+    }),
+  );
+}
+
+export async function replyToVendorReview(
+  session: VendorSessionContext,
+  reviewId: string,
+  reply: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/reviews/${encodeURIComponent(reviewId)}/reply`,
+    {
+      method: "PATCH",
+      headers: {
+        ...buildHeaders(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reply }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const item = await parseResponse<VendorReviewApi>(response);
+  if (!item) {
+    throw new Error("Empty review reply response.");
+  }
+
+  return {
+    id: String(item.id),
+    productId: item.product_id ?? "",
+    productTitle: item.product_title ?? "Product",
+    productImageUrl: item.product_image_url ?? null,
+    rating: Number(item.rating ?? 0),
+    comment: item.comment ?? "",
+    customerName: item.customer_name ?? null,
+    isHidden: Boolean(item.is_hidden),
+    createdAt: item.created_at ?? new Date().toISOString(),
+    vendorReply: item.vendor_reply ?? null,
+    vendorRepliedAt: item.vendor_replied_at ?? null,
+  } satisfies VendorReview;
+}
+
+export async function fetchVendorCustomers(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/customers`, {
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorCustomerApi[]>(response);
+  return (payload ?? []).map(
+    (item): VendorCustomer => ({
+      customerKey: item.customer_key ?? item.customer_name ?? "customer",
+      customerName: item.customer_name ?? "Customer",
+      customerPhone: item.customer_phone ?? null,
+      orderCount: item.order_count ?? 0,
+      totalSpent: item.total_spent ?? 0,
+      lastOrderAt: item.last_order_at ?? null,
+      currency: item.currency ?? "GHS",
+    }),
+  );
+}
+
+export async function fetchVendorAnalytics(
+  session: VendorSessionContext,
+  period: "7d" | "30d" | "90d" = "30d",
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/analytics?period=${encodeURIComponent(period)}`,
+    {
+      headers: buildHeaders(accessToken),
+    },
+  );
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response));

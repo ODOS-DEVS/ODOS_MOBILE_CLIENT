@@ -1,11 +1,15 @@
-import { getGoogleAuthClientIds } from "@/constants/googleAuth";
+import {
+  getGoogleAuthClientIds,
+  getGoogleIosUrlScheme,
+} from "@/constants/googleAuth";
 import { useAuth } from "@/context/AuthContext";
 import type { GoogleSignInControls } from "@/hooks/useGoogleSignIn";
 import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { resolveGoogleProfilePicture } from "@/utils/googleProfile";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,9 +23,24 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
   const handledResponseRef = useRef<string | null>(null);
   const clientIds = getGoogleAuthClientIds();
 
-  const redirectUri = makeRedirectUri({
-    scheme: "odosmobileexpo",
-  });
+  // Google iOS clients require the reversed client-ID scheme, not the app scheme.
+  // Using odosmobileexpo:// causes Error 400: invalid_request / OAuth policy block.
+  const redirectUri = useMemo(() => {
+    const iosScheme = getGoogleIosUrlScheme(clientIds.iosClientId);
+    if (Platform.OS === "ios" && iosScheme) {
+      return makeRedirectUri({
+        native: `${iosScheme}:/oauthredirect`,
+      });
+    }
+
+    if (Platform.OS === "android") {
+      return makeRedirectUri({
+        native: "com.paul.odos:/oauthredirect",
+      });
+    }
+
+    return makeRedirectUri();
+  }, [clientIds.iosClientId]);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: clientIds.webClientId,
@@ -33,8 +52,11 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
 
   useEffect(() => {
     if (response?.type !== "success") {
+      if (response?.type === "dismiss" || response?.type === "cancel") {
+        return;
+      }
       if (response?.type === "error") {
-        setError("Google sign-in was cancelled or failed. Please try again.");
+        setError("Google sign-in failed. Please try again.");
       }
       return;
     }

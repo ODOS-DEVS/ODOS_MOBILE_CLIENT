@@ -74,7 +74,11 @@ export default function OnboardingScreen() {
   const activeSlide = slides[currentIndex] ?? slides[0];
 
   const finishOnboarding = useCallback(async () => {
-    await markOnboardingComplete();
+    try {
+      await markOnboardingComplete();
+    } catch {
+      // Still enter the app — onboarding can re-prompt on next cold start if needed.
+    }
     exitAuthToHome(router);
   }, [router]);
 

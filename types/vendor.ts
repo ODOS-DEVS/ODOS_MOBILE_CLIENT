@@ -77,13 +77,48 @@ export type VendorDashboardStats = {
   totalProducts: number;
   activeProducts: number;
   pendingOrders: number;
+  processingOrders: number;
   completedOrders: number;
+  cancelledOrders: number;
   totalSales: number;
+  todaySales: number;
+  todayOrders: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  avgRating: number | null;
+  reviewCount: number;
+  customerCount: number;
   currency: string;
   availableBalance: number;
   pendingWithdrawalBalance: number;
   lifetimeEarnings: number;
   totalCommission: number;
+  activeVoucherCount: number;
+  isOnVacation: boolean;
+};
+
+export type VendorReview = {
+  id: string;
+  productId: string;
+  productTitle: string;
+  productImageUrl?: string | null;
+  rating: number;
+  comment: string;
+  customerName?: string | null;
+  isHidden: boolean;
+  createdAt: string;
+  vendorReply?: string | null;
+  vendorRepliedAt?: string | null;
+};
+
+export type VendorCustomer = {
+  customerKey: string;
+  customerName: string;
+  customerPhone?: string | null;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt?: string | null;
+  currency: string;
 };
 
 export type VendorTopProduct = {
@@ -94,6 +129,14 @@ export type VendorTopProduct = {
   grossSales: number;
 };
 
+export type VendorAnalyticsPeriod = "7d" | "30d" | "90d";
+
+export type VendorAnalyticsDailyPoint = {
+  date: string;
+  sales: number;
+  orders: number;
+};
+
 export type VendorAnalytics = {
   currency: string;
   todaySales: number;
@@ -102,6 +145,10 @@ export type VendorAnalytics = {
   weekOrders: number;
   openReturns: number;
   topProducts: VendorTopProduct[];
+  period?: VendorAnalyticsPeriod;
+  periodSales?: number;
+  periodOrders?: number;
+  dailyPoints?: VendorAnalyticsDailyPoint[];
 };
 
 export type VendorDailySales = {

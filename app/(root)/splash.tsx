@@ -1,8 +1,13 @@
+import {
+  AUTH_ONBOARDING_HREF,
+  exitAuthToHome,
+} from "@/utils/authNavigation";
+import { hasCompletedOnboarding } from "@/utils/onboardingStorage";
 import { router, SplashScreen as ExpoSplashScreen } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { hasCompletedOnboarding } from "@/utils/onboardingStorage";
+import { HOME_TAB_HREF } from "@/utils/navigation";
 
 export default function SplashScreen() {
   const { isHydrating } = useAuth();
@@ -37,9 +42,9 @@ export default function SplashScreen() {
 
     void (async () => {
       if (launchTarget === "onboarding") {
-        router.replace("/(root)/(auth)/onboarding" as any);
+        router.replace(AUTH_ONBOARDING_HREF);
       } else {
-        router.replace("./(tabs)");
+        router.replace(HOME_TAB_HREF);
       }
 
       await ExpoSplashScreen.hideAsync();

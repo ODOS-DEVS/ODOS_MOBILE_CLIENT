@@ -2,7 +2,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useVendorStore } from "@/stores/vendorStore";
 import { canAccessVendorDashboard } from "@/types/vendor";
 import { usePathname, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
+
+/** One auth sync per user id per app session — avoids remount blinks. */
+let syncedAuthUserId: string | null = null;
 
 export function useRequireVendor() {
   const {
@@ -23,7 +26,8 @@ export function useRequireVendor() {
     vendorProfile,
     vendorStatus,
   } = useVendorStore();
-  const [hasSyncedAuthUser, setHasSyncedAuthUser] = useState(false);
+  const hasSyncedAuthUser = Boolean(user?.id && syncedAuthUserId === user.id);
+  const syncStartedRef = useRef(false);
 
   const session = useMemo(
     () => ({
@@ -40,8 +44,15 @@ export function useRequireVendor() {
     [accessToken, user],
   );
 
+  const hasCachedVendorAccess = Boolean(
+    user && canAccessVendorDashboard(user.roles, user.vendorStatus),
+  );
+
   useEffect(() => {
-    setHasSyncedAuthUser(false);
+    if (user?.id && syncedAuthUserId && syncedAuthUserId !== user.id) {
+      syncedAuthUserId = null;
+      syncStartedRef.current = false;
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -50,16 +61,22 @@ export function useRequireVendor() {
     }
 
     if (!user?.id) {
-      setHasSyncedAuthUser(true);
+      syncedAuthUserId = null;
+      syncStartedRef.current = false;
       return;
     }
 
+    if (syncedAuthUserId === user.id || syncStartedRef.current) {
+      return;
+    }
+
+    syncStartedRef.current = true;
     let isCancelled = false;
 
     const syncCurrentUser = async () => {
       await refreshCurrentUser();
       if (!isCancelled) {
-        setHasSyncedAuthUser(true);
+        syncedAuthUserId = user.id;
       }
     };
 
@@ -71,7 +88,13 @@ export function useRequireVendor() {
   }, [isHydrating, refreshCurrentUser, user?.id]);
 
   useEffect(() => {
-    if (isHydrating || !hasSyncedAuthUser || !user?.id) {
+    if (isHydrating || !user?.id) {
+      return;
+    }
+
+    // Approved vendors with a cached session can load vendor state without waiting
+    // for the one-time auth refresh to finish.
+    if (!hasSyncedAuthUser && !hasCachedVendorAccess) {
       return;
     }
 
@@ -85,6 +108,7 @@ export function useRequireVendor() {
 
     void refreshVendorState(session);
   }, [
+    hasCachedVendorAccess,
     hasSyncedAuthUser,
     isHydrating,
     lastLoadedUserId,
@@ -98,7 +122,11 @@ export function useRequireVendor() {
   ]);
 
   useEffect(() => {
-    if (isHydrating || !hasSyncedAuthUser || isRefreshingSession) {
+    if (isHydrating || isRefreshingSession) {
+      return;
+    }
+
+    if (!hasSyncedAuthUser && !hasCachedVendorAccess) {
       return;
     }
 
@@ -109,7 +137,9 @@ export function useRequireVendor() {
       return;
     }
 
-    if (isLoading) {
+    // Don't block navigation redirects on background vendorStore refreshes when
+    // auth already proves dashboard access.
+    if (isLoading && !hasCachedVendorAccess) {
       return;
     }
 
@@ -133,6 +163,7 @@ export function useRequireVendor() {
       router.replace("/vendor/apply" as any);
     }
   }, [
+    hasCachedVendorAccess,
     hasSyncedAuthUser,
     isHydrating,
     isLoading,
@@ -142,10 +173,14 @@ export function useRequireVendor() {
     user,
   ]);
 
+  const isCheckingVendorAccess =
+    isHydrating ||
+    (!hasCachedVendorAccess &&
+      (isRefreshingSession || !hasSyncedAuthUser || isLoading));
+
   return {
     error,
-    isCheckingVendorAccess:
-      isHydrating || isRefreshingSession || !hasSyncedAuthUser || isLoading,
+    isCheckingVendorAccess,
     session,
     user,
     vendorApplication,

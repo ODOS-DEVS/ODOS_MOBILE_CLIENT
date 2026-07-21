@@ -132,6 +132,7 @@ export default function SearchScreen() {
     products,
     isLoading: isLoadingProducts,
     isLoadingMore,
+    hasMore,
     loadMore,
     refresh,
   } = useInfiniteCatalogProducts(catalogFilters);
@@ -299,6 +300,24 @@ export default function SearchScreen() {
     selectedStore,
     selectedSubcategory,
     storeLookup,
+  ]);
+
+  useEffect(() => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery || filteredProducts.length > 0) {
+      return;
+    }
+    if (!hasMore || isLoadingProducts || isLoadingMore) {
+      return;
+    }
+    void loadMore();
+  }, [
+    filteredProducts.length,
+    hasMore,
+    isLoadingMore,
+    isLoadingProducts,
+    loadMore,
+    query,
   ]);
 
   useEffect(() => {
@@ -620,15 +639,20 @@ export default function SearchScreen() {
               flexGrow: 1,
             }}
             ListEmptyComponent={
-              <View style={{ marginTop: rV(32) }}>
-                <CommerceEmptyState
-                  icon="search-outline"
-                  title="No matches"
-                  message="Try another keyword or loosen your filters."
-                  primaryLabel="Reset search"
-                  onPrimaryPress={clearAll}
-                />
-              </View>
+              showIdleDiscovery ||
+              isLoadingProducts ||
+              isLoadingMore ||
+              (Boolean(query.trim()) && hasMore) ? null : (
+                <View style={{ marginTop: rV(32) }}>
+                  <CommerceEmptyState
+                    icon="search-outline"
+                    title="No matches"
+                    message="Try another keyword or loosen your filters."
+                    primaryLabel="Reset search"
+                    onPrimaryPress={clearAll}
+                  />
+                </View>
+              )
             }
             removeClippedSubviews={false}
             renderItem={({ item }) => (

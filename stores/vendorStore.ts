@@ -29,7 +29,10 @@ type VendorStoreState = {
   error: string | null;
   lastLoadedUserId: string | null;
   hydrateFromSession: (session: VendorSessionContext | null | undefined) => void;
-  refreshVendorState: (session: VendorSessionContext) => Promise<void>;
+  refreshVendorState: (
+    session: VendorSessionContext,
+    options?: { force?: boolean },
+  ) => Promise<void>;
   fetchMyVendorApplication: (session: VendorSessionContext) => Promise<void>;
   fetchVendorProfile: (session: VendorSessionContext) => Promise<void>;
   fetchVendorDashboard: (session: VendorSessionContext) => Promise<void>;
@@ -85,13 +88,14 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
     }));
   },
 
-  refreshVendorState: async (session) => {
+  refreshVendorState: async (session, options) => {
     if (!session.userId) {
       set({ ...initialState });
       return;
     }
 
     if (
+      !options?.force &&
       get().hasLoadedVendorState &&
       get().lastLoadedUserId === session.userId
     ) {
@@ -99,7 +103,7 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
     }
 
     set({
-      isLoading: true,
+      isLoading: !get().hasLoadedVendorState,
       error: null,
       lastLoadedUserId: session.userId,
       vendorStatus: normalizeVendorStatus(session.vendorStatus, session.roles),
@@ -147,7 +151,11 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
   },
 
   fetchMyVendorApplication: async (session) => {
-    set({ isLoading: true, error: null });
+    if (!get().hasLoadedVendorState) {
+      set({ isLoading: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const vendorApplication = await fetchMyVendorApplication(session);
       const vendorStatus = resolveStatus(
@@ -173,7 +181,11 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
   },
 
   fetchVendorProfile: async (session) => {
-    set({ isLoading: true, error: null });
+    if (!get().vendorProfile && !get().hasLoadedVendorState) {
+      set({ isLoading: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const vendorProfile = await fetchVendorProfile(session);
       const vendorStatus = resolveStatus(
@@ -199,7 +211,11 @@ export const useVendorStore = create<VendorStoreState>((set, get) => ({
   },
 
   fetchVendorDashboard: async (session) => {
-    set({ isLoading: true, error: null });
+    if (!get().vendorDashboardStats && !get().hasLoadedVendorState) {
+      set({ isLoading: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const vendorDashboardStats = await fetchVendorDashboard(session);
       set({

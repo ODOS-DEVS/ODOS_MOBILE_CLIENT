@@ -2,6 +2,7 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -10,6 +11,9 @@ type AuthConsentCheckboxProps = {
   onToggle: (next: boolean) => void;
   error?: string;
 };
+
+const LEGAL_HREF =
+  "/(root)/screens/profileScreens/helpAndSupport/LegalPolicy" as const;
 
 export default function AuthConsentCheckbox({
   checked,
@@ -20,32 +24,50 @@ export default function AuthConsentCheckbox({
 
   return (
     <View style={styles.wrap}>
-      <TouchableOpacity
-        style={styles.row}
-        onPress={() => onToggle(!checked)}
-        activeOpacity={0.85}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked }}
-      >
-        <View
-          style={[
-            styles.box,
-            {
-              borderColor: error ? colors.dangerText : checked ? colors.primary : colors.inputBorder,
-              backgroundColor: checked ? colors.primary : colors.inputBg,
-            },
-          ]}
+      <View style={styles.row}>
+        <TouchableOpacity
+          onPress={() => onToggle(!checked)}
+          activeOpacity={0.85}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked }}
+          hitSlop={8}
         >
-          {checked ? (
-            <Ionicons name="checkmark" size={rMS(16)} color={colors.onPrimary} />
-          ) : null}
-        </View>
+          <View
+            style={[
+              styles.box,
+              {
+                borderColor: error
+                  ? colors.dangerText
+                  : checked
+                    ? colors.primary
+                    : colors.inputBorder,
+                backgroundColor: checked ? colors.primary : colors.inputBg,
+              },
+            ]}
+          >
+            {checked ? (
+              <Ionicons name="checkmark" size={rMS(16)} color={colors.onPrimary} />
+            ) : null}
+          </View>
+        </TouchableOpacity>
         <Text style={[styles.label, { color: colors.textBody }]}>
           I agree to the{" "}
-          <Text style={[styles.link, { color: colors.primary }]}>Terms of Use</Text> and{" "}
-          <Text style={[styles.link, { color: colors.primary }]}>Privacy Policy</Text>.
+          <Text
+            style={[styles.link, { color: colors.primary }]}
+            onPress={() => router.push(LEGAL_HREF as any)}
+          >
+            Terms of Use
+          </Text>{" "}
+          and{" "}
+          <Text
+            style={[styles.link, { color: colors.primary }]}
+            onPress={() => router.push(LEGAL_HREF as any)}
+          >
+            Privacy Policy
+          </Text>
+          .
         </Text>
-      </TouchableOpacity>
+      </View>
       {error ? (
         <Text style={[styles.error, { color: colors.dangerText }]}>{error}</Text>
       ) : null}

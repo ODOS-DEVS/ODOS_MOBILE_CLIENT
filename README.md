@@ -39,9 +39,13 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 - **Google Sign-In** (native build / TestFlight; configure client IDs in `.env` and EAS)
 - **ODOS Assistant** — in-app AI guide for orders, checkout, delivery, vouchers, returns, and navigation (with human support handoff)
 
-**Vendor**
+**Vendor / Seller Center**
 
-- Vendor onboarding, store management, products, orders, and store vouchers
+- Vendor onboarding, store profile, products, orders, inventory, and store vouchers
+- **Workspace modes**: shopping + selling together, or **sell-only** Seller Center tabs (Home · Orders · Products · Stock · Business)
+- Seller Home command center: needs-attention chips, today metrics, quick actions, manage grid
+- Customers, reviews (with seller replies), analytics periods, campaigns, vacation mode
+- Wallet / payouts, flash sale nominations, order alerts, and dual-role vendor access
 
 ## Requirements
 
@@ -178,7 +182,13 @@ eas build --platform android --profile production
 eas build --platform ios --profile production
 ```
 
-**TestFlight (iOS)** — use the `production` profile, upload via EAS Submit, and configure push notification credentials in the Expo dashboard.
+**TestFlight (iOS)**
+
+```bash
+eas build --platform ios --profile production --auto-submit
+```
+
+Uses the `production` profile and EAS Submit (`ascAppId` in `eas.json`). Configure Apple credentials and push notification keys in the Expo dashboard.
 
 `eas.json` profiles:
 

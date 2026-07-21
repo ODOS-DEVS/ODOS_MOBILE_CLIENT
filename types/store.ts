@@ -42,6 +42,9 @@ export type ManagedStoreProfile = {
   logoImage?: string | null;
   audienceSlugs?: string[] | null;
   status: ManagedStoreStatus;
+  isOnVacation?: boolean;
+  vacationMessage?: string | null;
+  businessHours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
 };
 
 export type ManagedStoreUpdateInput = {
@@ -64,6 +67,9 @@ export type ManagedStoreUpdateInput = {
   bannerImage?: string;
   logoImage?: string;
   audienceSlugs?: string[];
+  isOnVacation?: boolean;
+  vacationMessage?: string | null;
+  businessHours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
 };
 
 export type VendorProductInput = {
@@ -75,6 +81,8 @@ export type VendorProductInput = {
   price: number;
   oldPrice?: number;
   stock: number;
+  reservedStock?: number;
+  availableStock?: number;
   imageKey?: string;
   imageUrl?: string;
   imageUris?: string[];

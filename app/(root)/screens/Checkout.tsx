@@ -92,14 +92,17 @@ export default function CheckoutScreen() {
   const { showSuccessToast, showErrorToast, showInfoToast } = useToast();
   const { previewVoucher, suggestVouchers, calculatePromotions } = useVouchers();
   const params = useLocalSearchParams();
-  const id = String(getParam(params.id) ?? "");
+  const id = String(getParam(params.id) ?? "").trim();
   const imageKey = getParam(params.imageKey);
   const paramTitle = String(getParam(params.title) ?? "Product");
   const paramCategory = getParam(params.category) ?? undefined;
   const paramPrice = Number(getParam(params.price) ?? 0);
   const paramOldPrice = Number(getParam(params.oldPrice) ?? 0) || undefined;
+  const hasBuyNowProduct = Boolean(id);
   const checkoutMode =
-    getParam(params.mode) === "cart" || (!id && cart.length > 0) ? "cart" : "buy_now";
+    getParam(params.mode) === "cart" || (!hasBuyNowProduct && cart.length > 0)
+      ? "cart"
+      : "buy_now";
   const checkoutFallback = useMemo(
     () => ({
       id,
@@ -175,6 +178,10 @@ export default function CheckoutScreen() {
       }));
     }
 
+    if (!hasBuyNowProduct) {
+      return [];
+    }
+
     return [
       {
         product_id: id,
@@ -192,6 +199,7 @@ export default function CheckoutScreen() {
       },
     ];
   }, [
+    hasBuyNowProduct,
     cart,
     checkoutMode,
     id,

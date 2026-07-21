@@ -182,8 +182,40 @@ export function buildVendorAnalyticsInsights(
   const fulfillmentRate =
     closedOrders > 0 ? Math.round((delivered / closedOrders) * 100) : delivered > 0 ? 100 : 0;
 
-  const weekSales = analytics.weekSales || sumOrderTotals(weekOrders);
-  const weekOrderCount = analytics.weekOrders || weekOrders.length;
+  const weekSales =
+    analytics.period === "7d" && analytics.periodSales != null
+      ? analytics.periodSales
+      : analytics.weekSales || sumOrderTotals(weekOrders);
+  const weekOrderCount =
+    analytics.period === "7d" && analytics.periodOrders != null
+      ? analytics.periodOrders
+      : analytics.weekOrders || weekOrders.length;
+  const monthSales =
+    (analytics.period === "30d" || analytics.period === "90d") &&
+    analytics.periodSales != null
+      ? analytics.periodSales
+      : sumOrderTotals(monthOrders);
+  const monthOrderCount =
+    (analytics.period === "30d" || analytics.period === "90d") &&
+    analytics.periodOrders != null
+      ? analytics.periodOrders
+      : monthOrders.length;
+
+  const dailyTrend =
+    analytics.dailyPoints && analytics.dailyPoints.length > 0
+      ? analytics.dailyPoints.map((point) => {
+          const date = point.date ? new Date(point.date) : null;
+          const label =
+            date && !Number.isNaN(date.getTime())
+              ? date.toLocaleDateString(undefined, { weekday: "short" })
+              : point.date || "—";
+          return {
+            label,
+            sales: point.sales,
+            orders: point.orders,
+          };
+        })
+      : buildDailyTrend(orders);
 
   return {
     currency: analytics.currency || dashboardStats?.currency || "GHS",
@@ -201,8 +233,8 @@ export function buildVendorAnalyticsInsights(
         dailyAverage: roundMoney(weekSales / 7),
       },
       month: {
-        sales: sumOrderTotals(monthOrders),
-        orders: monthOrders.length,
+        sales: monthSales,
+        orders: monthOrderCount,
       },
     },
     operations: {
@@ -225,7 +257,7 @@ export function buildVendorAnalyticsInsights(
       analytics.topProducts.length > 0
         ? analytics.topProducts
         : buildTopProducts(orders),
-    dailyTrend: buildDailyTrend(orders),
+    dailyTrend,
   };
 }
 
@@ -241,19 +273,37 @@ export function buildVendorDashboardStatsFallback(
     .filter((order) => COUNTABLE_ORDER_STATUSES.has(order.status))
     .reduce((sum, order) => sum + order.totalAmount, 0);
 
+  const processingOrders = orders.filter((order) =>
+    ["confirmed", "processing", "ready"].includes(order.status),
+  ).length;
+  const cancelledOrders = orders.filter((order) =>
+    ["cancelled", "canceled", "refunded"].includes(order.status),
+  ).length;
+
   return {
     storeName: storeName?.trim() || "My store",
     vendorStatus: "approved",
     totalProducts: 0,
     activeProducts: 0,
     pendingOrders,
+    processingOrders,
     completedOrders,
+    cancelledOrders,
     totalSales: roundMoney(totalSales),
+    todaySales: 0,
+    todayOrders: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    avgRating: null,
+    reviewCount: 0,
+    customerCount: 0,
     currency: "GHS",
     availableBalance: 0,
     pendingWithdrawalBalance: 0,
     lifetimeEarnings: 0,
     totalCommission: 0,
+    activeVoucherCount: 0,
+    isOnVacation: false,
   };
 }
 
@@ -273,6 +323,13 @@ export function mergeVendorAnalytics(
     weekOrders: remote.weekOrders ?? local.weekOrders,
     openReturns: remote.openReturns ?? local.openReturns,
     topProducts: remote.topProducts.length > 0 ? remote.topProducts : local.topProducts,
+    period: remote.period ?? local.period,
+    periodSales: remote.periodSales ?? local.periodSales,
+    periodOrders: remote.periodOrders ?? local.periodOrders,
+    dailyPoints:
+      remote.dailyPoints && remote.dailyPoints.length > 0
+        ? remote.dailyPoints
+        : local.dailyPoints,
   };
 }
 

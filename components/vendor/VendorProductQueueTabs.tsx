@@ -9,6 +9,8 @@ type VendorProductQueueTabsProps = {
   activeTab: VendorProductCatalogTab;
   counts: Record<VendorProductCatalogTab, number>;
   onChange: (tab: VendorProductCatalogTab) => void;
+  sortLabel?: string;
+  onSortPress?: () => void;
 };
 
 const TABS: Array<{ key: VendorProductCatalogTab; label: string }> = [
@@ -22,6 +24,8 @@ export default function VendorProductQueueTabs({
   activeTab,
   counts,
   onChange,
+  sortLabel,
+  onSortPress,
 }: VendorProductQueueTabsProps) {
   const { colors, isDark } = useTheme();
 
@@ -70,6 +74,21 @@ export default function VendorProductQueueTabs({
           </TouchableOpacity>
         );
       })}
+      {sortLabel && onSortPress ? (
+        <TouchableOpacity
+          activeOpacity={0.88}
+          onPress={onSortPress}
+          style={[
+            styles.chip,
+            {
+              backgroundColor: isDark ? colors.surfaceSubtle : colors.card,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
+          <Text style={[styles.chipLabel, { color: colors.text }]}>Sort · {sortLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
     </ScrollView>
   );
 }

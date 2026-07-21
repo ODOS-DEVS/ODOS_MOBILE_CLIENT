@@ -11,6 +11,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import type { VendorStatus } from "@/types/vendor";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -46,7 +47,6 @@ export {
 export const vendorStyles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
   },
   content: {
     paddingHorizontal: rS(16),
@@ -141,8 +141,9 @@ export function VendorScreenShell({
   showSettings = true,
   showBackButton = true,
 }: VendorScreenShellProps) {
+  const { colors } = useTheme();
   return (
-    <View style={vendorStyles.screen}>
+    <View style={[vendorStyles.screen, { backgroundColor: colors.screen }]}>
       <ProfileHeader
         title={title}
         showBackButton={showBackButton}

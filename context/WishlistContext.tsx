@@ -12,6 +12,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -87,6 +88,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const { user, accessToken } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistProduct[]>([]);
   const [isSyncingWishlist, setIsSyncingWishlist] = useState(false);
+  const guestWishlistRef = useRef<WishlistProduct[]>([]);
 
   const refreshWishlist = useCallback(async () => {
     if (!user) {
@@ -122,12 +124,116 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!user) {
+      guestWishlistRef.current = wishlist;
+    }
+  }, [user, wishlist]);
+
+  useEffect(() => {
+    if (!user) {
       setWishlist([]);
       return;
     }
 
-    refreshWishlist();
-  }, [refreshWishlist, user]);
+    let cancelled = false;
+
+    const syncGuestWishlistOnLogin = async () => {
+      const pending = guestWishlistRef.current;
+      guestWishlistRef.current = [];
+      const token = accessToken || (await getStoredAccessToken());
+      if (!token || cancelled) {
+        return;
+      }
+
+      setIsSyncingWishlist(true);
+      try {
+        if (pending.length > 0) {
+          await Promise.all(
+            pending.map((product) => {
+              const normalizedProduct = normalizeProduct(product);
+              return fetch(`${API_BASE_URL}/wishlist`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  product_id: normalizedProduct.id,
+                  title: normalizedProduct.title,
+                  image_url:
+                    normalizedProduct.image &&
+                    typeof normalizedProduct.image === "object" &&
+                    "uri" in normalizedProduct.image
+                      ? normalizedProduct.image.uri
+                      : null,
+                  category: normalizedProduct.category ?? null,
+                  price:
+                    normalizedProduct.price !== undefined
+                      ? String(normalizedProduct.price)
+                      : null,
+                  old_price:
+                    normalizedProduct.oldPrice !== undefined
+                      ? String(normalizedProduct.oldPrice)
+                      : null,
+                  rating:
+                    normalizedProduct.rating !== undefined
+                      ? String(normalizedProduct.rating)
+                      : null,
+                  reviews:
+                    normalizedProduct.reviews !== undefined
+                      ? String(normalizedProduct.reviews)
+                      : null,
+                }),
+              });
+            }),
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/wishlist`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load wishlist.");
+        }
+
+        const payload = (await response.json()) as WishlistApiItem[];
+        if (!cancelled) {
+          setWishlist(payload.map(mapWishlistApiItem));
+        }
+      } catch {
+        if (!cancelled && pending.length > 0) {
+          setWishlist((prev) => {
+            const seen = new Set(prev.map((item) => item.id));
+            const next = [...prev];
+            pending.forEach((item) => {
+              const normalized = normalizeProduct(item);
+              if (!seen.has(normalized.id)) {
+                seen.add(normalized.id);
+                next.push(normalized);
+              }
+            });
+            return next;
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSyncingWishlist(false);
+        }
+      }
+    };
+
+    void syncGuestWishlistOnLogin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, user]);
 
   const addToWishlist = useCallback(
     async (product: WishlistProduct) => {

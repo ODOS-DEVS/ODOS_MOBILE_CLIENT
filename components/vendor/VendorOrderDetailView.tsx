@@ -24,11 +24,13 @@ import {
 import { resolveApiMediaUrl } from "@/utils/media";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import {
   Alert,
   Image,
   Linking,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -70,6 +72,7 @@ export default function VendorOrderDetailView({
   const address = formatVendorOrderAddress(order);
   const currentStep = timelineIndex(order.status);
   const slaTone = getVendorOrderSlaTone(order);
+  const dialablePhone = normalizePhoneForDialer(order.customerPhone);
 
   const confirmCancel = () => {
     Alert.alert(
@@ -180,6 +183,7 @@ export default function VendorOrderDetailView({
             label="Phone"
             value={order.customerPhone || "Not provided"}
             colors={colors}
+            onPress={dialablePhone ? () => openDialer(order.customerPhone) : undefined}
           />
           <InfoRow
             icon="location-outline"
@@ -205,10 +209,15 @@ export default function VendorOrderDetailView({
 
         <AccountActionRow>
           <AccountActionButton
-            label="Call customer"
+            label={dialablePhone ? `Call ${dialablePhone}` : "Call customer"}
             variant="secondary"
             onPress={() => openDialer(order.customerPhone)}
-            disabled={!order.customerPhone}
+            disabled={!dialablePhone}
+          />
+          <AccountActionButton
+            label="Open chats"
+            variant="secondary"
+            onPress={() => router.push("/vendor/chats" as any)}
           />
         </AccountActionRow>
       </AccountListCard>
@@ -298,6 +307,7 @@ export default function VendorOrderDetailView({
             variant="primary"
             onPress={onAdvance}
             disabled={isUpdating}
+            style={styles.fulfillmentButton}
           />
         ) : null}
 
@@ -307,6 +317,7 @@ export default function VendorOrderDetailView({
             variant="secondary"
             onPress={confirmCancel}
             disabled={isUpdating}
+            style={styles.fulfillmentButton}
           />
         ) : null}
       </View>
@@ -319,29 +330,49 @@ function InfoRow({
   label,
   value,
   colors,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
   colors: { text: string; textMuted: string; primary: string; pill: string };
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.infoRow}>
+  const content = (
+    <>
       <View style={[styles.infoIconShell, { backgroundColor: colors.pill }]}>
         <Ionicons name={icon} size={rMS(16)} color={colors.primary} />
       </View>
       <View style={styles.infoCopy}>
         <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{label}</Text>
-        <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
+        <Text
+          style={[
+            styles.infoValue,
+            { color: onPress ? colors.primary : colors.text },
+            onPress ? styles.infoValueLink : null,
+          ]}
+        >
+          {value}
+        </Text>
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={styles.infoRow}>
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.infoRow}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
   content: {
     gap: rV(14),
-    paddingBottom: rV(28),
+    paddingBottom: rV(40),
   },
   heroCard: {
     gap: rV(14),
@@ -429,6 +460,10 @@ const styles = StyleSheet.create({
     fontSize: rMS(13.5),
     lineHeight: rMS(20),
   },
+  infoValueLink: {
+    fontFamily: Fonts.textBold,
+    textDecorationLine: "underline",
+  },
   itemsList: {
     gap: rV(0),
   },
@@ -488,6 +523,16 @@ const styles = StyleSheet.create({
     fontSize: rMS(13),
   },
   actionsBlock: {
-    gap: rV(10),
+    gap: rV(14),
+    marginTop: rV(10),
+    marginBottom: rV(12),
+    paddingHorizontal: rS(2),
+    paddingVertical: rV(4),
+  },
+  fulfillmentButton: {
+    minHeight: rV(52),
+    paddingHorizontal: rS(16),
+    paddingVertical: rV(14),
+    borderRadius: rMS(16),
   },
 });

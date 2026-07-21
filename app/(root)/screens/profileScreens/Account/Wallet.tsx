@@ -174,7 +174,7 @@ export default function WalletScreen() {
         setCheckoutPaymentId(savedPaymentId);
         resetForm();
         setShowModal(false);
-        goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+        goBackOr(router, { fallback: "/(root)/screens/Checkout" as any });
         return;
       }
 
@@ -203,7 +203,7 @@ export default function WalletScreen() {
 
   const handleUseForCheckout = (id: string) => {
     setCheckoutPaymentId(id === "wallet" ? WALLET_CHECKOUT_PAYMENT_ID : id);
-    goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+    goBackOr(router, { fallback: "/(root)/screens/Checkout" as any });
   };
 
   const cardCount = paymentMethods.filter((item) => item.type === "card").length;
@@ -295,7 +295,7 @@ export default function WalletScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader
         title={screenTitle}
-        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+        fallbackHref={fromCheckout ? ("/(root)/screens/Checkout" as any) : "/(root)/(tabs)/profile"}
       />
 
       {isLoadingProfileData && (fromCheckout || activeTab === "methods") ? (

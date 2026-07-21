@@ -13,6 +13,7 @@ import { ViewAllButton } from "@/components/browse/ViewAllButton";
 import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import EmptySection from "@/components/empty/EmptySection";
+import { AccountEmptyState } from "@/components/account/AccountUi";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -109,7 +110,12 @@ const HomeScreen = () => {
   const { colors } = useTheme();
   const tabBarInset = useTabBarContentInsetFromContext();
   const { horizontalPadding, sectionSpacing } = useResponsive();
-  const { products: flashSaleProducts, isLoading: isLoadingFlashSales } = useCatalogProducts({
+  const {
+    products: flashSaleProducts,
+    isLoading: isLoadingFlashSales,
+    error: flashSalesError,
+    refresh: refreshFlashSales,
+  } = useCatalogProducts({
     placement: "flash-sale",
   });
   const { primaryEvent: primaryFlashSaleEvent } = useFlashSaleEvents();
@@ -129,11 +135,26 @@ const HomeScreen = () => {
     limit: 12,
   });
   const [isRefreshingHome, setIsRefreshingHome] = useState(false);
-  const { products: popularProducts, isLoading: isLoadingPopular } = useCatalogProducts({
+  const {
+    products: popularProducts,
+    isLoading: isLoadingPopular,
+    error: popularError,
+    refresh: refreshPopular,
+  } = useCatalogProducts({
     section: "popular",
   });
-  const { markets: marketItems, isLoading: isLoadingMarkets } = useMarkets();
-  const { stores: storeItems, isLoading: isLoadingStores } = useStores({});
+  const {
+    markets: marketItems,
+    isLoading: isLoadingMarkets,
+    error: marketsError,
+    refresh: refreshMarkets,
+  } = useMarkets();
+  const {
+    stores: storeItems,
+    isLoading: isLoadingStores,
+    error: storesError,
+    refresh: refreshStores,
+  } = useStores({});
 
   const isBootstrapping =
     flashSaleProducts.length === 0 &&
@@ -168,11 +189,23 @@ const HomeScreen = () => {
         refreshRecommendations(),
         refreshPromoBanners(),
         refreshCampaigns(),
+        refreshFlashSales(),
+        refreshPopular(),
+        refreshMarkets(),
+        refreshStores(),
       ]);
     } finally {
       setIsRefreshingHome(false);
     }
-  }, [refreshCampaigns, refreshPromoBanners, refreshRecommendations]);
+  }, [
+    refreshCampaigns,
+    refreshFlashSales,
+    refreshMarkets,
+    refreshPopular,
+    refreshPromoBanners,
+    refreshRecommendations,
+    refreshStores,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -195,6 +228,9 @@ const HomeScreen = () => {
     popularProducts.length > 0 ||
     storeItems.length > 0 ||
     marketItems.length > 0;
+
+  const catalogLoadError =
+    flashSalesError || popularError || marketsError || storesError || null;
 
   const isCatalogEmpty =
     !isBootstrapping &&
@@ -273,11 +309,21 @@ const HomeScreen = () => {
 
               {isCatalogEmpty ? (
                 <View style={{ paddingHorizontal: horizontalPadding, marginTop: sectionSpacing }}>
-                  <EmptySection
-                    icon="sparkles-outline"
-                    title="Nothing to browse yet"
-                    message="New products, stores, and markets will appear here once they are published on ODOS."
-                  />
+                  {catalogLoadError ? (
+                    <AccountEmptyState
+                      icon="cloud-offline-outline"
+                      title="Couldn't load the catalog"
+                      message="Pull down to refresh, or try again once the ODOS backend is reachable."
+                      actionLabel="Try again"
+                      onAction={() => void handleRefreshHome()}
+                    />
+                  ) : (
+                    <EmptySection
+                      icon="sparkles-outline"
+                      title="Nothing to browse yet"
+                      message="New products, stores, and markets will appear here once they are published on ODOS."
+                    />
+                  )}
                 </View>
               ) : null}
 

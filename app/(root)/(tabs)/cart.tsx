@@ -22,12 +22,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MyCart = () => {
   const { colors } = useTheme();
   const tabBarInset = useTabBarContentInsetFromContext();
-  const insets = useSafeAreaInsets();
   const { cart, increaseQty, decreaseQty, removeItem, clearCart, isSyncingCart, refreshCart } =
     useCart();
   const { requireAuth } = useRequireAuth();
@@ -44,7 +42,7 @@ const MyCart = () => {
     );
   }, [cart]);
 
-  const stickyBarHeight = rV(76) + insets.bottom;
+  const stickyBarHeight = rV(76);
 
   useFocusEffect(
     useCallback(() => {
@@ -172,7 +170,7 @@ const MyCart = () => {
           position: "absolute",
           left: rS(12),
           right: rS(12),
-          bottom: rV(78),
+          bottom: tabBarInset,
           flexDirection: "row",
           alignItems: "center",
           gap: rS(10),
@@ -219,7 +217,7 @@ const MyCart = () => {
           fontSize: rMS(14),
         },
       }),
-    [colors],
+    [colors, tabBarInset],
   );
 
   return (
@@ -252,7 +250,7 @@ const MyCart = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.content,
-              { paddingBottom: stickyBarHeight + rV(16) },
+              { paddingBottom: stickyBarHeight + tabBarInset + rV(16) },
             ]}
             refreshControl={
               <RefreshControl
@@ -300,12 +298,7 @@ const MyCart = () => {
             </View>
           </ScrollView>
 
-          <View
-            style={[
-              styles.stickyBar,
-              { paddingBottom: insets.bottom + rV(12) },
-            ]}
-          >
+          <View style={[styles.stickyBar, { paddingBottom: rV(12) }]}>
             <View style={styles.stickyCopy}>
               <Text style={styles.stickyLabel}>Subtotal</Text>
               <Text style={styles.stickyValue}>{formatCurrency(subtotal)}</Text>
