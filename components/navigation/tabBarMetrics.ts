@@ -64,7 +64,7 @@ export function computeTabBarMetrics(
   const labelGap = rV(4);
   const iconSize = isDense ? rMS(23) : isCompact ? rMS(24) : rMS(26);
   const iconSurfaceSize = isDense ? rMS(38) : isCompact ? rMS(40) : rMS(44);
-  const showLabels = slotWidth >= 44;
+  const showLabels = safeTabCount === 5 || slotWidth >= 44;
 
   const itemVerticalPad = rV(isDense ? 10 : 12);
   const iconStackHeight =

@@ -3,11 +3,9 @@ import {
   AccountInsightCard,
   AccountRadioRow,
   AccountSettingsGroup,
-  AccountStickySaveBar,
   AccountTipBanner,
   useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
-import { useToast } from "@/context/ToastContext";
 import { rV } from "@/styles/responsive";
 import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -29,22 +27,7 @@ const LANGUAGES: LanguageOption[] = [
 
 export default function LanguageScreen() {
   const accountStyles = useAccountStyles();
-  const { showToast } = useToast();
-  const [selectedId, setSelectedId] = useState("en-us");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    const selected = LANGUAGES.find((lang) => lang.id === selectedId);
-    if (!selected?.available) {
-      showToast("That language is not available yet.");
-      return;
-    }
-
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    setIsSaving(false);
-    showToast(`Language set to ${selected.label}.`);
-  };
+  const [selectedId] = useState("en-us");
 
   return (
     <View style={accountStyles.screen}>
@@ -52,11 +35,11 @@ export default function LanguageScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[accountStyles.content, { paddingBottom: rV(100) }]}
+        contentContainerStyle={[accountStyles.content, { paddingBottom: rV(40) }]}
       >
         <AccountInsightCard
           title="App language"
-          subtitle="Choose how ODOS reads for you. More regional languages are on the way."
+          subtitle="ODOS currently ships in English. More regional languages will unlock in a future update."
           stats={[
             {
               value: LANGUAGES.find((lang) => lang.id === selectedId)?.label ?? "English",
@@ -68,7 +51,7 @@ export default function LanguageScreen() {
 
         <AccountTipBanner
           title="English is live today"
-          message="Additional languages will unlock in future updates without losing your account data."
+          message="There is nothing to save yet — English is the only supported language in this build."
           icon="language-outline"
         />
 
@@ -78,32 +61,23 @@ export default function LanguageScreen() {
               key={lang.id}
               label={lang.label}
               selected={selectedId === lang.id}
-              onPress={() => setSelectedId(lang.id)}
-              isLast
+              onPress={() => undefined}
             />
           ))}
         </AccountSettingsGroup>
 
         <AccountSettingsGroup title="Coming soon">
-          {LANGUAGES.filter((lang) => !lang.available).map((lang, index, list) => (
+          {LANGUAGES.filter((lang) => !lang.available).map((lang) => (
             <AccountRadioRow
               key={lang.id}
               label={lang.label}
-              selected={selectedId === lang.id}
-              onPress={() => setSelectedId(lang.id)}
-              hint="Coming soon"
+              selected={false}
+              onPress={() => undefined}
               disabled
-              isLast={index === list.length - 1}
             />
           ))}
         </AccountSettingsGroup>
       </ScrollView>
-
-      <AccountStickySaveBar
-        label="Save language"
-        onPress={() => void handleSave()}
-        loading={isSaving}
-      />
     </View>
   );
 }

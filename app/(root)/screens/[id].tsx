@@ -553,6 +553,37 @@ export default function ProductDetail() {
 
   const shouldShowLoadingState = isLoading;
 
+  if (!id) {
+    return (
+      <View style={styles.container}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: Math.max(insets.top + rV(6), rV(44)),
+              paddingHorizontal: horizontalPadding,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Product Details</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: horizontalPadding }}>
+          <Text style={{ color: colors.text, fontSize: rMS(16), textAlign: "center" }}>
+            This product link is missing or invalid.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View

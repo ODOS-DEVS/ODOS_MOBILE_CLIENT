@@ -32,7 +32,7 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
-        name="createpassowrd"
+        name="createpassword"
         options={{
           gestureEnabled: false,
           animation: "fade",

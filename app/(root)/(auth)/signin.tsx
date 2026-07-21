@@ -121,14 +121,10 @@ export default function SignInScreen() {
         <AuthErrorBanner message={generalError} />
 
         <View style={styles.row}>
-          <TouchableOpacity hitSlop={8}>
-            <Text style={[styles.rowLink, { color: colors.textMuted }]}>
-              Remember me
-            </Text>
-          </TouchableOpacity>
+          <View />
           <TouchableOpacity
             hitSlop={8}
-            onPress={() => openForgotPassword(router)}
+            onPress={() => openForgotPassword(router, email.trim() || undefined)}
           >
             <Text style={[styles.rowLinkBold, { color: colors.primary }]}>
               Forgot password?

@@ -68,7 +68,7 @@ export default function VendorTabScreen() {
     setIsRefreshing(true);
     try {
       await Promise.all([
-        refreshVendorState(session),
+        refreshVendorState(session, { force: true }),
         fetchStoreProfile(session),
         fetchVendorDashboard(session),
         loadVendorThreads({ silent: true }),
@@ -97,7 +97,7 @@ export default function VendorTabScreen() {
       void fetchStoreProfile(session);
       void fetchVendorDashboard(session);
       void fetchOrders(session);
-      void loadVendorThreads({ silent: vendorThreads.length > 0 });
+      void loadVendorThreads({ silent: true });
 
       return undefined;
     }, [
@@ -108,7 +108,6 @@ export default function VendorTabScreen() {
       loadVendorThreads,
       refreshVendorState,
       session,
-      vendorThreads.length,
     ]),
   );
 

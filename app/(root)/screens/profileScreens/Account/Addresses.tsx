@@ -178,7 +178,7 @@ export default function AddressScreen() {
         }
         resetForm();
         setShowModal(false);
-        goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+        goBackOr(router, { fallback: "/(root)/screens/Checkout" as any });
         return;
       }
 
@@ -207,7 +207,7 @@ export default function AddressScreen() {
 
   const handleUseForCheckout = (id: string) => {
     setCheckoutAddressId(id);
-    goBackOr(router, { fallback: "/(root)/(tabs)/cart" as any });
+    goBackOr(router, { fallback: "/(root)/screens/Checkout" as any });
   };
 
   const defaultCount = addresses.filter((item) => item.isDefault).length;
@@ -216,7 +216,7 @@ export default function AddressScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader
         title={fromCheckout ? "Choose Address" : "My Addresses"}
-        fallbackHref={fromCheckout ? ("/(root)/(tabs)/cart" as any) : "/(root)/(tabs)/profile"}
+        fallbackHref={fromCheckout ? ("/(root)/screens/Checkout" as any) : "/(root)/(tabs)/profile"}
       />
 
       {isLoadingProfileData ? (

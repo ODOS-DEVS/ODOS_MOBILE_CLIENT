@@ -1,4 +1,5 @@
 import { CatalogTaxonomyPicker } from "@/components/catalog/CatalogTaxonomyPicker";
+import { AccountEmptyState } from "@/components/account/AccountUi";
 import {
   AccountSettingsGroup,
   AccountSettingToggle,
@@ -120,17 +121,28 @@ const emptyForm = (): VendorProductInput => ({
 export default function NewVendorProductScreen() {
   const { contentMaxWidth, width } = useResponsive();
   const useSplitRows = width < 400;
-  const params = useLocalSearchParams<{ productId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    productId?: string | string[];
+    duplicateFrom?: string | string[];
+  }>();
   const productId =
     typeof params.productId === "string"
       ? params.productId
       : Array.isArray(params.productId)
         ? params.productId[0]
         : undefined;
+  const duplicateFrom =
+    typeof params.duplicateFrom === "string"
+      ? params.duplicateFrom
+      : Array.isArray(params.duplicateFrom)
+        ? params.duplicateFrom[0]
+        : undefined;
   const isEditing = Boolean(productId);
+  const isDuplicating = Boolean(duplicateFrom) && !isEditing;
+  const sourceProductId = productId ?? (isDuplicating ? duplicateFrom : undefined);
 
   const { session, hasVendorAccess, isCheckingVendorAccess } = useRequireVendor();
-  const { createProduct, updateProduct, fetchProducts, products, error, isSavingProduct } =
+  const { createProduct, updateProduct, fetchProducts, products, error, isSavingProduct, isLoadingProducts } =
     useStoreStore();
   const { showToast } = useToast();
   const {
@@ -158,8 +170,8 @@ export default function NewVendorProductScreen() {
   );
 
   const selectedProduct = useMemo<VendorProduct | null>(
-    () => products.find((product) => product.id === productId) ?? null,
-    [productId, products],
+    () => products.find((product) => product.id === sourceProductId) ?? null,
+    [sourceProductId, products],
   );
 
   const isFlashSale = Boolean(form.placementTags?.includes(FLASH_SALE_TAG));
@@ -215,11 +227,11 @@ export default function NewVendorProductScreen() {
       : "Set your price";
 
   useEffect(() => {
-    if (!hasVendorAccess || !session || !isEditing || products.length > 0) {
+    if (!hasVendorAccess || !session || !sourceProductId) {
       return;
     }
     void fetchProducts(session);
-  }, [fetchProducts, hasVendorAccess, isEditing, products.length, session]);
+  }, [fetchProducts, hasVendorAccess, sourceProductId, session]);
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -229,7 +241,9 @@ export default function NewVendorProductScreen() {
     const matchedCategory = findCatalogCategoryForProduct(catalogCategories, selectedProduct);
 
     setForm({
-      name: selectedProduct.name,
+      name: isDuplicating
+        ? `${selectedProduct.name} (copy)`
+        : selectedProduct.name,
       description: selectedProduct.description,
       category: matchedCategory?.title ?? selectedProduct.category,
       categorySlug: matchedCategory?.slug ?? selectedProduct.categorySlug ?? "",
@@ -251,10 +265,36 @@ export default function NewVendorProductScreen() {
       isReturnable: selectedProduct.isReturnable ?? true,
     });
     setSpecificationsText((selectedProduct.specifications ?? []).join("\n"));
-  }, [catalogCategories, selectedProduct]);
+  }, [catalogCategories, isDuplicating, selectedProduct]);
 
   if (isCheckingVendorAccess || !hasVendorAccess) {
     return <VendorScreenShell title={isEditing ? "Edit Product" : "Add Product"} />;
+  }
+
+  if ((isEditing || isDuplicating) && !selectedProduct && isLoadingProducts) {
+    return (
+      <VendorScreenShell
+        title={isEditing ? "Edit Product" : "Add Product"}
+        loading
+        loadingLabel="Loading product..."
+      />
+    );
+  }
+
+  if ((isEditing || isDuplicating) && !selectedProduct && !isLoadingProducts) {
+    return (
+      <VendorScreenShell title={isEditing ? "Edit Product" : "Add Product"}>
+        <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+          <AccountEmptyState
+            icon="cube-outline"
+            title="Product not found"
+            message="This listing is missing from your catalog."
+            actionLabel="Back to products"
+            onAction={() => router.back()}
+          />
+        </View>
+      </VendorScreenShell>
+    );
   }
 
   const handleChange = <K extends keyof VendorProductInput>(
@@ -448,8 +488,18 @@ export default function NewVendorProductScreen() {
       >
           <View style={[vendorStyles.contentWrap, styles.formStack, { maxWidth: contentMaxWidth }]}>
             <VendorPageIntro
-              title={isEditing ? "Update listing" : "New product listing"}
-              subtitle="Build a complete listing with ODOS catalog categories, clear pricing, and photos shoppers can trust."
+              title={
+                isEditing
+                  ? "Update listing"
+                  : isDuplicating
+                    ? "Duplicate listing"
+                    : "New product listing"
+              }
+              subtitle={
+                isDuplicating
+                  ? "Review the copied details, adjust anything needed, then publish as a new product."
+                  : "Build a complete listing with ODOS catalog categories, clear pricing, and photos shoppers can trust."
+              }
             />
 
             <ProductFormProgressCard items={progressItems} />

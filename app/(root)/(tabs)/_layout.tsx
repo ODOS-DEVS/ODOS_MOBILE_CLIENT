@@ -1,5 +1,7 @@
 import TabBarBackground from "@/components/navigation/TabBarBackground";
 import TabBarButton from "@/components/navigation/TabBarButton";
+import ProfileTabBarButton from "@/components/navigation/ProfileTabBarButton";
+import ProfileTabIcon from "@/components/navigation/ProfileTabIcon";
 import TabBarVectorIcon from "@/components/navigation/TabBarVectorIcon";
 import AssistantFab from "@/components/assistant/AssistantFab";
 import { TabBarMetricsProvider } from "@/components/navigation/TabBarMetricsContext";
@@ -7,19 +9,29 @@ import { useTabBarMetrics } from "@/components/navigation/tabBarMetrics";
 import VendorTabIcon from "@/components/vendor/VendorTabIcon";
 import CartTabIcon from "@/components/navigation/CartTabIcon";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
+import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
+import Fonts from "@/constants/Fonts";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React, { useMemo } from "react";
 import { Platform, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/ThemeContext";
+import { rMS } from "@/styles/responsive";
 
 const TabsLayout = () => {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const { isApprovedVendor, storeTabBadgeCount } = useVendorQuickAccess();
-  const tabCount = isApprovedVendor ? 6 : 5;
+  const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+  const workspaceHydrated = useWorkspaceModeStore((state) => state.hydrated);
+  const sellOnly =
+    workspaceHydrated && isApprovedVendor && workspaceMode === "sell_only";
+  // Seller Center: Home · Orders · Products · Stock · Business
+  // Shopping: Home · Category · Cart · Store(optional) · Wishlist · Profile
+  const tabCount = sellOnly ? 5 : isApprovedVendor ? 6 : 5;
   const tabMetrics = useTabBarMetrics(tabCount, insets.bottom);
 
   const tabBarStyles = useMemo(
@@ -34,8 +46,14 @@ const TabsLayout = () => {
           paddingVertical: 0,
           paddingHorizontal: 0,
         },
+        label: {
+          fontFamily: Fonts.textBold,
+          fontSize: tabMetrics.labelFontSize,
+          lineHeight: tabMetrics.labelLineHeight,
+          marginTop: 0,
+        },
       }),
-    [],
+    [tabMetrics.labelFontSize, tabMetrics.labelLineHeight],
   );
 
   const screenOptions = useMemo(
@@ -43,12 +61,13 @@ const TabsLayout = () => {
       headerShown: false as const,
       freezeOnBlur: false as const,
       lazy: true as const,
-      tabBarShowLabel: false as const,
+      tabBarShowLabel: sellOnly,
       tabBarHideOnKeyboard: true as const,
       tabBarAllowFontScaling: false as const,
       tabBarActiveTintColor: colors.primary,
       tabBarInactiveTintColor: colors.iconMuted,
       tabBarItemStyle: tabBarStyles.item,
+      tabBarLabelStyle: tabBarStyles.label,
       tabBarButton: (props: BottomTabBarButtonProps) => <TabBarButton {...props} />,
       tabBarBackground: () => <TabBarBackground />,
       tabBarStyle: {
@@ -81,7 +100,9 @@ const TabsLayout = () => {
       colors.primary,
       colors.bottomBarBorder,
       colors.shadow,
+      sellOnly,
       tabBarStyles.item,
+      tabBarStyles.label,
       tabMetrics.barBottomOffset,
       tabMetrics.barPaddingBottom,
       tabMetrics.barTotalHeight,
@@ -96,6 +117,7 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="index"
           options={{
+            href: sellOnly ? null : undefined,
             title: "Home",
             tabBarIcon: ({ focused }) => <TabBarVectorIcon name="home" focused={focused} />,
           }}
@@ -103,6 +125,7 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="category"
           options={{
+            href: sellOnly ? null : undefined,
             title: "Category",
             tabBarIcon: ({ focused }) => <TabBarVectorIcon name="category" focused={focused} />,
           }}
@@ -110,6 +133,7 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="cart"
           options={{
+            href: sellOnly ? null : undefined,
             title: "Cart",
             tabBarIcon: ({ focused }) => <CartTabIcon focused={focused} />,
           }}
@@ -118,15 +142,67 @@ const TabsLayout = () => {
           name="vendor"
           options={{
             href: isApprovedVendor ? undefined : null,
-            title: "Store",
+            title: sellOnly ? "Home" : "Store",
+            tabBarIcon: ({ focused }) =>
+              sellOnly ? (
+                <Ionicons
+                  name={focused ? "grid" : "grid-outline"}
+                  size={rMS(22)}
+                  color={focused ? colors.primary : colors.iconMuted}
+                />
+              ) : (
+                <VendorTabIcon focused={focused} badgeCount={storeTabBadgeCount} />
+              ),
+          }}
+        />
+        <Tabs.Screen
+          name="seller-orders"
+          options={{
+            href: sellOnly ? undefined : null,
+            title: "Orders",
             tabBarIcon: ({ focused }) => (
-              <VendorTabIcon focused={focused} badgeCount={storeTabBadgeCount} />
+              <Ionicons
+                name={focused ? "receipt" : "receipt-outline"}
+                size={rMS(22)}
+                color={focused ? colors.primary : colors.iconMuted}
+              />
+            ),
+            tabBarBadge:
+              sellOnly && storeTabBadgeCount > 0 ? storeTabBadgeCount : undefined,
+          }}
+        />
+        <Tabs.Screen
+          name="seller-products"
+          options={{
+            href: sellOnly ? undefined : null,
+            title: "Products",
+            tabBarIcon: ({ focused }) => (
+              <Ionicons
+                name={focused ? "cube" : "cube-outline"}
+                size={rMS(22)}
+                color={focused ? colors.primary : colors.iconMuted}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="seller-inventory"
+          options={{
+            href: sellOnly ? undefined : null,
+            title: "Stock",
+            tabBarIcon: ({ focused }) => (
+              <Ionicons
+                name={focused ? "layers" : "layers-outline"}
+                size={rMS(22)}
+                color={focused ? colors.primary : colors.iconMuted}
+              />
             ),
           }}
         />
         <Tabs.Screen
           name="wishlist"
           options={{
+            href: sellOnly ? null : undefined,
             title: "Wishlist",
             tabBarIcon: ({ focused }) => <TabBarVectorIcon name="wishlist" focused={focused} />,
           }}
@@ -134,12 +210,18 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="profile"
           options={{
-            title: "Profile",
-            tabBarIcon: ({ focused }) => <TabBarVectorIcon name="profile" focused={focused} />,
+            title: sellOnly ? "Business" : "Profile",
+            // Shopper: label comes from TabBarIconShell inside ProfileTabIcon.
+            // Seller: label comes from React Navigation like the other sell-only tabs.
+            tabBarShowLabel: sellOnly,
+            tabBarIcon: ({ focused }) => (
+              <ProfileTabIcon focused={focused} sellOnly={sellOnly} />
+            ),
+            tabBarButton: (props) => <ProfileTabBarButton {...props} />,
           }}
         />
       </Tabs>
-      <AssistantFab />
+      {sellOnly ? null : <AssistantFab />}
     </TabBarMetricsProvider>
   );
 };

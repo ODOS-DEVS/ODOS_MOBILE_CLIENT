@@ -13,9 +13,14 @@ import {
   openForgotPassword,
   resetAuthStackToSignIn,
 } from "@/utils/authNavigation";
+import {
+  clearPasswordResetSession,
+  getPasswordResetToken,
+  loadPasswordResetToken,
+} from "@/utils/passwordResetSession";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function CreatePasswordScreen() {
   const { colors } = useTheme();
@@ -26,10 +31,30 @@ export default function CreatePasswordScreen() {
   const { resetPassword, isResettingPassword } = useAuth();
   const { showToast } = useToast();
   const routeEmail = Array.isArray(params.email) ? params.email[0] : params.email;
-  const resetToken = Array.isArray(params.resetToken)
+  const legacyRouteToken = Array.isArray(params.resetToken)
     ? params.resetToken[0]
     : params.resetToken;
+  const [resetToken, setResetToken] = useState<string | null>(
+    () => getPasswordResetToken(routeEmail) ?? legacyRouteToken ?? null,
+  );
+  const [isResolvingSession, setIsResolvingSession] = useState(!resetToken);
+  const [sessionMissing, setSessionMissing] = useState(false);
   useBlockBackNavigation(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await loadPasswordResetToken(routeEmail);
+      if (cancelled) return;
+      const next = stored ?? legacyRouteToken ?? null;
+      setResetToken(next);
+      setSessionMissing(!routeEmail || !next);
+      setIsResolvingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [legacyRouteToken, routeEmail]);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,13 +62,18 @@ export default function CreatePasswordScreen() {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
 
+  const restartReset = () => {
+    clearPasswordResetSession();
+    openForgotPassword(router, routeEmail, { replace: true });
+  };
+
   const handleSubmit = async () => {
     setPasswordError("");
     setConfirmPasswordError("");
     setGeneralError("");
 
     if (!routeEmail || !resetToken) {
-      setGeneralError("This reset session is incomplete. Please start again.");
+      setSessionMissing(true);
       return;
     }
 
@@ -69,15 +99,54 @@ export default function CreatePasswordScreen() {
 
     const result = await resetPassword(routeEmail, resetToken, password);
     if (!result.success) {
+      setPasswordError(result.fieldErrors?.password || "");
       setGeneralError(
-        result.fieldErrors?.general || "We couldn't update your password right now.",
+        result.fieldErrors?.general ||
+          result.fieldErrors?.password ||
+          "We couldn't update your password right now.",
       );
       return;
     }
 
+    clearPasswordResetSession();
     showToast(result.message || "Password updated successfully.");
     resetAuthStackToSignIn(router);
   };
+
+  if (isResolvingSession) {
+    return (
+      <AuthScreenLayout
+        mode="plain"
+        plain={{
+          title: "Create new password",
+          subtitle: "Checking your reset session…",
+          onBack: restartReset,
+        }}
+      >
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </AuthScreenLayout>
+    );
+  }
+
+  if (sessionMissing) {
+    return (
+      <AuthScreenLayout
+        mode="plain"
+        plain={{
+          title: "Reset session expired",
+          subtitle:
+            "This password reset link is no longer valid. Request a new code to continue.",
+          onBack: restartReset,
+        }}
+      >
+        <AuthFormCard>
+          <PrimaryButton title="Start password reset again" onPress={restartReset} />
+        </AuthFormCard>
+      </AuthScreenLayout>
+    );
+  }
 
   return (
     <AuthScreenLayout
@@ -86,7 +155,7 @@ export default function CreatePasswordScreen() {
         title: "Create new password",
         subtitle:
           "Choose a strong password you haven't used on ODOS before. Finish here so your reset stays valid.",
-        onBack: () => openForgotPassword(router, routeEmail),
+        onBack: restartReset,
       }}
     >
       <AuthFormCard>
@@ -132,10 +201,7 @@ export default function CreatePasswordScreen() {
         />
       </AuthFormCard>
 
-      <TouchableOpacity
-        onPress={() => openForgotPassword(router, routeEmail)}
-        style={styles.restart}
-      >
+      <TouchableOpacity onPress={restartReset} style={styles.restart}>
         <Text style={[styles.link, { color: colors.primary }]}>
           Start password reset again
         </Text>
@@ -145,6 +211,11 @@ export default function CreatePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: {
+    minHeight: rV(120),
+    alignItems: "center",
+    justifyContent: "center",
+  },
   restart: {
     alignItems: "center",
     marginTop: rV(22),

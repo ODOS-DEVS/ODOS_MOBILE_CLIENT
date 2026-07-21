@@ -11,6 +11,7 @@ import {
   VendorScreenShell,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
+import { AccountSettingToggle } from "@/components/profile/ProfileHubUi";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useToast } from "@/context/ToastContext";
@@ -104,6 +105,9 @@ export default function VendorStoreScreen() {
     bannerImage: "",
     logoImage: "",
     audienceSlugs: [],
+    isOnVacation: false,
+    vacationMessage: "",
+    businessHours: null,
   });
   const [fieldErrors, setFieldErrors] = useState<StoreErrors>({});
 
@@ -134,12 +138,15 @@ export default function VendorStoreScreen() {
       bannerImage: storeProfile.bannerImage ?? "",
       logoImage: storeProfile.logoImage ?? "",
       audienceSlugs: storeProfile.audienceSlugs ?? [],
+      isOnVacation: Boolean(storeProfile.isOnVacation),
+      vacationMessage: storeProfile.vacationMessage ?? "",
+      businessHours: storeProfile.businessHours ?? null,
     });
   }, [storeProfile]);
 
   const canShowForm = useMemo(() => Boolean(storeProfile), [storeProfile]);
 
-  if (isCheckingVendorAccess || isLoadingStore) {
+  if (isCheckingVendorAccess || (isLoadingStore && !storeProfile)) {
     return (
       <VendorScreenShell
         title="Store Profile"
@@ -373,6 +380,32 @@ export default function VendorStoreScreen() {
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          </AccountSectionCard>
+
+          <AccountSectionCard title="Vacation & hours">
+            <AccountSettingToggle
+              title="Vacation mode"
+              description="Pause new orders and show a vacation notice on your storefront."
+              value={Boolean(form.isOnVacation)}
+              onValueChange={(value) => handleChange("isOnVacation", value)}
+              isLast={!form.isOnVacation}
+            />
+            {form.isOnVacation ? (
+              <TextInputField
+                label="Vacation message"
+                icon="airplane-outline"
+                placeholder="e.g. Back on Monday — orders resume then"
+                value={form.vacationMessage ?? ""}
+                onChangeText={(text) => handleChange("vacationMessage", text)}
+                multiline
+                numberOfLines={3}
+              />
+            ) : null}
+            <Text style={styles.helperText}>
+              Business hours are saved with your profile when present. Shoppers
+              see vacation mode first; hours help set delivery expectations once
+              you are back.
+            </Text>
           </AccountSectionCard>
 
           <AccountSectionCard title="Store branding">

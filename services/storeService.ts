@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
+import { parseApiErrorMessage } from "@/services/apiClient";
 import {
   appendImageToFormData,
   resolveApiMediaUrl,
@@ -39,6 +40,9 @@ type StoreProfileApi = {
   logo_image_url?: string | null;
   audience_slugs?: string[] | null;
   status?: string;
+  is_on_vacation?: boolean;
+  vacation_message?: string | null;
+  business_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
 };
 
 type VendorProductApi = {
@@ -54,6 +58,8 @@ type VendorProductApi = {
   old_price?: number | null;
   discount?: string | null;
   stock?: number;
+  reserved_stock?: number;
+  available_stock?: number;
   image_key?: string | null;
   image_url?: string | null;
   image_urls?: string[] | null;
@@ -130,18 +136,12 @@ async function parseResponse<T>(response: Response) {
 }
 
 async function parseErrorMessage(response: Response) {
-  try {
-    const payload = await response.json();
-    return typeof payload?.detail === "string"
-      ? payload.detail
-      : "We couldn't complete that request.";
-  } catch {
-    return response.statusText || "We couldn't complete that request.";
-  }
+  return parseApiErrorMessage(response, "We couldn't complete that request.");
 }
 
 function buildHeaders(accessToken?: string | null): Record<string, string> {
   const headers: Record<string, string> = {
+    Accept: "application/json",
     "Content-Type": "application/json",
   };
 
@@ -191,6 +191,9 @@ function mapStore(payload: StoreProfileApi): ManagedStoreProfile {
     logoImage: payload.logo_image_url ?? undefined,
     audienceSlugs: payload.audience_slugs ?? undefined,
     status: (payload.status as ManagedStoreProfile["status"]) ?? "draft",
+    isOnVacation: Boolean(payload.is_on_vacation),
+    vacationMessage: payload.vacation_message ?? null,
+    businessHours: payload.business_hours ?? null,
   };
 }
 
@@ -211,6 +214,10 @@ function mapProduct(payload: VendorProductApi): VendorProduct {
     oldPrice: payload.old_price ?? undefined,
     discount: payload.discount ?? undefined,
     stock: payload.stock ?? 0,
+    reservedStock: payload.reserved_stock ?? 0,
+    availableStock:
+      payload.available_stock ??
+      Math.max(0, (payload.stock ?? 0) - (payload.reserved_stock ?? 0)),
     imageKey: payload.image_key ?? undefined,
     imageUrl: primaryImageUrl,
     imageUrls,
@@ -319,6 +326,15 @@ export async function updateVendorStore(
   formData.append("website_url", input.websiteUrl?.trim() ?? "");
   if (input.audienceSlugs?.length) {
     formData.append("audience_slugs", input.audienceSlugs.join(", "));
+  }
+  if (typeof input.isOnVacation === "boolean") {
+    formData.append("is_on_vacation", input.isOnVacation ? "true" : "false");
+  }
+  if (input.vacationMessage !== undefined) {
+    formData.append("vacation_message", input.vacationMessage?.trim() ?? "");
+  }
+  if (input.businessHours) {
+    formData.append("business_hours", JSON.stringify(input.businessHours));
   }
   appendImageToFormData(formData, "logo_image", input.logoImage, "store-logo");
   appendImageToFormData(formData, "banner_image", input.bannerImage, "store-banner");
@@ -623,6 +639,151 @@ export async function patchVendorProductStock(
     throw new Error("The stock update response was empty.");
   }
   return mapProduct(payload);
+}
+
+export async function bulkUpdateVendorProducts(
+  session: VendorSessionContext,
+  input: {
+    productIds: string[];
+    stock?: number;
+    status?: "active" | "hidden";
+  },
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/products/bulk`, {
+    method: "PATCH",
+    headers: buildHeaders(accessToken),
+    body: JSON.stringify({
+      product_ids: input.productIds,
+      stock: input.stock,
+      status: input.status,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductApi[]>(response);
+  return payload?.map(mapProduct) ?? [];
+}
+
+export type VendorInventoryMovement = {
+  id: string;
+  productId: string;
+  delta: number;
+  stockAfter: number;
+  reason: string;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  note?: string | null;
+  createdAt: string;
+};
+
+type VendorInventoryMovementApi = {
+  id: string;
+  product_id?: string;
+  delta?: number;
+  stock_after?: number;
+  reason?: string;
+  reference_type?: string | null;
+  reference_id?: string | null;
+  note?: string | null;
+  created_at?: string;
+};
+
+export async function fetchVendorProductInventoryMovements(
+  session: VendorSessionContext,
+  productId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  const accessToken = requireAccessToken(session);
+  const params = new URLSearchParams();
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products/${encodeURIComponent(productId)}/inventory-movements${
+      query ? `?${query}` : ""
+    }`,
+    { headers: buildHeaders(accessToken) },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorInventoryMovementApi[]>(response);
+  return (
+    payload?.map(
+      (row): VendorInventoryMovement => ({
+        id: row.id,
+        productId: row.product_id ?? productId,
+        delta: row.delta ?? 0,
+        stockAfter: row.stock_after ?? 0,
+        reason: row.reason ?? "manual",
+        referenceType: row.reference_type,
+        referenceId: row.reference_id,
+        note: row.note,
+        createdAt: row.created_at ?? new Date().toISOString(),
+      }),
+    ) ?? []
+  );
+}
+
+export type VendorCampaignOptIn = {
+  id: string;
+  campaignId: string;
+  campaignSlug: string;
+  campaignTitle: string;
+  productId: string;
+  productTitle: string;
+  status: string;
+  reviewNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type VendorCampaignOptInApi = {
+  id: string;
+  campaign_id?: string;
+  campaign_slug?: string;
+  campaign_title?: string;
+  product_id?: string;
+  product_title?: string;
+  status?: string;
+  review_notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export async function fetchVendorCampaignOptIns(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/merchandising-campaign-opt-ins`, {
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorCampaignOptInApi[]>(response);
+  return (
+    payload?.map(
+      (row): VendorCampaignOptIn => ({
+        id: row.id,
+        campaignId: String(row.campaign_id ?? ""),
+        campaignSlug: row.campaign_slug ?? "",
+        campaignTitle: row.campaign_title ?? "Campaign",
+        productId: row.product_id ?? "",
+        productTitle: row.product_title ?? row.product_id ?? "",
+        status: row.status ?? "pending",
+        reviewNotes: row.review_notes,
+        createdAt: row.created_at ?? new Date().toISOString(),
+        updatedAt: row.updated_at ?? new Date().toISOString(),
+      }),
+    ) ?? []
+  );
 }
 
 function mapReturnRequest(payload: VendorReturnRequestApi): VendorReturnRequest {

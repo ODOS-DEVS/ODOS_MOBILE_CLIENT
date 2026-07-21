@@ -1,18 +1,21 @@
 import type { Href } from "expo-router";
 
 import { HOME_TAB_HREF, type RouterLike } from "@/utils/navigation";
+import {
+  clearPasswordResetSession,
+  setPasswordResetSession,
+} from "@/utils/passwordResetSession";
 
 export const AUTH_SIGN_IN_HREF = "/(root)/(auth)/signin" as Href;
 export const AUTH_SIGN_UP_HREF = "/(root)/(auth)/signup" as Href;
 export const AUTH_FORGOT_PASSWORD_HREF = "/(root)/(auth)/forgotpassword" as Href;
 export const AUTH_VERIFICATION_HREF = "/(root)/(auth)/verification" as Href;
-export const AUTH_CREATE_PASSWORD_HREF = "/(root)/(auth)/createpassowrd" as Href;
+export const AUTH_CREATE_PASSWORD_HREF = "/(root)/(auth)/createpassword" as Href;
 export const AUTH_ONBOARDING_HREF = "/(root)/(auth)/onboarding" as Href;
 
 type AuthRouteParams = {
   email?: string;
   mode?: "password-reset";
-  resetToken?: string;
 };
 
 function replaceWithParams(
@@ -71,8 +74,19 @@ export function goToSignUp(router: RouterLike) {
   router.replace(AUTH_SIGN_UP_HREF);
 }
 
-export function openForgotPassword(router: RouterLike, email?: string) {
+export function openForgotPassword(
+  router: RouterLike,
+  email?: string,
+  options?: { replace?: boolean },
+) {
+  clearPasswordResetSession();
   const params = email ? { email } : undefined;
+  const useReplace = options?.replace ?? false;
+
+  if (useReplace) {
+    replaceWithParams(router, AUTH_FORGOT_PASSWORD_HREF, params);
+    return;
+  }
 
   if (typeof router.push === "function") {
     router.push(
@@ -102,5 +116,7 @@ export function goToCreatePassword(
   email: string,
   resetToken: string,
 ) {
-  replaceWithParams(router, AUTH_CREATE_PASSWORD_HREF, { email, resetToken });
+  setPasswordResetSession(email, resetToken);
+  // Never put the JWT in route params — Expo Router URL-encodes and can mangle it.
+  replaceWithParams(router, AUTH_CREATE_PASSWORD_HREF, { email });
 }

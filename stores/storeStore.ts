@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import {
   acknowledgeVendorOrderApi,
+  bulkUpdateVendorProducts,
   createVendorProduct,
   deleteVendorProduct,
   fetchVendorOrder,
@@ -64,6 +65,14 @@ type StoreStoreState = {
     productId: string,
     stock: number,
   ) => Promise<VendorProduct>;
+  bulkUpdateProducts: (
+    session: VendorSessionContext,
+    input: {
+      productIds: string[];
+      stock?: number;
+      status?: "active" | "hidden";
+    },
+  ) => Promise<VendorProduct[]>;
   fetchOrders: (session: VendorSessionContext) => Promise<void>;
   fetchOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   updateOrderStatus: (
@@ -92,11 +101,16 @@ const initialState = {
   error: null,
 };
 
-export const useStoreStore = create<StoreStoreState>((set) => ({
+export const useStoreStore = create<StoreStoreState>((set, get) => ({
   ...initialState,
 
   fetchStoreProfile: async (session) => {
-    set({ isLoadingStore: true, error: null });
+    const hasCache = Boolean(get().storeProfile);
+    if (!hasCache) {
+      set({ isLoadingStore: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const storeProfile = await fetchVendorStore(session);
       set({ storeProfile, isLoadingStore: false });
@@ -131,7 +145,12 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
   },
 
   fetchProducts: async (session) => {
-    set({ isLoadingProducts: true, error: null });
+    const hasCache = get().products.length > 0;
+    if (!hasCache) {
+      set({ isLoadingProducts: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const products = await fetchVendorProducts(session);
       set({ products, isLoadingProducts: false });
@@ -261,8 +280,36 @@ export const useStoreStore = create<StoreStoreState>((set) => ({
     }
   },
 
+  bulkUpdateProducts: async (session, input) => {
+    set({ updatingProductId: "bulk", error: null });
+    try {
+      const updatedProducts = await bulkUpdateVendorProducts(session, input);
+      const byId = new Map(updatedProducts.map((product) => [product.id, product]));
+      set((state) => ({
+        products: state.products.map((product) => byId.get(product.id) ?? product),
+        updatingProductId: null,
+      }));
+      return updatedProducts;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error
+          ? error.message
+          : "We couldn't update those products right now.";
+      set({
+        updatingProductId: null,
+        error: nextMessage,
+      });
+      throw error;
+    }
+  },
+
   fetchOrders: async (session) => {
-    set({ isLoadingOrders: true, error: null });
+    const hasCache = get().orders.length > 0;
+    if (!hasCache) {
+      set({ isLoadingOrders: true, error: null });
+    } else {
+      set({ error: null });
+    }
     try {
       const orders = await fetchVendorOrders(session);
       set({ orders, isLoadingOrders: false });

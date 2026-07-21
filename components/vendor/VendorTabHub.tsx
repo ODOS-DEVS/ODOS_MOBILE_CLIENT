@@ -1,23 +1,17 @@
-import {
-  AccountEmptyState,
-  AccountListCard,
-} from "@/components/account/AccountUi";
-import VendorAnalyticsPanel from "@/components/vendor/VendorAnalyticsPanel";
+import { AccountEmptyState } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
-import VendorStoreActionRow from "@/components/vendor/VendorStoreActionRow";
-import VendorStorefrontPreview from "@/components/vendor/VendorStorefrontPreview";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
 import type { ManagedStoreProfile } from "@/types/store";
 import type { VendorAnalyticsInsights, VendorDashboardStats, VendorStatus } from "@/types/vendor";
-import { resolveApiMediaUrl } from "@/utils/media";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -60,7 +54,6 @@ type QuickTile = {
   key: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  subtitle: string;
   badge?: string;
   badgeTone?: "neutral" | "warning" | "success";
   onPress: () => void;
@@ -99,21 +92,21 @@ function useMetricPalette(tone: MetricTone = "default") {
         bg: isDark ? "#422006" : "#FFF7ED",
         border: isDark ? "#78350F" : "#FED7AA",
         accent: "#F59E0B",
-        value: isDark ? "#FCD34D" : "#B45309",
-        label: isDark ? "#FDE68A" : "#92400E",
-        iconBg: isDark ? "rgba(245, 158, 11, 0.18)" : "rgba(245, 158, 11, 0.14)",
-        icon: "#F59E0B",
+        value: isDark ? "#FCD34D" : "#92400E",
+        label: isDark ? "#FDE68A" : "#B45309",
+        iconBg: isDark ? "#78350F" : "#FEF3C7",
+        icon: isDark ? "#FCD34D" : "#D97706",
       };
     }
     if (tone === "success") {
       return {
-        bg: isDark ? "#14532D" : "#ECFDF3",
+        bg: isDark ? "#052E16" : "#F0FDF4",
         border: isDark ? "#166534" : "#BBF7D0",
         accent: "#22C55E",
         value: isDark ? "#86EFAC" : "#166534",
-        label: isDark ? "#BBF7D0" : "#15803D",
-        iconBg: isDark ? "rgba(34, 197, 94, 0.18)" : "rgba(34, 197, 94, 0.12)",
-        icon: "#22C55E",
+        label: isDark ? "#A7F3D0" : "#15803D",
+        iconBg: isDark ? "#14532D" : "#DCFCE7",
+        icon: isDark ? "#86EFAC" : "#16A34A",
       };
     }
     if (tone === "accent") {
@@ -121,9 +114,9 @@ function useMetricPalette(tone: MetricTone = "default") {
         bg: isDark ? "#1E1B4B" : "#EEF2FF",
         border: isDark ? "#4338CA" : "#C7D2FE",
         accent: colors.primary,
-        value: isDark ? "#C7D2FE" : colors.primary,
-        label: isDark ? colors.textMuted : "#4338CA",
-        iconBg: isDark ? colors.pill : "rgba(99, 102, 241, 0.12)",
+        value: colors.text,
+        label: colors.textMuted,
+        iconBg: isDark ? colors.pill : "#FFFFFF",
         icon: colors.primary,
       };
     }
@@ -137,27 +130,6 @@ function useMetricPalette(tone: MetricTone = "default") {
       icon: colors.primary,
     };
   }, [colors, isDark, tone]);
-}
-
-function SectionHeader({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={sectionStyles.wrap}>
-      <Text style={[sectionStyles.title, { color: colors.text }]}>{title}</Text>
-      {description ? (
-        <Text style={[sectionStyles.description, { color: colors.textMuted }]}>
-          {description}
-        </Text>
-      ) : null}
-    </View>
-  );
 }
 
 function VendorStoreTabHero({
@@ -179,14 +151,14 @@ function VendorStoreTabHero({
     : (["#EEF2FF", "#F5F3FF", "#FFFFFF"] as const);
 
   const vendorLabel =
-    vendorStatus === "approved" ? "Approved vendor" : "Vendor account";
+    vendorStatus === "approved" ? "Seller Center" : "Vendor account";
 
   return (
     <LinearGradient colors={gradientColors} style={heroStyles.shell}>
       <View style={heroStyles.topRow}>
         <View style={heroStyles.greetingBlock}>
           <Text style={[heroStyles.greeting, { color: colors.textMuted }]}>
-            {getGreeting()}
+            {getGreeting()} · Seller Center
           </Text>
           <Text style={[heroStyles.storeName, { color: colors.text }]} numberOfLines={2}>
             {storeName}
@@ -266,7 +238,8 @@ function VendorNotificationsPrompt() {
 
   const needsMasterToggle = !user?.allow_notifications;
   const needsOrderToggle =
-    Boolean(user?.allow_notifications) && !user?.vendor_order_notifications;
+    Boolean(user?.allow_notifications) &&
+    !(user?.vendor_notify_orders ?? user?.vendor_order_notifications);
 
   if (!needsMasterToggle && !needsOrderToggle) {
     return null;
@@ -303,50 +276,6 @@ function VendorNotificationsPrompt() {
   );
 }
 
-function VendorStorePriorityBanner({
-  pendingOrders,
-  onPress,
-}: {
-  pendingOrders: number;
-  onPress: () => void;
-}) {
-  const { colors, isDark } = useTheme();
-
-  if (pendingOrders <= 0) {
-    return null;
-  }
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={[
-        priorityStyles.shell,
-        {
-          backgroundColor: isDark ? "#422006" : "#FFFBEB",
-          borderColor: isDark ? "#78350F" : "#FDE68A",
-        },
-      ]}
-    >
-      <View style={[priorityStyles.iconShell, { backgroundColor: isDark ? "#78350F" : "#FEF3C7" }]}>
-        <Ionicons name="alert-circle" size={rMS(20)} color={isDark ? "#FCD34D" : "#D97706"} />
-      </View>
-      <View style={priorityStyles.copy}>
-        <Text style={[priorityStyles.title, { color: isDark ? "#FCD34D" : "#92400E" }]}>
-          {pendingOrders} pending order{pendingOrders === 1 ? "" : "s"} need attention
-        </Text>
-        <Text style={[priorityStyles.body, { color: isDark ? "#FDE68A" : "#B45309" }]}>
-          Fulfill orders before they stall in delivery.
-        </Text>
-      </View>
-      <View style={priorityStyles.action}>
-        <Text style={[priorityStyles.actionText, { color: colors.primary }]}>Open</Text>
-        <Ionicons name="chevron-forward" size={rMS(16)} color={colors.primary} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 function VendorStoreMetricTile({ tile }: { tile: MetricTile }) {
   const palette = useMetricPalette(tile.tone);
 
@@ -367,7 +296,6 @@ function VendorStoreMetricTile({ tile }: { tile: MetricTile }) {
         <View style={[metricStyles.iconShell, { backgroundColor: palette.iconBg }]}>
           <Ionicons name={tile.icon} size={rMS(16)} color={palette.icon} />
         </View>
-        <Ionicons name="chevron-forward" size={rMS(14)} color={palette.label} />
       </View>
       <Text style={[metricStyles.value, { color: palette.value }]} numberOfLines={1}>
         {tile.value}
@@ -380,85 +308,6 @@ function VendorStoreMetricTile({ tile }: { tile: MetricTile }) {
           {tile.hint}
         </Text>
       ) : null}
-    </TouchableOpacity>
-  );
-}
-
-function VendorStoreQuickTile({ tile }: { tile: QuickTile }) {
-  const { colors, isDark } = useTheme();
-
-  const badgeColors =
-    tile.badgeTone === "warning"
-      ? { bg: isDark ? "#422006" : "#FEF3C7", text: isDark ? "#FCD34D" : "#92400E" }
-      : tile.badgeTone === "success"
-        ? { bg: isDark ? "#14532D" : "#DCFCE7", text: isDark ? "#86EFAC" : "#166534" }
-        : { bg: isDark ? colors.pill : "#F3F4F6", text: colors.textMuted };
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={tile.onPress}
-      style={[
-        quickStyles.tile,
-        {
-          backgroundColor: isDark ? colors.surfaceSubtle : colors.card,
-          borderColor: colors.cardBorder,
-        },
-      ]}
-    >
-      <View style={quickStyles.header}>
-        <View style={[quickStyles.iconShell, { backgroundColor: isDark ? colors.pill : "#EEF2FF" }]}>
-          <Ionicons name={tile.icon} size={rMS(18)} color={colors.primary} />
-        </View>
-        {tile.badge ? (
-          <View style={[quickStyles.badge, { backgroundColor: badgeColors.bg }]}>
-            <Text style={[quickStyles.badgeText, { color: badgeColors.text }]}>{tile.badge}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text style={[quickStyles.label, { color: colors.text }]} numberOfLines={1}>
-        {tile.label}
-      </Text>
-      <Text style={[quickStyles.subtitle, { color: colors.textMuted }]} numberOfLines={2}>
-        {tile.subtitle}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function VendorStoreDashboardBanner({
-  pendingOrders,
-  onPress,
-}: {
-  pendingOrders: number;
-  onPress: () => void;
-}) {
-  const { isDark } = useTheme();
-  const gradientColors = isDark
-    ? (["#312E81", "#1E1B4B", "#0F172A"] as const)
-    : (["#4338CA", "#4F46E5", "#6366F1"] as const);
-
-  return (
-    <TouchableOpacity activeOpacity={0.92} onPress={onPress}>
-      <LinearGradient colors={gradientColors} style={dashboardStyles.shell}>
-        <View style={dashboardStyles.copy}>
-          <Text style={dashboardStyles.eyebrow}>Full control center</Text>
-          <View style={dashboardStyles.titleRow}>
-            <Text style={dashboardStyles.title}>Open vendor dashboard</Text>
-            {pendingOrders > 0 ? (
-              <View style={dashboardStyles.badge}>
-                <Text style={dashboardStyles.badgeText}>{pendingOrders}</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={dashboardStyles.subtitle}>
-            Analytics, chats, promotions, finance, and advanced store controls.
-          </Text>
-        </View>
-        <View style={dashboardStyles.arrowShell}>
-          <Ionicons name="grid" size={rMS(22)} color="#FFFFFF" />
-        </View>
-      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -476,39 +325,183 @@ export default function VendorTabHub({
   onOpenDashboard,
   onOpenSettings,
 }: VendorTabHubProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const tabBarInset = useTabBarContentInsetFromContext();
   const { contentMaxWidth, horizontalPadding } = useResponsive();
+  const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+  const sellOnly = workspaceMode === "sell_only";
 
   const pendingOrders = stats?.pendingOrders ?? 0;
+  const lowStockCount = stats?.lowStockCount ?? 0;
+  const outOfStockCount = stats?.outOfStockCount ?? 0;
   const storeName = store?.name?.trim() || stats?.storeName?.trim() || "My store";
   const isLive = store?.status === "active";
+  const onVacation = Boolean(stats?.isOnVacation || store?.isOnVacation);
+
+  const openOrders = useCallback(
+    (tab?: string) => {
+      if (sellOnly) {
+        router.push({
+          pathname: "/(root)/(tabs)/seller-orders" as any,
+          params: tab ? { tab } : undefined,
+        });
+        return;
+      }
+      router.push({
+        pathname: "/vendor/orders" as any,
+        params: tab ? { tab } : undefined,
+      });
+    },
+    [sellOnly],
+  );
+
+  const openProducts = useCallback(() => {
+    if (sellOnly) {
+      router.push("/(root)/(tabs)/seller-products" as any);
+      return;
+    }
+    router.push("/vendor/products" as any);
+  }, [sellOnly]);
+
+  const openInventory = useCallback(() => {
+    if (sellOnly) {
+      router.push("/(root)/(tabs)/seller-inventory" as any);
+      return;
+    }
+    router.push("/vendor/inventory" as any);
+  }, [sellOnly]);
+
+  const todayMetrics = useMemo<MetricTile[]>(
+    () => [
+      {
+        key: "today-sales",
+        label: "Sales",
+        value: formatCompactSales(stats?.todaySales ?? 0, stats?.currency),
+        hint: `${stats?.todayOrders ?? 0} order${(stats?.todayOrders ?? 0) === 1 ? "" : "s"}`,
+        icon: "cash-outline",
+        tone: "success",
+        onPress: () => router.push("/vendor/analytics" as any),
+      },
+      {
+        key: "today-orders",
+        label: "Orders",
+        value: String(stats?.todayOrders ?? 0),
+        hint: `${stats?.completedOrders ?? 0} done`,
+        icon: "bag-check-outline",
+        tone: "accent",
+        onPress: () => openOrders(),
+      },
+      {
+        key: "pending",
+        label: "To confirm",
+        value: String(pendingOrders),
+        hint: pendingOrders > 0 ? "Act now" : "Clear",
+        icon: "hourglass-outline",
+        tone: pendingOrders > 0 ? "warning" : "default",
+        onPress: () => openOrders("new"),
+      },
+    ],
+    [openOrders, pendingOrders, stats],
+  );
+
+  const attentionItems = useMemo(() => {
+    const items: Array<{
+      key: string;
+      label: string;
+      value: string;
+      onPress: () => void;
+    }> = [];
+
+    if (pendingOrders > 0) {
+      items.push({
+        key: "confirm",
+        label: "Awaiting confirmation",
+        value: String(pendingOrders),
+        onPress: () => openOrders("new"),
+      });
+    }
+    if ((stats?.processingOrders ?? 0) > 0) {
+      items.push({
+        key: "ship",
+        label: "Awaiting shipment",
+        value: String(stats?.processingOrders ?? 0),
+        onPress: () => openOrders("active"),
+      });
+    }
+    if (lowStockCount + outOfStockCount > 0) {
+      items.push({
+        key: "stock",
+        label: outOfStockCount > 0 ? "Out of stock" : "Low stock",
+        value: String(lowStockCount + outOfStockCount),
+        onPress: openInventory,
+      });
+    }
+    if (unreadChats > 0) {
+      items.push({
+        key: "chats",
+        label: "Unread messages",
+        value: String(unreadChats),
+        onPress: () => router.push("/vendor/chats" as any),
+      });
+    }
+    if (insights.operations.openReturns > 0) {
+      items.push({
+        key: "returns",
+        label: "Open returns",
+        value: String(insights.operations.openReturns),
+        onPress: () => router.push("/vendor/returns" as any),
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [
+    insights.operations.openReturns,
+    lowStockCount,
+    openInventory,
+    openOrders,
+    outOfStockCount,
+    pendingOrders,
+    stats?.processingOrders,
+    unreadChats,
+  ]);
 
   const quickTiles = useMemo<QuickTile[]>(
     () => [
       {
+        key: "add-product",
+        icon: "add-circle-outline",
+        label: "Add",
+        onPress: () => router.push("/vendor/products/new" as any),
+      },
+      {
         key: "orders",
         icon: "receipt-outline",
         label: "Orders",
-        subtitle: "Fulfillment and delivery tracking.",
         badge: pendingOrders > 0 ? String(pendingOrders) : undefined,
         badgeTone: "warning",
-        onPress: () => router.push("/vendor/orders" as any),
+        onPress: () => openOrders(),
       },
       {
         key: "products",
         icon: "cube-outline",
         label: "Products",
-        subtitle: stats
-          ? `${stats.activeProducts ?? 0} active listing${(stats.activeProducts ?? 0) === 1 ? "" : "s"}`
-          : "Manage catalog and stock.",
-        onPress: () => router.push("/vendor/products" as any),
+        onPress: openProducts,
+      },
+      {
+        key: "inventory",
+        icon: "layers-outline",
+        label: "Stock",
+        badge:
+          lowStockCount + outOfStockCount > 0
+            ? String(lowStockCount + outOfStockCount)
+            : undefined,
+        badgeTone: "warning",
+        onPress: openInventory,
       },
       {
         key: "chats",
         icon: "chatbubble-ellipses-outline",
         label: "Chats",
-        subtitle: "Reply to shopper questions quickly.",
         badge: unreadChats > 0 ? String(unreadChats) : undefined,
         badgeTone: unreadChats > 0 ? "warning" : "neutral",
         onPress: () => router.push("/vendor/chats" as any),
@@ -517,118 +510,94 @@ export default function VendorTabHub({
         key: "wallet",
         icon: "wallet-outline",
         label: "Wallet",
-        subtitle: stats
-          ? `${formatCompactSales(stats.availableBalance ?? 0, stats.currency)} available`
-          : "Payouts and balance.",
         onPress: () => router.push("/vendor/wallet" as any),
       },
     ],
-    [pendingOrders, stats, unreadChats],
+    [
+      lowStockCount,
+      openInventory,
+      openOrders,
+      openProducts,
+      outOfStockCount,
+      pendingOrders,
+      unreadChats,
+    ],
   );
 
-  const moreShortcuts = useMemo(
+  const manageShortcuts = useMemo(
     () => [
       {
         key: "analytics",
         icon: "bar-chart-outline" as const,
         label: "Analytics",
-        subtitle: "Full performance view with trends and rankings.",
         onPress: () => router.push("/vendor/analytics" as any),
       },
       {
-        key: "dashboard",
-        icon: "grid-outline" as const,
-        label: "Dashboard",
-        subtitle: "Finance, actions, and store command center.",
-        onPress: onOpenDashboard,
+        key: "reviews",
+        icon: "star-outline" as const,
+        label: "Reviews",
+        onPress: () => router.push("/vendor/reviews" as any),
       },
       {
-        key: "profile",
-        icon: "color-palette-outline" as const,
-        label: "Store profile",
-        subtitle: "Banner, logo, description, and contact details.",
-        onPress: () => router.push("/vendor/store" as any),
+        key: "customers",
+        icon: "people-outline" as const,
+        label: "Customers",
+        onPress: () => router.push("/vendor/customers" as any),
       },
       {
-        key: "add-product",
-        icon: "add-circle-outline" as const,
-        label: "Add product",
-        subtitle: "Create a new listing with images and stock.",
-        onPress: () => router.push("/vendor/products/new" as any),
+        key: "promotions",
+        icon: "ticket-outline" as const,
+        label: "Vouchers",
+        onPress: () => router.push("/vendor/vouchers" as any),
+      },
+      {
+        key: "campaigns",
+        icon: "megaphone-outline" as const,
+        label: "Campaigns",
+        onPress: () => router.push("/vendor/campaigns" as any),
       },
       {
         key: "flash-sales",
         icon: "flash-outline" as const,
         label: "Flash sales",
-        subtitle: "Nominate products for featured events.",
         onPress: () => router.push("/vendor/flash-sales" as any),
       },
       {
         key: "returns",
         icon: "return-down-back-outline" as const,
-        label: "Returns inbox",
-        subtitle: "Read-only view of shopper return requests.",
+        label: "Returns",
         onPress: () => router.push("/vendor/returns" as any),
       },
       {
-        key: "promotions",
-        icon: "ticket-outline" as const,
-        label: "Promotions",
-        subtitle: "Vouchers and offers for shoppers.",
-        onPress: () => router.push("/vendor/vouchers" as any),
+        key: "store",
+        icon: "storefront-outline" as const,
+        label: "Store",
+        onPress: () => router.push("/vendor/store" as any),
       },
       {
-        key: "wallet",
-        icon: "wallet-outline" as const,
-        label: "Wallet",
-        subtitle: stats
-          ? `${formatCompactSales(stats.availableBalance ?? 0, stats.currency)} available`
-          : "Payouts and balance.",
-        onPress: () => router.push("/vendor/wallet" as any),
+        key: "dashboard",
+        icon: "grid-outline" as const,
+        label: "Ops desk",
+        onPress: onOpenDashboard,
       },
       {
         key: "settings",
         icon: "settings-outline" as const,
-        label: "Store settings",
-        subtitle: "Preferences, payouts, and account controls.",
+        label: "Settings",
         onPress: () =>
           onOpenSettings ? onOpenSettings() : router.push("/vendor/settings" as any),
-        isLast: true,
       },
     ],
-    [onOpenDashboard, onOpenSettings, stats],
+    [onOpenDashboard, onOpenSettings],
   );
 
-  const openStorefrontPreview = () => {
-    if (!store?.id) {
-      return;
-    }
-
-    const banner = resolveApiMediaUrl(store.bannerImage);
-    const logo = resolveApiMediaUrl(store.logoImage);
-
-    router.push({
-      pathname: "/(root)/screens/stores/[id]" as any,
-      params: {
-        id: store.id,
-        title: store.name,
-        image: banner ?? logo ?? undefined,
-        imageBanner: banner ?? undefined,
-        imageUrl: banner ?? logo ?? undefined,
-      },
-    });
-  };
-
   return (
-    <SafeAreaView
-      style={[styles.screen, { backgroundColor: colors.screen }]}
-      edges={["top"]}
-    >
+    <SafeAreaView edges={["top"]} style={[styles.screen, { backgroundColor: colors.screen }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={Boolean(isRefreshing)} onRefresh={onRefresh} />
           ) : undefined
         }
         contentContainerStyle={[
@@ -644,20 +613,60 @@ export default function VendorTabHub({
             storeName={storeName}
             businessName={businessName}
             vendorStatus={vendorStatus}
-            isLive={isLive}
+            isLive={isLive && !onVacation}
             onOpenSettings={onOpenSettings}
           />
 
-          {pendingOrders > 0 ? (
-            <VendorStorePriorityBanner
-              pendingOrders={pendingOrders}
-              onPress={() =>
-                router.push({
-                  pathname: "/vendor/orders" as any,
-                  params: { tab: "new" },
-                })
-              }
-            />
+          {onVacation ? (
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => router.push("/vendor/store" as any)}
+              style={[
+                styles.vacationBanner,
+                {
+                  backgroundColor: isDark ? colors.surfaceSubtle : "#FEF3C7",
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Ionicons name="pause-circle-outline" size={rS(18)} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.vacationTitle, { color: colors.text }]}>
+                  Store on vacation
+                </Text>
+                <Text style={[styles.vacationCopy, { color: colors.textMuted }]}>
+                  {store?.vacationMessage?.trim() ||
+                    "Your storefront is hidden from shoppers until you turn vacation mode off."}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+
+          {attentionItems.length > 0 ? (
+            <View style={styles.sectionBlock}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Needs attention</Text>
+              <View style={styles.attentionChips}>
+                {attentionItems.map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    activeOpacity={0.86}
+                    onPress={item.onPress}
+                    style={[
+                      styles.attentionChip,
+                      {
+                        backgroundColor: isDark ? colors.surfaceSubtle : "#FFF7ED",
+                        borderColor: isDark ? colors.border : "#FED7AA",
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.attentionValue, { color: "#B45309" }]}>{item.value}</Text>
+                    <Text style={[styles.attentionLabel, { color: colors.text }]} numberOfLines={2}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           ) : null}
 
           <VendorNotificationsPrompt />
@@ -678,54 +687,82 @@ export default function VendorTabHub({
             />
           ) : null}
 
-          <View style={styles.sections}>
-            {store ? (
-              <VendorStorefrontPreview
-                store={store}
-                businessName={businessName}
-                onPress={openStorefrontPreview}
-                onEditPress={() => router.push("/vendor/store" as any)}
-              />
-            ) : null}
-
-            <VendorAnalyticsPanel
-              insights={insights}
-              variant="compact"
-              onPress={() => router.push("/vendor/analytics" as any)}
-            />
-
-            <View style={styles.sectionBlock}>
-              <SectionHeader
-                title="Manage store"
-                description="Daily tools for running your business on ODOS."
-              />
-              <View style={styles.quickGrid}>
-                {quickTiles.map((tile) => (
-                  <VendorStoreQuickTile key={tile.key} tile={tile} />
-                ))}
-              </View>
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Today</Text>
+            <View style={styles.metricRow}>
+              {todayMetrics.map((tile) => (
+                <VendorStoreMetricTile key={tile.key} tile={tile} />
+              ))}
             </View>
+          </View>
 
-            <AccountListCard style={styles.moreCard}>
-              <View style={[styles.moreHeader, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.moreTitle, { color: colors.text }]}>More tools</Text>
-                <Text style={[styles.moreDescription, { color: colors.textMuted }]}>
-                  Profile, catalog, finance, and settings.
-                </Text>
-              </View>
-              <View style={styles.moreList}>
-                {moreShortcuts.map((item) => (
-                  <VendorStoreActionRow
-                    key={item.key}
-                    icon={item.icon}
-                    label={item.label}
-                    subtitle={item.subtitle}
-                    onPress={item.onPress}
-                    isLast={Boolean(item.isLast)}
-                  />
-                ))}
-              </View>
-            </AccountListCard>
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick actions</Text>
+            <View style={styles.quickIconGrid}>
+              {quickTiles.map((tile) => (
+                <TouchableOpacity
+                  key={tile.key}
+                  activeOpacity={0.86}
+                  onPress={tile.onPress}
+                  style={styles.quickIconItem}
+                >
+                  <View
+                    style={[
+                      styles.quickIconShell,
+                      {
+                        backgroundColor: isDark ? colors.surfaceSubtle : colors.card,
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                  >
+                    <Ionicons name={tile.icon} size={rMS(22)} color={colors.primary} />
+                    {tile.badge ? (
+                      <View
+                        style={[
+                          styles.quickBadge,
+                          {
+                            backgroundColor:
+                              tile.badgeTone === "warning" ? "#F59E0B" : colors.text,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.quickBadgeText, { color: colors.onPrimary }]}>
+                          {tile.badge}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.quickIconLabel, { color: colors.text }]} numberOfLines={1}>
+                    {tile.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Manage</Text>
+            <View style={styles.manageGrid}>
+              {manageShortcuts.map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  activeOpacity={0.86}
+                  onPress={item.onPress}
+                  style={[
+                    styles.manageItem,
+                    {
+                      backgroundColor: isDark ? colors.surfaceSubtle : colors.card,
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons name={item.icon} size={rMS(18)} color={colors.primary} />
+                  <Text style={[styles.manageLabel, { color: colors.text }]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -749,61 +786,118 @@ const styles = StyleSheet.create({
     minHeight: rV(200),
     justifyContent: "center",
   },
-  sections: {
-    gap: SECTION_GAP,
+  vacationBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rS(10),
+    padding: rS(14),
+    borderRadius: rMS(16),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  vacationTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  vacationCopy: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    marginTop: rV(2),
   },
   sectionBlock: {
     gap: rV(10),
   },
-  metricGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  quickGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  moreCard: {
-    padding: 0,
-    overflow: "hidden",
-  },
-  moreHeader: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(14),
-    gap: rV(4),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  moreTitle: {
+  sectionTitle: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(15),
     lineHeight: rMS(20),
   },
-  moreDescription: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
+  attentionChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
   },
-  moreList: {
-    paddingHorizontal: rS(16),
-  },
-});
-
-const sectionStyles = StyleSheet.create({
-  wrap: {
+  attentionChip: {
+    width: "48%",
+    flexGrow: 1,
+    minWidth: rS(140),
+    borderRadius: rMS(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(12),
     gap: rV(4),
   },
-  title: {
+  attentionValue: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    lineHeight: rMS(21),
+    fontSize: rMS(18),
   },
-  description: {
+  attentionLabel: {
     fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
+    fontSize: rMS(12),
+    lineHeight: rMS(16),
+  },
+  metricRow: {
+    flexDirection: "row",
+    gap: rS(8),
+  },
+  quickIconGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: rV(14),
+  },
+  quickIconItem: {
+    width: "31%",
+    alignItems: "center",
+    gap: rV(6),
+  },
+  quickIconShell: {
+    width: rMS(52),
+    height: rMS(52),
+    borderRadius: rMS(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickBadge: {
+    position: "absolute",
+    top: -rS(4),
+    right: -rS(4),
+    minWidth: rMS(18),
+    height: rMS(18),
+    borderRadius: rMS(9),
+    paddingHorizontal: rS(4),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickBadgeText: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(10),
+  },
+  quickIconLabel: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(12),
+  },
+  manageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+  },
+  manageItem: {
+    width: "48%",
+    flexGrow: 1,
+    minWidth: rS(140),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+    borderRadius: rMS(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(14),
+  },
+  manageLabel: {
+    flex: 1,
+    fontFamily: Fonts.title,
+    fontSize: rMS(13),
   },
 });
 
@@ -857,33 +951,79 @@ const heroStyles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rS(5),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
+    gap: rS(6),
     borderRadius: rMS(999),
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(6),
   },
   badgeText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(10.5),
-    letterSpacing: 0.25,
+    fontFamily: Fonts.title,
+    fontSize: rMS(11.5),
   },
   liveDot: {
-    width: rS(6),
-    height: rS(6),
-    borderRadius: rS(3),
+    width: rS(7),
+    height: rS(7),
+    borderRadius: rS(4),
     backgroundColor: "#22C55E",
   },
 });
 
-const priorityStyles = StyleSheet.create({
+const metricStyles = StyleSheet.create({
+  tile: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: rMS(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(12),
+    overflow: "hidden",
+    gap: rV(4),
+  },
+  accentBar: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: rS(3),
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  iconShell: {
+    width: rMS(28),
+    height: rMS(28),
+    borderRadius: rMS(9),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  value: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(16),
+    lineHeight: rMS(20),
+  },
+  label: {
+    fontFamily: Fonts.title,
+    fontSize: rMS(11),
+    lineHeight: rMS(14),
+  },
+  hint: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(10),
+    lineHeight: rMS(13),
+  },
+});
+
+const promptStyles = StyleSheet.create({
   shell: {
+    borderRadius: rMS(18),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rS(14),
+    paddingVertical: rV(14),
     flexDirection: "row",
     alignItems: "center",
     gap: rS(12),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
   },
   iconShell: {
     width: rMS(40),
@@ -899,212 +1039,11 @@ const priorityStyles = StyleSheet.create({
   },
   title: {
     fontFamily: Fonts.titleBold,
-    fontSize: rMS(13.5),
-    lineHeight: rMS(18),
+    fontSize: rMS(14),
   },
   body: {
     fontFamily: Fonts.text,
     fontSize: rMS(12),
     lineHeight: rMS(17),
-  },
-  action: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(2),
-  },
-  actionText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12.5),
-  },
-});
-
-const metricStyles = StyleSheet.create({
-  tile: {
-    width: "48%",
-    flexGrow: 1,
-    minWidth: rS(148),
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    overflow: "hidden",
-    gap: rV(6),
-  },
-  accentBar: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: rS(3),
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  iconShell: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(10),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  value: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(20),
-    lineHeight: rMS(24),
-  },
-  label: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(12),
-    lineHeight: rMS(16),
-  },
-  hint: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    lineHeight: rMS(15),
-  },
-});
-
-const quickStyles = StyleSheet.create({
-  tile: {
-    width: "48%",
-    flexGrow: 1,
-    minWidth: rS(148),
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    gap: rV(8),
-    minHeight: rV(118),
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  iconShell: {
-    width: rMS(38),
-    height: rMS(38),
-    borderRadius: rMS(12),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badge: {
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(2),
-    borderRadius: rMS(999),
-  },
-  badgeText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(10),
-  },
-  label: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    lineHeight: rMS(18),
-  },
-  subtitle: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-  },
-});
-
-const dashboardStyles = StyleSheet.create({
-  shell: {
-    borderRadius: rMS(20),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(14),
-    overflow: "hidden",
-  },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-    gap: rV(4),
-  },
-  eyebrow: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(10.5),
-    letterSpacing: 0.45,
-    textTransform: "uppercase",
-    color: "rgba(255,255,255,0.72)",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  title: {
-    flex: 1,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-    lineHeight: rMS(22),
-    color: "#FFFFFF",
-  },
-  subtitle: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: "rgba(255,255,255,0.82)",
-  },
-  badge: {
-    minWidth: rS(22),
-    height: rS(22),
-    borderRadius: rS(11),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(6),
-    backgroundColor: "#FCD34D",
-  },
-  badgeText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(10.5),
-    color: "#78350F",
-  },
-  arrowShell: {
-    width: rMS(48),
-    height: rMS(48),
-    borderRadius: rMS(16),
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-  },
-});
-
-const promptStyles = StyleSheet.create({
-  shell: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  iconShell: {
-    width: rMS(42),
-    height: rMS(42),
-    borderRadius: rMS(13),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-    gap: rV(3),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    lineHeight: rMS(18),
-  },
-  body: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
   },
 });

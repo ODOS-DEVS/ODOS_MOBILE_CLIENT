@@ -39,22 +39,25 @@ export function buildFullName({
 export function validateNameParts({
   firstName,
   lastName,
-}: Pick<ParsedFullName, "firstName" | "lastName">): string | null {
+}: Pick<ParsedFullName, "firstName" | "lastName">): {
+  firstName?: string;
+  lastName?: string;
+} | null {
   const trimmedFirst = firstName.trim();
   const trimmedLast = lastName.trim();
+  const errors: { firstName?: string; lastName?: string } = {};
 
   if (!trimmedFirst) {
-    return "Enter your first name.";
-  }
-  if (trimmedFirst.length < 2) {
-    return "First name must be at least 2 characters.";
-  }
-  if (!trimmedLast) {
-    return "Enter your last name.";
-  }
-  if (trimmedLast.length < 2) {
-    return "Last name must be at least 2 characters.";
+    errors.firstName = "Enter your first name.";
+  } else if (trimmedFirst.length < 2) {
+    errors.firstName = "First name must be at least 2 characters.";
   }
 
-  return null;
+  if (!trimmedLast) {
+    errors.lastName = "Enter your last name.";
+  } else if (trimmedLast.length < 2) {
+    errors.lastName = "Last name must be at least 2 characters.";
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
 }

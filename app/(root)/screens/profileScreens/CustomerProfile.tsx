@@ -168,14 +168,11 @@ const CustomerProfile = () => {
     const trimmedCity = city.trim();
     const trimmedRegion = region.trim();
     const formattedDateOfBirth = formatBirthDateForApi(dateOfBirth);
-    const nameError = validateNameParts({ firstName, lastName });
+    const nameErrors = validateNameParts({ firstName, lastName });
 
-    if (nameError) {
-      if (!firstName.trim()) {
-        setFirstNameError(nameError);
-      } else {
-        setLastNameError(nameError);
-      }
+    if (nameErrors) {
+      if (nameErrors.firstName) setFirstNameError(nameErrors.firstName);
+      if (nameErrors.lastName) setLastNameError(nameErrors.lastName);
       hasError = true;
     }
 

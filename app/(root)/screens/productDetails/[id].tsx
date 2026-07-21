@@ -8,6 +8,7 @@ export default function LegacyProductDetailRedirect() {
 
   useEffect(() => {
     if (!id) {
+      router.replace("/(root)/(tabs)/" as never);
       return;
     }
     router.replace({

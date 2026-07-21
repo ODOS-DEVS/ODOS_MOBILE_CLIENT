@@ -1,4 +1,5 @@
 import { AccountListCard } from "@/components/account/AccountUi";
+import WorkspaceSwitcherSheet from "@/components/account/WorkspaceSwitcherSheet";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import { MenuItem } from "@/components/MenuItem";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
@@ -7,8 +8,10 @@ import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
+import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { normalizeVendorStatus } from "@/types/vendor";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -16,7 +19,7 @@ import { useAppReview } from "@/hooks/useAppReview";
 import { resetAuthStackToSignIn } from "@/utils/authNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -37,6 +40,9 @@ export default function ProfileScreen() {
     handleDismiss: handleAppReviewDismiss,
   } = useAppReview();
   const { session } = useVendorSession();
+  const { isApprovedVendor, storeLabel } = useVendorQuickAccess();
+  const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+  const [workspaceSwitcherVisible, setWorkspaceSwitcherVisible] = useState(false);
   const { isLoading, hasLoadedVendorState, refreshVendorState, vendorApplication, vendorStatus } =
     useVendorStore();
   const hasRefreshedThisFocusRef = useRef(false);
@@ -242,11 +248,26 @@ export default function ProfileScreen() {
           flex: 1,
           minWidth: 0,
         },
+        nameRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(4),
+          maxWidth: "100%",
+        },
+        namePressable: {
+          flexShrink: 1,
+        },
         profileEntryHint: {
           marginTop: rV(4),
           fontSize: rMS(11.5),
           fontFamily: Fonts.title,
           color: colors.primary,
+        },
+        modeHint: {
+          marginTop: rV(2),
+          fontSize: rMS(11),
+          fontFamily: Fonts.text,
+          color: colors.textMuted,
         },
         avatarWrap: {
           marginRight: rS(12),
@@ -255,6 +276,7 @@ export default function ProfileScreen() {
           fontSize: rMS(16),
           fontFamily: Fonts.titleBold,
           color: colors.text,
+          flexShrink: 1,
         },
         email: {
           fontSize: rMS(13),
@@ -351,46 +373,104 @@ export default function ProfileScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.scrollContent}
       >
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => {
-          if (user) {
-            router.push("../screens/profileScreens/CustomerProfile" as any);
-            return;
-          }
-
-          requireAuth({
-            title: "Sign in to manage your profile",
-            message:
-              "Create an account or log in to update your personal details and preferences.",
-          });
-        }}
-      >
-        <AccountListCard style={styles.profileEntryCard}>
-          <View style={styles.profileEntryRow}>
-            <View style={styles.avatarWrap}>
-              <UserAvatar
-                avatarUrl={user?.avatar_url}
-                gender={user?.gender}
-                size={rS(56)}
-                bordered
-              />
-            </View>
-            <View style={styles.profileEntryCopy}>
-              <Text style={styles.name}>
-                {user ? user.full_name || "ODOS User" : "Guest"}
-              </Text>
-              <Text style={styles.email}>
-                {user?.email || "Sign in to view account details"}
-              </Text>
-              <Text style={styles.profileEntryHint}>
-                {user ? "Tap to edit your profile" : "Tap to sign in"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={rMS(22)} color={colors.iconMuted} />
+      <AccountListCard style={styles.profileEntryCard}>
+        <View style={styles.profileEntryRow}>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            activeOpacity={0.9}
+            onPress={() => {
+              if (user) {
+                router.push("../screens/profileScreens/CustomerProfile" as any);
+                return;
+              }
+              requireAuth({
+                title: "Sign in to manage your profile",
+                message:
+                  "Create an account or log in to update your personal details and preferences.",
+              });
+            }}
+          >
+            <UserAvatar
+              avatarUrl={user?.avatar_url}
+              gender={user?.gender}
+              size={rS(56)}
+              bordered
+            />
+          </TouchableOpacity>
+          <View style={styles.profileEntryCopy}>
+            {isApprovedVendor ? (
+              <TouchableOpacity
+                style={styles.namePressable}
+                activeOpacity={0.75}
+                onPress={() => setWorkspaceSwitcherVisible(true)}
+              >
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {workspaceMode === "sell_only"
+                      ? storeLabel
+                      : user?.full_name || "ODOS User"}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={rMS(18)}
+                    color={colors.text}
+                  />
+                </View>
+                <Text style={styles.email}>
+                  {user?.email || "Sign in to view account details"}
+                </Text>
+                <Text style={styles.modeHint}>
+                  {workspaceMode === "sell_only"
+                    ? "Seller mode · tap to switch"
+                    : "Shopping mode · tap to switch"}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (user) {
+                    router.push("../screens/profileScreens/CustomerProfile" as any);
+                    return;
+                  }
+                  requireAuth({
+                    title: "Sign in to manage your profile",
+                    message:
+                      "Create an account or log in to update your personal details and preferences.",
+                  });
+                }}
+              >
+                <Text style={styles.name} numberOfLines={1}>
+                  {user ? user.full_name || "ODOS User" : "Guest"}
+                </Text>
+                <Text style={styles.email}>
+                  {user?.email || "Sign in to view account details"}
+                </Text>
+                <Text style={styles.profileEntryHint}>
+                  {user ? "Tap to edit your profile" : "Tap to sign in"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </AccountListCard>
-      </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => {
+              if (user) {
+                router.push("../screens/profileScreens/CustomerProfile" as any);
+                return;
+              }
+              requireAuth({
+                title: "Sign in to manage your profile",
+                message:
+                  "Create an account or log in to update your personal details and preferences.",
+              });
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-forward" size={rMS(22)} color={colors.iconMuted} />
+          </TouchableOpacity>
+        </View>
+      </AccountListCard>
 
       {user ? (
         <>
@@ -434,59 +514,140 @@ export default function ProfileScreen() {
             ) : null}
           </View>
 
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>
+            {workspaceMode === "sell_only" ? "Business" : "Account"}
+          </Text>
           <AccountListCard style={styles.menuCard}>
-            <MenuItem
-              icon="receipt-outline"
-              label="Orders"
-              onPress={() => {
-                router.push("../screens/profileScreens/orders" as any);
-              }}
-            />
-            <MenuItem
-              icon="return-up-back-outline"
-              label="Returns"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Returns" as any);
-              }}
-            />
-            <MenuItem
-              icon="location-outline"
-              label="Addresses"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Addresses" as any);
-              }}
-            />
-            <MenuItem
-              icon="chatbubble-outline"
-              label="Chats"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Chats" as any);
-              }}
-            />
-            <MenuItem
-              icon="wallet-outline"
-              label="Wallet & Payment"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Wallet" as any);
-              }}
-            />
-            <MenuItem
-              icon="star-outline"
-              label="Reviews"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Reviews" as any);
-              }}
-            />
-            <MenuItem
-              icon="ticket-outline"
-              label="Vouchers"
-              onPress={() => {
-                router.push("../screens/profileScreens/Account/Vouchers" as any);
-              }}
-            />
+            {workspaceMode === "sell_only" ? (
+              <>
+                <MenuItem
+                  icon="analytics-outline"
+                  label="Analytics"
+                  onPress={() => {
+                    router.push("/vendor/analytics" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="wallet-outline"
+                  label="Wallet & payouts"
+                  onPress={() => {
+                    router.push("/vendor/wallet" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="chatbubble-outline"
+                  label="Messages"
+                  onPress={() => {
+                    router.push("/vendor/chats" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="people-outline"
+                  label="Customers"
+                  onPress={() => {
+                    router.push("/vendor/customers" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="star-outline"
+                  label="Reviews"
+                  onPress={() => {
+                    router.push("/vendor/reviews" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="return-up-back-outline"
+                  label="Returns"
+                  onPress={() => {
+                    router.push("/vendor/returns" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="ticket-outline"
+                  label="Vouchers"
+                  onPress={() => {
+                    router.push("/vendor/vouchers" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="megaphone-outline"
+                  label="Campaigns"
+                  onPress={() => {
+                    router.push("/vendor/campaigns" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="storefront-outline"
+                  label="Store profile"
+                  onPress={() => {
+                    router.push("/vendor/store" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="settings-outline"
+                  label="Seller settings"
+                  onPress={() => {
+                    router.push("/vendor/settings" as any);
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <MenuItem
+                  icon="receipt-outline"
+                  label="Orders"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/orders" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="return-up-back-outline"
+                  label="Returns"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Returns" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="location-outline"
+                  label="Addresses"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Addresses" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="chatbubble-outline"
+                  label="Chats"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Chats" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="wallet-outline"
+                  label="Wallet & Payment"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Wallet" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="star-outline"
+                  label="Reviews"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Reviews" as any);
+                  }}
+                />
+                <MenuItem
+                  icon="ticket-outline"
+                  label="Vouchers"
+                  onPress={() => {
+                    router.push("../screens/profileScreens/Account/Vouchers" as any);
+                  }}
+                />
+              </>
+            )}
           </AccountListCard>
 
+          {workspaceMode === "sell_only" ? null : (
+            <>
           <Text style={styles.sectionTitle}>Personalization</Text>
           <AccountListCard style={styles.menuCard}>
             <MenuItem
@@ -514,7 +675,18 @@ export default function ProfileScreen() {
                 );
               }}
             />
+            <MenuItem
+              icon="language-outline"
+              label="Language"
+              onPress={() => {
+                router.push(
+                  "../screens/profileScreens/personalization/Language" as any,
+                );
+              }}
+            />
           </AccountListCard>
+            </>
+          )}
         </>
       ) : null}
 
@@ -573,6 +745,10 @@ export default function ProfileScreen() {
         </AccountListCard>
       ) : null}
       </ScrollView>
+      <WorkspaceSwitcherSheet
+        visible={workspaceSwitcherVisible}
+        onClose={() => setWorkspaceSwitcherVisible(false)}
+      />
       <AppReviewPrompt
         visible={reviewPromptVisible}
         onRate={() => void handleAppReviewRate()}

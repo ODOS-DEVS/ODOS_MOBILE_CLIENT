@@ -10,6 +10,7 @@ import { ToastProvider } from "@/context/ToastContext";
 import { VendorOrderAlertProvider } from "@/context/VendorOrderAlertProvider";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { BehaviorTrackingProvider } from "@/context/BehaviorTrackingContext";
+import WorkspaceModeHydrator from "@/components/workspace/WorkspaceModeHydrator";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
@@ -188,6 +189,7 @@ export default function RootLayout() {
         <ToastProvider>
           <AuthProvider>
             <VendorStateBridge />
+            <WorkspaceModeHydrator />
             <RealtimeProvider>
               <ActivityFeedProvider>
                 <PushNotificationsProvider>
@@ -203,7 +205,6 @@ export default function RootLayout() {
                                 screenOptions={{
                                   headerShown: false,
                                   freezeOnBlur: false,
-                                  animation: "default",
                                   // Avoid snapshot/detach races with Reanimated during stack pop.
                                   fullScreenGestureEnabled: false,
                                 }}

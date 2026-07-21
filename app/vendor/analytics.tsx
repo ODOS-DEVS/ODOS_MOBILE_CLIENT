@@ -1,4 +1,4 @@
-import { AccountEmptyState } from "@/components/account/AccountUi";
+import { AccountEmptyState, AccountFilterChips } from "@/components/account/AccountUi";
 import VendorAnalyticsPanel from "@/components/vendor/VendorAnalyticsPanel";
 import {
   QuickActionCard,
@@ -9,7 +9,7 @@ import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useVendorAnalytics } from "@/hooks/useVendorAnalytics";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
-import type { VendorDashboardStats } from "@/types/vendor";
+import type { VendorAnalyticsPeriod, VendorDashboardStats } from "@/types/vendor";
 import { buildVendorDashboardStatsFallback } from "@/utils/vendorAnalytics";
 import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
@@ -17,13 +17,19 @@ import React, { useMemo } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const PERIOD_OPTIONS: Array<{ key: VendorAnalyticsPeriod; label: string }> = [
+  { key: "7d", label: "7 days" },
+  { key: "30d", label: "30 days" },
+  { key: "90d", label: "90 days" },
+];
+
 export default function VendorAnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
   const { hasVendorAccess, isCheckingVendorAccess, session, vendorProfile } = useRequireVendor();
   const { orders, storeProfile } = useStoreStore();
   const { vendorDashboardStats } = useVendorStore();
-  const { insights, isLoading, refreshAnalytics } = useVendorAnalytics(
+  const { insights, isLoading, period, setPeriod, refreshAnalytics } = useVendorAnalytics(
     session,
     hasVendorAccess,
   );
@@ -115,6 +121,12 @@ export default function VendorAnalyticsScreen() {
         ]}
       >
         <View style={styles.wrap}>
+          <AccountFilterChips
+            options={PERIOD_OPTIONS}
+            activeKey={period}
+            onChange={setPeriod}
+          />
+
           <VendorAnalyticsPanel insights={insights} variant="full" />
 
           {!hasData ? (

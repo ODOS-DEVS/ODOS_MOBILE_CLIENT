@@ -13,6 +13,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -129,6 +130,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, accessToken } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSyncingCart, setIsSyncingCart] = useState(false);
+  const guestCartRef = useRef<CartItem[]>([]);
 
   const refreshCart = useCallback(async () => {
     if (!user) {
@@ -164,12 +166,93 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!user) {
+      guestCartRef.current = cart;
+    }
+  }, [cart, user]);
+
+  useEffect(() => {
+    if (!user) {
       setCart([]);
       return;
     }
 
-    refreshCart();
-  }, [refreshCart, user]);
+    let cancelled = false;
+
+    const syncGuestCartOnLogin = async () => {
+      const pending = guestCartRef.current;
+      guestCartRef.current = [];
+      const token = accessToken || (await getStoredAccessToken());
+      if (!token || cancelled) {
+        return;
+      }
+
+      setIsSyncingCart(true);
+      try {
+        if (pending.length > 0) {
+          await Promise.all(
+            pending.map((product) =>
+              fetch(`${API_BASE_URL}/cart`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  product_id: product.id,
+                  title: product.title,
+                  image_url:
+                    product.imageUrl ??
+                    (product.image &&
+                    typeof product.image === "object" &&
+                    "uri" in product.image &&
+                    typeof product.image.uri === "string"
+                      ? resolveApiMediaUrl(product.image.uri) ?? product.image.uri
+                      : null),
+                  image_key: product.imageKey ?? null,
+                  category: product.category ?? null,
+                  price: String(product.price),
+                  quantity: Math.max(1, Math.min(product.quantity ?? 1, 99)),
+                }),
+              }),
+            ),
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/cart`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load cart.");
+        }
+
+        const payload = (await response.json()) as CartApiItem[];
+        if (!cancelled) {
+          setCart(payload.map(mapCartApiItem));
+        }
+      } catch {
+        if (!cancelled && pending.length > 0) {
+          setCart((prev) => mergeCartItems(prev, pending));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSyncingCart(false);
+        }
+      }
+    };
+
+    void syncGuestCartOnLogin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, user]);
 
   const addItemsToCart = useCallback(
     async (products: CartItemInput[]) => {

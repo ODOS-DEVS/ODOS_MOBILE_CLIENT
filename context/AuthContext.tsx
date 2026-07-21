@@ -35,6 +35,10 @@ export type AuthUser = {
   discount_notifications: boolean;
   store_notifications: boolean;
   vendor_order_notifications: boolean;
+  vendor_notify_orders: boolean;
+  vendor_notify_inventory: boolean;
+  vendor_notify_reviews: boolean;
+  vendor_notify_payouts: boolean;
   system_notifications: boolean;
   location_notifications: boolean;
   location_updates: boolean;
@@ -75,6 +79,10 @@ type ProfileUpdatePayload = {
   discountNotifications?: boolean;
   storeNotifications?: boolean;
   vendorOrderNotifications?: boolean;
+  vendorNotifyOrders?: boolean;
+  vendorNotifyInventory?: boolean;
+  vendorNotifyReviews?: boolean;
+  vendorNotifyPayouts?: boolean;
   systemNotifications?: boolean;
   locationNotifications?: boolean;
   locationUpdates?: boolean;
@@ -151,7 +159,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ACCOUNT_BLOCKED_ERROR_CODE = "ACCOUNT_BLOCKED";
-const SESSION_REFRESH_INTERVAL_MS = 15_000;
+const SESSION_REFRESH_INTERVAL_MS = 3 * 60_000;
 
 type ParsedAuthError = {
   status: number;
@@ -179,6 +187,10 @@ function isSameAuthUser(currentUser: AuthUser | null, nextUser: AuthUser | null)
     currentUser.discount_notifications === nextUser.discount_notifications &&
     currentUser.store_notifications === nextUser.store_notifications &&
     currentUser.vendor_order_notifications === nextUser.vendor_order_notifications &&
+    currentUser.vendor_notify_orders === nextUser.vendor_notify_orders &&
+    currentUser.vendor_notify_inventory === nextUser.vendor_notify_inventory &&
+    currentUser.vendor_notify_reviews === nextUser.vendor_notify_reviews &&
+    currentUser.vendor_notify_payouts === nextUser.vendor_notify_payouts &&
     currentUser.system_notifications === nextUser.system_notifications &&
     currentUser.location_notifications === nextUser.location_notifications &&
     currentUser.location_updates === nextUser.location_updates &&
@@ -222,6 +234,22 @@ function normalizeAuthUser(payload: Record<string, unknown>) {
     store_notifications: Boolean(payload.store_notifications),
     vendor_order_notifications: Boolean(
       payload.vendor_order_notifications ?? payload.vendorOrderNotifications ?? true,
+    ),
+    vendor_notify_orders: Boolean(
+      payload.vendor_notify_orders ??
+        payload.vendorNotifyOrders ??
+        payload.vendor_order_notifications ??
+        payload.vendorOrderNotifications ??
+        true,
+    ),
+    vendor_notify_inventory: Boolean(
+      payload.vendor_notify_inventory ?? payload.vendorNotifyInventory ?? true,
+    ),
+    vendor_notify_reviews: Boolean(
+      payload.vendor_notify_reviews ?? payload.vendorNotifyReviews ?? true,
+    ),
+    vendor_notify_payouts: Boolean(
+      payload.vendor_notify_payouts ?? payload.vendorNotifyPayouts ?? true,
     ),
     system_notifications: Boolean(payload.system_notifications),
     location_notifications: Boolean(payload.location_notifications),
@@ -303,6 +331,14 @@ function normalizeMessage(detail: unknown) {
     return detail;
   }
 
+  // FastAPI 422 validation errors are arrays of { loc, msg, type }.
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (first && typeof first === "object" && typeof first.msg === "string") {
+      return first.msg;
+    }
+  }
+
   return "Something went wrong.";
 }
 
@@ -340,7 +376,7 @@ function mapValidationErrors(detail: unknown): AuthFieldErrors {
       errors.fullName = message;
     } else if (field === "email") {
       errors.email = message;
-    } else if (field === "password") {
+    } else if (field === "password" || field === "new_password") {
       errors.password = message;
     } else if (field === "phone_number") {
       errors.phoneNumber = message;
@@ -352,6 +388,8 @@ function mapValidationErrors(detail: unknown): AuthFieldErrors {
       errors.city = message;
     } else if (field === "region") {
       errors.region = message;
+    } else if (field === "reset_token" || field === "code") {
+      errors.general = message;
     } else {
       errors.general = message;
     }
@@ -585,6 +623,10 @@ async function updateProfileRequest(token: string, payload: ProfileUpdatePayload
       discount_notifications: payload.discountNotifications,
       store_notifications: payload.storeNotifications,
       vendor_order_notifications: payload.vendorOrderNotifications,
+      vendor_notify_orders: payload.vendorNotifyOrders,
+      vendor_notify_inventory: payload.vendorNotifyInventory,
+      vendor_notify_reviews: payload.vendorNotifyReviews,
+      vendor_notify_payouts: payload.vendorNotifyPayouts,
       system_notifications: payload.systemNotifications,
       location_notifications: payload.locationNotifications,
       location_updates: payload.locationUpdates,
@@ -1287,6 +1329,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         discountNotifications,
         storeNotifications,
         vendorOrderNotifications,
+        vendorNotifyOrders,
+        vendorNotifyInventory,
+        vendorNotifyReviews,
+        vendorNotifyPayouts,
         systemNotifications,
         locationNotifications,
         locationUpdates,
@@ -1318,6 +1364,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           discountNotifications,
           storeNotifications,
           vendorOrderNotifications,
+          vendorNotifyOrders,
+          vendorNotifyInventory,
+          vendorNotifyReviews,
+          vendorNotifyPayouts,
           systemNotifications,
           locationNotifications,
           locationUpdates,
@@ -1507,10 +1557,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "status" in error &&
           "detail" in error
         ) {
+          const status = Number((error as { status?: unknown }).status);
+          const detail = (error as { detail: unknown }).detail;
+          if (status === 422) {
+            const mapped = mapValidationErrors(detail);
+            return {
+              success: false,
+              fieldErrors: {
+                ...mapped,
+                general: mapped.general || normalizeMessage(detail),
+              },
+            };
+          }
           return {
             success: false,
             fieldErrors: {
-              general: normalizeMessage((error as { detail: unknown }).detail),
+              general: normalizeMessage(detail),
             },
           };
         }
@@ -1550,10 +1612,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "status" in error &&
           "detail" in error
         ) {
+          const status = Number((error as { status?: unknown }).status);
+          const detail = (error as { detail: unknown }).detail;
+          if (status === 422) {
+            const mapped = mapValidationErrors(detail);
+            return {
+              success: false,
+              fieldErrors: {
+                ...mapped,
+                general:
+                  mapped.general ||
+                  mapped.password ||
+                  normalizeMessage(detail),
+              },
+            };
+          }
           return {
             success: false,
             fieldErrors: {
-              general: normalizeMessage((error as { detail: unknown }).detail),
+              general: normalizeMessage(detail),
             },
           };
         }
