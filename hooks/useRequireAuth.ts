@@ -18,7 +18,7 @@ export function useRequireAuth() {
   const requireAuth = useCallback(
     (options?: RequireAuthOptions) => {
       if (isHydrating) {
-        return true;
+        return false;
       }
 
       if (user) {

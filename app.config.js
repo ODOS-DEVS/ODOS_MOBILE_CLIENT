@@ -53,6 +53,20 @@ const androidConfig = {
     : {}),
 };
 
+const androidIntentFilters = [
+  ...(appJson.expo.android?.intentFilters ?? []),
+  {
+    action: "VIEW",
+    category: ["BROWSABLE", "DEFAULT"],
+    data: [
+      {
+        scheme: "com.paul.odos",
+        path: "/oauthredirect",
+      },
+    ],
+  },
+];
+
 /** @type {import('expo/config').ExpoConfig} */
 module.exports = {
   expo: {
@@ -72,6 +86,7 @@ module.exports = {
     android: {
       ...appJson.expo.android,
       config: androidConfig,
+      intentFilters: androidIntentFilters,
     },
   },
 };

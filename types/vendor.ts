@@ -307,7 +307,7 @@ export function normalizeRoles(
 
 export function normalizeVendorStatus(
   value: unknown,
-  roles: AppRole[] = ["customer"],
+  _roles: AppRole[] = ["customer"],
 ): VendorStatus {
   if (typeof value === "string") {
     const lowerValue = value.trim().toLowerCase() as VendorStatus;
@@ -316,7 +316,8 @@ export function normalizeVendorStatus(
     }
   }
 
-  return roles.includes("vendor") ? "approved" : "none";
+  // Never invent "approved" from a missing/unknown status.
+  return "none";
 }
 
 export function hasRole(roles: AppRole[] | undefined, role: AppRole) {

@@ -1,5 +1,6 @@
 import {
   getGoogleAuthClientIds,
+  getGoogleAuthConfigError,
   getGoogleIosUrlScheme,
 } from "@/constants/googleAuth";
 import { useAuth } from "@/context/AuthContext";
@@ -16,15 +17,35 @@ WebBrowser.maybeCompleteAuthSession();
 
 const isExpoGo = Constants.appOwnership === "expo";
 
+function mapGoogleOAuthError(params: Record<string, string> | undefined): string {
+  const code = (params?.error || "").toLowerCase();
+  const description = (params?.error_description || "").replace(/\+/g, " ");
+
+  if (code === "access_denied") {
+    return "Google sign-in was cancelled or blocked for this account.";
+  }
+
+  if (code === "invalid_request" || /oauth 2\.0 policy|invalid_request/i.test(description)) {
+    return "Google blocked this sign-in (invalid OAuth setup). This build needs the correct iOS/Android client ID — not the Web client ID.";
+  }
+
+  if (code) {
+    return description || `Google sign-in failed (${code}). Please try again.`;
+  }
+
+  return "Google sign-in failed. Please try again.";
+}
+
 export function useGoogleSignInOAuth(): GoogleSignInControls {
   const { signInWithGoogle, isSigningInWithGoogle } = useAuth();
   const [error, setError] = useState("");
   const [isPrompting, setIsPrompting] = useState(false);
   const handledResponseRef = useRef<string | null>(null);
   const clientIds = getGoogleAuthClientIds();
+  const configError = getGoogleAuthConfigError();
 
   // Google iOS clients require the reversed client-ID scheme, not the app scheme.
-  // Using odosmobileexpo:// causes Error 400: invalid_request / OAuth policy block.
+  // Using odosmobileexpo:// or a Web client ID causes Error 400: invalid_request.
   const redirectUri = useMemo(() => {
     const iosScheme = getGoogleIosUrlScheme(clientIds.iosClientId);
     if (Platform.OS === "ios" && iosScheme) {
@@ -48,27 +69,41 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
     androidClientId: clientIds.androidClientId,
     scopes: ["openid", "profile", "email"],
     redirectUri,
+    selectAccount: true,
   });
 
   useEffect(() => {
-    if (response?.type !== "success") {
-      if (response?.type === "dismiss" || response?.type === "cancel") {
-        return;
-      }
-      if (response?.type === "error") {
-        setError("Google sign-in failed. Please try again.");
-      }
+    if (!response) {
       return;
     }
 
-    const responseKey = JSON.stringify(response.params);
+    if (response.type === "dismiss" || response.type === "cancel") {
+      return;
+    }
+
+    if (response.type === "error") {
+      setError(mapGoogleOAuthError(response.params as Record<string, string>));
+      return;
+    }
+
+    if (response.type !== "success") {
+      return;
+    }
+
+    const params = response.params as Record<string, string>;
+    if (params.error) {
+      setError(mapGoogleOAuthError(params));
+      return;
+    }
+
+    const responseKey = JSON.stringify(params);
     if (handledResponseRef.current === responseKey) {
       return;
     }
     handledResponseRef.current = responseKey;
 
     const idToken =
-      response.params.id_token ??
+      params.id_token ??
       response.authentication?.idToken ??
       null;
 
@@ -103,6 +138,11 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
       return;
     }
 
+    if (configError) {
+      setError(configError);
+      return;
+    }
+
     if (!request) {
       setError("Google sign-in is still loading. Wait a moment and try again.");
       return;
@@ -110,18 +150,21 @@ export function useGoogleSignInOAuth(): GoogleSignInControls {
 
     setIsPrompting(true);
     try {
-      await promptAsync();
+      const result = await promptAsync();
+      if (result.type === "error") {
+        setError(mapGoogleOAuthError(result.params as Record<string, string>));
+      }
     } finally {
       setIsPrompting(false);
     }
-  }, [promptAsync, request]);
+  }, [configError, promptAsync, request]);
 
   return {
     signIn,
     error,
     clearError: () => setError(""),
     isLoading: isSigningInWithGoogle || isPrompting,
-    isConfigured: true,
+    isConfigured: !configError,
     isExpoGo,
   };
 }

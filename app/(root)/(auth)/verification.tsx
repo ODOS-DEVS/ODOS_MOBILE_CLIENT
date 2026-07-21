@@ -33,6 +33,7 @@ export default function VerificationScreen() {
   const { showToast } = useToast();
   const {
     user,
+    signOut,
     isVerifyingEmail,
     isResendingVerificationCode,
     isVerifyingResetCode,
@@ -229,7 +230,10 @@ export default function VerificationScreen() {
             openForgotPassword(router, routeEmail, { replace: true });
             return;
           }
-          goToSignIn(router);
+          void (async () => {
+            await signOut();
+            goToSignIn(router);
+          })();
         }}
         style={styles.altAction}
       >

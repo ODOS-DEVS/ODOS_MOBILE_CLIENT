@@ -15,7 +15,9 @@
       },
       "env": {
         "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false",
-        "EXPO_PUBLIC_API_URL": "https://odos-backend.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://odos-backend.onrender.com/api",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "330593825248-2nov5qbjiqufb8a7lhh894qu5rvgsruo.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "330593825248-m2qnod3lvdv8fosq96rtnlet5nev76ag.apps.googleusercontent.com"
       }
     },
     "preview-maps": {
@@ -31,7 +33,9 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://odos-backend.onrender.com/api",
-        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "330593825248-2nov5qbjiqufb8a7lhh894qu5rvgsruo.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "330593825248-m2qnod3lvdv8fosq96rtnlet5nev76ag.apps.googleusercontent.com"
       }
     }
   },

@@ -153,7 +153,6 @@ type AuthContextType = {
     newPassword: string,
   ) => Promise<AuthResult>;
   refreshCurrentUser: () => Promise<AuthUser | null>;
-  approveVendorLocally: () => void;
   signOut: () => Promise<void>;
 };
 
@@ -396,6 +395,48 @@ function mapValidationErrors(detail: unknown): AuthFieldErrors {
 
     return errors;
   }, {});
+}
+
+function buildGoogleAuthError(
+  detail: unknown,
+  status: number,
+  code?: string | null,
+): AuthResult {
+  const message = normalizeMessage(detail);
+
+  if (code === ACCOUNT_BLOCKED_ERROR_CODE) {
+    return {
+      success: false,
+      fieldErrors: {
+        general: message,
+      },
+    };
+  }
+
+  if (status === 401) {
+    return {
+      success: false,
+      fieldErrors: {
+        general: "Google sign-in could not be verified. Please try again.",
+      },
+    };
+  }
+
+  if (status === 400) {
+    return {
+      success: false,
+      fieldErrors: {
+        general: message || "Google sign-in was rejected for this account.",
+      },
+    };
+  }
+
+  return {
+    success: false,
+    fieldErrors: {
+      general: message,
+    },
+  };
 }
 
 function buildSignInError(
@@ -892,8 +933,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accessTokenRef.current = storedToken;
         setAccessToken(storedToken);
         setUser(currentUser);
-      } catch {
-        await clearLocalSession();
+      } catch (error) {
+        // Keep a valid token on transient network/5xx failures — only wipe on auth failure.
+        if (isBlockedAccountError(error) || isUnauthorizedSessionError(error)) {
+          await clearLocalSession({
+            showBlockedAlert: isBlockedAccountError(error),
+          });
+        }
       } finally {
         setIsHydrating(false);
       }
@@ -1035,7 +1081,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const errorCode =
           "code" in error && typeof error.code === "string" ? error.code : null;
 
-        return buildSignInError(
+        return buildGoogleAuthError(
           (error as { detail: unknown }).detail,
           Number((error as { status: unknown }).status),
           errorCode,
@@ -1067,23 +1113,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         });
 
-        const payload = await loginRequest({
-          email: normalizedEmail,
-          password,
-        });
+        try {
+          const payload = await loginRequest({
+            email: normalizedEmail,
+            password,
+          });
 
-        await SecureStore.setItemAsync(
-          ACCESS_TOKEN_STORAGE_KEY,
-          payload.access_token,
-        );
+          await SecureStore.setItemAsync(
+            ACCESS_TOKEN_STORAGE_KEY,
+            payload.access_token,
+          );
 
-        setAccessToken(payload.access_token);
-        setUser(payload.user);
-        return {
-          success: true,
-          requiresVerification: !payload.user.is_verified,
-          user: payload.user,
-        };
+          setAccessToken(payload.access_token);
+          setUser(payload.user);
+          return {
+            success: true,
+            requiresVerification: !payload.user.is_verified,
+            user: payload.user,
+          };
+        } catch {
+          // Account exists; verification requires a session, so send them to sign-in.
+          return {
+            success: false,
+            fieldErrors: {
+              general:
+                "Your account was created. Sign in with the same email and password to continue.",
+            },
+          };
+        }
       } catch (error) {
         if (
           error &&
@@ -1121,6 +1178,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await fetch(`${API_BASE_URL}/auth/logout`, {
           method: "POST",
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : undefined,
         });
       } catch {
         // ignore backend logout failures for now and clear the local session
@@ -1137,6 +1199,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // Best-effort push token cleanup.
         }
+      }
+
+      try {
+        const { useWorkspaceModeStore } = await import(
+          "@/stores/workspaceModeStore"
+        );
+        await useWorkspaceModeStore.getState().setMode("shop_and_sell");
+      } catch {
+        // Non-fatal.
       }
 
       await clearLocalSession();
@@ -1160,28 +1231,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsRefreshingSession(false);
     }
   }, [accessToken, syncCurrentUser]);
-
-  const approveVendorLocally = useCallback(() => {
-    setUser((currentUser) => {
-      if (!currentUser) {
-        return currentUser;
-      }
-
-      const nextRoles = normalizeRoles(
-        [...currentUser.roles, "vendor"],
-        "vendor",
-      );
-
-      return {
-        ...currentUser,
-        role: "vendor",
-        roles: nextRoles,
-        vendorStatus: "approved",
-        vendorId: currentUser.vendorId || `local-vendor-${currentUser.id}`,
-        vendorRejectionReason: null,
-      };
-    });
-  }, []);
 
   const fetchVerifiedPhones = useCallback(async () => {
     if (!accessToken) {
@@ -1598,7 +1647,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const payload = await resetPasswordRequest(
           email.trim().toLowerCase(),
-          resetToken,
+          resetToken.trim(),
           newPassword,
         );
         return {
@@ -1614,23 +1663,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ) {
           const status = Number((error as { status?: unknown }).status);
           const detail = (error as { detail: unknown }).detail;
-          if (status === 422) {
-            const mapped = mapValidationErrors(detail);
-            return {
-              success: false,
-              fieldErrors: {
-                ...mapped,
-                general:
-                  mapped.general ||
-                  mapped.password ||
-                  normalizeMessage(detail),
-              },
-            };
-          }
+          const mapped =
+            status === 422 ? mapValidationErrors(detail) : ({} as AuthFieldErrors);
+          const message = normalizeMessage(detail);
+
           return {
             success: false,
             fieldErrors: {
-              general: normalizeMessage(detail),
+              ...mapped,
+              general:
+                mapped.general ||
+                mapped.password ||
+                (message !== "Something went wrong."
+                  ? message
+                  : status === 400
+                    ? "This password reset session expired. Start again from Forgot password."
+                    : `We couldn't update your password (${status}). Please try again.`),
             },
           };
         }
@@ -1681,12 +1729,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verifyPasswordResetCode,
       resetPassword,
       refreshCurrentUser,
-      approveVendorLocally,
       signOut,
     }),
     [
       accessToken,
-      approveVendorLocally,
       isHydrating,
       isRefreshingSession,
       isSigningIn,

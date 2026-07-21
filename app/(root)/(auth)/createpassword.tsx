@@ -26,16 +26,12 @@ export default function CreatePasswordScreen() {
   const { colors } = useTheme();
   const params = useLocalSearchParams<{
     email?: string | string[];
-    resetToken?: string | string[];
   }>();
   const { resetPassword, isResettingPassword } = useAuth();
   const { showToast } = useToast();
   const routeEmail = Array.isArray(params.email) ? params.email[0] : params.email;
-  const legacyRouteToken = Array.isArray(params.resetToken)
-    ? params.resetToken[0]
-    : params.resetToken;
   const [resetToken, setResetToken] = useState<string | null>(
-    () => getPasswordResetToken(routeEmail) ?? legacyRouteToken ?? null,
+    () => getPasswordResetToken(routeEmail),
   );
   const [isResolvingSession, setIsResolvingSession] = useState(!resetToken);
   const [sessionMissing, setSessionMissing] = useState(false);
@@ -46,7 +42,7 @@ export default function CreatePasswordScreen() {
     void (async () => {
       const stored = await loadPasswordResetToken(routeEmail);
       if (cancelled) return;
-      const next = stored ?? legacyRouteToken ?? null;
+      const next = stored ?? null;
       setResetToken(next);
       setSessionMissing(!routeEmail || !next);
       setIsResolvingSession(false);
@@ -54,7 +50,7 @@ export default function CreatePasswordScreen() {
     return () => {
       cancelled = true;
     };
-  }, [legacyRouteToken, routeEmail]);
+  }, [routeEmail]);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

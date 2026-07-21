@@ -9,20 +9,22 @@ export const GOOGLE_IOS_CLIENT_ID =
 export const GOOGLE_ANDROID_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() ?? "";
 
-/** Resolved IDs passed to expo-auth-session (platform IDs fall back to web). */
+/**
+ * Platform client IDs for expo-auth-session.
+ *
+ * Important: never fall back iOS/Android to the Web client ID. Google rejects
+ * custom-scheme redirects against Web clients with Error 400: invalid_request
+ * ("doesn't comply with Google's OAuth 2.0 policy").
+ */
 export function getGoogleAuthClientIds() {
-  const webClientId = GOOGLE_WEB_CLIENT_ID;
-  const iosClientId = GOOGLE_IOS_CLIENT_ID || webClientId;
-  const androidClientId = GOOGLE_ANDROID_CLIENT_ID || webClientId;
-
   return {
-    webClientId: webClientId || undefined,
-    iosClientId: iosClientId || undefined,
-    androidClientId: androidClientId || undefined,
+    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
   };
 }
 
-/** True when this platform has enough client IDs to initialize the Google auth hook. */
+/** True when this platform has a real native (or web) client ID configured. */
 export function canUseGoogleAuthRequest() {
   const { webClientId, iosClientId, androidClientId } = getGoogleAuthClientIds();
 
@@ -31,6 +33,7 @@ export function canUseGoogleAuthRequest() {
   }
 
   if (Platform.OS === "android") {
+    // Prefer a dedicated Android client; package-scheme redirect needs one.
     return Boolean(androidClientId);
   }
 
@@ -39,6 +42,22 @@ export function canUseGoogleAuthRequest() {
 
 export function isGoogleAuthConfigured() {
   return canUseGoogleAuthRequest();
+}
+
+export function getGoogleAuthConfigError(): string | null {
+  if (Platform.OS === "ios" && !GOOGLE_IOS_CLIENT_ID) {
+    return "Google Sign-In is missing the iOS client ID in this build. Rebuild with EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID set.";
+  }
+
+  if (Platform.OS === "android" && !GOOGLE_ANDROID_CLIENT_ID) {
+    return "Google Sign-In is missing the Android client ID in this build. Add EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID and rebuild.";
+  }
+
+  if (Platform.OS === "web" && !GOOGLE_WEB_CLIENT_ID) {
+    return "Google Sign-In is missing the Web client ID.";
+  }
+
+  return null;
 }
 
 /** iOS reversed client ID URL scheme required for Google OAuth redirect. */
