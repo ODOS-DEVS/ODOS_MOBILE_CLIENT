@@ -29,12 +29,6 @@ export {
   useAccountStyles,
 } from "@/components/account/AccountUi";
 
-/** @deprecated Use SearchLauncher without containerStyle (same as home). Kept for cached bundles. */
-export const categorySearchBarStyle = {
-  marginTop: 0,
-  marginHorizontal: 0,
-};
-
 export const categoryStyles = StyleSheet.create({
   headerBlock: {
     gap: rV(14),

@@ -28,6 +28,7 @@ import {
 import { createProductDetailStyles } from "@/styles/productDetailStyles";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { getSecondsRemaining } from "@/utils/countdown";
+import { formatCurrency } from "@/utils/currency";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { goBackOr } from "@/utils/navigation";
 import {
@@ -79,10 +80,6 @@ function getParam(param: string | string[] | undefined) {
 function toNumber(value: string | string[] | undefined, fallback = 0) {
   const parsed = Number(getParam(value) ?? fallback);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function formatPrice(value: number) {
-  return `₵${value.toFixed(2)}`;
 }
 
 function titleFromSlug(value?: string | null) {
@@ -814,10 +811,10 @@ export default function ProductDetail() {
                   <View>
                     <Text style={styles.priceLabel}>ODOS price</Text>
                     <View style={styles.priceRow}>
-                      <Text style={styles.price}>{formatPrice(price)}</Text>
+                      <Text style={styles.price}>{formatCurrency(price)}</Text>
                       {oldPrice > 0 ? (
                         <Text style={styles.oldPrice}>
-                          {formatPrice(oldPrice)}
+                          {formatCurrency(oldPrice)}
                         </Text>
                       ) : null}
                     </View>
@@ -825,7 +822,7 @@ export default function ProductDetail() {
                   {hasDiscount ? (
                     <View style={styles.savingsPill}>
                       <Text style={styles.savingsPillText}>
-                        Save {formatPrice(savingsAmount)}
+                        Save {formatCurrency(savingsAmount)}
                       </Text>
                     </View>
                   ) : null}
@@ -1064,7 +1061,7 @@ export default function ProductDetail() {
           </ScrollView>
 
           <ProductDetailBottomBar
-            priceLabel={formatPrice(price)}
+            priceLabel={formatCurrency(price)}
             variantLabel={
               activeColor?.label || activeSize
                 ? [activeColor?.label, activeSize].filter(Boolean).join(" · ")
@@ -1098,7 +1095,7 @@ export default function ProductDetail() {
             images={productImages}
             activeIndex={activeImageIndex}
             title={title}
-            priceLabel={formatPrice(price)}
+            priceLabel={formatCurrency(price)}
             horizontalPadding={horizontalPadding}
             onClose={() => setIsGalleryOpen(false)}
             onIndexChange={setActiveImageIndex}

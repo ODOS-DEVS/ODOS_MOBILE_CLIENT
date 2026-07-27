@@ -697,6 +697,3 @@ export function useAccountUiStyles() {
 export function useAccountStyles() {
   return useAccountUiStyles().accountStyles;
 }
-
-/** @deprecated Use useAccountStyles() inside components instead. */
-export const accountStyles = buildAccountStyles(lightTheme);

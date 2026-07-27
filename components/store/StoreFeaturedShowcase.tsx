@@ -5,6 +5,7 @@ import { useTheme } from "@/context/ThemeContext";
 import type { CatalogProductItem } from "@/hooks/useCatalog";
 import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { openProductDetail } from "@/utils/productNavigation";
+import { formatCurrency } from "@/utils/currency";
 import {
   formatStoreProductBadge,
   pickStoreLandingProducts,
@@ -12,10 +13,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-function formatCurrency(value: number) {
-  return `₵${value.toFixed(2)}`;
-}
 
 type StoreFeaturedShowcaseProps = {
   products: CatalogProductItem[];

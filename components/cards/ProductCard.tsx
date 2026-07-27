@@ -4,12 +4,9 @@ import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedComme
 import { openProductDetail } from "@/utils/productNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, TouchableOpacity, View } from "react-native";
+import { formatCurrency } from "@/utils/currency";
 import AddToCartBtn from "../buttons/AddToCartBtn";
 import AddToWishList from "../buttons/AddToWishList";
-
-function formatCurrency(value: number) {
-  return `₵${value.toFixed(2)}`;
-}
 
 interface ProductCardProps {
   id: string;

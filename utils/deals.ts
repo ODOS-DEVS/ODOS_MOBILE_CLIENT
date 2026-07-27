@@ -1,4 +1,7 @@
 import type { CatalogProductItem } from "@/hooks/useCatalog";
+import { formatCurrency } from "@/utils/currency";
+
+export { formatCurrency };
 
 export function isDealProduct(product: Pick<
   CatalogProductItem,
@@ -43,10 +46,6 @@ export function formatDealBadge(product: Pick<
   }
 
   return null;
-}
-
-export function formatCurrency(value: number) {
-  return `₵${value.toFixed(2)}`;
 }
 
 export function formatSavingsAmount(price?: number, oldPrice?: number) {

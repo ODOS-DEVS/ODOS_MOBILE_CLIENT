@@ -5,6 +5,7 @@ import {
   SHARE_WEB_BASE_URL,
 } from "@/constants/share";
 import { resolveApiMediaUrl } from "@/utils/media";
+import { formatCurrency } from "@/utils/currency";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
@@ -35,10 +36,6 @@ export type ProductShareContent = {
   shareLink: string;
   imageUri: string | null;
 };
-
-function formatPrice(value: number) {
-  return `₵${value.toFixed(2)}`;
-}
 
 function slugify(value: string) {
   return value
@@ -75,8 +72,8 @@ export function buildProductShareContent(
 
   const priceLine =
     product.oldPrice && product.oldPrice > product.price
-      ? `${formatPrice(product.price)} (was ${formatPrice(product.oldPrice)})`
-      : formatPrice(product.price);
+      ? `${formatCurrency(product.price)} (was ${formatCurrency(product.oldPrice)})`
+      : formatCurrency(product.price);
 
   const metaParts = [
     product.category,

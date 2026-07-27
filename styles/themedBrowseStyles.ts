@@ -254,19 +254,4 @@ export function useCommerceSeeAllUiStyles() {
   );
 }
 
-/** @deprecated Use useCommerceSeeAllScreenStyles() inside components */
-export const commerceSeeAllScreenStyles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scrollContent: {
-    paddingTop: rV(10),
-    gap: rV(14),
-  },
-  contentBlock: {
-    gap: rV(12),
-  },
-});
-
 export { AppColors };

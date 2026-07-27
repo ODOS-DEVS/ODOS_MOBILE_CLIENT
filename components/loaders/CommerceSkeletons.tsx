@@ -115,8 +115,6 @@ export const HorizontalStoreRowSkeleton = () => <SectionSkeleton variant="strip"
 export const HorizontalProductRowSkeleton = () => <SectionSkeleton variant="strip" />;
 export const MarketsRowSkeleton = () => <SectionSkeleton variant="strip" />;
 export const PromoBannerSkeleton = () => <SectionSkeleton variant="banner" />;
-export const HomeHeaderSkeleton = () => null;
-export const SearchLauncherSkeleton = () => null;
 export const SectionTitleSkeleton = () => <SkeletonLine width="32%" height={rV(12)} />;
 
 export function CategoryListSkeleton({ count = 3 }: { count?: number }) {

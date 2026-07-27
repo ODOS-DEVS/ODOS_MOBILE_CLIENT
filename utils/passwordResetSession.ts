@@ -98,6 +98,3 @@ export async function loadPasswordResetToken(email?: string | null) {
   }
   return hydrated.resetToken;
 }
-
-/** @deprecated Use getPasswordResetToken */
-export const consumePasswordResetToken = getPasswordResetToken;
