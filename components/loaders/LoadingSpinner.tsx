@@ -1,7 +1,7 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -26,55 +26,46 @@ export default function LoadingSpinner({
   tone = "default",
   style,
 }: LoadingSpinnerProps) {
+  const { colors } = useTheme();
   const isInverse = tone === "inverse";
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          alignItems: "center",
+          justifyContent: "center",
+          gap: rV(10),
+          paddingHorizontal: rS(24),
+          paddingVertical: rV(8),
+        },
+        label: {
+          marginTop: rV(4),
+          color: isInverse ? colors.inverseText : colors.text,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(15),
+          textAlign: "center",
+        },
+        sublabel: {
+          color: isInverse ? colors.mutedOnInverse : colors.textMuted,
+          fontFamily: Fonts.text,
+          fontSize: rMS(13),
+          lineHeight: rMS(19),
+          textAlign: "center",
+          maxWidth: rS(280),
+        },
+      }),
+    [colors, isInverse],
+  );
 
   return (
     <View style={[styles.wrap, style]}>
       <ActivityIndicator
         size={size}
-        color={isInverse ? "#FFFFFF" : AppColors.primary}
+        color={isInverse ? colors.inverseText : colors.primary}
       />
-      {label ? (
-        <Text style={[styles.label, isInverse && styles.labelInverse]}>
-          {label}
-        </Text>
-      ) : null}
-      {sublabel ? (
-        <Text style={[styles.sublabel, isInverse && styles.sublabelInverse]}>
-          {sublabel}
-        </Text>
-      ) : null}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {sublabel ? <Text style={styles.sublabel}>{sublabel}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rV(10),
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(8),
-  },
-  label: {
-    marginTop: rV(4),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    textAlign: "center",
-  },
-  labelInverse: {
-    color: "#FFFFFF",
-  },
-  sublabel: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(19),
-    textAlign: "center",
-    maxWidth: rS(280),
-  },
-  sublabelInverse: {
-    color: "rgba(255,255,255,0.82)",
-  },
-});

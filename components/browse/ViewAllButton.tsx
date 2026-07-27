@@ -29,7 +29,7 @@ export function ViewAllButton({
   style,
   accessibilityLabel,
 }: ViewAllButtonProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const displayLabel = count != null ? `${label} (${count})` : label;
 
@@ -44,9 +44,9 @@ export function ViewAllButton({
           paddingHorizontal: rS(14),
           paddingVertical: rS(7),
           borderRadius: rS(999),
-          backgroundColor: isDark ? "#2A2A2A" : colors.surfaceMuted,
-          borderWidth: isDark ? StyleSheet.hairlineWidth : 0,
-          borderColor: isDark ? "rgba(255,255,255,0.08)" : "transparent",
+          backgroundColor: colors.surfaceMuted,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
         },
         label: {
           fontFamily: Fonts.title,
@@ -61,7 +61,7 @@ export function ViewAllButton({
               } as const)
             : ({} as const),
       }),
-    [colors, isDark],
+    [colors],
   );
 
   return (

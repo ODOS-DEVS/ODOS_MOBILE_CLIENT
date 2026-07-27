@@ -1,9 +1,9 @@
 import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   Pressable,
@@ -72,17 +72,37 @@ type SearchFilterSheetProps = {
 function FilterSection({
   title,
   children,
+  titleColor,
 }: {
   title: string;
   children: React.ReactNode;
+  titleColor: string;
 }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.chipWrap}>{children}</View>
+    <View style={sectionStyles.section}>
+      <Text style={[sectionStyles.sectionTitle, { color: titleColor }]}>{title}</Text>
+      <View style={sectionStyles.chipWrap}>{children}</View>
     </View>
   );
 }
+
+const sectionStyles = StyleSheet.create({
+  section: {
+    marginBottom: rV(18),
+  },
+  sectionTitle: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(12),
+    marginBottom: rV(10),
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rS(8),
+  },
+});
 
 export default function SearchFilterSheet({
   visible,
@@ -108,24 +128,106 @@ export default function SearchFilterSheet({
   onReset,
 }: SearchFilterSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        backdrop: {
+          flex: 1,
+          backgroundColor: colors.backdrop,
+        },
+        sheet: {
+          maxHeight: "82%",
+          backgroundColor: colors.card,
+          borderTopLeftRadius: rMS(24),
+          borderTopRightRadius: rMS(24),
+          paddingTop: rV(8),
+        },
+        handle: {
+          alignSelf: "center",
+          width: rS(40),
+          height: rV(4),
+          borderRadius: rS(2),
+          backgroundColor: colors.border,
+          marginBottom: rV(10),
+        },
+        sheetHeader: {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: rS(18),
+          paddingBottom: rV(10),
+          gap: rS(10),
+        },
+        sheetTitle: {
+          flex: 1,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(17),
+          color: colors.text,
+        },
+        resetText: {
+          fontFamily: Fonts.title,
+          fontSize: rMS(13),
+          color: colors.primary,
+        },
+        closeBtn: {
+          padding: rS(4),
+          minWidth: rS(44),
+          minHeight: rS(44),
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        sheetBody: {
+          paddingHorizontal: rS(18),
+          paddingBottom: rV(16),
+        },
+        applyBtn: {
+          marginHorizontal: rS(18),
+          marginTop: rV(4),
+          minHeight: rV(48),
+          borderRadius: rMS(14),
+          backgroundColor: colors.primary,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        applyBtnText: {
+          color: colors.onPrimary,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(14),
+        },
+      }),
+    [colors],
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Dismiss filters" />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + rV(12) }]}>
         <View style={styles.handle} />
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Filters</Text>
-          <TouchableOpacity onPress={onReset} activeOpacity={0.82}>
+          <TouchableOpacity
+            onPress={onReset}
+            activeOpacity={0.82}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Reset filters"
+          >
             <Text style={styles.resetText}>Reset</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.82}>
-            <Ionicons name="close" size={rS(22)} color={AppColors.text} />
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeBtn}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel="Close filters"
+          >
+            <Ionicons name="close" size={rS(22)} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetBody}>
-          <FilterSection title="Sort by">
+          <FilterSection title="Sort by" titleColor={colors.textMuted}>
             {SORT_OPTIONS.map((option) => (
               <DiscoveryFilterChip
                 key={option.value}
@@ -136,7 +238,7 @@ export default function SearchFilterSheet({
             ))}
           </FilterSection>
 
-          <FilterSection title="Show">
+          <FilterSection title="Show" titleColor={colors.textMuted}>
             {MODE_OPTIONS.map((option) => (
               <DiscoveryFilterChip
                 key={option.value}
@@ -147,7 +249,7 @@ export default function SearchFilterSheet({
             ))}
           </FilterSection>
 
-          <FilterSection title="Price">
+          <FilterSection title="Price" titleColor={colors.textMuted}>
             {PRICE_OPTIONS.map((option) => (
               <DiscoveryFilterChip
                 key={option.value}
@@ -158,7 +260,7 @@ export default function SearchFilterSheet({
             ))}
           </FilterSection>
 
-          <FilterSection title="Category">
+          <FilterSection title="Category" titleColor={colors.textMuted}>
             <DiscoveryFilterChip
               label="All"
               active={!selectedCategory}
@@ -181,7 +283,7 @@ export default function SearchFilterSheet({
           </FilterSection>
 
           {subcategories.length > 0 ? (
-            <FilterSection title="Subcategory">
+            <FilterSection title="Subcategory" titleColor={colors.textMuted}>
               <DiscoveryFilterChip
                 label="All"
                 active={!selectedSubcategory}
@@ -199,7 +301,7 @@ export default function SearchFilterSheet({
           ) : null}
 
           {markets.length > 0 ? (
-            <FilterSection title="Market">
+            <FilterSection title="Market" titleColor={colors.textMuted}>
               <DiscoveryFilterChip
                 label="All"
                 active={!selectedMarket}
@@ -223,7 +325,7 @@ export default function SearchFilterSheet({
           ) : null}
 
           {stores.length > 0 ? (
-            <FilterSection title="Store">
+            <FilterSection title="Store" titleColor={colors.textMuted}>
               <DiscoveryFilterChip
                 label="All"
                 active={!selectedStore}
@@ -241,87 +343,16 @@ export default function SearchFilterSheet({
           ) : null}
         </ScrollView>
 
-        <TouchableOpacity style={styles.applyBtn} onPress={onClose} activeOpacity={0.9}>
+        <TouchableOpacity
+          style={styles.applyBtn}
+          onPress={onClose}
+          activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Show filtered results"
+        >
           <Text style={styles.applyBtnText}>Show results</Text>
         </TouchableOpacity>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-  },
-  sheet: {
-    maxHeight: "82%",
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: rMS(24),
-    borderTopRightRadius: rMS(24),
-    paddingTop: rV(8),
-  },
-  handle: {
-    alignSelf: "center",
-    width: rS(40),
-    height: rV(4),
-    borderRadius: rS(2),
-    backgroundColor: "#E5E7EB",
-    marginBottom: rV(10),
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rS(18),
-    paddingBottom: rV(10),
-    gap: rS(10),
-  },
-  sheetTitle: {
-    flex: 1,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-    color: AppColors.text,
-  },
-  resetText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  closeBtn: {
-    padding: rS(4),
-  },
-  sheetBody: {
-    paddingHorizontal: rS(18),
-    paddingBottom: rV(16),
-  },
-  section: {
-    marginBottom: rV(18),
-  },
-  sectionTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    color: "#6B7280",
-    marginBottom: rV(10),
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-  },
-  applyBtn: {
-    marginHorizontal: rS(18),
-    marginTop: rV(4),
-    minHeight: rV(48),
-    borderRadius: rMS(14),
-    backgroundColor: AppColors.text,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applyBtnText: {
-    color: "#FFFFFF",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-  },
-});

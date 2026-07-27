@@ -1,44 +1,17 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import type { VendorStatus } from "@/types/vendor";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-const STATUS_STYLES: Record<
-  VendorStatus,
-  { backgroundColor: string; color: string; label: string }
-> = {
-  none: {
-    backgroundColor: "#EEF2F7",
-    color: AppColors.secondary,
-    label: "Not Applied",
-  },
-  pending: {
-    backgroundColor: "#FEF3C7",
-    color: "#92400E",
-    label: "Pending",
-  },
-  under_review: {
-    backgroundColor: "#DBEAFE",
-    color: "#1D4ED8",
-    label: "Under Review",
-  },
-  approved: {
-    backgroundColor: "#DCFCE7",
-    color: "#166534",
-    label: "Approved",
-  },
-  rejected: {
-    backgroundColor: "#FEE2E2",
-    color: "#B91C1C",
-    label: "Rejected",
-  },
-  suspended: {
-    backgroundColor: "#F3E8FF",
-    color: "#7C3AED",
-    label: "Suspended",
-  },
+const STATUS_LABELS: Record<VendorStatus, string> = {
+  none: "Not Applied",
+  pending: "Pending",
+  under_review: "Under Review",
+  approved: "Approved",
+  rejected: "Rejected",
+  suspended: "Suspended",
 };
 
 type StatusBadgeProps = {
@@ -46,26 +19,29 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const palette = STATUS_STYLES[status];
+  const { colors } = useTheme();
+
+  const palette = useMemo(() => {
+    switch (status) {
+      case "pending":
+        return { backgroundColor: colors.warningSoft, color: colors.warningText };
+      case "under_review":
+        return { backgroundColor: colors.infoSoft, color: colors.infoText };
+      case "approved":
+        return { backgroundColor: colors.successSoft, color: colors.successText };
+      case "rejected":
+        return { backgroundColor: colors.dangerSoft, color: colors.dangerText };
+      case "suspended":
+        return { backgroundColor: colors.infoSoft, color: colors.infoText };
+      default:
+        return { backgroundColor: colors.surfaceMuted, color: colors.textMuted };
+    }
+  }, [colors, status]);
 
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: palette.backgroundColor,
-        },
-      ]}
-    >
-      <Text
-        style={[
-          styles.label,
-          {
-            color: palette.color,
-          },
-        ]}
-      >
-        {palette.label}
+    <View style={[styles.badge, { backgroundColor: palette.backgroundColor }]}>
+      <Text style={[styles.label, { color: palette.color }]}>
+        {STATUS_LABELS[status]}
       </Text>
     </View>
   );

@@ -14,7 +14,7 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import type { VendorStatus } from "@/types/vendor";
-import { rMS, rS, rV } from "@/styles/responsive";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -407,11 +407,15 @@ export function VendorScrollBody({
   bottomInset?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { horizontalPadding } = useResponsive();
   return (
     <View
       style={[
         vendorStyles.content,
-        { paddingBottom: bottomInset },
+        {
+          paddingHorizontal: horizontalPadding,
+          paddingBottom: bottomInset,
+        },
         contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: "center", width: "100%" } : null,
         style,
       ]}
