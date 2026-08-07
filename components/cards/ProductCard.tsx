@@ -155,7 +155,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             >
               <Text
                 style={{
-                  color: "#fff",
+                  color: colors.onPrimary,
                   fontSize: rS(10),
                   fontWeight: "600",
                 }}

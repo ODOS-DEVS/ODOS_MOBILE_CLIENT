@@ -232,6 +232,10 @@ export default function FlashSalesScreen() {
             ListHeaderComponent={listHeader}
             onEndReached={() => void loadMore()}
             onEndReachedThreshold={0.45}
+            initialNumToRender={8}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            removeClippedSubviews
             ListFooterComponent={
               isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
             }

@@ -1,13 +1,14 @@
+import AssistantEntryButton from "@/components/assistant/AssistantEntryButton";
 import CollapsibleShippingCard from "@/components/cards/CollapsableCard";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProductImageGalleryModal from "@/components/media/ProductImageGalleryModal";
+import CommerceImage from "@/components/media/CommerceImage";
 import ProductDetailBottomBar from "@/components/product/ProductDetailBottomBar";
 import ProductDetailRecommendations from "@/components/product/ProductDetailRecommendations";
 import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import ProductShareSheet from "@/components/share/ProductShareSheet";
-import { AppColors } from "@/constants/Colors";
 import { useProfile } from "@/context/ProfileContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
@@ -42,7 +43,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Dimensions,
   FlatList,
-  Image,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -243,7 +243,7 @@ export default function ProductDetail() {
     ],
   );
 
-  const { product, isLoading } = useCatalogProduct({
+  const { product, isLoading, isUnavailable } = useCatalogProduct({
     productId: id,
     fallback: productFallback,
   });
@@ -488,6 +488,11 @@ export default function ProductDetail() {
   }, [activeImageIndex, productImages.length]);
 
   const handleBuyNow = () => {
+    if (stock <= 0) {
+      showToast("This item is currently out of stock.", "error");
+      return;
+    }
+
     if (
       !requireAuth({
         title: "Sign in to buy now",
@@ -581,6 +586,41 @@ export default function ProductDetail() {
     );
   }
 
+  if (isUnavailable) {
+    return (
+      <View style={styles.container}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: Math.max(insets.top + rV(6), rV(44)),
+              paddingHorizontal: horizontalPadding,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Product Details</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: horizontalPadding, gap: rV(12) }}>
+          <Ionicons name="cube-outline" size={rMS(40)} color={colors.iconMuted} />
+          <Text style={{ color: colors.text, fontSize: rMS(16), fontWeight: "600", textAlign: "center" }}>
+            This product is no longer available
+          </Text>
+          <Text style={{ color: colors.textMuted, fontSize: rMS(13), textAlign: "center" }}>
+            The vendor may have removed it or it&apos;s currently out of stock indefinitely.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View
@@ -643,16 +683,23 @@ export default function ProductDetail() {
                     );
                     setActiveImageIndex(index);
                   }}
-                  renderItem={({ item }) => (
+                  renderItem={({ item, index }) => (
                     <TouchableOpacity
                       style={styles.imageSlide}
                       activeOpacity={0.96}
                       onPress={() => setIsGalleryOpen(true)}
                     >
-                      <Image
+                      <CommerceImage
                         source={item as any}
                         style={styles.heroImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        trackingId={`product-hero-${id}-${index}`}
+                        recyclingKey={
+                          item && typeof item === "object" && "uri" in item
+                            ? (item as { uri?: string }).uri
+                            : `${id}-${index}`
+                        }
+                        placeholderColor={colors.imagePlaceholder}
                       />
                     </TouchableOpacity>
                   )}
@@ -663,7 +710,7 @@ export default function ProductDetail() {
                     <Ionicons
                       name="images-outline"
                       size={rMS(13)}
-                      color={AppColors.white}
+                      color={colors.onInverseSurface}
                     />
                     <Text style={styles.galleryCountText}>
                       {activeImageIndex + 1}/{productImages.length}
@@ -679,7 +726,7 @@ export default function ProductDetail() {
                   <Ionicons
                     name="expand-outline"
                     size={rMS(14)}
-                    color={AppColors.white}
+                    color={colors.onInverseSurface}
                   />
                   <Text style={styles.expandHintText}>Tap to view</Text>
                 </View>
@@ -713,10 +760,17 @@ export default function ProductDetail() {
                         active && styles.thumbnailWrapActive,
                       ]}
                     >
-                      <Image
+                      <CommerceImage
                         source={item as any}
                         style={styles.thumbnailImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        trackingId={`product-thumb-${id}-${index}`}
+                        recyclingKey={
+                          item && typeof item === "object" && "uri" in item
+                            ? (item as { uri?: string }).uri
+                            : `${id}-${index}`
+                        }
+                        placeholderColor={colors.imagePlaceholder}
                       />
                     </TouchableOpacity>
                   );
@@ -914,7 +968,7 @@ export default function ProductDetail() {
                       <Ionicons
                         name="storefront-outline"
                         size={rMS(18)}
-                        color={AppColors.primary}
+                        color={colors.primary}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -929,7 +983,7 @@ export default function ProductDetail() {
                   </View>
                   {typeof store?.rating === "number" ? (
                     <View style={styles.storeRatingPill}>
-                      <Ionicons name="star" size={rMS(12)} color="#FACC15" />
+                      <Ionicons name="star" size={rMS(12)} color={colors.ratingText} />
                       <Text style={styles.storeRatingText}>
                         {store.rating.toFixed(1)}
                       </Text>
@@ -993,6 +1047,22 @@ export default function ProductDetail() {
                     </>
                   ) : null}
                 </View>
+
+                <View style={{ marginTop: rV(10) }}>
+                  <AssistantEntryButton
+                    screen="product"
+                    label="Ask about this product"
+                    compact
+                    context={{
+                      type: "product",
+                      product_id: id,
+                      product_title: title,
+                      store_id: store?.id ?? null,
+                      store_name: store?.title ? String(store.title) : null,
+                      category: category ?? null,
+                    }}
+                  />
+                </View>
               </View>
 
               <View style={styles.reviewSectionWrap}>
@@ -1013,7 +1083,7 @@ export default function ProductDetail() {
                     <Ionicons
                       name="information-circle-outline"
                       size={22}
-                      color={AppColors.subtext[100]}
+                      color={colors.iconMuted}
                     />
                   }
                   description={buildDescriptionLines(product.description)}
@@ -1037,7 +1107,7 @@ export default function ProductDetail() {
                     <Ionicons
                       name="shield-checkmark-outline"
                       size={20}
-                      color={AppColors.subtext[100]}
+                      color={colors.iconMuted}
                     />
                   }
                   description={[

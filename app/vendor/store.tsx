@@ -12,8 +12,10 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { AccountSettingToggle } from "@/components/profile/ProfileHubUi";
-import { AppColors } from "@/constants/Colors";
+import StoreHoursEditor from "@/components/vendor/StoreHoursEditor";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useMarkets } from "@/hooks/useCommerce";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
@@ -23,9 +25,10 @@ import type { ManagedStoreUpdateInput } from "@/types/store";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { getStoreLocationValidationError } from "@/utils/location";
 import { resolveImageSource } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { normalizeStoreSocialLinks } from "@/utils/social";
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type StoreErrors = Partial<Record<keyof ManagedStoreUpdateInput, string>>;
@@ -67,12 +70,25 @@ function validateStore(values: ManagedStoreUpdateInput) {
     errors.location = locationError;
   }
 
+  const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  const hasInvalidHours = Object.values(values.businessHours ?? {}).some((day) => {
+    if (day.closed) {
+      return false;
+    }
+    return (day.open && !timePattern.test(day.open)) || (day.close && !timePattern.test(day.close));
+  });
+  if (hasInvalidHours) {
+    errors.businessHours = "Fix the invalid times in your business hours before saving.";
+  }
+
   return errors;
 }
 
 export default function VendorStoreScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const { markets: availableMarkets } = useMarkets();
   const { hasVendorAccess, isCheckingVendorAccess, session } =
@@ -218,6 +234,10 @@ export default function VendorStoreScreen() {
     const result = await pickCroppedImage(undefined, 0.8);
     if (!result.granted) {
       showToast("Allow photo access to upload store images.");
+      return;
+    }
+    if (result.tooLarge) {
+      showToast("That photo is too large. Please choose one under 8MB.");
       return;
     }
     if (result.canceled || !result.uri) {
@@ -402,10 +422,13 @@ export default function VendorStoreScreen() {
               />
             ) : null}
             <Text style={styles.helperText}>
-              Business hours are saved with your profile when present. Shoppers
-              see vacation mode first; hours help set delivery expectations once
-              you are back.
+              Set your weekly hours so shoppers see &quot;Open now&quot; or &quot;Closed&quot; on
+              your storefront. Vacation mode overrides these while it&apos;s on.
             </Text>
+            <StoreHoursEditor
+              value={form.businessHours ?? null}
+              onChange={(next) => handleChange("businessHours", next)}
+            />
           </AccountSectionCard>
 
           <AccountSectionCard title="Store branding">
@@ -432,10 +455,13 @@ export default function VendorStoreScreen() {
                 <View key={upload.key} style={styles.uploadCard}>
                   <Text style={styles.uploadTitle}>{upload.label}</Text>
                   <View style={styles.uploadPreview}>
-                    <Image
+                    <CommerceImage
                       source={resolveImageSource(upload.value, "bag")}
                       style={styles.uploadPreviewImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      trackingId={`vendor-store-${upload.key}`}
+                      recyclingKey={upload.value || upload.key}
+                      placeholderColor={colors.imagePlaceholder}
                     />
                   </View>
                   <TouchableOpacity
@@ -464,139 +490,141 @@ export default function VendorStoreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  emptyWrap: {
-    flex: 1,
-    paddingHorizontal: rS(16),
-    justifyContent: "center",
-  },
-  scrollContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingTop: rV(18),
-    paddingBottom: rV(6),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    marginBottom: rV(16),
-  },
-  sectionTitle: {
-    marginBottom: rV(14),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(15),
-  },
-  helperText: {
-    marginBottom: rV(14),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-  fieldLabel: {
-    marginBottom: rV(10),
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    paddingLeft: rS(8),
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-    marginBottom: rV(12),
-  },
-  chip: {
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(10),
-    backgroundColor: "#F3F4F6",
-  },
-  chipSelected: {
-    backgroundColor: AppColors.primary,
-  },
-  chipLabel: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  chipLabelSelected: {
-    color: AppColors.white,
-  },
-  errorText: {
-    marginBottom: rV(10),
-    color: "#B91C1C",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  uploadGrid: {
-    gap: rV(12),
-    marginBottom: rV(14),
-  },
-  uploadCard: {
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D7DEE7",
-    padding: rS(12),
-    backgroundColor: "#FAFBFC",
-  },
-  uploadTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    marginBottom: rV(10),
-  },
-  uploadPreview: {
-    height: rV(132),
-    borderRadius: rMS(16),
-    overflow: "hidden",
-    backgroundColor: "#E8EDF2",
-    marginBottom: rV(10),
-  },
-  uploadPreviewImage: {
-    width: "100%",
-    height: "100%",
-  },
-  uploadButton: {
-    borderRadius: rMS(999),
-    backgroundColor: "#E9EEF5",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(12),
-  },
-  uploadButtonLabel: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  primaryButton: {
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(999),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(16),
-  },
-  buttonDisabled: {
-    opacity: 0.72,
-  },
-  primaryButtonLabel: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(14),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
+    screen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    emptyWrap: {
+      flex: 1,
+      paddingHorizontal: rS(16),
+      justifyContent: "center",
+    },
+    scrollContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(18),
+    },
+    contentWrap: {
+      width: "100%",
+      alignSelf: "center",
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(18),
+      paddingTop: rV(18),
+      paddingBottom: rV(6),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+      marginBottom: rV(16),
+    },
+    sectionTitle: {
+      marginBottom: rV(14),
+      color: colors.text,
+      fontFamily: Fonts.title,
+      fontSize: rMS(15),
+    },
+    helperText: {
+      marginBottom: rV(14),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+    fieldLabel: {
+      marginBottom: rV(10),
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+      paddingLeft: rS(8),
+    },
+    chipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+      marginBottom: rV(12),
+    },
+    chip: {
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(10),
+      backgroundColor: colors.pill,
+    },
+    chipSelected: {
+      backgroundColor: colors.primary,
+    },
+    chipLabel: {
+      color: colors.pillText,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+    },
+    chipLabelSelected: {
+      color: colors.onPrimary,
+    },
+    errorText: {
+      marginBottom: rV(10),
+      color: colors.dangerText,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+    },
+    uploadGrid: {
+      gap: rV(12),
+      marginBottom: rV(14),
+    },
+    uploadCard: {
+      borderRadius: rMS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      padding: rS(12),
+      backgroundColor: colors.surfaceSubtle,
+    },
+    uploadTitle: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+      marginBottom: rV(10),
+    },
+    uploadPreview: {
+      height: rV(132),
+      borderRadius: rMS(16),
+      overflow: "hidden",
+      backgroundColor: colors.imagePlaceholder,
+      marginBottom: rV(10),
+    },
+    uploadPreviewImage: {
+      width: "100%",
+      height: "100%",
+    },
+    uploadButton: {
+      borderRadius: rMS(999),
+      backgroundColor: colors.segmentBg,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: rV(12),
+    },
+    uploadButtonLabel: {
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12.5),
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+      borderRadius: rMS(999),
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: rV(16),
+    },
+    buttonDisabled: {
+      opacity: 0.72,
+    },
+    primaryButtonLabel: {
+      color: colors.onPrimary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(14),
+    },
+  });
+}

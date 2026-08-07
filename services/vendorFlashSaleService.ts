@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/constants/auth";
+import { parseApiErrorMessage } from "@/services/apiClient";
 import type {
   VendorFlashSaleNomination,
   VendorFlashSaleNominationInput,
@@ -16,6 +17,8 @@ type VendorFlashSaleNominationApi = {
   proposed_price?: number | null;
   proposed_old_price?: number | null;
   stock_limit?: number | null;
+  units_sold?: number | null;
+  units_remaining?: number | null;
   max_per_user?: number | null;
   vendor_note?: string | null;
   status: string;
@@ -39,14 +42,7 @@ function buildHeaders(accessToken: string) {
 }
 
 async function parseErrorMessage(response: Response) {
-  try {
-    const payload = await response.json();
-    return typeof payload?.detail === "string"
-      ? payload.detail
-      : "We couldn't complete that flash sale request.";
-  } catch {
-    return "We couldn't complete that flash sale request.";
-  }
+  return parseApiErrorMessage(response, "We couldn't complete that flash sale request.");
 }
 
 function mapNomination(payload: VendorFlashSaleNominationApi): VendorFlashSaleNomination {
@@ -61,6 +57,8 @@ function mapNomination(payload: VendorFlashSaleNominationApi): VendorFlashSaleNo
     proposedPrice: payload.proposed_price ?? undefined,
     proposedOldPrice: payload.proposed_old_price ?? undefined,
     stockLimit: payload.stock_limit ?? undefined,
+    unitsSold: payload.units_sold ?? undefined,
+    unitsRemaining: payload.units_remaining ?? undefined,
     maxPerUser: payload.max_per_user ?? undefined,
     vendorNote: payload.vendor_note ?? undefined,
     status: payload.status,

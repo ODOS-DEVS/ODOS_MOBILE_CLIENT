@@ -1,10 +1,6 @@
 import ProductCard from "@/components/cards/ProductCard";
-import {
-  AnimatedChatMessageWrap,
-  CHAT_FADE_IN_MS,
-  CHAT_FADE_OUT_MS,
-  TypingDots,
-} from "@/components/chat/ChatAnimations";
+import { AnimatedChatMessageWrap, TypingDots } from "@/components/chat/ChatAnimations";
+import MarkdownText from "@/components/chat/MarkdownText";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { productCardGapX, rMS, rS, rV } from "@/styles/responsive";
@@ -16,15 +12,17 @@ import type {
   AssistantStore,
 } from "@/types/assistant";
 import { getAssistantQuickPrompts } from "@/utils/assistantQuickPrompts";
+import CommerceImage from "@/components/media/CommerceImage";
+import { SkeletonLine } from "@/components/loaders/Skeleton";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useCallback, useMemo } from "react";
 import {
-  Image,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -325,7 +323,12 @@ function AssistantStoreCarousel({ stores }: { stores: AssistantStore[] }) {
               }
             >
               {store.image_url ? (
-                <Image source={{ uri: store.image_url }} style={styles.image} />
+                <CommerceImage
+                  source={{ uri: store.image_url }}
+                  style={styles.image}
+                  trackingId={`assistant-store-${store.id}`}
+                  recyclingKey={store.image_url}
+                />
               ) : (
                 <View style={styles.image} />
               )}
@@ -346,13 +349,25 @@ function AssistantStoreCarousel({ stores }: { stores: AssistantStore[] }) {
   );
 }
 
-type AssistantFeedbackProps = {
+type AssistantMessageActionsRowProps = {
   messageId: string;
+  content: string;
   rating: number | null | undefined;
-  onFeedback: (messageId: string, rating: number) => void;
+  onFeedback?: (messageId: string, rating: number) => void;
+  onCopy: () => void;
+  onShare: () => void;
+  onRegenerate?: () => void;
 };
 
-function AssistantFeedbackRow({ messageId, rating, onFeedback }: AssistantFeedbackProps) {
+function AssistantMessageActionsRow({
+  messageId,
+  content,
+  rating,
+  onFeedback,
+  onCopy,
+  onShare,
+  onRegenerate,
+}: AssistantMessageActionsRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(
     () =>
@@ -360,10 +375,21 @@ function AssistantFeedbackRow({ messageId, rating, onFeedback }: AssistantFeedba
         row: {
           flexDirection: "row",
           alignItems: "center",
-          gap: rS(8),
+          gap: rS(6),
           marginLeft: rS(52),
           marginTop: rV(4),
           marginBottom: rV(2),
+        },
+        iconButton: {
+          width: rMS(28),
+          height: rMS(28),
+          borderRadius: rMS(14),
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.surfaceMuted,
+        },
+        spacer: {
+          flex: 1,
         },
         label: {
           fontFamily: Fonts.text,
@@ -398,34 +424,100 @@ function AssistantFeedbackRow({ messageId, rating, onFeedback }: AssistantFeedba
     [colors],
   );
 
-  if (messageId === "welcome") {
+  if (messageId === "welcome" || !content.trim()) {
     return null;
   }
 
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>Helpful?</Text>
-      <Pressable
-        style={[styles.button, rating === 1 ? styles.buttonActive : null]}
-        onPress={() => onFeedback(messageId, 1)}
-      >
-        <Ionicons
-          name={rating === 1 ? "thumbs-up" : "thumbs-up-outline"}
-          size={rMS(13)}
-          color={rating === 1 ? colors.primary : colors.textMuted}
-        />
-        <Text style={[styles.buttonText, rating === 1 ? styles.buttonTextActive : null]}>Yes</Text>
+      <Pressable style={styles.iconButton} onPress={onCopy} accessibilityLabel="Copy message">
+        <Ionicons name="copy-outline" size={rMS(14)} color={colors.textMuted} />
       </Pressable>
-      <Pressable
-        style={[styles.button, rating === -1 ? styles.buttonActive : null]}
-        onPress={() => onFeedback(messageId, -1)}
-      >
-        <Ionicons
-          name={rating === -1 ? "thumbs-down" : "thumbs-down-outline"}
-          size={rMS(13)}
-          color={rating === -1 ? colors.primary : colors.textMuted}
-        />
-        <Text style={[styles.buttonText, rating === -1 ? styles.buttonTextActive : null]}>No</Text>
+      {onRegenerate ? (
+        <Pressable
+          style={styles.iconButton}
+          onPress={onRegenerate}
+          accessibilityLabel="Regenerate response"
+        >
+          <Ionicons name="refresh-outline" size={rMS(14)} color={colors.textMuted} />
+        </Pressable>
+      ) : null}
+      <Pressable style={styles.iconButton} onPress={onShare} accessibilityLabel="Share message">
+        <Ionicons name="share-outline" size={rMS(14)} color={colors.textMuted} />
+      </Pressable>
+      {onFeedback ? (
+        <>
+          <View style={styles.spacer} />
+          <Text style={styles.label}>Helpful?</Text>
+          <Pressable
+            style={[styles.button, rating === 1 ? styles.buttonActive : null]}
+            onPress={() => onFeedback(messageId, 1)}
+          >
+            <Ionicons
+              name={rating === 1 ? "thumbs-up" : "thumbs-up-outline"}
+              size={rMS(13)}
+              color={rating === 1 ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
+          <Pressable
+            style={[styles.button, rating === -1 ? styles.buttonActive : null]}
+            onPress={() => onFeedback(messageId, -1)}
+          >
+            <Ionicons
+              name={rating === -1 ? "thumbs-down" : "thumbs-down-outline"}
+              size={rMS(13)}
+              color={rating === -1 ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+function FailedMessageRow({ onRetry }: { onRetry: () => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: rS(6),
+          marginTop: rV(4),
+          marginBottom: rV(2),
+          paddingHorizontal: rS(16),
+        },
+        text: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(11),
+          color: colors.dangerText,
+        },
+        retryButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(4),
+          paddingHorizontal: rS(10),
+          paddingVertical: rV(5),
+          borderRadius: 999,
+          backgroundColor: colors.dangerSoft,
+        },
+        retryText: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(11),
+          color: colors.dangerText,
+        },
+      }),
+    [colors],
+  );
+
+  return (
+    <View style={styles.row}>
+      <Text style={styles.text}>Failed to send</Text>
+      <Pressable style={styles.retryButton} onPress={onRetry} accessibilityLabel="Retry sending message">
+        <Ionicons name="refresh" size={rMS(12)} color={colors.dangerText} />
+        <Text style={styles.retryText}>Retry</Text>
       </Pressable>
     </View>
   );
@@ -489,6 +581,8 @@ type AssistantCopyFeedbackProps = {
 };
 
 export function AssistantCopyFeedback({ visible }: AssistantCopyFeedbackProps) {
+  const { colors } = useTheme();
+
   if (!visible) {
     return null;
   }
@@ -514,19 +608,19 @@ export function AssistantCopyFeedback({ visible }: AssistantCopyFeedbackProps) {
           paddingVertical: rV(8),
           borderRadius: 999,
           backgroundColor: "rgba(15, 23, 42, 0.92)",
-          shadowColor: "#000000",
+          shadowColor: colors.shadow,
           shadowOpacity: 0.18,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: 4 },
           elevation: 6,
         }}
       >
-        <Ionicons name="checkmark" size={rMS(14)} color="#FFFFFF" />
+        <Ionicons name="checkmark" size={rMS(14)} color={colors.onPrimary} />
         <Text
           style={{
             fontFamily: Fonts.titleBold,
             fontSize: rMS(13),
-            color: "#FFFFFF",
+            color: colors.onPrimary,
             letterSpacing: 0.2,
           }}
         >
@@ -576,6 +670,9 @@ type AssistantMessageItemProps = {
   message: AssistantMessage;
   onFeedback?: (messageId: string, rating: number) => void;
   onCopied?: () => void;
+  onRegenerate?: (messageId: string) => void;
+  onRetry?: (messageId: string) => void;
+  showRegenerate?: boolean;
   isStreaming?: boolean;
   showAvatar?: boolean;
   showTimestamp?: boolean;
@@ -587,6 +684,9 @@ export function AssistantMessageItem({
   message,
   onFeedback,
   onCopied,
+  onRegenerate,
+  onRetry,
+  showRegenerate = false,
   isStreaming = false,
   showAvatar = true,
   showTimestamp = true,
@@ -606,6 +706,14 @@ export function AssistantMessageItem({
       onCopied?.();
     });
   }, [message.content, onCopied]);
+
+  const shareMessage = useCallback(() => {
+    const text = message.content.trim();
+    if (!text) {
+      return;
+    }
+    void Share.share({ message: text });
+  }, [message.content]);
 
   const styles = useMemo(
     () =>
@@ -648,6 +756,9 @@ export function AssistantMessageItem({
           paddingHorizontal: rS(14),
           paddingVertical: rV(11),
         },
+        userBubbleFailed: {
+          opacity: 0.6,
+        },
         text: {
           fontFamily: Fonts.text,
           fontSize: rMS(14.5),
@@ -674,9 +785,9 @@ export function AssistantMessageItem({
         <CopyableMessageBubble
           enabled={canCopy}
           onCopy={copyMessage}
-          style={styles.userBubble}
+          style={[styles.userBubble, message.failed ? styles.userBubbleFailed : null]}
         >
-          <Text style={[styles.text, { color: "#FFFFFF" }]}>{message.content}</Text>
+          <Text style={[styles.text, { color: colors.onPrimary }]}>{message.content}</Text>
         </CopyableMessageBubble>
       ) : (
         <CopyableMessageBubble
@@ -685,7 +796,9 @@ export function AssistantMessageItem({
           style={styles.assistantBubble}
         >
           <View style={styles.textRow}>
-            <Text style={[styles.text, { color: colors.text }]}>{message.content}</Text>
+            <View style={{ flexShrink: 1 }}>
+              <MarkdownText content={message.content} textStyle={[styles.text, { color: colors.text }]} />
+            </View>
             <AssistantStreamingCursor visible={isStreaming && Boolean(message.content)} />
           </View>
         </CopyableMessageBubble>
@@ -716,12 +829,21 @@ export function AssistantMessageItem({
       {!isUser && message.suggestedActions?.length ? (
         <AssistantActionChips message={message} actions={message.suggestedActions} />
       ) : null}
-      {!isUser && onFeedback ? (
-        <AssistantFeedbackRow
+      {!isUser && !isStreaming ? (
+        <AssistantMessageActionsRow
           messageId={message.id}
+          content={message.content}
           rating={message.feedbackRating}
           onFeedback={onFeedback}
+          onCopy={copyMessage}
+          onShare={shareMessage}
+          onRegenerate={
+            showRegenerate && onRegenerate ? () => onRegenerate(message.id) : undefined
+          }
         />
+      ) : null}
+      {isUser && message.failed && onRetry ? (
+        <FailedMessageRow onRetry={() => onRetry(message.id)} />
       ) : null}
     </>
   );
@@ -912,6 +1034,66 @@ export function AssistantWelcomeHero({
               : "Guided answers"}
         </Text>
       </View>
+    </View>
+  );
+}
+
+const SKELETON_BUBBLE_ROWS: { mine: boolean; width: `${number}%` }[] = [
+  { mine: false, width: "72%" },
+  { mine: true, width: "48%" },
+  { mine: false, width: "58%" },
+  { mine: false, width: "38%" },
+];
+
+export function AssistantMessagesSkeleton() {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          paddingTop: rV(12),
+          paddingHorizontal: rS(16),
+          gap: rV(14),
+        },
+        row: {
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: rS(8),
+        },
+        rowMine: {
+          justifyContent: "flex-end",
+        },
+        avatar: {
+          width: rMS(32),
+          height: rMS(32),
+          borderRadius: rMS(16),
+        },
+        bubble: {
+          paddingHorizontal: rS(14),
+          paddingVertical: rV(12),
+          borderRadius: rMS(18),
+        },
+      }),
+    [],
+  );
+
+  return (
+    <View style={styles.wrap}>
+      {SKELETON_BUBBLE_ROWS.map((row, index) => (
+        <View key={index} style={[styles.row, row.mine ? styles.rowMine : null]}>
+          {!row.mine ? (
+            <SkeletonLine width={rMS(32)} height={rMS(32)} radius={rMS(16)} delay={index * 90} />
+          ) : null}
+          <View
+            style={[
+              styles.bubble,
+              { backgroundColor: row.mine ? colors.accentSoft : colors.card, width: row.width },
+            ]}
+          >
+            <SkeletonLine width="100%" height={rV(12)} delay={index * 90 + 40} />
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

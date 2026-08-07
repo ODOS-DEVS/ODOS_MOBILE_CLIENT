@@ -10,7 +10,7 @@ type OffersCountBadgeProps = {
 };
 
 export function OffersCountBadge({ count, label = "offers" }: OffersCountBadgeProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const styles = useMemo(
     () =>
@@ -22,22 +22,22 @@ export function OffersCountBadge({ count, label = "offers" }: OffersCountBadgePr
           paddingHorizontal: rS(12),
           paddingVertical: rV(6),
           borderRadius: rS(999),
-          backgroundColor: isDark ? "#3F2E12" : "#FFF7ED",
+          backgroundColor: colors.warningSoft,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: isDark ? "rgba(252, 211, 77, 0.25)" : "#FED7AA",
+          borderColor: colors.warningBorder,
         },
         count: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(12),
-          color: isDark ? "#FCD34D" : "#C2410C",
+          color: colors.warningText,
         },
         label: {
           fontFamily: Fonts.title,
           fontSize: rMS(12),
-          color: isDark ? "#FDE68A" : "#9A3412",
+          color: colors.warningText,
         },
       }),
-    [isDark],
+    [colors],
   );
 
   return (

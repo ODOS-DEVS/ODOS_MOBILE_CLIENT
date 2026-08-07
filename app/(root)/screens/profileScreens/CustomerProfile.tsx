@@ -18,7 +18,9 @@ import PhoneVerificationField from "@/components/profile/PhoneVerificationField"
 import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { usePhoneVerification } from "@/hooks/usePhoneVerification";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -47,6 +49,8 @@ const GENDER_OPTIONS = ["Male", "Female"];
 
 const CustomerProfile = () => {
   const accountStyles = useAccountStyles();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const { isUpdatingProfile, updateProfile, user } = useAuth();
   const [firstName, setFirstName] = useState("");
@@ -244,6 +248,10 @@ const CustomerProfile = () => {
       const result = await pickCroppedImage(undefined, 0.7);
       if (!result.granted) {
         showToast("Allow photo access to update your profile picture.");
+        return;
+      }
+      if (result.tooLarge) {
+        showToast("That photo is too large. Please choose one under 8MB.");
         return;
       }
       if (result.canceled || !result.uri) {
@@ -579,25 +587,27 @@ const CustomerProfile = () => {
 
 export default CustomerProfile;
 
-const styles = StyleSheet.create({
-  errorBanner: {
-    borderRadius: rMS(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FECACA",
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-  },
-  errorBannerText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    color: "#B91C1C",
-    lineHeight: rMS(18),
-  },
-  sheetFooter: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(12),
-    marginBottom: rV(8),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    errorBanner: {
+      borderRadius: rMS(14),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.dangerText,
+      backgroundColor: colors.dangerSoft,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+    },
+    errorBannerText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+      color: colors.dangerText,
+      lineHeight: rMS(18),
+    },
+    sheetFooter: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginTop: rV(12),
+      marginBottom: rV(8),
+    },
+  });
+}

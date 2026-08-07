@@ -1,8 +1,11 @@
+import CommerceImage from "@/components/media/CommerceImage";
 import { productCardGapX, productCardGapY, rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
+import { computeStoreOpenStatus, type BusinessHoursMap } from "@/utils/storeHours";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useMemo } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface StoreCardProps {
   id: string;
@@ -16,6 +19,8 @@ interface StoreCardProps {
   rating?: number;
   reviews?: string;
   status?: string;
+  isOnVacation?: boolean;
+  businessHours?: BusinessHoursMap | null;
   /** Optional width override to match product cards */
   cardWidth?: number;
   /** Optional override for horizontal spacing (margin-right) */
@@ -34,6 +39,8 @@ const StoreCard: React.FC<StoreCardProps> = ({
   rating,
   reviews,
   status,
+  isOnVacation,
+  businessHours,
   cardWidth,
   horizontalSpacing,
 }) => {
@@ -45,6 +52,8 @@ const StoreCard: React.FC<StoreCardProps> = ({
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const isVerified = status === "active";
   const subtitle = category || city;
+  const openStatus = useMemo(() => computeStoreOpenStatus(businessHours), [businessHours]);
+  const showClosedBadge = isOnVacation || (openStatus && !openStatus.isOpen);
 
   return (
     <TouchableOpacity
@@ -86,11 +95,11 @@ const StoreCard: React.FC<StoreCardProps> = ({
           }}
         >
           {image ? (
-            <Image
+            <CommerceImage
               source={image}
-              className="bg-tertiary"
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
+              trackingId={`store-${id}`}
+              recyclingKey={imageKey || imageUrl || id}
+              placeholderColor={colors.imagePlaceholder}
             />
           ) : (
             <View
@@ -109,6 +118,23 @@ const StoreCard: React.FC<StoreCardProps> = ({
               </Text>
             </View>
           )}
+          {showClosedBadge ? (
+            <View
+              style={{
+                position: "absolute",
+                top: rS(8),
+                left: rS(8),
+                paddingHorizontal: rS(8),
+                paddingVertical: rV(4),
+                borderRadius: rS(999),
+                backgroundColor: "rgba(17, 24, 39, 0.88)",
+              }}
+            >
+              <Text style={{ color: "#FCA5A5", fontSize: rS(10), fontWeight: "700" }}>
+                {isOnVacation ? "On break" : "Closed"}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={{ padding: rS(12) }}>

@@ -22,30 +22,44 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 
 **Deals & discovery**
 
-- Deals hub with promo codes and flash sales (live countdowns)
+- Deals hub with promo codes, flash sales (live countdowns + real stock-limited scarcity), and a persistent entry point from Home
+- Collapsible seasonal campaign chips and a live "today's best deal" spotlight instead of a static banner
 - Recommendation engine (“For you”, similar products, behavior-aware ranking)
 - Per-banner tap destinations (product, category, deals, flash sale, etc.)
+
+**Delivery**
+
+- End-to-end delivery timeline with a 4‑digit proof-of-delivery code (SMS + in-app), a delivery celebration moment, and post-delivery quick feedback
+- Delivery instructions at checkout, "not home" reschedule flow, and vendor dispatch photo + "on my way" heads-up
+- Resilient order tracking that distinguishes real network failures from a genuinely missing order
 
 **Commerce details**
 
 - Delivery speed selection at checkout (standard, express, same-day where available)
-- Store profiles with location map and directions
-- Product sharing, **dark mode** (system or manual), pull-to-refresh across main feeds
+- Store profiles with location map and directions, plus **business hours with a live "Open now / Closed" status**
+- Product sharing, **dark mode** (system or manual, with accessible contrast throughout), pull-to-refresh across main feeds
 - Product **review deep-linking** — tap Write review or the rating chip to open My Reviews with the composer ready
 - Order detail **sticky reorder footer** that stays above the home indicator on all devices
-- **Push notifications** for orders and activity (tap opens the relevant screen)
+- **Push notifications** for orders and activity (tap opens the relevant screen instantly — no more waiting on a background sync call)
 - **Activity feed** with paginated notifications and accurate unread badge sync
 - **First-launch onboarding** before sign-in
 - **Google Sign-In** (native build / TestFlight; configure client IDs in `.env` and EAS)
 - **ODOS Assistant** — in-app AI guide for orders, checkout, delivery, vouchers, returns, and navigation (with human support handoff)
 
+**Payments & wallet**
+
+- Checkout via ODOS Wallet, card, or MoMo (Paystack), with vouchers/promo codes applying live to the order total
+- Wallet top-ups and vendor payouts with automatic background reconciliation for interrupted payments
+- Saved payment methods only ever keep the last 4 digits on device — full card numbers are never transmitted or stored
+
 **Vendor / Seller Center**
 
-- Vendor onboarding, store profile, products, orders, inventory, and store vouchers
+- Vendor onboarding, store profile (with a weekly business-hours editor), products, orders, inventory, and store vouchers
 - **Workspace modes**: shopping + selling together, or **sell-only** Seller Center tabs (Home · Orders · Products · Stock · Business)
 - Seller Home command center: needs-attention chips, today metrics, quick actions, manage grid
 - Customers, reviews (with seller replies), analytics periods, campaigns, vacation mode
-- Wallet / payouts, flash sale nominations, order alerts, and dual-role vendor access
+- Wallet / payouts with a visible commission rate and per-order commission breakdown
+- Flash sale nominations (with stock-cap performance stats), merchandising campaign opt-ins (with sales-since-approval stats), order alerts, and dual-role vendor access
 
 ## Requirements
 

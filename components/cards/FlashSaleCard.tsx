@@ -23,6 +23,8 @@ interface FlashSalesCardProps {
   reviews?: any;
   stock?: number;
   flashSaleEndsAt?: string;
+  flashSaleStockLimit?: number;
+  flashSaleUnitsRemaining?: number;
   cardWidth?: number;
   cardSpacing?: number;
   imageHeight?: number;
@@ -40,6 +42,8 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   reviews,
   stock,
   flashSaleEndsAt,
+  flashSaleStockLimit,
+  flashSaleUnitsRemaining,
   cardWidth,
   cardSpacing,
   imageHeight,
@@ -55,6 +59,10 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
   const mediaHeight = imageHeight ?? rV(180);
   const isLowStock = typeof stock === "number" && stock > 0 && stock <= 5;
   const hasLiveFlashCountdown = getSecondsRemaining(flashSaleEndsAt) > 0;
+  const hasFlashScarcity =
+    hasLiveFlashCountdown &&
+    typeof flashSaleStockLimit === "number" &&
+    typeof flashSaleUnitsRemaining === "number";
   const metaLineHeight = rV(14);
 
   return (
@@ -247,14 +255,18 @@ const FlashSalesCard: React.FC<FlashSalesCardProps> = ({
               </View>
               <View style={{ marginTop: rV(3), minHeight: metaLineHeight, justifyContent: "center" }}>
                 {savingsAmount ? (
-                  <Text style={{ color: "#059669", fontWeight: "700", fontSize: rS(11) }}>
+                  <Text style={{ color: colors.successText, fontWeight: "700", fontSize: rS(11) }}>
                     Save {savingsAmount}
                   </Text>
                 ) : null}
               </View>
               <View style={{ minHeight: metaLineHeight, justifyContent: "center" }}>
-                {isLowStock ? (
-                  <Text style={{ color: "#B45309", fontWeight: "700", fontSize: rS(11) }}>
+                {hasFlashScarcity ? (
+                  <Text style={{ color: "#DC2626", fontWeight: "700", fontSize: rS(11) }}>
+                    ⚡ Only {flashSaleUnitsRemaining} left at this price
+                  </Text>
+                ) : isLowStock ? (
+                  <Text style={{ color: colors.warningText, fontWeight: "700", fontSize: rS(11) }}>
                     Only {stock} left
                   </Text>
                 ) : null}

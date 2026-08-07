@@ -1,5 +1,6 @@
 import { AccountBadge } from "@/components/account/AccountUi";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import type { VendorOrder } from "@/types/store";
 import {
@@ -31,15 +32,15 @@ function slaToneToBadge(tone: ReturnType<typeof getVendorOrderSlaTone>) {
   return "neutral" as const;
 }
 
-function slaToneToAccent(tone: ReturnType<typeof getVendorOrderSlaTone>) {
+function slaToneToAccent(tone: ReturnType<typeof getVendorOrderSlaTone>, colors: ThemeColors) {
   if (tone === "danger") {
-    return "#DC2626";
+    return colors.dangerText;
   }
   if (tone === "warning") {
-    return "#EA580C";
+    return colors.warningText;
   }
   if (tone === "info") {
-    return "#2563EB";
+    return colors.infoText;
   }
   return undefined;
 }
@@ -48,7 +49,7 @@ export default function VendorOrderCard({ order, onPress }: VendorOrderCardProps
   const { colors, isDark } = useTheme();
   const waitLabel = formatVendorOrderWaitLabel(order);
   const slaTone = getVendorOrderSlaTone(order);
-  const accentColor = slaToneToAccent(slaTone);
+  const accentColor = slaToneToAccent(slaTone, colors);
   const isActionable = order.status !== "delivered" && order.status !== "cancelled";
 
   return (

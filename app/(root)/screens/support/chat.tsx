@@ -6,6 +6,7 @@ import {
   ChatMessagesEmpty,
   ChatScreenHeader,
   ChatScreenShell,
+  ChatScrollToBottomButton,
   ChatStatusBadge,
   ChatSupportContextPanel,
   ChatTypingIndicator,
@@ -37,7 +38,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -74,11 +83,13 @@ export default function SupportChatScreen() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const messagesByThreadRef = useRef(messagesByThread);
   const bootstrapAttemptedRef = useRef(false);
+  const isAtBottomRef = useRef(true);
   const viewerRole = useMemo(
     () => (user?.roles.includes("vendor") ? "vendor" : "customer"),
     [user?.roles],
@@ -228,12 +239,33 @@ export default function SupportChatScreen() {
     if (!messages.length && !isSending) {
       return;
     }
+    if (!isSending && !isAtBottomRef.current) {
+      return;
+    }
     const timeoutId = setTimeout(
       () => listRef.current?.scrollToEnd({ animated: true }),
       50,
     );
     return () => clearTimeout(timeoutId);
   }, [isSending, messages.length]);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      const nearBottom = distanceFromBottom < 120;
+      isAtBottomRef.current = nearBottom;
+      setIsAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
+    },
+    [],
+  );
+
+  const scrollToBottom = useCallback(() => {
+    listRef.current?.scrollToEnd({ animated: true });
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
+  }, []);
 
   const onSend = async () => {
     if (!resolvedThreadId || !input.trim()) {
@@ -346,7 +378,7 @@ export default function SupportChatScreen() {
         connectionState={connectionState}
         avatar={
           <View style={chatStyles.headerAvatarSupport}>
-            <Ionicons name="headset-outline" size={rMS(20)} color="#FFFFFF" />
+            <Ionicons name="headset-outline" size={rMS(20)} color={colors.onInverseSurface} />
           </View>
         }
         badges={
@@ -390,46 +422,54 @@ export default function SupportChatScreen() {
       ) : null}
 
       {resolvedThreadId ? (
-        <FlatList
-          ref={listRef}
-          style={chatStyles.messagesList}
-          data={messages}
-          keyExtractor={(message) => message.id}
-          contentContainerStyle={chatStyles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={false}
-          renderItem={({ item, index }) =>
-            renderChatMessageItem({
-              item,
-              index,
-              messages,
-              currentUserId: user.id,
-              onCopied: showCopyFeedback,
-            })
-          }
-          ListFooterComponent={
-            <ChatTypingIndicator
-              visible={isSending}
-              variant="outgoing"
-              label="Sending"
-            />
-          }
-          ListEmptyComponent={
-            isLoadingMessages ? (
-              <View style={chatStyles.loadingWrap}>
-                <ChatTypingIndicator visible variant="incoming" />
-                <Text style={chatStyles.loadingText}>Loading messages...</Text>
-              </View>
-            ) : (
-              <ChatMessagesEmpty
-                title="You're connected to support"
-                description="Share the issue clearly and we'll keep the conversation here so it's easy to pick up later."
-                icon="headset-outline"
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={listRef}
+            style={chatStyles.messagesList}
+            data={messages}
+            keyExtractor={(message) => message.id}
+            contentContainerStyle={chatStyles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item, index }) =>
+              renderChatMessageItem({
+                item,
+                index,
+                messages,
+                currentUserId: user.id,
+                onCopied: showCopyFeedback,
+              })
+            }
+            ListFooterComponent={
+              <ChatTypingIndicator
+                visible={isSending}
+                variant="outgoing"
+                label="Sending"
               />
-            )
-          }
-        />
+            }
+            ListEmptyComponent={
+              isLoadingMessages ? (
+                <View style={chatStyles.loadingWrap}>
+                  <ChatTypingIndicator visible variant="incoming" />
+                  <Text style={chatStyles.loadingText}>Loading messages...</Text>
+                </View>
+              ) : (
+                <ChatMessagesEmpty
+                  title="You're connected to support"
+                  description="Share the issue clearly and we'll keep the conversation here so it's easy to pick up later."
+                  icon="headset-outline"
+                />
+              )
+            }
+          />
+          <ChatScrollToBottomButton
+            visible={!isAtBottom && messages.length > 0}
+            onPress={scrollToBottom}
+          />
+        </View>
       ) : null}
 
       <ChatComposer

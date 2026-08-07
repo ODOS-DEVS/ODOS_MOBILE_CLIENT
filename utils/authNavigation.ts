@@ -1,10 +1,34 @@
 import type { Href } from "expo-router";
 
-import { HOME_TAB_HREF, type RouterLike } from "@/utils/navigation";
+import { HOME_TAB_HREF, VENDOR_HOME_TAB_HREF, type RouterLike } from "@/utils/navigation";
+import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
+import {
+  canAccessVendorDashboard,
+  type AppRole,
+  type VendorStatus,
+} from "@/types/vendor";
 import {
   clearPasswordResetSession,
   setPasswordResetSession,
 } from "@/utils/passwordResetSession";
+
+// Kept minimal (rather than importing AuthUser from AuthContext) to avoid a
+// circular import — AuthContext itself imports navigation helpers from this file.
+type HomeRedirectUser = { roles: AppRole[]; vendorStatus: VendorStatus } | null | undefined;
+
+function resolveHomeHref(user: HomeRedirectUser): Href {
+  if (!user) {
+    return HOME_TAB_HREF;
+  }
+
+  const workspace = useWorkspaceModeStore.getState();
+  const isSellOnlyVendorHome =
+    workspace.hydrated &&
+    workspace.mode === "sell_only" &&
+    canAccessVendorDashboard(user.roles, user.vendorStatus);
+
+  return isSellOnlyVendorHome ? VENDOR_HOME_TAB_HREF : HOME_TAB_HREF;
+}
 
 export const AUTH_SIGN_IN_HREF = "/(root)/(auth)/signin" as Href;
 export const AUTH_SIGN_UP_HREF = "/(root)/(auth)/signup" as Href;
@@ -55,10 +79,14 @@ export function openSignUpFromApp(router: RouterLike) {
   openAuthFromApp(router, AUTH_SIGN_UP_HREF);
 }
 
-/** Leave auth entirely and open the main app home tab. */
-export function exitAuthToHome(router: RouterLike) {
+/**
+ * Leave auth entirely and open the main app home tab — or, for an approved vendor
+ * currently in "sell_only" workspace mode, the Seller Center home (the shopper
+ * home tab is hidden for them, so HOME_TAB_HREF would land on a dead tab).
+ */
+export function exitAuthToHome(router: RouterLike, user?: HomeRedirectUser) {
   // Replace only — dismissTo/back pops are blocked on sign-in/sign-up screens.
-  router.replace(HOME_TAB_HREF);
+  router.replace(resolveHomeHref(user));
 }
 
 /** Reset the flow to sign in (e.g. after logout or password reset complete). */

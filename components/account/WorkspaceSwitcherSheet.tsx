@@ -8,12 +8,13 @@ import {
 } from "@/stores/workspaceModeStore";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { switchWorkspaceMode } from "@/utils/workspaceNavigation";
+import { navigateToWorkspaceHome } from "@/utils/workspaceNavigation";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -43,6 +44,7 @@ export default function WorkspaceSwitcherSheet({
   const { isApprovedVendor, storeLabel } = useVendorQuickAccess();
   const mode = useWorkspaceModeStore((state) => state.mode);
   const [isSwitching, setIsSwitching] = useState(false);
+  const pendingNavigationRef = useRef<WorkspaceMode | null>(null);
 
   const options = useMemo<WorkspaceOption[]>(() => {
     return [
@@ -162,13 +164,35 @@ export default function WorkspaceSwitcherSheet({
     }
 
     setIsSwitching(true);
-    try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Commit the mode now — the tab bar can safely re-render while the sheet is
+    // still animating closed. Only the *navigation* needs to wait.
+    await useWorkspaceModeStore.getState().setMode(next);
+
+    if (Platform.OS === "ios") {
+      // iOS Modal dismissal is a real ~300ms UIKit transition. Navigating (tearing
+      // down/rebuilding the tab route) while it's still in flight leaves the
+      // ScrollView underneath with a broken gesture recognizer — reported as the
+      // profile tab permanently losing the ability to scroll after switching
+      // workspace mode. Defer the route change to onDismiss, which iOS fires only
+      // once the native dismiss transition has actually finished.
+      pendingNavigationRef.current = next;
       onClose();
-      await switchWorkspaceMode(next);
-    } finally {
+    } else {
+      onClose();
+      navigateToWorkspaceHome(next);
       setIsSwitching(false);
     }
+  };
+
+  const handleModalDismiss = () => {
+    const next = pendingNavigationRef.current;
+    pendingNavigationRef.current = null;
+    if (next) {
+      navigateToWorkspaceHome(next);
+    }
+    setIsSwitching(false);
   };
 
   return (
@@ -177,6 +201,7 @@ export default function WorkspaceSwitcherSheet({
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      onDismiss={handleModalDismiss}
       statusBarTranslucent
     >
       <View style={styles.root} pointerEvents="box-none">

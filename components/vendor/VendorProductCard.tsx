@@ -15,10 +15,10 @@ import {
   isLowStockProduct,
 } from "@/utils/vendorProductCatalog";
 import { rMS, rS, rV } from "@/styles/responsive";
+import CommerceImage from "@/components/media/CommerceImage";
 import React from "react";
 import {
   Alert,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -95,7 +95,14 @@ export default function VendorProductCard({
             ) : null}
           </TouchableOpacity>
         ) : null}
-        <Image source={product.image} style={styles.image} resizeMode="cover" />
+        <CommerceImage
+          source={product.image}
+          style={[styles.image, { backgroundColor: colors.imagePlaceholder }]}
+          contentFit="cover"
+          trackingId={`vendor-product-${product.id}`}
+          recyclingKey={product.id}
+          placeholderColor={colors.imagePlaceholder}
+        />
         <View style={styles.cardBody}>
           <View style={styles.cardHeader}>
             <Text numberOfLines={1} style={[styles.productTitle, { color: colors.text }]}>
@@ -238,7 +245,6 @@ const styles = StyleSheet.create({
     width: rS(88),
     height: rS(88),
     borderRadius: rMS(16),
-    backgroundColor: "#F3F4F6",
   },
   cardBody: {
     flex: 1,

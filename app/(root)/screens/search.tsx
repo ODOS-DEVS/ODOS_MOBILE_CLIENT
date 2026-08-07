@@ -310,7 +310,14 @@ export default function SearchScreen() {
     if (!hasMore || isLoadingProducts || isLoadingMore) {
       return;
     }
-    void loadMore();
+
+    // Debounced: without this, every keystroke of a query with no local matches yet
+    // (which is most of them, mid-typing) fired a network page fetch immediately.
+    const timer = setTimeout(() => {
+      void loadMore();
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [
     filteredProducts.length,
     hasMore,

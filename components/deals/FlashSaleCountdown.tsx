@@ -1,4 +1,5 @@
 import { formatFlashEndsInLabel, getSecondsRemaining } from "@/utils/countdown";
+import { useTheme } from "@/context/ThemeContext";
 import { rS, rV } from "@/styles/responsive";
 import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
@@ -16,6 +17,7 @@ export function FlashSaleCountdown({
   tone = "dark",
   labelPrefix = "Ends in",
 }: FlashSaleCountdownProps) {
+  const { colors } = useTheme();
   const [secondsRemaining, setSecondsRemaining] = useState(() => {
     if (typeof serverSecondsRemaining === "number") {
       return Math.max(serverSecondsRemaining, 0);
@@ -56,12 +58,12 @@ export function FlashSaleCountdown({
   const palette =
     tone === "gold"
       ? {
-          backgroundColor: "rgba(17, 24, 39, 0.88)",
-          color: "#FCD34D",
+          backgroundColor: colors.inverseSurface,
+          color: colors.warningText,
         }
       : {
-          backgroundColor: "rgba(220, 38, 38, 0.12)",
-          color: "#B91C1C",
+          backgroundColor: colors.dangerSoft,
+          color: colors.dangerText,
         };
 
   return (

@@ -24,6 +24,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   RefreshControl,
@@ -114,10 +115,7 @@ export default function VendorInventoryPanel({
     return searched.sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name));
   }, [filter, products, searchQuery]);
 
-  const saveStock = async (product: VendorProduct) => {
-    const raw = draftStock[product.id] ?? String(product.stock);
-    const next = Math.max(0, Math.floor(Number(raw)));
-    if (!Number.isFinite(next) || next === product.stock) return;
+  const applyStock = async (product: VendorProduct, next: number) => {
     try {
       await patchProductStock(session, product.id, next);
       showToast(`Updated ${product.name} on-hand stock to ${next}`, "success");
@@ -132,6 +130,31 @@ export default function VendorInventoryPanel({
         "error",
       );
     }
+  };
+
+  const saveStock = async (product: VendorProduct) => {
+    const raw = draftStock[product.id] ?? String(product.stock);
+    const next = Math.max(0, Math.floor(Number(raw)));
+    if (!Number.isFinite(next) || next === product.stock) return;
+
+    const reserved = product.reservedStock ?? 0;
+    if (next < reserved) {
+      Alert.alert(
+        "Below reserved stock",
+        `${reserved} unit${reserved === 1 ? " is" : "s are"} already committed to open orders for ${product.name}. Setting on-hand to ${next} means some of those orders may not be fulfillable.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Set anyway",
+            style: "destructive",
+            onPress: () => void applyStock(product, next),
+          },
+        ],
+      );
+      return;
+    }
+
+    await applyStock(product, next);
   };
 
   const openHistory = async (product: VendorProduct) => {
@@ -160,6 +183,10 @@ export default function VendorInventoryPanel({
         data={filtered}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -381,7 +408,7 @@ export default function VendorInventoryPanel({
                         disabled={busy}
                         onPress={() => void saveStock(item)}
                         style={{
-                          backgroundColor: colors.text,
+                          backgroundColor: colors.inverseSurface,
                           borderRadius: 12,
                           paddingHorizontal: 14,
                           paddingVertical: 12,
@@ -392,7 +419,7 @@ export default function VendorInventoryPanel({
                           style={{
                             fontFamily: Fonts.textBold,
                             fontSize: rMS(12),
-                            color: colors.onPrimary,
+                            color: colors.onInverseSurface,
                           }}
                         >
                           Save

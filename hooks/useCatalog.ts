@@ -6,6 +6,7 @@ import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import {
   buildCatalogProductsUrl,
   CACHE_STALE,
+  CachedFetchError,
   fetchJsonCached,
   hasCachedJson,
   invalidateCachedUrl,
@@ -46,6 +47,8 @@ export type CatalogProductItem = ProductCardProps & {
   flashSaleEndsAt?: string;
   flashSaleEventSlug?: string;
   flashSaleEventTitle?: string;
+  flashSaleStockLimit?: number;
+  flashSaleUnitsRemaining?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -88,6 +91,8 @@ export type ProductApiItem = {
   flash_sale_ends_at?: string | null;
   flash_sale_event_slug?: string | null;
   flash_sale_event_title?: string | null;
+  flash_sale_stock_limit?: number | null;
+  flash_sale_units_remaining?: number | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -140,6 +145,8 @@ export function mapProduct(item: ProductApiItem): CatalogProductItem {
     flashSaleEndsAt: item.flash_sale_ends_at ?? undefined,
     flashSaleEventSlug: item.flash_sale_event_slug ?? undefined,
     flashSaleEventTitle: item.flash_sale_event_title ?? undefined,
+    flashSaleStockLimit: item.flash_sale_stock_limit ?? undefined,
+    flashSaleUnitsRemaining: item.flash_sale_units_remaining ?? undefined,
     createdAt: item.created_at ?? undefined,
     updatedAt: item.updated_at ?? undefined,
     image: resolveImageSource(item.image_url, item.image_key),
@@ -511,6 +518,9 @@ export function useCatalogProduct({
   const [isLoading, setIsLoading] = useState(
     () => Boolean(productId) && !hasCachedJson(productUrl),
   );
+  // Confirmed-gone (404) is distinct from a transient network/server error — only the
+  // former should stop the screen from letting someone buy a product that no longer exists.
+  const [isUnavailable, setIsUnavailable] = useState(false);
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -540,8 +550,15 @@ export function useCatalogProduct({
         setProduct((current) =>
           isSameProduct(current, nextProduct) ? current : nextProduct,
         );
-      } catch {
-        if (isMountedRef.current && !background && !hasCachedJson(productUrl)) {
+        setIsUnavailable(false);
+      } catch (error) {
+        const isConfirmedGone =
+          error instanceof CachedFetchError && error.status === 404;
+
+        if (isMountedRef.current && isConfirmedGone) {
+          setIsUnavailable(true);
+        } else if (isMountedRef.current && !background && !hasCachedJson(productUrl)) {
+          // Transient failure (network/5xx) — fall back rather than claiming it's gone.
           setProduct((current) =>
             isSameProduct(current, fallbackProduct) ? current : fallbackProduct,
           );
@@ -577,6 +594,10 @@ export function useCatalogProduct({
   }, [productUrl]);
 
   useEffect(() => {
+    setIsUnavailable(false);
+  }, [productId]);
+
+  useEffect(() => {
     if (!productId) {
       setIsLoading(false);
       return;
@@ -607,5 +628,5 @@ export function useCatalogProduct({
     });
   }, [loadProduct, productId, productUrl, subscribe]);
 
-  return { product, isLoading };
+  return { product, isLoading, isUnavailable };
 }

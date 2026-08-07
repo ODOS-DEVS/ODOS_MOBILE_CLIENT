@@ -1,10 +1,11 @@
 import { AccountFilterChips } from "@/components/account/AccountUi";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import type { CatalogCategoryItem } from "@/hooks/useCatalog";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 type CatalogTaxonomyPickerProps = {
@@ -28,6 +29,8 @@ export function CatalogTaxonomyPicker({
   onSelectSubcategory,
   categoryError,
 }: CatalogTaxonomyPickerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const selectedCategory =
     categories.find((entry) => entry.slug === categorySlug) ?? null;
   const subcategoryOptions = selectedCategory?.subcategories ?? [];
@@ -35,7 +38,7 @@ export function CatalogTaxonomyPicker({
   if (isLoading && !categories.length) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="small" color={AppColors.primary} />
+        <ActivityIndicator size="small" color={colors.primary} />
         <Text style={styles.loadingText}>Loading ODOS categories...</Text>
       </View>
     );
@@ -44,7 +47,7 @@ export function CatalogTaxonomyPicker({
   if (!categories.length) {
     return (
       <View style={styles.emptyWrap}>
-        <Ionicons name="grid-outline" size={rMS(22)} color="#9CA3AF" />
+        <Ionicons name="grid-outline" size={rMS(22)} color={colors.iconMuted} />
         <Text style={styles.emptyTitle}>No categories available yet</Text>
         <Text style={styles.emptyText}>
           Categories are managed by the ODOS admin team. Once they are
@@ -127,103 +130,105 @@ export function CatalogTaxonomyPicker({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    gap: rV(10),
-  },
-  sectionLabel: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-  },
-  sectionLabelSpaced: {
-    marginTop: rV(8),
-  },
-  helperText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-  loadingWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rV(10),
-    paddingVertical: rV(24),
-  },
-  loadingText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    color: "#6B7280",
-  },
-  emptyWrap: {
-    alignItems: "center",
-    gap: rV(8),
-    paddingVertical: rV(20),
-    paddingHorizontal: rS(12),
-    borderRadius: rMS(18),
-    backgroundColor: "#F8FAFC",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  emptyTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  emptyText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  placeholderCard: {
-    borderRadius: rMS(16),
-    backgroundColor: "#F8FAFC",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-  },
-  placeholderText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-  summaryCard: {
-    marginTop: rV(4),
-    borderRadius: rMS(16),
-    backgroundColor: "#EEF4FF",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D8E4FF",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-    gap: rV(4),
-  },
-  summaryLabel: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#1D4ED8",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  summaryValue: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  summaryHint: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-    color: "#4B5563",
-  },
-  errorText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#DC2626",
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      gap: rV(10),
+    },
+    sectionLabel: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.text,
+    },
+    sectionLabelSpaced: {
+      marginTop: rV(8),
+    },
+    helperText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+    loadingWrap: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rV(10),
+      paddingVertical: rV(24),
+    },
+    loadingText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      color: colors.textMuted,
+    },
+    emptyWrap: {
+      alignItems: "center",
+      gap: rV(8),
+      paddingVertical: rV(20),
+      paddingHorizontal: rS(12),
+      borderRadius: rMS(18),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    emptyTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+      textAlign: "center",
+    },
+    emptyText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+      color: colors.textMuted,
+      textAlign: "center",
+    },
+    placeholderCard: {
+      borderRadius: rMS(16),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+    },
+    placeholderText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+    summaryCard: {
+      marginTop: rV(4),
+      borderRadius: rMS(16),
+      backgroundColor: colors.infoSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.infoBorder,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+      gap: rV(4),
+    },
+    summaryLabel: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.infoText,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    summaryValue: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    summaryHint: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(17),
+      color: colors.textSecondary,
+    },
+    errorText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.dangerText,
+    },
+  });
+}

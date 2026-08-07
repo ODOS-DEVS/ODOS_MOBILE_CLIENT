@@ -32,11 +32,14 @@ export type ActivityRoute =
       storeName?: string;
     }
   | { type: "vendor_flash_sale" }
+  | { type: "vendor_campaign" }
   | { type: "vendor_product"; productId?: string }
   | { type: "profile" }
   | { type: "orders" }
   | { type: "vendor_wallet" }
-  | { type: "customer_wallet" };
+  | { type: "customer_wallet" }
+  | { type: "customer_vouchers" }
+  | { type: "vendor_vouchers" };
 
 export type ActivityItem = {
   id: string;

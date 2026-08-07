@@ -50,6 +50,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const listenersRef = useRef<Map<string, Set<(event: RealtimeEventEnvelope) => void>>>(
     new Map(),
   );
+  // `connect` and `scheduleReconnect` are mutually recursive, so `connect` can't be a
+  // dependency of `scheduleReconnect` without a cycle — route through a ref instead so
+  // the reconnect timer always calls the current `connect`, not whatever was memoized
+  // at scheduleReconnect's first render.
+  const connectRef = useRef<(token: string | null) => void>(() => {});
   const [connectionState, setConnectionState] = useState<
     "disconnected" | "connecting" | "connected"
   >("disconnected");
@@ -92,7 +97,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       if (!isActiveRef.current) {
         return;
       }
-      connect(latestTokenRef.current);
+      connectRef.current(latestTokenRef.current);
     }, delay);
   }, [clearReconnectTimeout]);
 
@@ -171,6 +176,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     },
     [clearReconnectTimeout, handleSocketMessage, scheduleReconnect],
   );
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const userId = user?.id ?? null;
 

@@ -8,8 +8,9 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import {
@@ -162,6 +163,8 @@ function mergeTimePart(current: Date, next: Date) {
 export default function VendorVouchersScreen() {
   const insets = useSafeAreaInsets();
   const { contentMaxWidth } = useResponsive();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showToast } = useToast();
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
 
@@ -702,7 +705,7 @@ export default function VendorVouchersScreen() {
                   onPress={() => openDateTimePicker("startsAt")}
                 >
                   <View style={styles.dateFieldValueRow}>
-                    <Ionicons name="calendar-outline" size={18} color={AppColors.secondary} />
+                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                     <Text
                       style={[
                         styles.dateFieldValue,
@@ -712,7 +715,7 @@ export default function VendorVouchersScreen() {
                       {formatScheduleValue(form.startsAt)}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-down-outline" size={18} color={AppColors.secondary} />
+                  <Ionicons name="chevron-down-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
                   Leave blank if the promotion should start working as soon as it is active.
@@ -736,7 +739,7 @@ export default function VendorVouchersScreen() {
                   onPress={() => openDateTimePicker("endsAt")}
                 >
                   <View style={styles.dateFieldValueRow}>
-                    <Ionicons name="calendar-outline" size={18} color={AppColors.secondary} />
+                    <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                     <Text
                       style={[
                         styles.dateFieldValue,
@@ -746,7 +749,7 @@ export default function VendorVouchersScreen() {
                       {formatScheduleValue(form.endsAt)}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-down-outline" size={18} color={AppColors.secondary} />
+                  <Ionicons name="chevron-down-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
                   Leave blank if the promotion should stay available until you disable it.
@@ -907,417 +910,419 @@ export default function VendorVouchersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scrollContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    padding: rS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  heroEyebrow: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11.5),
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  heroTitle: {
-    marginTop: rV(10),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(22),
-  },
-  heroBody: {
-    marginTop: rV(8),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-  },
-  primaryCta: {
-    marginTop: rV(18),
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    borderRadius: rMS(999),
-    backgroundColor: AppColors.text,
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(12),
-  },
-  primaryCtaText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(14),
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    padding: rS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  statLabel: {
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-  },
-  statValue: {
-    marginTop: rV(8),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-  },
-  emptyCard: {
-    marginTop: rV(14),
-  },
-  voucherCard: {
-    marginTop: rV(14),
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    padding: rS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  voucherTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(12),
-  },
-  voucherCode: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    letterSpacing: 0.5,
-  },
-  voucherTitle: {
-    marginTop: rV(6),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-  },
-  statusPill: {
-    borderRadius: rMS(999),
-    backgroundColor: "#EEF2F7",
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-  },
-  statusPillText: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(10.5),
-    textTransform: "capitalize",
-  },
-  pendingNote: {
-    marginTop: rV(8),
-    color: "#B45309",
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    lineHeight: rMS(16),
-  },
-  rewardText: {
-    marginTop: rV(14),
-    color: AppColors.text,
-    fontFamily: Fonts.black,
-    fontSize: rMS(24),
-  },
-  metaText: {
-    marginTop: rV(6),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(16),
-  },
-  secondaryBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: rMS(999),
-    backgroundColor: "#EEF2F7",
-    paddingVertical: rV(11),
-  },
-  secondaryBtnText: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  dangerBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: rMS(999),
-    backgroundColor: "#FEE2E2",
-    paddingVertical: rV(11),
-  },
-  dangerBtnText: {
-    color: "#B91C1C",
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  modalScreen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  inlinePickerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    paddingHorizontal: rS(18),
-  },
-  modalContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-  },
-  editorIntroCard: {
-    borderRadius: rMS(22),
-    backgroundColor: "#EEF4FF",
-    padding: rS(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#D8E4FF",
-  },
-  editorIntroTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-  },
-  editorIntroBody: {
-    marginTop: rV(8),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-  formSectionCard: {
-    marginTop: rV(14),
-    borderRadius: rMS(24),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  formSectionTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-  },
-  formSectionBody: {
-    marginTop: rV(6),
-    marginBottom: rV(16),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-  fieldLabel: {
-    marginBottom: rV(8),
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  segmentRow: {
-    flexDirection: "row",
-    gap: rS(8),
-    flexWrap: "wrap",
-    marginBottom: rV(8),
-  },
-  segmentChip: {
-    borderRadius: rMS(999),
-    borderWidth: 1,
-    borderColor: "#D6DCE5",
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-  },
-  segmentChipActive: {
-    borderColor: AppColors.text,
-    backgroundColor: AppColors.text,
-  },
-  segmentChipText: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  segmentChipTextActive: {
-    color: AppColors.white,
-  },
-  helperText: {
-    marginBottom: rV(16),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-  },
-  dateFieldContainer: {
-    marginBottom: rV(16),
-  },
-  dateFieldLabel: {
-    marginBottom: rV(6),
-    paddingLeft: rS(8),
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  dateField: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#D1D1D1",
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  dateFieldValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    flex: 1,
-    paddingRight: rS(8),
-  },
-  dateFieldValue: {
-    flex: 1,
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(14),
-  },
-  dateFieldPlaceholder: {
-    color: AppColors.secondary,
-  },
-  clearDateButton: {
-    marginTop: rV(8),
-    alignSelf: "flex-start",
-    paddingLeft: rS(8),
-  },
-  clearDateButtonText: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11.5),
-  },
-  previewCard: {
-    marginTop: rV(8),
-    borderRadius: rMS(22),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  previewEyebrow: {
-    color: AppColors.subtext[100],
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11),
-    textTransform: "uppercase",
-  },
-  previewValue: {
-    marginTop: rV(10),
-    color: AppColors.text,
-    fontFamily: Fonts.black,
-    fontSize: rMS(24),
-  },
-  previewMeta: {
-    marginTop: rV(8),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-  },
-  switchRow: {
-    marginTop: rV(16),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  switchLabel: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  modalActionRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(18),
-  },
-  modalGhostBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: rMS(999),
-    backgroundColor: "#E9EEF4",
-    paddingVertical: rV(13),
-  },
-  modalGhostText: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  modalPrimaryBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: rMS(999),
-    backgroundColor: AppColors.text,
-    paddingVertical: rV(13),
-  },
-  modalPrimaryText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "center",
-    paddingHorizontal: rS(18),
-  },
-  giftSheet: {
-    borderRadius: rMS(24),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-  },
-  datePickerSheet: {
-    borderRadius: rMS(24),
-    backgroundColor: AppColors.white,
-    padding: rS(18),
-  },
-  datePickerControl: {
-    alignSelf: "stretch",
-    marginTop: rV(6),
-  },
-  giftTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-  },
-  giftBody: {
-    marginTop: rV(8),
-    marginBottom: rV(16),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    scrollContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(18),
+    },
+    contentWrap: {
+      width: "100%",
+      alignSelf: "center",
+    },
+    heroCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(24),
+      padding: rS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    heroEyebrow: {
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(11.5),
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    heroTitle: {
+      marginTop: rV(10),
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(22),
+    },
+    heroBody: {
+      marginTop: rV(8),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+      lineHeight: rMS(20),
+    },
+    primaryCta: {
+      marginTop: rV(18),
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      borderRadius: rMS(999),
+      backgroundColor: colors.inverseSurface,
+      paddingHorizontal: rS(16),
+      paddingVertical: rV(12),
+    },
+    primaryCtaText: {
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12.5),
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginTop: rV(14),
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderRadius: rMS(18),
+      padding: rS(16),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    statLabel: {
+      color: colors.textMuted,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+    },
+    statValue: {
+      marginTop: rV(8),
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(18),
+    },
+    emptyCard: {
+      marginTop: rV(14),
+    },
+    voucherCard: {
+      marginTop: rV(14),
+      backgroundColor: colors.card,
+      borderRadius: rMS(22),
+      padding: rS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    voucherTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: rS(12),
+    },
+    voucherCode: {
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(11),
+      letterSpacing: 0.5,
+    },
+    voucherTitle: {
+      marginTop: rV(6),
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(17),
+    },
+    statusPill: {
+      borderRadius: rMS(999),
+      backgroundColor: colors.segmentBg,
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(6),
+    },
+    statusPillText: {
+      color: colors.pillText,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(10.5),
+      textTransform: "capitalize",
+    },
+    pendingNote: {
+      marginTop: rV(8),
+      color: colors.warningText,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+      lineHeight: rMS(16),
+    },
+    rewardText: {
+      marginTop: rV(14),
+      color: colors.text,
+      fontFamily: Fonts.black,
+      fontSize: rMS(24),
+    },
+    metaText: {
+      marginTop: rV(6),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginTop: rV(16),
+    },
+    secondaryBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: rMS(999),
+      backgroundColor: colors.segmentBg,
+      paddingVertical: rV(11),
+    },
+    secondaryBtnText: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+    },
+    dangerBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: rMS(999),
+      backgroundColor: colors.dangerSoft,
+      paddingVertical: rV(11),
+    },
+    dangerBtnText: {
+      color: colors.dangerText,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+    },
+    modalScreen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    inlinePickerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      backgroundColor: "rgba(15, 23, 42, 0.45)",
+      paddingHorizontal: rS(18),
+    },
+    modalContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(16),
+    },
+    editorIntroCard: {
+      borderRadius: rMS(22),
+      backgroundColor: colors.infoSoft,
+      padding: rS(16),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.infoBorder,
+    },
+    editorIntroTitle: {
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+    },
+    editorIntroBody: {
+      marginTop: rV(8),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+    formSectionCard: {
+      marginTop: rV(14),
+      borderRadius: rMS(24),
+      backgroundColor: colors.card,
+      padding: rS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    formSectionTitle: {
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+    },
+    formSectionBody: {
+      marginTop: rV(6),
+      marginBottom: rV(16),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+    fieldLabel: {
+      marginBottom: rV(8),
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+    },
+    segmentRow: {
+      flexDirection: "row",
+      gap: rS(8),
+      flexWrap: "wrap",
+      marginBottom: rV(8),
+    },
+    segmentChip: {
+      borderRadius: rMS(999),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(9),
+    },
+    segmentChipActive: {
+      borderColor: colors.inverseSurface,
+      backgroundColor: colors.inverseSurface,
+    },
+    segmentChipText: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+    },
+    segmentChipTextActive: {
+      color: colors.onInverseSurface,
+    },
+    helperText: {
+      marginBottom: rV(16),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+    },
+    dateFieldContainer: {
+      marginBottom: rV(16),
+    },
+    dateFieldLabel: {
+      marginBottom: rV(6),
+      paddingLeft: rS(8),
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+    },
+    dateField: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      borderRadius: rMS(22),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+    },
+    dateFieldValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      flex: 1,
+      paddingRight: rS(8),
+    },
+    dateFieldValue: {
+      flex: 1,
+      color: colors.text,
+      fontFamily: Fonts.text,
+      fontSize: rMS(14),
+    },
+    dateFieldPlaceholder: {
+      color: colors.placeholder,
+    },
+    clearDateButton: {
+      marginTop: rV(8),
+      alignSelf: "flex-start",
+      paddingLeft: rS(8),
+    },
+    clearDateButtonText: {
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(11.5),
+    },
+    previewCard: {
+      marginTop: rV(8),
+      borderRadius: rMS(22),
+      backgroundColor: colors.card,
+      padding: rS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    previewEyebrow: {
+      color: colors.textMuted,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(11),
+      textTransform: "uppercase",
+    },
+    previewValue: {
+      marginTop: rV(10),
+      color: colors.text,
+      fontFamily: Fonts.black,
+      fontSize: rMS(24),
+    },
+    previewMeta: {
+      marginTop: rV(8),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+    },
+    switchRow: {
+      marginTop: rV(16),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    switchLabel: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+    },
+    modalActionRow: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginTop: rV(18),
+    },
+    modalGhostBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: rMS(999),
+      backgroundColor: colors.segmentBg,
+      paddingVertical: rV(13),
+    },
+    modalGhostText: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12.5),
+    },
+    modalPrimaryBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: rMS(999),
+      backgroundColor: colors.inverseSurface,
+      paddingVertical: rV(13),
+    },
+    modalPrimaryText: {
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12.5),
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: "rgba(15, 23, 42, 0.45)",
+      justifyContent: "center",
+      paddingHorizontal: rS(18),
+    },
+    giftSheet: {
+      borderRadius: rMS(24),
+      backgroundColor: colors.card,
+      padding: rS(18),
+    },
+    datePickerSheet: {
+      borderRadius: rMS(24),
+      backgroundColor: colors.card,
+      padding: rS(18),
+    },
+    datePickerControl: {
+      alignSelf: "stretch",
+      marginTop: rV(6),
+    },
+    giftTitle: {
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(18),
+    },
+    giftBody: {
+      marginTop: rV(8),
+      marginBottom: rV(16),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+  });
+}

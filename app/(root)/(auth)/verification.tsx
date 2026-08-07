@@ -17,14 +17,20 @@ import {
   openForgotPassword,
 } from "@/utils/authNavigation";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+// Mirrors the backend's OTP_RESEND_COOLDOWN_SECONDS (auth_controller.py) so the button
+// doesn't invite a tap that the server will just reject with a 429.
+const RESEND_COOLDOWN_SECONDS = 45;
 
 export default function VerificationScreen() {
   const { colors } = useTheme();
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ""));
   const [generalError, setGeneralError] = useState("");
   const [phase, setPhase] = useState<"input" | "success">("input");
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const params = useLocalSearchParams<{
     email?: string | string[];
@@ -52,15 +58,45 @@ export default function VerificationScreen() {
 
   useEffect(() => {
     if (!isPasswordResetMode && user?.is_verified) {
-      exitAuthToHome(router);
+      exitAuthToHome(router, user);
     }
-  }, [isPasswordResetMode, router, user?.is_verified]);
+  }, [isPasswordResetMode, router, user]);
 
   useEffect(() => {
     if (isPasswordResetMode && !routeEmail) {
       openForgotPassword(router, undefined, { replace: true });
     }
   }, [isPasswordResetMode, routeEmail, router]);
+
+  const startResendCooldown = () => {
+    if (cooldownIntervalRef.current) {
+      clearInterval(cooldownIntervalRef.current);
+    }
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldown((current) => {
+        if (current <= 1) {
+          if (cooldownIntervalRef.current) {
+            clearInterval(cooldownIntervalRef.current);
+            cooldownIntervalRef.current = null;
+          }
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+  };
+
+  // A code was already sent right before this screen opened (signup or forgot-password),
+  // so start the cooldown immediately rather than leaving the button tappable right away.
+  useEffect(() => {
+    startResendCooldown();
+    return () => {
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleContinue = async () => {
     if (joinedCode.length !== OTP_LENGTH) {
@@ -97,6 +133,10 @@ export default function VerificationScreen() {
   };
 
   const handleResend = async () => {
+    if (resendCooldown > 0) {
+      return;
+    }
+
     setGeneralError("");
 
     if (isPasswordResetMode) {
@@ -109,6 +149,7 @@ export default function VerificationScreen() {
       if (result.success) {
         showToast(result.message || "A new reset code is on the way.");
         setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+        startResendCooldown();
         return;
       }
 
@@ -122,6 +163,7 @@ export default function VerificationScreen() {
     if (result.success) {
       showToast(result.message || "A new code is on the way.");
       setOtp(Array.from({ length: OTP_LENGTH }, () => ""));
+      startResendCooldown();
       return;
     }
 
@@ -134,7 +176,7 @@ export default function VerificationScreen() {
     return (
       <EmailVerificationSuccess
         email={displayEmail}
-        onContinue={() => exitAuthToHome(router)}
+        onContinue={() => exitAuthToHome(router, user)}
       />
     );
   }
@@ -192,9 +234,8 @@ export default function VerificationScreen() {
         <TouchableOpacity
           onPress={handleResend}
           disabled={
-            isPasswordResetMode
-              ? isRequestingPasswordReset
-              : isResendingVerificationCode
+            resendCooldown > 0 ||
+            (isPasswordResetMode ? isRequestingPasswordReset : isResendingVerificationCode)
           }
         >
           <Text
@@ -203,23 +244,24 @@ export default function VerificationScreen() {
               {
                 color: colors.primary,
                 opacity:
-                  isPasswordResetMode
-                    ? isRequestingPasswordReset
-                      ? 0.5
-                      : 1
-                    : isResendingVerificationCode
-                      ? 0.5
-                      : 1,
+                  resendCooldown > 0 ||
+                  (isPasswordResetMode ? isRequestingPasswordReset : isResendingVerificationCode)
+                    ? 0.5
+                    : 1,
               },
             ]}
           >
             {isPasswordResetMode
               ? isRequestingPasswordReset
                 ? "Sending…"
-                : "Resend code"
+                : resendCooldown > 0
+                  ? `Resend code (${resendCooldown}s)`
+                  : "Resend code"
               : isResendingVerificationCode
                 ? "Sending…"
-                : "Resend code"}
+                : resendCooldown > 0
+                  ? `Resend code (${resendCooldown}s)`
+                  : "Resend code"}
           </Text>
         </TouchableOpacity>
       </View>

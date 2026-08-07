@@ -14,6 +14,8 @@ type CommerceImageProps = {
   recyclingKey?: string;
   transition?: number;
   placeholderColor?: string;
+  /** Optional extra error callback, called in addition to ready-gate settling. */
+  onError?: () => void;
 };
 
 /**
@@ -29,6 +31,7 @@ export default function CommerceImage({
   recyclingKey,
   transition = 160,
   placeholderColor,
+  onError,
 }: CommerceImageProps) {
   const autoId = useId();
   const id = trackingId || autoId;
@@ -72,6 +75,7 @@ export default function CommerceImage({
         if (participateInReadyGate) {
           gate?.settle(id);
         }
+        onError?.();
       }}
     />
   );

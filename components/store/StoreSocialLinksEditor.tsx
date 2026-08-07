@@ -1,9 +1,10 @@
 import TextInputField from "@/components/TextInputField";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rV } from "@/styles/responsive";
 import type { StoreSocialLinks } from "@/utils/social";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 type StoreSocialLinksEditorProps = {
@@ -53,6 +54,9 @@ export default function StoreSocialLinksEditor({
   value,
   onChange,
 }: StoreSocialLinksEditorProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>Social media links</Text>
@@ -75,20 +79,22 @@ export default function StoreSocialLinksEditor({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    gap: rV(8),
-  },
-  title: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-  },
-  helper: {
-    marginBottom: rV(6),
-    color: "#6B7280",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      gap: rV(8),
+    },
+    title: {
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+    },
+    helper: {
+      marginBottom: rV(6),
+      color: colors.textMuted,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+    },
+  });
+}

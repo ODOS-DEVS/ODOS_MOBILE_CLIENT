@@ -13,7 +13,10 @@ export type DeliveryOption = {
   unavailableReason?: string;
 };
 
-const FREE_SHIPPING_THRESHOLD = 299;
+// Local-estimate default only — the authoritative value comes from the server delivery
+// quote (see hooks/useDeliveryQuote.ts) and overwrites this the moment it loads. Exported
+// so nothing else has to hardcode a second copy of this number.
+export const FREE_SHIPPING_THRESHOLD = 299;
 const SAME_DAY_CUTOFF_HOUR = 14;
 
 export const DELIVERY_METHOD_LABELS: Record<DeliveryMethodId, string> = {
@@ -153,7 +156,7 @@ export function buildDeliveryOptions(input: {
     sameDayEta = "Greater Accra only";
     sameDayReason = "Select a Greater Accra address to unlock same-day";
   } else if (!sameDayWindowOpen) {
-    const { weekday } = getAccraDateParts();
+    const { weekday } = getAccraDateParts(new Date());
     sameDaySubtitle = `Order before ${cutoffLabel} (Mon–Sat) for evening drop-off`;
     sameDayEta = weekday === "Sun" ? "Opens Monday" : "Closed for today";
     sameDayReason =

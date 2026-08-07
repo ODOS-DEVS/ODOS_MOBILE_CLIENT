@@ -1,4 +1,6 @@
 import Fonts from "@/constants/Fonts";
+import CommerceImage from "@/components/media/CommerceImage";
+import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import type { ActivityItem } from "@/hooks/useActivityFeed";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -8,7 +10,6 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -20,26 +21,26 @@ export type ActivityFilter = "all" | "unread";
 
 function activityAccentStyles(
   accent: ActivityItem["accent"],
-  isDark: boolean,
+  colors: ThemeColors,
 ) {
   if (accent === "success") {
     return {
-      iconBg: isDark ? "#14532D" : "#ECFDF3",
-      iconColor: isDark ? "#86EFAC" : "#15803D",
-      stripe: isDark ? "#22C55E" : "#86EFAC",
+      iconBg: colors.successSoft,
+      iconColor: colors.successText,
+      stripe: colors.successBorder,
     };
   }
   if (accent === "warning") {
     return {
-      iconBg: isDark ? "#422006" : "#FFF7ED",
-      iconColor: isDark ? "#FCD34D" : "#B45309",
-      stripe: isDark ? "#F59E0B" : "#FCD34D",
+      iconBg: colors.warningSoft,
+      iconColor: colors.warningText,
+      stripe: colors.warningBorder,
     };
   }
   return {
-    iconBg: isDark ? "#1E293B" : "#EEF2FF",
-    iconColor: isDark ? "#93C5FD" : "#4F46E5",
-    stripe: isDark ? "#60A5FA" : "#93C5FD",
+    iconBg: colors.infoSoft,
+    iconColor: colors.infoText,
+    stripe: colors.infoBorder,
   };
 }
 
@@ -73,7 +74,7 @@ export function ActivityHero({ totalCount, unreadCount }: ActivityHeroProps) {
           width: rMS(48),
           height: rMS(48),
           borderRadius: rMS(16),
-          backgroundColor: "rgba(255,255,255,0.88)",
+          backgroundColor: colors.card,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -99,7 +100,7 @@ export function ActivityHero({ totalCount, unreadCount }: ActivityHeroProps) {
         },
         stat: {
           flex: 1,
-          backgroundColor: "rgba(255,255,255,0.78)",
+          backgroundColor: colors.card,
           borderRadius: rMS(14),
           paddingVertical: rV(10),
           paddingHorizontal: rS(10),
@@ -123,7 +124,7 @@ export function ActivityHero({ totalCount, unreadCount }: ActivityHeroProps) {
   return (
     <Reanimated.View style={styles.wrap}>
       <LinearGradient
-        colors={[colors.accentSoft, "#FFFFFF"]}
+        colors={[colors.accentSoft, colors.card]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.inner}
@@ -368,7 +369,7 @@ export function ActivityFilterChips({
           color: colors.textSecondary,
         },
         chipTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         badge: {
           minWidth: rMS(20),
@@ -388,7 +389,7 @@ export function ActivityFilterChips({
           color: colors.textMuted,
         },
         badgeTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -410,7 +411,7 @@ export function ActivityFilterChips({
               <Ionicons
                 name={chip.icon}
                 size={rMS(15)}
-                color={isActive ? "#FFFFFF" : colors.textMuted}
+                color={isActive ? colors.onPrimary : colors.textMuted}
               />
               <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
                 {chip.label}
@@ -545,8 +546,8 @@ export const ActivityCard = React.memo(function ActivityCard({
   onOpen,
   onMarkRead,
 }: ActivityCardProps) {
-  const { colors, isDark } = useTheme();
-  const accent = activityAccentStyles(item.accent, isDark);
+  const { colors } = useTheme();
+  const accent = activityAccentStyles(item.accent, colors);
   const showProductThumb =
     Boolean(item.productImage) && activityKindUsesProductImage(item.kind);
 
@@ -670,7 +671,14 @@ export const ActivityCard = React.memo(function ActivityCard({
         <Pressable style={styles.inner} onPress={() => onOpen(item)}>
           {showProductThumb ? (
             <View style={styles.thumbWrap}>
-              <Image source={item.productImage} style={styles.thumb} resizeMode="cover" />
+              <CommerceImage
+                source={item.productImage}
+                style={styles.thumb}
+                contentFit="cover"
+                trackingId={`activity-thumb-${item.id}`}
+                recyclingKey={item.id}
+                placeholderColor={colors.imagePlaceholder}
+              />
             </View>
           ) : (
             <View style={styles.iconShell}>
@@ -797,7 +805,7 @@ export function ActivityEmptyState({
             backgroundColor: colors.primary,
           }}
         >
-          <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: "#FFFFFF" }}>
+          <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: colors.onPrimary }}>
             View all activity
           </Text>
         </Pressable>
@@ -871,8 +879,8 @@ export function ActivitySignedOutState({
           gap: rS(8),
         }}
       >
-        <Ionicons name="log-in-outline" size={rMS(18)} color="#FFFFFF" />
-        <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(14), color: "#FFFFFF" }}>
+        <Ionicons name="log-in-outline" size={rMS(18)} color={colors.onPrimary} />
+        <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(14), color: colors.onPrimary }}>
           Sign in
         </Text>
       </Pressable>

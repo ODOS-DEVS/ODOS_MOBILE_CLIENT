@@ -110,6 +110,10 @@ export default function VendorReturnsScreen() {
       <FlatList
         data={filteredReturns}
         keyExtractor={(item) => item.id}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

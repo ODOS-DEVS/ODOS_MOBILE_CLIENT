@@ -83,6 +83,10 @@ export default function VendorCampaignsScreen() {
         data={optIns}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -177,6 +181,18 @@ export default function VendorCampaignsScreen() {
               >
                 {item.status.replace(/_/g, " ")}
               </Text>
+              {item.status === "approved" ? (
+                <Text
+                  style={{
+                    marginTop: 4,
+                    fontFamily: Fonts.text,
+                    fontSize: rMS(12),
+                    color: colors.textSecondary,
+                  }}
+                >
+                  {item.unitsSoldSinceApproval ?? 0} units sold since being featured
+                </Text>
+              ) : null}
               {item.reviewNotes ? (
                 <Text
                   style={{

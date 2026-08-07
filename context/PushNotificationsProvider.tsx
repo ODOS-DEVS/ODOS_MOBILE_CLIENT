@@ -65,9 +65,12 @@ export function PushNotificationsProvider({
 
   const handleNotificationResponse = useCallback(
     async (data: Record<string, unknown>) => {
+      // Mark-as-read is a fire-and-forget network call with nothing for the
+      // navigation to wait on — awaiting it here just added its round-trip
+      // latency to every notification tap before the app would navigate.
       const notificationId = notificationIdFromPushData(data);
       if (notificationId) {
-        await markPushNotificationRead(notificationId);
+        void markPushNotificationRead(notificationId);
       }
 
       await navigateFromPushData(data);
@@ -196,6 +199,8 @@ export function PushNotificationsProvider({
   }, [isExpoGo, queuePushNavigation]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const register = async () => {
       if (isExpoGo) {
         if (!expoGoWarningShownRef.current) {
@@ -212,13 +217,23 @@ export function PushNotificationsProvider({
       }
 
       const Notifications = await import("expo-notifications");
+
+      // Skip the round-trip entirely if we're already granted/denied — only the very
+      // first-ever ask benefits from the delay below (no OS prompt firing over a blank
+      // screen the instant login resolves), and re-checking that costs nothing.
+      const currentPermission = await Notifications.getPermissionsAsync();
+      if (currentPermission.status === "undetermined") {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        if (cancelled) {
+          return;
+        }
+      }
       const projectId = await getProjectId();
       if (!projectId) {
         return;
       }
 
-      const permissionStatus = await Notifications.getPermissionsAsync();
-      let finalStatus = permissionStatus.status;
+      let finalStatus = currentPermission.status;
 
       if (finalStatus !== "granted") {
         const requestStatus = await Notifications.requestPermissionsAsync({
@@ -257,6 +272,10 @@ export function PushNotificationsProvider({
     };
 
     void register();
+
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken, isExpoGo, user]);
 
   useEffect(() => {

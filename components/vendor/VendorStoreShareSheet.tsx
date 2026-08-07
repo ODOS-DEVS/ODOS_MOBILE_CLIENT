@@ -8,10 +8,10 @@ import {
   shareStore,
 } from "@/utils/shareStore";
 import { rMS, rS, rV } from "@/styles/responsive";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -31,7 +31,7 @@ export default function VendorStoreShareSheet({
   visible,
   onClose,
 }: VendorStoreShareSheetProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
 
   const content = useMemo(
@@ -73,12 +73,12 @@ export default function VendorStoreShareSheet({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: colors.backdrop }]} onPress={onClose}>
         <Pressable
           style={[
             styles.sheet,
             {
-              backgroundColor: isDark ? colors.card : "#FFFFFF",
+              backgroundColor: colors.card,
               borderColor: colors.cardBorder,
             },
           ]}
@@ -96,7 +96,13 @@ export default function VendorStoreShareSheet({
           </Text>
 
           <View style={[styles.qrShell, { borderColor: colors.cardBorder }]}>
-            <Image source={{ uri: content.qrImageUrl }} style={styles.qrImage} />
+            <CommerceImage
+              source={{ uri: content.qrImageUrl }}
+              style={styles.qrImage}
+              trackingId={`vendor-share-qr-${store.id}`}
+              recyclingKey={content.qrImageUrl}
+              placeholderColor={colors.imagePlaceholder}
+            />
           </View>
 
           <Text style={[styles.link, { color: colors.textSecondary }]} numberOfLines={2}>
@@ -120,7 +126,6 @@ export default function VendorStoreShareSheet({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
     justifyContent: "flex-end",
     padding: rS(16),
   },

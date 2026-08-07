@@ -9,14 +9,14 @@ import {
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { lightTheme, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import type { VendorStatus } from "@/types/vendor";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   StyleSheet,
   Text,
@@ -44,67 +44,78 @@ export {
   VendorEmptyState,
 };
 
-export const vendorStyles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(14),
-    gap: rV(12),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-    gap: rV(12),
-  },
-  listContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(12),
-    gap: rV(12),
-    flexGrow: 1,
-  },
-  sectionBlock: {
-    gap: rV(10),
-  },
-  sectionEyebrow: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(17),
-    color: AppColors.text,
-  },
-  sectionDescription: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-    color: "#6B7280",
-  },
-  errorText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#DC2626",
-  },
-  headerAction: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(12),
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: rS(12),
-  },
-});
+// `vendorStyles` is imported by many vendor screens for layout-only keys
+// (content, contentWrap, listContent, sectionBlock, actionsGrid, statsRow),
+// so it stays a plain static export seeded from `lightTheme`. The handful of
+// color-bearing keys (sectionEyebrow/sectionTitle/sectionDescription/
+// errorText/headerAction) are only consumed by components defined in this
+// file, which instead build a live, theme-aware copy via `createVendorStyles`
+// so they render correctly in dark mode.
+function createVendorStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+    },
+    content: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(14),
+      gap: rV(12),
+    },
+    contentWrap: {
+      width: "100%",
+      alignSelf: "center",
+      gap: rV(12),
+    },
+    listContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(12),
+      gap: rV(12),
+      flexGrow: 1,
+    },
+    sectionBlock: {
+      gap: rV(10),
+    },
+    sectionEyebrow: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    sectionTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(17),
+      color: colors.text,
+    },
+    sectionDescription: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+      color: colors.textMuted,
+    },
+    errorText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.dangerText,
+    },
+    headerAction: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.primary,
+    },
+    actionsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(12),
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: rS(12),
+    },
+  });
+}
+
+export const vendorStyles = createVendorStyles(lightTheme);
 
 export function formatVendorCurrency(value: number, currency = "GHS") {
   return `${currency} ${value.toLocaleString(undefined, {
@@ -115,9 +126,10 @@ export function formatVendorCurrency(value: number, currency = "GHS") {
 
 export function VendorSettingsButton() {
   const { openSettings } = useVendorQuickAccess();
+  const { colors } = useTheme();
   return (
     <TouchableOpacity onPress={openSettings} activeOpacity={0.82}>
-      <Ionicons name="settings-outline" size={rMS(20)} color={AppColors.text} />
+      <Ionicons name="settings-outline" size={rMS(20)} color={colors.text} />
     </TouchableOpacity>
   );
 }
@@ -162,10 +174,12 @@ type VendorPageIntroProps = {
 };
 
 export function VendorPageIntro({ title, subtitle, stats, error }: VendorPageIntroProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createVendorStyles(colors), [colors]);
   return (
     <View style={{ gap: rV(10) }}>
       <AccountInsightCard title={title} subtitle={subtitle} stats={stats} />
-      {error ? <Text style={vendorStyles.errorText}>{error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -177,11 +191,13 @@ type VendorSectionHeaderProps = {
 };
 
 export function VendorSectionHeader({ eyebrow, title, description }: VendorSectionHeaderProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createVendorStyles(colors), [colors]);
   return (
-    <View style={vendorStyles.sectionBlock}>
-      {eyebrow ? <Text style={vendorStyles.sectionEyebrow}>{eyebrow}</Text> : null}
-      <Text style={vendorStyles.sectionTitle}>{title}</Text>
-      {description ? <Text style={vendorStyles.sectionDescription}>{description}</Text> : null}
+    <View style={styles.sectionBlock}>
+      {eyebrow ? <Text style={styles.sectionEyebrow}>{eyebrow}</Text> : null}
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
     </View>
   );
 }
@@ -207,6 +223,8 @@ export function VendorHeroCard({
   completedOrders,
   error,
 }: VendorHeroCardProps) {
+  const { colors } = useTheme();
+  const heroStyles = useMemo(() => createHeroStyles(colors), [colors]);
   return (
     <View style={heroStyles.card}>
       <View style={heroStyles.header}>
@@ -249,6 +267,8 @@ type VendorFocusCardProps = {
 };
 
 export function VendorFocusCard({ eyebrow, title, body, actionLabel, onPress }: VendorFocusCardProps) {
+  const { colors } = useTheme();
+  const focusStyles = useMemo(() => createFocusStyles(colors), [colors]);
   return (
     <AccountListCard style={focusStyles.card}>
       <Text style={focusStyles.eyebrow}>{eyebrow}</Text>
@@ -274,6 +294,8 @@ export function VendorFinanceCard({
   onOpenWallet,
   onReviewSettlements,
 }: VendorFinanceCardProps) {
+  const { colors } = useTheme();
+  const financeStyles = useMemo(() => createFinanceStyles(colors), [colors]);
   return (
     <AccountListCard>
       <Text style={financeStyles.overline}>Finance</Text>
@@ -314,6 +336,8 @@ type VendorNavRowProps = {
 };
 
 export function VendorNavRow({ label, subtitle, onPress, isLast = false }: VendorNavRowProps) {
+  const { colors } = useTheme();
+  const navStyles = useMemo(() => createNavStyles(colors), [colors]);
   return (
     <TouchableOpacity
       style={[navStyles.row, !isLast && navStyles.rowBorder]}
@@ -324,7 +348,7 @@ export function VendorNavRow({ label, subtitle, onPress, isLast = false }: Vendo
         <Text style={navStyles.label}>{label}</Text>
         <Text style={navStyles.subtitle}>{subtitle}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={rMS(18)} color="#D1D5DB" />
+      <Ionicons name="chevron-forward" size={rMS(18)} color={colors.iconMuted} />
     </TouchableOpacity>
   );
 }
@@ -336,6 +360,8 @@ type VendorDetailRowProps = {
 };
 
 export function VendorDetailRow({ label, value, isLast = false }: VendorDetailRowProps) {
+  const { colors } = useTheme();
+  const detailStyles = useMemo(() => createDetailStyles(colors), [colors]);
   return (
     <View style={[detailStyles.row, !isLast && detailStyles.rowBorder]}>
       <Text style={detailStyles.label}>{label}</Text>
@@ -357,6 +383,8 @@ export function VendorStickyFooter({
   loading = false,
   disabled = false,
 }: VendorStickyFooterProps) {
+  const { colors } = useTheme();
+  const footerStyles = useMemo(() => createFooterStyles(colors), [colors]);
   return (
     <View style={footerStyles.wrap}>
       <AccountActionButton
@@ -370,6 +398,8 @@ export function VendorStickyFooter({
 }
 
 export function VendorNoticeCard({ title, body }: { title: string; body: string }) {
+  const { colors } = useTheme();
+  const noticeStyles = useMemo(() => createNoticeStyles(colors), [colors]);
   return (
     <View style={noticeStyles.box}>
       <Text style={noticeStyles.title}>{title}</Text>
@@ -387,6 +417,8 @@ export function VendorHelpCard({
   title: string;
   body: string;
 }) {
+  const { colors } = useTheme();
+  const helpStyles = useMemo(() => createHelpStyles(colors), [colors]);
   return (
     <AccountListCard>
       <Text style={helpStyles.eyebrow}>{eyebrow}</Text>
@@ -425,272 +457,288 @@ export function VendorScrollBody({
   );
 }
 
-const heroStyles = StyleSheet.create({
-  card: {
-    backgroundColor: AppColors.text,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(20),
-    paddingVertical: rV(20),
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(12),
-  },
-  copy: { flex: 1 },
-  overline: {
-    color: "#CBD5E1",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  title: {
-    marginTop: rV(8),
-    color: "#FFFFFF",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(21),
-  },
-  body: {
-    marginTop: rV(6),
-    color: "#E2E8F0",
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-  },
-  pills: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-    marginTop: rV(14),
-  },
-  pill: {
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(6),
-  },
-  pillText: {
-    color: "rgba(255,255,255,0.9)",
-    fontFamily: Fonts.title,
-    fontSize: rMS(11),
-  },
-  metrics: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(16),
-  },
-  metric: {
-    flex: 1,
-    borderRadius: rMS(18),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    padding: rS(14),
-  },
-  metricLabel: {
-    color: "#94A3B8",
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-  },
-  metricValue: {
-    marginTop: rV(6),
-    color: "#FFFFFF",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-  },
-  error: {
-    marginTop: rV(10),
-    color: "#FCA5A5",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-});
+function createHeroStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.inverseSurface,
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(20),
+      paddingVertical: rV(20),
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: rS(12),
+    },
+    copy: { flex: 1 },
+    overline: {
+      color: colors.mutedOnInverse,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    title: {
+      marginTop: rV(8),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(21),
+    },
+    body: {
+      marginTop: rV(6),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+    },
+    pills: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+      marginTop: rV(14),
+    },
+    pill: {
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.12)",
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(6),
+    },
+    pillText: {
+      color: "rgba(255,255,255,0.9)",
+      fontFamily: Fonts.title,
+      fontSize: rMS(11),
+    },
+    metrics: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginTop: rV(16),
+    },
+    metric: {
+      flex: 1,
+      borderRadius: rMS(18),
+      backgroundColor: "rgba(255,255,255,0.08)",
+      padding: rS(14),
+    },
+    metricLabel: {
+      color: colors.mutedOnInverse,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+    },
+    metricValue: {
+      marginTop: rV(6),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(15),
+    },
+    error: {
+      marginTop: rV(10),
+      color: colors.dangerText,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+    },
+  });
+}
 
-const focusStyles = StyleSheet.create({
-  card: {
-    backgroundColor: "#FFFBEB",
-    borderColor: "#FDE68A",
-  },
-  eyebrow: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#B45309",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  title: {
-    marginTop: rV(6),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-  },
-  body: {
-    marginTop: rV(8),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-    color: "#4B5563",
-  },
-});
+function createFocusStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.warningSoft,
+      borderColor: colors.warningBorder,
+    },
+    eyebrow: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.warningText,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    title: {
+      marginTop: rV(6),
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+      color: colors.text,
+    },
+    body: {
+      marginTop: rV(8),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+      color: colors.textSecondary,
+    },
+  });
+}
 
-const financeStyles = StyleSheet.create({
-  overline: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  title: {
-    marginTop: rV(6),
-    fontFamily: Fonts.title,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  value: {
-    marginTop: rV(8),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(28),
-    color: AppColors.text,
-  },
-  body: {
-    marginTop: rV(6),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-  metrics: {
-    marginTop: rV(16),
-    borderRadius: rMS(18),
-    backgroundColor: "#F8FAFC",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    overflow: "hidden",
-  },
-  metric: {
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-  },
-  metricBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-  },
-  metricLabel: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    color: "#6B7280",
-  },
-  metricValue: {
-    marginTop: rV(4),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-});
+function createFinanceStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    overline: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    title: {
+      marginTop: rV(6),
+      fontFamily: Fonts.title,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    value: {
+      marginTop: rV(8),
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(28),
+      color: colors.text,
+    },
+    body: {
+      marginTop: rV(6),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+    metrics: {
+      marginTop: rV(16),
+      borderRadius: rMS(18),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: "hidden",
+    },
+    metric: {
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+    },
+    metricBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    metricLabel: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+      color: colors.textMuted,
+    },
+    metricValue: {
+      marginTop: rV(4),
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+  });
+}
 
-const navStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: rV(14),
-    gap: rS(12),
-  },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-  copy: { flex: 1, gap: rV(3) },
-  label: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  subtitle: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-    color: "#6B7280",
-  },
-});
+function createNavStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: rV(14),
+      gap: rS(12),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    copy: { flex: 1, gap: rV(3) },
+    label: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    subtitle: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(17),
+      color: colors.textMuted,
+    },
+  });
+}
 
-const detailStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(12),
-    paddingVertical: rV(11),
-  },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-  label: {
-    flex: 1,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    color: "#6B7280",
-  },
-  value: {
-    flex: 1,
-    textAlign: "right",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12.5),
-    color: AppColors.text,
-  },
-});
+function createDetailStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: rS(12),
+      paddingVertical: rV(11),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    label: {
+      flex: 1,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      color: colors.textMuted,
+    },
+    value: {
+      flex: 1,
+      textAlign: "right",
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12.5),
+      color: colors.text,
+    },
+  });
+}
 
-const footerStyles = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(10),
-    paddingBottom: rV(12),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
-    backgroundColor: "#F5F7FA",
-  },
-});
+function createFooterStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(10),
+      paddingBottom: rV(12),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      backgroundColor: colors.screen,
+    },
+  });
+}
 
-const noticeStyles = StyleSheet.create({
-  box: {
-    marginTop: rV(14),
-    borderRadius: rMS(16),
-    backgroundColor: "#FEF2F2",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    color: "#991B1B",
-  },
-  body: {
-    marginTop: rV(6),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: "#7F1D1D",
-  },
-});
+function createNoticeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    box: {
+      marginTop: rV(14),
+      borderRadius: rMS(16),
+      backgroundColor: colors.dangerSoft,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+    },
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12),
+      color: colors.dangerText,
+    },
+    body: {
+      marginTop: rV(6),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+      color: colors.dangerText,
+    },
+  });
+}
 
-const helpStyles = StyleSheet.create({
-  eyebrow: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  title: {
-    marginTop: rV(6),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    color: AppColors.text,
-  },
-  body: {
-    marginTop: rV(8),
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    color: "#6B7280",
-  },
-});
+function createHelpStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    eyebrow: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    title: {
+      marginTop: rV(6),
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(15),
+      color: colors.text,
+    },
+    body: {
+      marginTop: rV(8),
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+      lineHeight: rMS(20),
+      color: colors.textMuted,
+    },
+  });
+}

@@ -1,9 +1,11 @@
 import AssistantEntryButton from "@/components/assistant/AssistantEntryButton";
+import { buildCheckoutAssistantContext } from "@/utils/assistantContext";
 import CheckoutPaymentSection from "@/components/checkout/CheckoutPaymentSection";
 import CheckoutProcessingOverlay, {
   type CheckoutProcessingMode,
 } from "@/components/checkout/CheckoutProcessingOverlay";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import CommerceImage from "@/components/media/CommerceImage";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import {
   AccountEmptyState,
@@ -45,10 +47,10 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Image,
   ImageSourcePropType,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -139,6 +141,7 @@ export default function CheckoutScreen() {
   const [quantity, setQuantity] = useState(1);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [processingMode, setProcessingMode] = useState<CheckoutProcessingMode | null>(null);
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [voucherCodeInput, setVoucherCodeInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherPreview | null>(null);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
@@ -298,13 +301,24 @@ export default function CheckoutScreen() {
     });
   };
 
+  // Guards against overlapping applyVoucherCode calls (e.g. a silent
+  // background re-validation landing around the same time as a manual tap)
+  // stepping on each other — only the most recently *started* call is
+  // allowed to write its result, so a slower, now-superseded response can
+  // never overwrite a newer one.
+  const voucherRequestTokenRef = React.useRef(0);
+
   const applyVoucherCode = React.useCallback(
     async (code: string, options?: { silent?: boolean }) => {
       const normalizedCode = normalizeVoucherCode(code);
+      const requestToken = ++voucherRequestTokenRef.current;
+
       if (!normalizedCode) {
-        setVoucherError("Enter a voucher code first.");
-        setAppliedVoucher(null);
-        setCheckoutVoucherCode(null);
+        if (requestToken === voucherRequestTokenRef.current) {
+          setVoucherError("Enter a voucher code first.");
+          setAppliedVoucher(null);
+          setCheckoutVoucherCode(null);
+        }
         return null;
       }
 
@@ -315,6 +329,9 @@ export default function CheckoutScreen() {
           items: checkoutItems,
           shippingAmount: shipping,
         });
+        if (requestToken !== voucherRequestTokenRef.current) {
+          return null;
+        }
         setAppliedVoucher(preview);
         setVoucherCodeInput(preview.code);
         setCheckoutVoucherCode(preview.code);
@@ -324,6 +341,9 @@ export default function CheckoutScreen() {
         }
         return preview;
       } catch (error) {
+        if (requestToken !== voucherRequestTokenRef.current) {
+          return null;
+        }
         const message =
           error instanceof Error && error.message
             ? error.message
@@ -336,7 +356,9 @@ export default function CheckoutScreen() {
         }
         return null;
       } finally {
-        setIsApplyingVoucher(false);
+        if (requestToken === voucherRequestTokenRef.current) {
+          setIsApplyingVoucher(false);
+        }
       }
     },
     [checkoutItems, previewVoucher, setCheckoutVoucherCode, shipping, showSuccessToast, showErrorToast],
@@ -353,27 +375,45 @@ export default function CheckoutScreen() {
     setCheckoutVoucherCode(null);
   };
 
+  // Only re-sync when checkoutVoucherCode changes for a reason OTHER than the
+  // apply we just did ourselves (applyVoucherCode also writes to
+  // checkoutVoucherCode). Depending on appliedVoucher?.code here — the very
+  // value this effect's own call updates — made it self-trigger on every
+  // apply: it fired an extra silent re-preview right after every successful
+  // "Apply" tap, and if that redundant background call happened to fail or
+  // race, it silently overwrote the just-applied (and just-confirmed)
+  // voucher with nothing, with no visible error. A ref-based "already
+  // synced this code" guard breaks that loop.
+  const lastSyncedCheckoutVoucherCodeRef = React.useRef<string | null>(null);
   useEffect(() => {
     const normalizedCode = normalizeVoucherCode(checkoutVoucherCode ?? "");
-    if (!normalizedCode) {
+    if (!normalizedCode || lastSyncedCheckoutVoucherCodeRef.current === normalizedCode) {
       return;
     }
+    lastSyncedCheckoutVoucherCodeRef.current = normalizedCode;
+    setVoucherCodeInput(normalizedCode);
+    void applyVoucherCode(normalizedCode, { silent: true });
+  }, [applyVoucherCode, checkoutVoucherCode]);
 
-    setVoucherCodeInput((current) =>
-      normalizeVoucherCode(current) === normalizedCode ? current : normalizedCode,
-    );
-    if (appliedVoucher?.code !== normalizedCode) {
-      void applyVoucherCode(normalizedCode, { silent: true });
-    }
-  }, [applyVoucherCode, appliedVoucher?.code, checkoutVoucherCode]);
-
+  // Re-validate the applied voucher when the cart total actually changes
+  // (e.g. quantity edited) — via a ref rather than appliedVoucher?.code
+  // itself, so this doesn't also fire (redundantly, and racily) every time
+  // a fresh apply sets that same code.
+  const appliedVoucherCodeRef = React.useRef<string | null>(null);
+  appliedVoucherCodeRef.current = appliedVoucher?.code ?? null;
+  const isFirstSubtotalRevalidationRef = React.useRef(true);
   useEffect(() => {
-    if (!appliedVoucher?.code) {
+    if (isFirstSubtotalRevalidationRef.current) {
+      isFirstSubtotalRevalidationRef.current = false;
       return;
     }
-
-    void applyVoucherCode(appliedVoucher.code, { silent: true });
-  }, [applyVoucherCode, appliedVoucher?.code, subtotal]);
+    const code = appliedVoucherCodeRef.current;
+    if (!code) {
+      return;
+    }
+    void applyVoucherCode(code, { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
 
   useEffect(() => {
     if (!user || appliedVoucher || checkoutItems.length === 0) {
@@ -440,6 +480,7 @@ export default function CheckoutScreen() {
       address_street: selectedAddress.street,
       address_city: selectedAddress.city,
       address_region: selectedAddress.region,
+      delivery_instructions: deliveryInstructions.trim() || null,
       payment_type: "wallet",
       payment_label: "ODOS Wallet",
       payment_network: null,
@@ -519,6 +560,7 @@ export default function CheckoutScreen() {
         address_street: selectedAddress.street,
         address_city: selectedAddress.city,
         address_region: selectedAddress.region,
+        delivery_instructions: deliveryInstructions.trim() || null,
         payment_type: selectedPayment.type,
         payment_label: selectedPayment.label,
         payment_network: selectedPayment.network ?? null,
@@ -709,10 +751,13 @@ export default function CheckoutScreen() {
                 <View style={styles.row}>
                   <View style={styles.imageWrap}>
                     {productImage ? (
-                      <Image
+                      <CommerceImage
                         source={productImage}
                         style={styles.productImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        trackingId={`checkout-product-${id || "buy-now"}`}
+                        recyclingKey={product.imageKey ?? product.imageUrl ?? id}
+                        placeholderColor={colors.imagePlaceholder}
                       />
                     ) : (
                       <View style={[styles.productImage, styles.placeholderImage]}>
@@ -812,6 +857,43 @@ export default function CheckoutScreen() {
                   {selectedAddress ? "Change address" : "Browse addresses"}
                 </Text>
               </TouchableOpacity>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: rS(10),
+                  marginTop: rV(10),
+                  borderRadius: rMS(14),
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: colors.inputBorder,
+                  backgroundColor: colors.inputBg,
+                  paddingHorizontal: rS(12),
+                  paddingVertical: rV(10),
+                }}
+              >
+                <Ionicons
+                  name="chatbox-ellipses-outline"
+                  size={rMS(16)}
+                  color={colors.textMuted}
+                  style={{ marginTop: rV(2) }}
+                />
+                <TextInput
+                  value={deliveryInstructions}
+                  onChangeText={setDeliveryInstructions}
+                  placeholder="Delivery instructions (optional) — e.g. gate code, landmark"
+                  placeholderTextColor={colors.placeholder}
+                  multiline
+                  maxLength={280}
+                  style={{
+                    flex: 1,
+                    fontFamily: Fonts.text,
+                    fontSize: rMS(13),
+                    color: colors.text,
+                    minHeight: rV(20),
+                  }}
+                />
+              </View>
             </AccountSectionCard>
 
             <AccountSectionCard title="Delivery speed">
@@ -973,7 +1055,12 @@ export default function CheckoutScreen() {
             </AccountSectionCard>
 
             <View style={{ paddingHorizontal: rS(16), paddingTop: rV(8) }}>
-              <AssistantEntryButton screen="checkout" label="Need help before you pay?" compact />
+              <AssistantEntryButton
+                screen="checkout"
+                label="Need help before you pay?"
+                compact
+                context={buildCheckoutAssistantContext()}
+              />
             </View>
 
           </KeyboardAwareScrollView>

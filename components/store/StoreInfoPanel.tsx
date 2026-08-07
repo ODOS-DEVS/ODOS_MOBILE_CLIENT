@@ -3,8 +3,9 @@ import { useTheme } from "@/context/ThemeContext";
 import type { StoreItem } from "@/hooks/useCommerce";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { hasStoreCoordinates } from "@/utils/location";
+import { computeStoreOpenStatus, getWeekScheduleRows } from "@/utils/storeHours";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Linking,
   StyleSheet,
@@ -33,6 +34,17 @@ export default function StoreInfoPanel({
   onMap,
 }: StoreInfoPanelProps) {
   const { colors } = useTheme();
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
+
+  const openStatus = useMemo(
+    () => computeStoreOpenStatus(store.businessHours),
+    [store.businessHours],
+  );
+
+  const weekSchedule = useMemo(
+    () => (store.businessHours ? getWeekScheduleRows(store.businessHours) : []),
+    [store.businessHours],
+  );
 
   const locationLine = useMemo(() => {
     const parts = [store.city, store.region].filter(Boolean);
@@ -77,7 +89,9 @@ export default function StoreInfoPanel({
       Boolean(store.address || store.city));
 
   const hasPhone = Boolean(store.phone?.trim());
-  const hasContent = Boolean(locationLine || hasPhone || tags.length);
+  const hasContent = Boolean(
+    locationLine || hasPhone || tags.length || openStatus || store.isOnVacation,
+  );
 
   if (!hasContent) {
     return null;
@@ -158,12 +172,102 @@ export default function StoreInfoPanel({
       fontSize: rMS(11.5),
       color: colors.textSecondary,
     },
+    scheduleList: {
+      paddingHorizontal: rS(14),
+      paddingBottom: rV(12),
+      gap: rV(6),
+    },
+    scheduleRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    scheduleDay: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.textSecondary,
+    },
+    scheduleHours: {
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+      color: colors.text,
+    },
   });
 
   return (
     <View style={[styles.wrap, { paddingHorizontal: horizontalPadding }]}>
       <Text style={styles.eyebrow}>About this store</Text>
       <View style={styles.card}>
+        {store.isOnVacation ? (
+          <>
+            <View style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.warningSoft }]}>
+                <Ionicons name="pause-circle-outline" size={rMS(18)} color={colors.warningText} />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text style={[styles.rowTitle, { color: colors.warningText }]}>
+                  Temporarily closed
+                </Text>
+                <Text style={styles.rowSubtitle} numberOfLines={2}>
+                  {store.vacationMessage?.trim() || "This store is on a break right now."}
+                </Text>
+              </View>
+            </View>
+            {locationLine || hasPhone || openStatus ? <View style={styles.divider} /> : null}
+          </>
+        ) : openStatus ? (
+          <>
+            <TouchableOpacity
+              style={styles.row}
+              activeOpacity={weekSchedule.length ? 0.86 : 1}
+              disabled={!weekSchedule.length}
+              onPress={() => setShowFullSchedule((current) => !current)}
+            >
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: openStatus.isOpen ? colors.successSoft : colors.dangerSoft },
+                ]}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={rMS(18)}
+                  color={openStatus.isOpen ? colors.successText : colors.dangerText}
+                />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text
+                  style={[
+                    styles.rowTitle,
+                    { color: openStatus.isOpen ? colors.successText : colors.dangerText },
+                  ]}
+                >
+                  {openStatus.label}
+                </Text>
+                {openStatus.todayHoursLabel ? (
+                  <Text style={styles.rowSubtitle}>Today · {openStatus.todayHoursLabel}</Text>
+                ) : null}
+              </View>
+              {weekSchedule.length ? (
+                <Ionicons
+                  name={showFullSchedule ? "chevron-up" : "chevron-down"}
+                  size={rMS(16)}
+                  color={colors.iconMuted}
+                />
+              ) : null}
+            </TouchableOpacity>
+            {showFullSchedule ? (
+              <View style={styles.scheduleList}>
+                {weekSchedule.map((row) => (
+                  <View key={row.key} style={styles.scheduleRow}>
+                    <Text style={styles.scheduleDay}>{row.day}</Text>
+                    <Text style={styles.scheduleHours}>{row.hours}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {locationLine || hasPhone ? <View style={styles.divider} /> : null}
+          </>
+        ) : null}
         {locationLine ? (
           <>
             {hasMap ? (

@@ -332,14 +332,14 @@ export default function ProfileScreen() {
         },
         vendorButton: {
           marginTop: rV(16),
-          backgroundColor: colors.text,
+          backgroundColor: colors.inverseSurface,
           borderRadius: rMS(999),
           alignItems: "center",
           justifyContent: "center",
           paddingVertical: rV(14),
         },
         vendorButtonLabel: {
-          color: colors.onPrimary,
+          color: colors.onInverseSurface,
           fontFamily: Fonts.textBold,
           fontSize: rMS(13),
         },
@@ -740,7 +740,7 @@ export default function ProfileScreen() {
             icon="log-out-outline"
             label={isSigningOut ? "Logging out..." : "Log out"}
             onPress={handleLogout}
-            textColor="#E53935"
+            textColor={colors.dangerText}
           />
         </AccountListCard>
       ) : null}

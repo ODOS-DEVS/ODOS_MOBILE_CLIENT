@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/constants/auth";
+import { fetchJsonCached } from "@/utils/fetchCache";
 import { useCallback, useEffect, useState } from "react";
 
 export type FlashSaleEventItem = {
@@ -52,12 +53,10 @@ export function useFlashSaleEvents() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/catalog/flash-sale-events/active`);
-      if (!response.ok) {
-        throw new Error("Unable to load flash sale events.");
-      }
-
-      const payload = (await response.json()) as FlashSaleEventApiItem[];
+      const payload = await fetchJsonCached<FlashSaleEventApiItem[]>(
+        `${API_BASE_URL}/catalog/flash-sale-events/active`,
+        { staleTimeMs: 30_000, force: true },
+      );
       setEvents(payload.map(mapFlashSaleEvent));
     } catch (loadError) {
       setEvents([]);

@@ -186,6 +186,10 @@ export default function VendorProductsList({
       data={filteredProducts}
       keyExtractor={(item) => item.id}
       showsVerticalScrollIndicator={false}
+      initialNumToRender={8}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      removeClippedSubviews
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
       }
@@ -258,7 +262,7 @@ export default function VendorProductsList({
                 <TouchableOpacity
                   onPress={() => void runBulk({ status: "hidden" })}
                   style={{
-                    backgroundColor: colors.text,
+                    backgroundColor: colors.inverseSurface,
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -268,7 +272,7 @@ export default function VendorProductsList({
                     style={{
                       fontFamily: Fonts.textBold,
                       fontSize: rMS(12),
-                      color: colors.onPrimary,
+                      color: colors.onInverseSurface,
                     }}
                   >
                     Hide
@@ -277,7 +281,7 @@ export default function VendorProductsList({
                 <TouchableOpacity
                   onPress={() => void runBulk({ status: "active" })}
                   style={{
-                    backgroundColor: colors.text,
+                    backgroundColor: colors.inverseSurface,
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -287,7 +291,7 @@ export default function VendorProductsList({
                     style={{
                       fontFamily: Fonts.textBold,
                       fontSize: rMS(12),
-                      color: colors.onPrimary,
+                      color: colors.onInverseSurface,
                     }}
                   >
                     Relist
@@ -317,7 +321,7 @@ export default function VendorProductsList({
                 <TouchableOpacity
                   onPress={confirmBulkStock}
                   style={{
-                    backgroundColor: colors.text,
+                    backgroundColor: colors.inverseSurface,
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -327,7 +331,7 @@ export default function VendorProductsList({
                     style={{
                       fontFamily: Fonts.textBold,
                       fontSize: rMS(12),
-                      color: colors.onPrimary,
+                      color: colors.onInverseSurface,
                     }}
                   >
                     Apply

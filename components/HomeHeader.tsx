@@ -63,12 +63,20 @@ export const HomeHeader = () => {
           >
             {displayName}
           </Text>
-          <Text className="text-secondary" style={{ fontSize: rS(13) }}>
+          <Text style={{ fontSize: rS(13), color: colors.textSecondary }}>
             {greeting}
           </Text>
         </View>
       </TouchableOpacity>
       <View style={{ flexDirection: "row", alignItems: "center", gap: rS(10) }}>
+        <TouchableOpacity
+          onPress={() => router.push("/(root)/screens/deals" as any)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Deals and promos"
+        >
+          <Ionicons name="pricetags-outline" size={rS(22)} color={colors.text} />
+        </TouchableOpacity>
         <TouchableOpacity
         onPress={() => {
           if (
@@ -106,7 +114,7 @@ export const HomeHeader = () => {
           >
             <Text
               style={{
-                color: "#FFFFFF",
+                color: colors.onPrimary,
                 fontSize: rS(10),
                 fontFamily: "Montserrat-SemiBold",
               }}

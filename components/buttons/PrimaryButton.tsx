@@ -1,6 +1,8 @@
+import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
+import { rMS, rS, rV } from "@/styles/responsive";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { rS } from "@/styles/responsive";
 
 interface PrimaryButtonProps {
   title: string;
@@ -18,31 +20,48 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   className = "",
   disabled = false,
   isLoading = false,
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    disabled={disabled || isLoading}
-    className={`bg-primary ${roundedFull ? "rounded-full" : "rounded-[8px]"} py-6 items-center mt-8 ${className}`}
-    style={{
-      opacity: disabled || isLoading ? 0.7 : 1,
-    }}
-  >
-    <View style={styles.content}>
-      {isLoading ? (
-        <ActivityIndicator
-          size="small"
-          color="#FFFFFF"
-          style={styles.spinner}
-        />
-      ) : null}
-      <Text className="text-white text-lg font-bold">{title}</Text>
-    </View>
-  </TouchableOpacity>
-);
+}) => {
+  const { colors } = useTheme();
+  const isDisabled = disabled || isLoading;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={isDisabled}
+      activeOpacity={0.88}
+      className={`mt-8 ${className}`}
+      style={[
+        styles.button,
+        {
+          backgroundColor: colors.inverseSurface,
+          borderRadius: roundedFull ? 999 : rMS(14),
+          opacity: isDisabled ? 0.6 : 1,
+        },
+      ]}
+    >
+      <View style={styles.content}>
+        {isLoading ? (
+          <ActivityIndicator
+            size="small"
+            color={colors.onInverseSurface}
+            style={styles.spinner}
+          />
+        ) : null}
+        <Text style={[styles.label, { color: colors.onInverseSurface }]}>{title}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default PrimaryButton;
 
 const styles = StyleSheet.create({
+  button: {
+    paddingVertical: rV(16),
+    paddingHorizontal: rS(20),
+    alignItems: "center",
+    justifyContent: "center",
+  },
   content: {
     flexDirection: "row",
     alignItems: "center",
@@ -51,5 +70,9 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginRight: rS(10),
+  },
+  label: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(16),
   },
 });

@@ -73,10 +73,11 @@ export function AssistantAvatar({ size = rMS(32), pulse = false }: AssistantAvat
             height: size,
             borderRadius: size * 0.32,
             backgroundColor: colors.primary,
+            shadowColor: colors.shadow,
           },
         ]}
       >
-        <Ionicons name="sparkles" size={size * 0.46} color="#FFFFFF" />
+        <Ionicons name="sparkles" size={size * 0.46} color={colors.onPrimary} />
       </View>
     </View>
   );
@@ -150,7 +151,6 @@ const styles = StyleSheet.create({
   avatarCore: {
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },

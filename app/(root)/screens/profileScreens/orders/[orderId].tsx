@@ -1,4 +1,8 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import CommerceImage from "@/components/media/CommerceImage";
+import DeliveryCelebration from "@/components/orders/DeliveryCelebration";
+import DeliveryFeedbackPrompt from "@/components/orders/DeliveryFeedbackPrompt";
+import RescheduleRequestSheet from "@/components/orders/RescheduleRequestSheet";
 import {
   AccountActionButton,
   AccountActionRow,
@@ -18,9 +22,10 @@ import {
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import TextInputField from "@/components/TextInputField";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { useCart } from "@/context/CartContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
 import { getDeliveryMethodLabel } from "@/utils/delivery";
@@ -34,7 +39,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
   Alert,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -60,12 +64,12 @@ function getStatusTone(order: Order): "success" | "danger" | "warning" | "info" 
   return "info";
 }
 
-function getStatusMeta(order: Order) {
+function getStatusMeta(order: Order, colors: ThemeColors) {
   if (order.status === "pending_payment") {
     return {
       label: "Awaiting Payment",
-      backgroundColor: "#FEF3C7",
-      textColor: "#B45309",
+      backgroundColor: colors.warningSoft,
+      textColor: colors.warningText,
       helperText:
         order.payment_status === "failed"
           ? "Payment was not completed successfully."
@@ -76,8 +80,8 @@ function getStatusMeta(order: Order) {
   if (order.status === "delivered") {
     return {
       label: "Delivered",
-      backgroundColor: "#DCFCE7",
-      textColor: "#166534",
+      backgroundColor: colors.successSoft,
+      textColor: colors.successText,
       helperText: order.delivered_at
         ? `Delivered on ${new Date(order.delivered_at).toLocaleDateString()}`
         : "Delivered successfully",
@@ -87,65 +91,65 @@ function getStatusMeta(order: Order) {
   if (order.status === "cancelled") {
     return {
       label: "Cancelled",
-      backgroundColor: "#FEE2E2",
-      textColor: "#B91C1C",
+      backgroundColor: colors.dangerSoft,
+      textColor: colors.dangerText,
       helperText: order.cancellation_reason || "Cancelled by customer",
     };
   }
 
   return {
     label: "Processing",
-    backgroundColor: "#DBEAFE",
-    textColor: "#1D4ED8",
+    backgroundColor: colors.infoSoft,
+    textColor: colors.infoText,
     helperText: order.tracking_eta || "Estimated delivery in 2–3 days",
   };
 }
 
 const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
 
-function getReturnStatusMeta(status: ReturnRequest["status"]) {
+function getReturnStatusMeta(status: ReturnRequest["status"], colors: ThemeColors) {
   switch (status) {
     case "requested":
       return {
         label: "Requested",
-        backgroundColor: "#FEF3C7",
-        textColor: "#92400E",
+        backgroundColor: colors.warningSoft,
+        textColor: colors.warningText,
       };
     case "under_review":
       return {
         label: "Under Review",
-        backgroundColor: "#DBEAFE",
-        textColor: "#1D4ED8",
+        backgroundColor: colors.infoSoft,
+        textColor: colors.infoText,
       };
     case "approved":
       return {
         label: "Approved",
-        backgroundColor: "#DCFCE7",
-        textColor: "#166534",
+        backgroundColor: colors.successSoft,
+        textColor: colors.successText,
       };
     case "rejected":
       return {
         label: "Declined",
-        backgroundColor: "#FEE2E2",
-        textColor: "#B91C1C",
+        backgroundColor: colors.dangerSoft,
+        textColor: colors.dangerText,
       };
     case "refunded":
       return {
         label: "Refunded",
-        backgroundColor: "#DCFCE7",
-        textColor: "#166534",
+        backgroundColor: colors.successSoft,
+        textColor: colors.successText,
       };
     case "exchanged":
       return {
         label: "Exchanged",
-        backgroundColor: "#EDE9FE",
-        textColor: "#6D28D9",
+        backgroundColor: colors.infoSoft,
+        textColor: colors.infoText,
       };
     default:
       return {
         label: status.replace(/_/g, " "),
-        backgroundColor: "#EEF2F6",
-        textColor: AppColors.secondary,
+        backgroundColor: colors.surfaceMuted,
+        textColor: colors.textSecondary,
       };
   }
 }
@@ -156,11 +160,20 @@ export default function OrderDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
-  const { order, isLoadingOrder, refreshOrder } = useOrder(orderId);
-  const { cancelOrder, confirmDelivery, createReturnRequest, removeOrder, isMutatingOrder } =
-    useOrders();
+  const { order, isLoadingOrder, orderErrorKind, refreshOrder } = useOrder(orderId);
+  const {
+    cancelOrder,
+    confirmDelivery,
+    createReturnRequest,
+    removeOrder,
+    submitDeliveryRating,
+    requestReschedule,
+    isMutatingOrder,
+  } = useOrders();
   const { addItemsToCart } = useCart();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { reviews: savedReviews } = useReviews();
   const reviewedItemKeys = React.useMemo(
     () => new Set(savedReviews.map((review) => `${review.orderId}:${review.productId}`)),
@@ -179,6 +192,10 @@ export default function OrderDetailScreen() {
     handleDismiss: handleAppReviewDismiss,
   } = useAppReview();
   const deliveredReviewCheckedRef = useRef<string | null>(null);
+  const [showDeliveryCelebration, setShowDeliveryCelebration] = React.useState(false);
+  const [showRescheduleSheet, setShowRescheduleSheet] = React.useState(false);
+  const [isSubmittingReschedule, setIsSubmittingReschedule] = React.useState(false);
+  const prevOrderStatusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!order || order.status !== "delivered") {
@@ -190,6 +207,48 @@ export default function OrderDetailScreen() {
     deliveredReviewCheckedRef.current = order.id;
     void maybePromptAfterDelivery(order.id);
   }, [maybePromptAfterDelivery, order]);
+
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+    const previousStatus = prevOrderStatusRef.current;
+    if (previousStatus !== undefined && previousStatus !== "delivered" && order.status === "delivered") {
+      setShowDeliveryCelebration(true);
+    }
+    prevOrderStatusRef.current = order.status;
+  }, [order]);
+
+  const handleRateDelivery = async (rating: number) => {
+    if (!order) {
+      return;
+    }
+    try {
+      await submitDeliveryRating(order.id, rating);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't save that rating.",
+      );
+    }
+  };
+
+  const handleSubmitReschedule = async (note: string) => {
+    if (!order) {
+      return;
+    }
+    setIsSubmittingReschedule(true);
+    try {
+      await requestReschedule(order.id, note || undefined);
+      setShowRescheduleSheet(false);
+      showToast("We've let the seller know.");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't send that just now.",
+      );
+    } finally {
+      setIsSubmittingReschedule(false);
+    }
+  };
 
   const footerActionRows = useMemo(() => {
     if (!order) {
@@ -394,23 +453,32 @@ export default function OrderDetailScreen() {
   }
 
   if (!order) {
+    const isNetworkError = orderErrorKind === "network";
     return (
       <View style={accountStyles.screen}>
         <ProfileHeader title="Order Details" />
         <View style={styles.emptyWrap}>
           <AccountEmptyState
-            icon="receipt-outline"
-            title="We couldn't find that order"
-            message="It may have been removed, or the order details are no longer available."
-            actionLabel="Back to My Orders"
-            onAction={() => router.replace("/(root)/screens/profileScreens/orders" as any)}
+            icon={isNetworkError ? "cloud-offline-outline" : "receipt-outline"}
+            title={isNetworkError ? "Couldn't load this order" : "We couldn't find that order"}
+            message={
+              isNetworkError
+                ? "Check your connection and try again."
+                : "It may have been removed, or the order details are no longer available."
+            }
+            actionLabel={isNetworkError ? "Retry" : "Back to My Orders"}
+            onAction={
+              isNetworkError
+                ? () => void refreshOrder()
+                : () => router.replace("/(root)/screens/profileScreens/orders" as any)
+            }
           />
         </View>
       </View>
     );
   }
 
-  const statusMeta = getStatusMeta(order);
+  const statusMeta = getStatusMeta(order, colors);
   const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const timelineSteps = getOrderTimelineSteps(order);
 
@@ -446,6 +514,42 @@ export default function OrderDetailScreen() {
           ) : null}
         </AccountListCard>
 
+        {order.delivery_code && order.status !== "delivered" && order.status !== "cancelled" ? (
+          <View style={styles.deliveryCodeCard}>
+            <View style={styles.deliveryCodeCopy}>
+              <Text style={styles.deliveryCodeLabel}>Your delivery code</Text>
+              <Text style={styles.deliveryCodeHelper}>
+                Share this with the seller when your order arrives so they can confirm the handoff.
+              </Text>
+            </View>
+            <Text style={styles.deliveryCodeValue}>{order.delivery_code}</Text>
+          </View>
+        ) : null}
+
+        {order.vendor_status === "out_for_delivery" ? (
+          <TouchableOpacity
+            style={styles.notHomeButton}
+            activeOpacity={0.85}
+            onPress={() => setShowRescheduleSheet(true)}
+          >
+            <Ionicons name="time-outline" size={rMS(16)} color={colors.warningText} />
+            <Text style={styles.notHomeButtonText}>Not home right now? Let the seller know</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {order.reschedule_requested_at ? (
+          <View style={styles.rescheduleNotice}>
+            <Ionicons name="checkmark-circle-outline" size={rMS(16)} color={colors.infoText} />
+            <Text style={styles.rescheduleNoticeText}>
+              The seller has been told you may not be available right now.
+            </Text>
+          </View>
+        ) : null}
+
+        {order.status === "delivered" && order.delivery_rating == null ? (
+          <DeliveryFeedbackPrompt onRate={handleRateDelivery} />
+        ) : null}
+
         <AccountSectionCard title="Order journey">
           {timelineSteps.map((step, index) => {
             const isLast = index === timelineSteps.length - 1;
@@ -459,12 +563,12 @@ export default function OrderDetailScreen() {
                     : "ellipse-outline";
             const iconColor =
               step.state === "done"
-                ? "#16A34A"
+                ? colors.successText
                 : step.state === "active"
-                  ? "#2563EB"
+                  ? colors.infoText
                   : step.state === "cancelled"
-                    ? "#DC2626"
-                    : "#B6C0CC";
+                    ? colors.dangerText
+                    : colors.iconMuted;
 
             return (
               <View key={step.key} style={[styles.timelineRow, !isLast && styles.timelineRowSpaced]}>
@@ -488,7 +592,9 @@ export default function OrderDetailScreen() {
             const hasOpenRequest = latestRequest
               ? OPEN_RETURN_STATUSES.has(latestRequest.status)
               : false;
-            const latestRequestMeta = latestRequest ? getReturnStatusMeta(latestRequest.status) : null;
+            const latestRequestMeta = latestRequest
+              ? getReturnStatusMeta(latestRequest.status, colors)
+              : null;
 
             return (
               <View
@@ -501,9 +607,16 @@ export default function OrderDetailScreen() {
                 <View style={styles.itemRowTop}>
                   <View style={styles.imageWrap}>
                     {item.image_url || item.image_key ? (
-                      <Image source={itemImage} style={styles.image} resizeMode="cover" />
+                      <CommerceImage
+                        source={itemImage}
+                        style={styles.image}
+                        contentFit="cover"
+                        trackingId={`order-item-${item.id}`}
+                        recyclingKey={item.image_url || item.image_key || item.id}
+                        placeholderColor={colors.surfaceMuted}
+                      />
                     ) : (
-                      <Ionicons name="image-outline" size={rMS(24)} color={AppColors.subtext[100]} />
+                      <Ionicons name="image-outline" size={rMS(24)} color={colors.iconMuted} />
                     )}
                   </View>
                   <View style={styles.itemInfo}>
@@ -548,7 +661,7 @@ export default function OrderDetailScreen() {
                         <Ionicons
                           name="star-outline"
                           size={rMS(14)}
-                          color="#B45309"
+                          color={colors.ratingText}
                         />
                         <Text style={styles.reviewActionButtonText}>
                           {reviewedItemKeys.has(`${order.id}:${item.product_id}`)
@@ -579,7 +692,7 @@ export default function OrderDetailScreen() {
                           activeOpacity={0.88}
                           onPress={() => openReturnModal(item)}
                         >
-                          <Ionicons name="refresh-outline" size={rMS(14)} color="#1D4ED8" />
+                          <Ionicons name="refresh-outline" size={rMS(14)} color={colors.infoText} />
                           <Text style={styles.inlineActionButtonText}>Request return</Text>
                         </TouchableOpacity>
                       )}
@@ -609,7 +722,7 @@ export default function OrderDetailScreen() {
 
             {order.return_requests.length === 0 ? (
               <View style={styles.returnEmptyState}>
-                <Ionicons name="swap-horizontal-outline" size={rMS(18)} color={AppColors.secondary} />
+                <Ionicons name="swap-horizontal-outline" size={rMS(18)} color={colors.textSecondary} />
                 <Text style={styles.returnEmptyText}>No return requests on this order yet.</Text>
               </View>
             ) : (
@@ -620,7 +733,7 @@ export default function OrderDetailScreen() {
                     new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
                 )
                 .map((request) => {
-                  const statusMeta = getReturnStatusMeta(request.status);
+                  const statusMeta = getReturnStatusMeta(request.status, colors);
                   const item = order.items.find((candidate) => candidate.id === request.order_item_id);
                   return (
                     <View key={request.id} style={styles.returnRequestCard}>
@@ -957,7 +1070,7 @@ export default function OrderDetailScreen() {
                         disabled={returnQuantity <= 1}
                         onPress={() => setReturnQuantity((current) => Math.max(1, current - 1))}
                       >
-                        <Ionicons name="remove" size={rMS(16)} color={AppColors.text} />
+                        <Ionicons name="remove" size={rMS(16)} color={colors.text} />
                       </TouchableOpacity>
                       <Text style={styles.quantityValue}>{returnQuantity}</Text>
                       <TouchableOpacity
@@ -970,7 +1083,7 @@ export default function OrderDetailScreen() {
                           )
                         }
                       >
-                        <Ionicons name="add" size={rMS(16)} color={AppColors.text} />
+                        <Ionicons name="add" size={rMS(16)} color={colors.text} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1008,633 +1121,709 @@ export default function OrderDetailScreen() {
         onRate={() => void handleAppReviewRate()}
         onDismiss={() => void handleAppReviewDismiss()}
       />
+      <DeliveryCelebration
+        visible={showDeliveryCelebration}
+        onDone={() => setShowDeliveryCelebration(false)}
+      />
+      <RescheduleRequestSheet
+        visible={showRescheduleSheet}
+        isSubmitting={isSubmittingReschedule}
+        onClose={() => setShowRescheduleSheet(false)}
+        onSubmit={(note) => void handleSubmitReschedule(note)}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  emptyWrap: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: rS(16),
-  },
-  screenBody: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  stickyFooterShell: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  scrollContent: {
-    paddingBottom: rV(16),
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  orderNumber: {
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  orderDate: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  statusBadge: {
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
-  },
-  statusBadgeText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-  },
-  helperText: {
-    marginTop: rV(12),
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  trackBar: {
-    marginTop: rV(12),
-    height: rMS(8),
-    borderRadius: rMS(999),
-    backgroundColor: "#E9EEF5",
-    overflow: "hidden",
-  },
-  trackFill: {
-    height: "100%",
-    backgroundColor: "#3B82F6",
-    borderRadius: rMS(999),
-  },
-  progressText: {
-    marginTop: rV(8),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  timelineRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(12),
-  },
-  timelineRowSpaced: {
-    marginBottom: rV(10),
-  },
-  timelineRailWrap: {
-    width: rMS(24),
-    alignItems: "center",
-  },
-  timelineRail: {
-    width: 2,
-    flex: 1,
-    minHeight: rV(26),
-    marginTop: rV(4),
-    backgroundColor: "#D9E2EC",
-    borderRadius: rMS(999),
-  },
-  timelineRailPending: {
-    backgroundColor: "#E8EDF3",
-  },
-  timelineContent: {
-    flex: 1,
-    paddingBottom: rV(6),
-  },
-  timelineTitle: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  timelineCaption: {
-    marginTop: rV(2),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-  },
-  sectionTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    marginBottom: rV(12),
-  },
-  itemRow: {
-    gap: rV(10),
-    paddingBottom: rV(12),
-  },
-  itemRowTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  itemRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7EBF0",
-    marginBottom: rV(12),
-  },
-  imageWrap: {
-    width: rMS(66),
-    height: rMS(66),
-    borderRadius: rMS(12),
-    backgroundColor: "#F1F4F7",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  image: {
-    width: "84%",
-    height: "84%",
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  itemMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  itemVariant: {
-    marginTop: rV(3),
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: AppColors.subtext[100],
-  },
-  itemAmount: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  itemActionRow: {
-    marginLeft: rMS(78),
-    gap: rV(6),
-  },
-  itemInlineActionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  reviewActionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(7),
-    borderRadius: rMS(999),
-    backgroundColor: "#FFFBEB",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#FDE68A",
-  },
-  reviewActionButtonText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#B45309",
-  },
-  inlineActionButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: rMS(999),
-    backgroundColor: "#EAF2FF",
-  },
-  inlineActionButtonText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#1D4ED8",
-  },
-  inlineHelperText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(16),
-  },
-  inlineStatusPill: {
-    alignSelf: "flex-start",
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-  },
-  inlineStatusPillText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-  },
-  detailPrimary: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    marginBottom: rV(4),
-  },
-  detailText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-    marginBottom: rV(2),
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: rV(9),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7EBF0",
-  },
-  summaryRowLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  summaryLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  summaryValue: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  discountText: {
-    color: "#166534",
-  },
-  summaryTotalLabel: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  summaryTotalValue: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  receiptButton: {
-    marginTop: rV(14),
-    minHeight: rV(46),
-    borderRadius: rMS(14),
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    backgroundColor: "#F8FAFC",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: rS(8),
-  },
-  receiptButtonText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.primary,
-  },
-  returnIntro: {
-    marginTop: -rV(4),
-    marginBottom: rV(12),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-  },
-  returnEmptyState: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    borderRadius: rMS(14),
-    backgroundColor: "#F7F9FC",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-  },
-  returnEmptyText: {
-    flex: 1,
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  returnRequestCard: {
-    borderRadius: rMS(16),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E7EBF0",
-    padding: rS(14),
-    marginBottom: rV(10),
-  },
-  returnRequestTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  returnRequestTitleWrap: {
-    flex: 1,
-  },
-  returnRequestTitle: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  returnRequestMeta: {
-    marginTop: rV(3),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  returnRequestReason: {
-    marginTop: rV(10),
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  returnRequestDetails: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(18),
-  },
-  returnRequestFooter: {
-    marginTop: rV(10),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  returnRequestTimestamp: {
-    flex: 1,
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  returnRequestRefund: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#166534",
-  },
-  returnAdminNote: {
-    marginTop: rV(10),
-    borderRadius: rMS(12),
-    backgroundColor: "#EEF4FF",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(10),
-  },
-  returnAdminNoteLabel: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-    color: "#1D4ED8",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  returnAdminNoteText: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.text,
-    lineHeight: rMS(18),
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: rS(22),
-  },
-  emptyTitle: {
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    textAlign: "center",
-    marginBottom: rV(8),
-  },
-  emptyText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(20),
-    textAlign: "center",
-  },
-  backToOrdersButton: {
-    alignSelf: "center",
-    marginTop: rV(18),
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(12),
-  },
-  backToOrdersButtonText: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(16),
-    paddingTop: rV(14),
-    paddingBottom: rV(24),
-    gap: rV(10),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E7EBF0",
-  },
-  processingActions: {
-    gap: rV(10),
-  },
-  primaryButton: {
-    minHeight: rV(50),
-    borderRadius: rMS(16),
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  processingPrimaryButton: {
-    backgroundColor: "#1D4ED8",
-  },
-  secondaryButton: {
-    minHeight: rV(50),
-    borderRadius: rMS(16),
-    backgroundColor: "#F2F4F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  destructiveButton: {
-    minHeight: rV(50),
-    borderRadius: rMS(16),
-    backgroundColor: "#FFF1F2",
-    borderWidth: 1,
-    borderColor: "#FBCFE8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonText: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  destructiveButtonText: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: "#BE123C",
-  },
-  secondaryButtonText: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  buttonDisabled: {
-    backgroundColor: "#B8C1CC",
-  },
-  destructiveButtonDisabled: {
-    backgroundColor: "#F6DDE3",
-    borderColor: "#F6DDE3",
-  },
-  modalScreen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(14),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7EBF0",
-    backgroundColor: AppColors.white,
-  },
-  modalHeaderAction: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.primary,
-  },
-  modalTitle: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  modalContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  modalCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  modalSectionTitle: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    marginBottom: rV(10),
-  },
-  modalProductTitle: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  modalProductMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  choiceRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-    marginBottom: rV(16),
-  },
-  choiceChip: {
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(9),
-    borderRadius: rMS(999),
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    backgroundColor: "#F8FAFC",
-  },
-  choiceChipActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#EAF2FF",
-  },
-  choiceChipText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  choiceChipTextActive: {
-    color: "#1D4ED8",
-  },
-  quantityCard: {
-    borderRadius: rMS(16),
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  quantityLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  quantityHint: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    lineHeight: rMS(16),
-    maxWidth: "90%",
-  },
-  quantityStepper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  quantityButton: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(16),
-    backgroundColor: AppColors.white,
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quantityValue: {
-    minWidth: rS(24),
-    textAlign: "center",
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    emptyWrap: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: rS(16),
+    },
+    screenBody: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    stickyFooterShell: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    scrollContent: {
+      paddingBottom: rV(16),
+    },
+    heroCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(20),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    heroTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    orderNumber: {
+      fontSize: rMS(18),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    orderDate: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    statusBadge: {
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(5),
+    },
+    statusBadgeText: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+    },
+    helperText: {
+      marginTop: rV(12),
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    deliveryCodeCard: {
+      backgroundColor: colors.inverseSurface,
+      borderRadius: rMS(20),
+      padding: rS(16),
+      marginBottom: rV(12),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    deliveryCodeCopy: {
+      flex: 1,
+    },
+    deliveryCodeLabel: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.titleBold,
+      color: colors.mutedOnInverse,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    deliveryCodeHelper: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.onInverseSurface,
+      lineHeight: rMS(17),
+    },
+    deliveryCodeValue: {
+      fontSize: rMS(26),
+      fontFamily: Fonts.titleBold,
+      color: colors.onInverseSurface,
+      letterSpacing: rMS(3),
+    },
+    notHomeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rS(8),
+      backgroundColor: colors.warningSoft,
+      borderRadius: rMS(16),
+      paddingVertical: rV(12),
+      marginBottom: rV(12),
+    },
+    notHomeButtonText: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.warningText,
+    },
+    rescheduleNotice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      backgroundColor: colors.infoSoft,
+      borderRadius: rMS(16),
+      paddingVertical: rV(10),
+      paddingHorizontal: rS(14),
+      marginBottom: rV(12),
+    },
+    rescheduleNoticeText: {
+      flex: 1,
+      fontSize: rMS(12.5),
+      fontFamily: Fonts.text,
+      color: colors.infoText,
+      lineHeight: rMS(17),
+    },
+    trackBar: {
+      marginTop: rV(12),
+      height: rMS(8),
+      borderRadius: rMS(999),
+      backgroundColor: colors.segmentBg,
+      overflow: "hidden",
+    },
+    trackFill: {
+      height: "100%",
+      backgroundColor: colors.infoText,
+      borderRadius: rMS(999),
+    },
+    progressText: {
+      marginTop: rV(8),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(20),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    timelineRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(12),
+    },
+    timelineRowSpaced: {
+      marginBottom: rV(10),
+    },
+    timelineRailWrap: {
+      width: rMS(24),
+      alignItems: "center",
+    },
+    timelineRail: {
+      width: 2,
+      flex: 1,
+      minHeight: rV(26),
+      marginTop: rV(4),
+      backgroundColor: colors.border,
+      borderRadius: rMS(999),
+    },
+    timelineRailPending: {
+      backgroundColor: colors.borderStrong,
+    },
+    timelineContent: {
+      flex: 1,
+      paddingBottom: rV(6),
+    },
+    timelineTitle: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    timelineCaption: {
+      marginTop: rV(2),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(18),
+    },
+    sectionTitle: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+      marginBottom: rV(12),
+    },
+    itemRow: {
+      gap: rV(10),
+      paddingBottom: rV(12),
+    },
+    itemRowTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    itemRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderStrong,
+      marginBottom: rV(12),
+    },
+    imageWrap: {
+      width: rMS(66),
+      height: rMS(66),
+      borderRadius: rMS(12),
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    image: {
+      width: "84%",
+      height: "84%",
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemTitle: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    itemMeta: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    itemVariant: {
+      marginTop: rV(3),
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.textMuted,
+    },
+    itemAmount: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    itemActionRow: {
+      marginLeft: rMS(78),
+      gap: rV(6),
+    },
+    itemInlineActionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: rS(8),
+    },
+    reviewActionButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(7),
+      borderRadius: rMS(999),
+      backgroundColor: colors.ratingSoft,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.ratingBorder,
+    },
+    reviewActionButtonText: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.ratingText,
+    },
+    inlineActionButton: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(8),
+      borderRadius: rMS(999),
+      backgroundColor: colors.infoSoft,
+    },
+    inlineActionButtonText: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.infoText,
+    },
+    inlineHelperText: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(16),
+    },
+    inlineStatusPill: {
+      alignSelf: "flex-start",
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(6),
+    },
+    inlineStatusPillText: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+    },
+    detailPrimary: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+      marginBottom: rV(4),
+    },
+    detailText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(18),
+      marginBottom: rV(2),
+    },
+    summaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: rV(9),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderStrong,
+    },
+    summaryRowLast: {
+      borderBottomWidth: 0,
+      paddingBottom: 0,
+    },
+    summaryLabel: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    summaryValue: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    discountText: {
+      color: colors.successText,
+    },
+    summaryTotalLabel: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    summaryTotalValue: {
+      fontSize: rMS(15),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    receiptButton: {
+      marginTop: rV(14),
+      minHeight: rV(46),
+      borderRadius: rMS(14),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: rS(8),
+    },
+    receiptButtonText: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.primary,
+    },
+    returnIntro: {
+      marginTop: -rV(4),
+      marginBottom: rV(12),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(18),
+    },
+    returnEmptyState: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      borderRadius: rMS(14),
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(12),
+    },
+    returnEmptyText: {
+      flex: 1,
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    returnRequestCard: {
+      borderRadius: rMS(16),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.borderStrong,
+      padding: rS(14),
+      marginBottom: rV(10),
+    },
+    returnRequestTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    returnRequestTitleWrap: {
+      flex: 1,
+    },
+    returnRequestTitle: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    returnRequestMeta: {
+      marginTop: rV(3),
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    returnRequestReason: {
+      marginTop: rV(10),
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    returnRequestDetails: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(18),
+    },
+    returnRequestFooter: {
+      marginTop: rV(10),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(10),
+    },
+    returnRequestTimestamp: {
+      flex: 1,
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    returnRequestRefund: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.successText,
+    },
+    returnAdminNote: {
+      marginTop: rV(10),
+      borderRadius: rMS(12),
+      backgroundColor: colors.infoSoft,
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(10),
+    },
+    returnAdminNoteLabel: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+      color: colors.infoText,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    returnAdminNoteText: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.text,
+      lineHeight: rMS(18),
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: rS(22),
+    },
+    emptyTitle: {
+      fontSize: rMS(18),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+      textAlign: "center",
+      marginBottom: rV(8),
+    },
+    emptyText: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(20),
+      textAlign: "center",
+    },
+    backToOrdersButton: {
+      alignSelf: "center",
+      marginTop: rV(18),
+      backgroundColor: colors.primary,
+      borderRadius: rMS(16),
+      paddingHorizontal: rS(18),
+      paddingVertical: rV(12),
+    },
+    backToOrdersButtonText: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.onPrimary,
+    },
+    footer: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.card,
+      paddingHorizontal: rS(16),
+      paddingTop: rV(14),
+      paddingBottom: rV(24),
+      gap: rV(10),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderStrong,
+    },
+    processingActions: {
+      gap: rV(10),
+    },
+    primaryButton: {
+      minHeight: rV(50),
+      borderRadius: rMS(16),
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    processingPrimaryButton: {
+      backgroundColor: colors.infoText,
+    },
+    secondaryButton: {
+      minHeight: rV(50),
+      borderRadius: rMS(16),
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    destructiveButton: {
+      minHeight: rV(50),
+      borderRadius: rMS(16),
+      backgroundColor: colors.dangerSoft,
+      borderWidth: 1,
+      borderColor: colors.dangerText,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryButtonText: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.onPrimary,
+    },
+    destructiveButtonText: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.dangerText,
+    },
+    secondaryButtonText: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    buttonDisabled: {
+      backgroundColor: colors.mutedOnInverse,
+    },
+    destructiveButtonDisabled: {
+      backgroundColor: colors.dangerSoft,
+      borderColor: colors.dangerSoft,
+    },
+    modalScreen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: rS(16),
+      paddingTop: rV(18),
+      paddingBottom: rV(14),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderStrong,
+      backgroundColor: colors.header,
+    },
+    modalHeaderAction: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.primary,
+    },
+    modalTitle: {
+      fontSize: rMS(15),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    modalContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(16),
+      paddingBottom: rV(28),
+    },
+    modalCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(18),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    modalSectionTitle: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+      marginBottom: rV(10),
+    },
+    modalProductTitle: {
+      fontSize: rMS(16),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    modalProductMeta: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    choiceRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+      marginBottom: rV(16),
+    },
+    choiceChip: {
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(9),
+      borderRadius: rMS(999),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    choiceChipActive: {
+      borderColor: colors.infoText,
+      backgroundColor: colors.infoSoft,
+    },
+    choiceChipText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+    },
+    choiceChipTextActive: {
+      color: colors.infoText,
+    },
+    quantityCard: {
+      borderRadius: rMS(16),
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    quantityLabel: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    quantityHint: {
+      marginTop: rV(4),
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      lineHeight: rMS(16),
+      maxWidth: "90%",
+    },
+    quantityStepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(10),
+    },
+    quantityButton: {
+      width: rMS(32),
+      height: rMS(32),
+      borderRadius: rMS(16),
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quantityValue: {
+      minWidth: rS(24),
+      textAlign: "center",
+      fontSize: rMS(14),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+  });
+}

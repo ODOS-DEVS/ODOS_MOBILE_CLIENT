@@ -1,6 +1,7 @@
 import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import type {
   StoreProductBrowseMode,
   StoreProductPriceRange,
@@ -8,7 +9,7 @@ import type {
 } from "@/utils/storeProductBrowse";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   Pressable,
@@ -64,6 +65,8 @@ type StoreProductFilterSheetProps = {
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -90,6 +93,8 @@ export default function StoreProductFilterSheet({
   onReset,
 }: StoreProductFilterSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -169,79 +174,81 @@ export default function StoreProductFilterSheet({
 
         <TouchableOpacity style={styles.applyButton} activeOpacity={0.9} onPress={onClose}>
           <Text style={styles.applyText}>Show results</Text>
-          <Ionicons name="arrow-forward" size={rMS(16)} color={AppColors.white} />
+          <Ionicons name="arrow-forward" size={rMS(16)} color={colors.onInverseSurface} />
         </TouchableOpacity>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.42)",
-  },
-  sheet: {
-    maxHeight: "82%",
-    borderTopLeftRadius: rMS(28),
-    borderTopRightRadius: rMS(28),
-    backgroundColor: AppColors.white,
-    paddingHorizontal: rS(18),
-    paddingTop: rV(10),
-  },
-  handle: {
-    alignSelf: "center",
-    width: rS(44),
-    height: rV(4),
-    borderRadius: 999,
-    backgroundColor: "#E2E8F0",
-    marginBottom: rV(14),
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: rV(8),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-    color: AppColors.text,
-  },
-  resetText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  section: {
-    marginTop: rV(16),
-  },
-  sectionTitle: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(12.5),
-    color: AppColors.subtext[100],
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: rV(10),
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-  },
-  applyButton: {
-    marginTop: rV(18),
-    minHeight: rV(52),
-    borderRadius: rMS(16),
-    backgroundColor: AppColors.text,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rS(8),
-  },
-  applyText: {
-    color: AppColors.white,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(14),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.backdrop,
+    },
+    sheet: {
+      maxHeight: "82%",
+      borderTopLeftRadius: rMS(28),
+      borderTopRightRadius: rMS(28),
+      backgroundColor: colors.card,
+      paddingHorizontal: rS(18),
+      paddingTop: rV(10),
+    },
+    handle: {
+      alignSelf: "center",
+      width: rS(44),
+      height: rV(4),
+      borderRadius: 999,
+      backgroundColor: colors.cardBorder,
+      marginBottom: rV(14),
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: rV(8),
+    },
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(18),
+      color: colors.text,
+    },
+    resetText: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(13),
+      color: colors.primary,
+    },
+    section: {
+      marginTop: rV(16),
+    },
+    sectionTitle: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(12.5),
+      color: colors.placeholder,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: rV(10),
+    },
+    chipWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+    },
+    applyButton: {
+      marginTop: rV(18),
+      minHeight: rV(52),
+      borderRadius: rMS(16),
+      backgroundColor: colors.inverseSurface,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rS(8),
+    },
+    applyText: {
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(14),
+    },
+  });
+}

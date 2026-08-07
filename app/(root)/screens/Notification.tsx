@@ -80,16 +80,20 @@ export default function NotificationScreen() {
   );
 
   const openItem = useCallback(
-    async (item: ActivityItem) => {
+    (item: ActivityItem) => {
+      // markAsRead updates local read state synchronously and only then makes
+      // its network call — awaiting the whole thing here was blocking
+      // navigation on that network round-trip. Fire it in the background and
+      // navigate immediately instead.
       if (!item.isRead) {
-        await markAsRead([item.id]);
+        void markAsRead([item.id]);
       }
 
       if (!item.route) {
         return;
       }
 
-      await openActivityRoute(item.route);
+      void openActivityRoute(item.route);
     },
     [markAsRead],
   );

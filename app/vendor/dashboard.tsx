@@ -20,8 +20,8 @@ import type { VendorDashboardStats } from "@/types/vendor";
 import { buildVendorDashboardStatsFallback } from "@/utils/vendorAnalytics";
 import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
-import React, { useEffect, useMemo } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function VendorDashboardScreen() {
@@ -34,6 +34,7 @@ export default function VendorDashboardScreen() {
   const { error, fetchVendorDashboard, refreshVendorState, vendorDashboardStats } =
     useVendorStore();
   const { insights } = useVendorAnalytics(session, hasVendorAccess);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!hasVendorAccess) {
@@ -52,6 +53,24 @@ export default function VendorDashboardScreen() {
     refreshVendorState,
     session,
   ]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!hasVendorAccess) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refreshVendorState(session, { force: true }),
+        fetchVendorDashboard(session),
+        fetchStoreProfile(session),
+        fetchOrders(session),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchOrders, fetchStoreProfile, fetchVendorDashboard, hasVendorAccess, refreshVendorState, session]);
 
   const resolvedDashboardStats = useMemo<VendorDashboardStats | null>(() => {
     if (vendorDashboardStats) {
@@ -258,6 +277,9 @@ export default function VendorDashboardScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
+        }
         contentContainerStyle={[
           vendorStyles.content,
           { paddingBottom: insets.bottom + rV(28) },

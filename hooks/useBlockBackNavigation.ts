@@ -12,6 +12,13 @@ export function useBlockBackNavigation(enabled = true) {
         return undefined;
       }
 
+      // Disabling the interactive swipe-back gesture (rather than relying solely on
+      // the beforeRemove listener below) avoids a native-stack race where the native
+      // pop animation can start — and finish — before the JS beforeRemove listener's
+      // preventDefault() is processed, which otherwise surfaces as "screen was
+      // removed natively but didn't get removed from JS state".
+      navigation.setOptions({ gestureEnabled: false });
+
       const removeBeforeRemoveListener = navigation.addListener(
         "beforeRemove",
         (event) => {
@@ -28,6 +35,7 @@ export function useBlockBackNavigation(enabled = true) {
       );
 
       return () => {
+        navigation.setOptions({ gestureEnabled: true });
         removeBeforeRemoveListener();
         hardwareBackListener.remove();
       };

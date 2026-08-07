@@ -8,9 +8,10 @@ import {
   isOpenVendorReturn,
 } from "@/utils/vendorReturns";
 import { resolveApiMediaUrl } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type VendorReturnCardProps = {
   item: VendorReturnRequest;
@@ -36,7 +37,13 @@ export default function VendorReturnCard({ item, onPress }: VendorReturnCardProp
       <AccountListCard style={styles.card}>
         <View style={styles.headerRow}>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.image} />
+            <CommerceImage
+              source={{ uri: imageUri }}
+              style={styles.image}
+              trackingId={`vendor-return-card-${item.id}`}
+              recyclingKey={imageUri}
+              placeholderColor={colors.pill}
+            />
           ) : (
             <View style={[styles.imageFallback, { backgroundColor: colors.pill }]}>
               <Text style={[styles.imageFallbackText, { color: colors.textMuted }]}>Item</Text>

@@ -130,7 +130,7 @@ const WishlistScreen = () => {
     return (
       <View style={styles.headerBlock}>
         <View style={styles.heroPill}>
-          <Ionicons name="heart" size={rS(14)} color="#F43F5E" />
+          <Ionicons name="heart" size={rS(14)} color={colors.dangerText} />
           <Text style={styles.heroPillText}>Your saved favorites</Text>
         </View>
 
@@ -164,7 +164,7 @@ const WishlistScreen = () => {
         </View>
       </View>
     );
-  }, [isEmpty, removeFromWishlist, styles, wishlist.length]);
+  }, [colors.dangerText, isEmpty, removeFromWishlist, styles, wishlist.length]);
 
   const openWishlistGate = () => {
     requireAuth({
@@ -219,6 +219,10 @@ const WishlistScreen = () => {
             numColumns={columns}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            initialNumToRender={columns * 4}
+            maxToRenderPerBatch={columns * 3}
+            windowSize={7}
+            removeClippedSubviews
             ListHeaderComponent={listHeader}
             contentContainerStyle={[
               styles.listContent,
@@ -232,7 +236,7 @@ const WishlistScreen = () => {
               <RefreshControl
                 refreshing={isSyncingWishlist}
                 onRefresh={() => void refreshWishlist()}
-                tintColor="#F43F5E"
+                tintColor={colors.dangerText}
               />
             }
             renderItem={({ item }) => (

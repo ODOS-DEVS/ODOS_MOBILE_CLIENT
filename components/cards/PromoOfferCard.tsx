@@ -1,4 +1,3 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
@@ -69,10 +68,10 @@ export default function PromoOfferCard({
           paddingHorizontal: rS(9),
           paddingVertical: rV(5),
           borderRadius: rMS(999),
-          backgroundColor: isDark ? "#3F2E12" : "#FFF6E6",
+          backgroundColor: colors.warningSoft,
         },
         pillText: {
-          color: isDark ? "#FCD34D" : AppColors.primary,
+          color: isDark ? colors.warningText : colors.primary,
           fontFamily: Fonts.title,
           fontSize: rMS(10),
         },
@@ -162,7 +161,7 @@ export default function PromoOfferCard({
           <Ionicons
             name="pricetag-outline"
             size={rMS(13)}
-            color={isDark ? "#FCD34D" : AppColors.primary}
+            color={isDark ? colors.warningText : colors.primary}
           />
           <Text style={styles.pillText}>
             {offer.scope === "store" ? "Store offer" : "Platform offer"}

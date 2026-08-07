@@ -4,12 +4,12 @@ import { useTheme } from "@/context/ThemeContext";
 import type { StoreItem } from "@/hooks/useCommerce";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { hasStoreSocialLinks, listStoreSocialLinks } from "@/utils/social";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, type RefObject } from "react";
 import {
   Animated,
-  Image,
   Linking,
   StyleSheet,
   Text,
@@ -101,7 +101,12 @@ export function StorefrontHero({
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.screen }]}>
-      <View style={[styles.coverShell, { height: coverHeight }]}>
+      <View
+        style={[
+          styles.coverShell,
+          { height: coverHeight, backgroundColor: colors.inverseSurface },
+        ]}
+      >
         <Animated.View
           style={[
             styles.coverMotion,
@@ -114,10 +119,12 @@ export function StorefrontHero({
           ]}
         >
           {(store.imageBanner ?? store.image) ? (
-            <Image
+            <CommerceImage
               source={(store.imageBanner ?? store.image) as any}
               style={styles.coverImage}
-              resizeMode="cover"
+              contentFit="cover"
+              trackingId={`storefront-cover-${store.id}`}
+              recyclingKey={store.imageBannerKey || store.imageBannerUrl || store.imageKey || store.imageUrl || store.id}
             />
           ) : (
             <View
@@ -147,26 +154,33 @@ export function StorefrontHero({
             style={styles.glassButton}
             activeOpacity={0.88}
           >
-            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={22} color={colors.onInverseSurface} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onShare}
             style={styles.glassButton}
             activeOpacity={0.88}
           >
-            <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="share-outline" size={20} color={colors.onInverseSurface} />
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={[styles.identityBlock, { backgroundColor: colors.screen }]}>
         <View style={styles.logoFloat}>
-          <View style={[styles.logoRing, { borderColor: colors.screen }]}>
+          <View
+            style={[
+              styles.logoRing,
+              { borderColor: colors.screen, shadowColor: colors.shadow },
+            ]}
+          >
             {store.image ? (
-              <Image
+              <CommerceImage
                 source={store.image}
                 style={styles.logoImage}
-                resizeMode="cover"
+                contentFit="cover"
+                trackingId={`storefront-logo-${store.id}`}
+                recyclingKey={store.imageKey || store.imageUrl || store.id}
               />
             ) : (
               <View
@@ -240,17 +254,17 @@ export function StorefrontHero({
 
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={[styles.primaryAction, { backgroundColor: colors.text }]}
+            style={[styles.primaryAction, { backgroundColor: colors.inverseSurface }]}
             activeOpacity={0.9}
             onPress={onChat}
           >
             <Ionicons
               name="chatbubble-ellipses-outline"
               size={rS(17)}
-              color={colors.onPrimary}
+              color={colors.onInverseSurface}
             />
             <Text
-              style={[styles.primaryActionText, { color: colors.onPrimary }]}
+              style={[styles.primaryActionText, { color: colors.onInverseSurface }]}
             >
               Message
             </Text>
@@ -332,7 +346,6 @@ const styles = StyleSheet.create({
   },
   coverShell: {
     overflow: "hidden",
-    backgroundColor: "#1F2937",
   },
   coverMotion: {
     ...StyleSheet.absoluteFillObject,
@@ -380,7 +393,6 @@ const styles = StyleSheet.create({
     borderRadius: rS(30),
     borderWidth: 4,
     overflow: "hidden",
-    shadowColor: "#000",
     shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },

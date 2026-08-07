@@ -2,6 +2,8 @@ import {
   ACCESS_TOKEN_STORAGE_KEY,
   API_BASE_URL,
 } from "@/constants/auth";
+import { AUTH_SIGN_IN_HREF } from "@/utils/authNavigation";
+import { useToast } from "@/context/ToastContext";
 import {
   normalizeRoles,
   normalizeVendorStatus,
@@ -9,6 +11,7 @@ import {
   type VendorStatus,
 } from "@/types/vendor";
 import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
 import { Alert, AppState } from "react-native";
 import React, {
   createContext,
@@ -845,6 +848,7 @@ async function resetPasswordRequest(
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { showErrorToast } = useToast();
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
@@ -867,6 +871,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verifiedPhones, setVerifiedPhones] = useState<string[]>([]);
   const accessTokenRef = useRef<string | null>(null);
   const blockedAlertShownRef = useRef(false);
+  const sessionExpiredHandledRef = useRef(false);
 
   const clearLocalSession = useCallback(
     async ({ showBlockedAlert = false }: { showBlockedAlert?: boolean } = {}) => {
@@ -914,6 +919,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     accessTokenRef.current = accessToken;
     if (accessToken) {
       blockedAlertShownRef.current = false;
+      sessionExpiredHandledRef.current = false;
     }
   }, [accessToken]);
 
@@ -950,9 +956,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const originalFetch = global.fetch.bind(global);
+    const REQUEST_TIMEOUT_MS = 30_000;
+    // Image/file uploads (product photos, return evidence, avatars) are also plain
+    // fetch() calls but can legitimately take longer than a JSON API call on a slow
+    // connection — give them more room instead of cutting off a real-but-slow upload.
+    const UPLOAD_TIMEOUT_MS = 120_000;
 
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const response = await originalFetch(input, init);
+      // Plain fetch() never times out on its own — on a slow/dead connection a request
+      // (and whatever "Processing..." overlay is waiting on it) could hang indefinitely.
+      // Respect a caller-supplied signal rather than fighting code that already manages
+      // its own cancellation.
+      const hasOwnSignal = Boolean(init?.signal);
+      const isUpload =
+        typeof FormData !== "undefined" && init?.body instanceof FormData;
+      const timeoutController = hasOwnSignal ? null : new AbortController();
+      const timeoutId = timeoutController
+        ? setTimeout(
+            () => timeoutController.abort(),
+            isUpload ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+          )
+        : null;
+
+      let response: Response;
+      try {
+        response = await originalFetch(
+          input,
+          timeoutController ? { ...init, signal: timeoutController.signal } : init,
+        );
+      } catch (error) {
+        if (timeoutController?.signal.aborted) {
+          throw new Error(
+            "That's taking longer than expected. Check your connection and try again.",
+          );
+        }
+        throw error;
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
 
       if (
         accessTokenRef.current &&
@@ -960,6 +1003,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         response.headers.get("X-Error-Code") === ACCOUNT_BLOCKED_ERROR_CODE
       ) {
         void clearLocalSession({ showBlockedAlert: true });
+        return response;
+      }
+
+      // Global session-expiry net: any authenticated request to our own API that comes
+      // back 401 means the token is dead (expired/revoked). Without this, screens that
+      // don't poll /auth/me (cart, orders, vendor, wallet, ...) would just keep failing
+      // silently until the next 3-minute refresh or app-foreground event.
+      if (
+        accessTokenRef.current &&
+        response.status === 401 &&
+        !sessionExpiredHandledRef.current
+      ) {
+        const requestUrl =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+
+        if (requestUrl.startsWith(API_BASE_URL)) {
+          sessionExpiredHandledRef.current = true;
+          void clearLocalSession().then(() => {
+            showErrorToast("Your session has expired. Please sign in again.");
+            router.replace(AUTH_SIGN_IN_HREF);
+          });
+        }
       }
 
       return response;
@@ -968,7 +1037,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       global.fetch = originalFetch;
     };
-  }, [clearLocalSession]);
+  }, [clearLocalSession, showErrorToast]);
 
   useEffect(() => {
     if (!accessToken) {

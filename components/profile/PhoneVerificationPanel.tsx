@@ -218,7 +218,7 @@ export default function PhoneVerificationPanel({
 const styles = StyleSheet.create({
   panel: {
     marginTop: rV(8),
-    marginBottom: rV(4),
+    marginBottom: rV(12),
     borderRadius: rMS(14),
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: rS(12),

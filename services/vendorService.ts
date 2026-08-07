@@ -190,6 +190,7 @@ type VendorWalletApi = {
   lifetime_earnings?: number;
   total_withdrawn?: number;
   total_commission?: number;
+  commission_rate?: number;
   payout_method_type?: string | null;
   payout_account_name?: string | null;
   payout_account_number_masked?: string | null;
@@ -465,6 +466,7 @@ function mapWallet(
     lifetimeEarnings: payload.lifetime_earnings ?? 0,
     totalWithdrawn: payload.total_withdrawn ?? 0,
     totalCommission: payload.total_commission ?? 0,
+    commissionRate: payload.commission_rate ?? 0,
     payoutMethodType: payload.payout_method_type ?? null,
     payoutAccountName: payload.payout_account_name ?? null,
     payoutAccountNumberMasked: payload.payout_account_number_masked ?? null,

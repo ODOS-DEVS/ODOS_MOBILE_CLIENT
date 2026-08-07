@@ -22,6 +22,32 @@ export function buildStoreAssistantContext(input: {
   };
 }
 
+export function buildProductAssistantContext(input: {
+  productId?: string | null;
+  productTitle?: string | null;
+  storeId?: string | null;
+  storeName?: string | null;
+  category?: string | null;
+}): AssistantReferenceContext | null {
+  const productId = input.productId?.trim();
+  if (!productId) {
+    return null;
+  }
+
+  return {
+    type: "product",
+    product_id: productId,
+    product_title: input.productTitle?.trim() || null,
+    store_id: input.storeId?.trim() || null,
+    store_name: input.storeName?.trim() || null,
+    category: input.category?.trim() || null,
+  };
+}
+
+export function buildCheckoutAssistantContext(): AssistantReferenceContext {
+  return { type: "checkout" };
+}
+
 export function extractStoreIdFromPath(pathname: string): string | null {
   const match = pathname.match(/\/stores\/([^/?#]+)/i);
   const candidate = match?.[1]?.trim();
@@ -34,7 +60,32 @@ export function extractStoreIdFromPath(pathname: string): string | null {
 export function assistantContextToParams(
   context: AssistantReferenceContext | null | undefined,
 ): Record<string, string> {
-  if (!context?.store_id) {
+  if (!context) {
+    return {};
+  }
+
+  if (context.type === "checkout") {
+    return { contextType: "checkout" };
+  }
+
+  if (context.type === "product" && context.product_id) {
+    const params: Record<string, string> = { productId: context.product_id };
+    if (context.product_title) {
+      params.productTitle = context.product_title;
+    }
+    if (context.store_id) {
+      params.storeId = context.store_id;
+    }
+    if (context.store_name) {
+      params.storeName = context.store_name;
+    }
+    if (context.category) {
+      params.category = context.category;
+    }
+    return params;
+  }
+
+  if (!context.store_id) {
     return {};
   }
 
@@ -62,9 +113,27 @@ export function assistantContextFromParams(params: {
   marketTitle?: string | string[];
   vendorUserId?: string | string[];
   category?: string | string[];
+  productId?: string | string[];
+  productTitle?: string | string[];
+  contextType?: string | string[];
 }): AssistantReferenceContext | null {
   const read = (value?: string | string[]) =>
     typeof value === "string" ? value : Array.isArray(value) ? value[0] : undefined;
+
+  const productId = read(params.productId);
+  if (productId) {
+    return buildProductAssistantContext({
+      productId,
+      productTitle: read(params.productTitle),
+      storeId: read(params.storeId),
+      storeName: read(params.storeName),
+      category: read(params.category),
+    });
+  }
+
+  if (read(params.contextType) === "checkout") {
+    return buildCheckoutAssistantContext();
+  }
 
   return buildStoreAssistantContext({
     storeId: read(params.storeId),

@@ -30,8 +30,8 @@ const TabsLayout = () => {
   const sellOnly =
     workspaceHydrated && isApprovedVendor && workspaceMode === "sell_only";
   // Seller Center: Home · Orders · Products · Stock · Business
-  // Shopping: Home · Category · Cart · Store(optional) · Wishlist · Profile
-  const tabCount = sellOnly ? 5 : isApprovedVendor ? 6 : 5;
+  // Shopping: Home · Category · Cart · Wishlist · Profile
+  const tabCount = 5;
   const tabMetrics = useTabBarMetrics(tabCount, insets.bottom);
 
   const tabBarStyles = useMemo(
@@ -141,7 +141,7 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="vendor"
           options={{
-            href: isApprovedVendor ? undefined : null,
+            href: sellOnly ? undefined : null,
             title: sellOnly ? "Home" : "Store",
             tabBarIcon: ({ focused }) =>
               sellOnly ? (

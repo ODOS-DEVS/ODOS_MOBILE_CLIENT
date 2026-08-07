@@ -27,11 +27,14 @@ export default function VendorOrderDetailScreen() {
     acknowledgeOrder,
     fetchOrder,
     isUpdatingOrder,
+    notifyOrderDeparture,
     orders,
     updateOrderStatus,
     updatingOrderId,
+    uploadOrderDispatchPhoto,
   } = useStoreStore();
   const [loadState, setLoadState] = useState<LoadState>("idle");
+  const [isAttachingPhoto, setIsAttachingPhoto] = useState(false);
 
   const order = useMemo(
     () => (orderId ? orders.find((item) => item.id === orderId) ?? null : null),
@@ -59,7 +62,7 @@ export default function VendorOrderDetailScreen() {
     void loadOrder();
   }, [loadOrder]);
 
-  const handleAdvance = async () => {
+  const handleAdvance = async (deliveryCode?: string) => {
     if (!order) {
       return;
     }
@@ -69,7 +72,7 @@ export default function VendorOrderDetailScreen() {
     }
 
     try {
-      await updateOrderStatus(session, order.id, nextStatus);
+      await updateOrderStatus(session, order.id, nextStatus, deliveryCode);
       showToast(`Order moved to ${nextStatus.replace(/_/g, " ")}.`);
     } catch (error) {
       showToast(
@@ -105,6 +108,39 @@ export default function VendorOrderDetailScreen() {
       showToast(
         error instanceof Error ? error.message : "We couldn't acknowledge that order.",
       );
+    }
+  };
+
+  const handleNotifyDeparture = async () => {
+    if (!order) {
+      return;
+    }
+
+    try {
+      await notifyOrderDeparture(session, order.id);
+      showToast("Customer notified you're on your way.");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't send that heads-up.",
+      );
+    }
+  };
+
+  const handleAttachDispatchPhoto = async (photoUri: string) => {
+    if (!order) {
+      return;
+    }
+
+    setIsAttachingPhoto(true);
+    try {
+      await uploadOrderDispatchPhoto(session, order.id, photoUri);
+      showToast("Photo attached to this order.");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't attach that photo.",
+      );
+    } finally {
+      setIsAttachingPhoto(false);
     }
   };
 
@@ -179,9 +215,12 @@ export default function VendorOrderDetailScreen() {
         <VendorOrderDetailView
           order={order}
           isUpdating={isUpdating}
-          onAdvance={() => void handleAdvance()}
+          isAttachingPhoto={isAttachingPhoto}
+          onAdvance={(deliveryCode) => void handleAdvance(deliveryCode)}
           onCancel={() => void handleCancel()}
           onAcknowledge={() => void handleAcknowledge()}
+          onNotifyDeparture={() => void handleNotifyDeparture()}
+          onAttachDispatchPhoto={(photoUri) => void handleAttachDispatchPhoto(photoUri)}
         />
       </View>
     </VendorScreenShell>

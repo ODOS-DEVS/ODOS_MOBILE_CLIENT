@@ -1,33 +1,39 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
+import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { verifyWalletTopupRequest } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import type { ThemeColors } from "@/constants/theme";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
+// Auto-poll a stuck "pending" status a few times with backoff instead of
+// relying entirely on the user noticing and tapping refresh.
+const AUTO_POLL_DELAYS_MS = [5000, 10000, 20000];
+
 type TopupState = "verifying" | "cancelled" | "pending" | "failed" | "error" | "success";
 
-function TopupIcon({ state }: { state: TopupState }) {
+function TopupIcon({ state, colors }: { state: TopupState; colors: ThemeColors }) {
   if (state === "success") {
-    return <Ionicons name="checkmark-circle" size={rMS(72)} color="#16A34A" />;
+    return <Ionicons name="checkmark-circle" size={rMS(72)} color={colors.successText} />;
   }
   if (state === "cancelled") {
-    return <Ionicons name="close-circle" size={rMS(72)} color="#D97706" />;
+    return <Ionicons name="close-circle" size={rMS(72)} color={colors.warningText} />;
   }
   if (state === "pending") {
-    return <Ionicons name="time" size={rMS(72)} color="#2563EB" />;
+    return <Ionicons name="time" size={rMS(72)} color={colors.infoText} />;
   }
-  return <Ionicons name="alert-circle" size={rMS(72)} color="#DC2626" />;
+  return <Ionicons name="alert-circle" size={rMS(72)} color={colors.dangerText} />;
 }
 
 export default function WalletTopupReturnScreen() {
@@ -36,14 +42,26 @@ export default function WalletTopupReturnScreen() {
   const { refreshProfileData } = useProfile();
   const { refreshActivity } = useActivityFeed();
   const { showSuccessToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [state, setState] = useState<TopupState>("verifying");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoPollAttempt, setAutoPollAttempt] = useState(0);
+  useBlockBackNavigation(state === "verifying");
   const [resultMeta, setResultMeta] = useState<{
     amount: number;
     currency: string;
     paymentLabel: string | null;
     balanceAfter: number | null;
   } | null>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const reference = getParam(params.reference) ?? getParam(params.trxref) ?? "";
   const isCancelled = getParam(params.cancelled) === "1";
@@ -80,30 +98,19 @@ export default function WalletTopupReturnScreen() {
     };
   }, [errorMessage, state]);
 
-  useEffect(() => {
-    if (isHydrating) {
-      return;
-    }
-    if (isCancelled) {
-      setState("cancelled");
-      return;
-    }
-    if (!reference) {
-      setState("error");
-      setErrorMessage("Missing top-up reference from the payment callback.");
-      return;
-    }
-    if (!accessToken) {
-      setState("error");
-      setErrorMessage("Please sign in again so we can verify this top-up.");
-      return;
-    }
-
-    let isMounted = true;
-    const verifyTopup = async () => {
+  const runVerification = useCallback(
+    async ({ isInitial }: { isInitial: boolean }) => {
+      if (!accessToken || !reference) {
+        return;
+      }
+      if (isInitial) {
+        setState("verifying");
+      } else {
+        setIsRefreshing(true);
+      }
       try {
         const result = await verifyWalletTopupRequest(accessToken, reference);
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return;
         }
         await refreshProfileData();
@@ -130,21 +137,57 @@ export default function WalletTopupReturnScreen() {
         setState("failed");
         setErrorMessage(result.message || "Top-up was not successful.");
       } catch (error) {
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return;
         }
         setState("failed");
         setErrorMessage(
           error instanceof Error && error.message ? error.message : "We couldn't verify this top-up.",
         );
+      } finally {
+        if (isMountedRef.current) {
+          setIsRefreshing(false);
+        }
       }
-    };
+    },
+    [accessToken, reference, refreshActivity, refreshProfileData, showSuccessToast],
+  );
 
-    void verifyTopup();
-    return () => {
-      isMounted = false;
-    };
-  }, [accessToken, isCancelled, isHydrating, reference, refreshActivity, refreshProfileData, showSuccessToast]);
+  useEffect(() => {
+    if (isHydrating) {
+      return;
+    }
+    if (!reference) {
+      // No reference means there's nothing to verify with the server — only now is
+      // it safe to trust the client-side `cancelled` param at face value.
+      if (isCancelled) {
+        setState("cancelled");
+        return;
+      }
+      setState("error");
+      setErrorMessage("Missing top-up reference from the payment callback.");
+      return;
+    }
+    if (!accessToken) {
+      setState("error");
+      setErrorMessage("Please sign in again so we can verify this top-up.");
+      return;
+    }
+
+    void runVerification({ isInitial: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, isCancelled, isHydrating, reference]);
+
+  useEffect(() => {
+    if (state !== "pending" || autoPollAttempt >= AUTO_POLL_DELAYS_MS.length) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      setAutoPollAttempt((count) => count + 1);
+      void runVerification({ isInitial: false });
+    }, AUTO_POLL_DELAYS_MS[autoPollAttempt]);
+    return () => clearTimeout(timer);
+  }, [autoPollAttempt, runVerification, state]);
 
   if (state === "verifying") {
     return <ScreenLoader label="Confirming your wallet top-up..." />;
@@ -154,7 +197,7 @@ export default function WalletTopupReturnScreen() {
     <View style={styles.container}>
       <View style={styles.card}>
         <View style={styles.iconWrap}>
-          <TopupIcon state={state} />
+          <TopupIcon state={state} colors={colors} />
         </View>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
@@ -184,14 +227,21 @@ export default function WalletTopupReturnScreen() {
           </View>
         ) : null}
 
+        {state === "pending" && autoPollAttempt < AUTO_POLL_DELAYS_MS.length ? (
+          <Text style={styles.autoPollHint}>Automatically checking again shortly…</Text>
+        ) : null}
+
         <View style={styles.actions}>
           {state === "pending" ? (
             <TouchableOpacity
               style={styles.primaryButton}
               activeOpacity={0.86}
-              onPress={() => router.replace({ pathname: "/wallet/topup-return" as any, params: { reference } })}
+              onPress={() => void runVerification({ isInitial: false })}
+              disabled={isRefreshing}
             >
-              <Text style={styles.primaryButtonText}>Refresh status</Text>
+              <Text style={styles.primaryButtonText}>
+                {isRefreshing ? "Refreshing..." : "Refresh status"}
+              </Text>
             </TouchableOpacity>
           ) : null}
 
@@ -212,74 +262,87 @@ export default function WalletTopupReturnScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-    paddingHorizontal: rS(20),
-    justifyContent: "center",
-  },
-  card: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(28),
-    paddingHorizontal: rS(22),
-    paddingVertical: rV(26),
-    borderWidth: 1,
-    borderColor: "#E5EAF0",
-  },
-  iconWrap: { alignItems: "center", marginBottom: rV(16) },
-  title: {
-    fontSize: rMS(22),
-    lineHeight: rMS(28),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  body: {
-    marginTop: rV(10),
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-    textAlign: "center",
-  },
-  metaCard: {
-    marginTop: rV(18),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderRadius: rMS(18),
-    backgroundColor: "#F7F9FC",
-    borderWidth: 1,
-    borderColor: "#E6ECF3",
-  },
-  metaLabel: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-    color: AppColors.subtext[100],
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  metaLabelSpaced: { marginTop: rV(12) },
-  metaValue: {
-    marginTop: rV(8),
-    fontSize: rMS(13),
-    lineHeight: rMS(19),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  actions: { marginTop: rV(20), gap: rV(10) },
-  primaryButton: {
-    borderRadius: rMS(18),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(15),
-    alignItems: "center",
-  },
-  primaryButtonText: { fontSize: rMS(14), fontFamily: Fonts.textBold, color: AppColors.white },
-  secondaryButton: {
-    borderRadius: rMS(18),
-    backgroundColor: "#0F172A",
-    paddingVertical: rV(15),
-    alignItems: "center",
-  },
-  secondaryButtonText: { fontSize: rMS(14), fontFamily: Fonts.textBold, color: AppColors.white },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.screen,
+      paddingHorizontal: rS(20),
+      justifyContent: "center",
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(28),
+      paddingHorizontal: rS(22),
+      paddingVertical: rV(26),
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    iconWrap: { alignItems: "center", marginBottom: rV(16) },
+    title: {
+      fontSize: rMS(22),
+      lineHeight: rMS(28),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+      textAlign: "center",
+    },
+    body: {
+      marginTop: rV(10),
+      fontSize: rMS(13),
+      lineHeight: rMS(20),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    metaCard: {
+      marginTop: rV(18),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      borderRadius: rMS(18),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    metaLabel: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.title,
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    metaLabelSpaced: { marginTop: rV(12) },
+    metaValue: {
+      marginTop: rV(8),
+      fontSize: rMS(13),
+      lineHeight: rMS(19),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    autoPollHint: {
+      marginTop: rV(14),
+      fontSize: rMS(11.5),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+      textAlign: "center",
+    },
+    actions: { marginTop: rV(20), gap: rV(10) },
+    primaryButton: {
+      borderRadius: rMS(18),
+      backgroundColor: colors.primary,
+      paddingVertical: rV(15),
+      alignItems: "center",
+    },
+    primaryButtonText: { fontSize: rMS(14), fontFamily: Fonts.textBold, color: colors.onPrimary },
+    secondaryButton: {
+      borderRadius: rMS(18),
+      backgroundColor: colors.inverseSurface,
+      paddingVertical: rV(15),
+      alignItems: "center",
+    },
+    secondaryButtonText: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.onInverseSurface,
+    },
+  });
+}

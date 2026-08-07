@@ -2,6 +2,7 @@ import PromoOfferCard from "@/components/cards/PromoOfferCard";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import PromoBanner from "@/components/cards/PromoBanner";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import TopDealSpotlight from "@/components/deals/TopDealSpotlight";
 import { CarouselDots } from "@/components/ui/CarouselDots";
 import { HomeContentSkeleton } from "@/components/loaders/CommerceSkeletons";
 import {
@@ -10,17 +11,20 @@ import {
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import CommerceImage from "@/components/media/CommerceImage";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useDealsHub } from "@/hooks/useDealsHub";
 import { useVouchers } from "@/hooks/useVouchers";
 import { rV, useResponsive } from "@/styles/responsive";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { computeSavingsPercent } from "@/utils/deals";
 import { navigateToCampaignDeals, navigateToMerchandisingCampaign } from "@/utils/promoNavigation";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   RefreshControl,
@@ -30,20 +34,23 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+
+const CAMPAIGN_TAGS_PREVIEW_COUNT = 6;
 
 export default function DealsScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { width: screenWidth } = useWindowDimensions();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { showToast } = useToast();
   const { data, isLoading, error, refresh } = useDealsHub();
   const { claimVoucher, vouchers } = useVouchers();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [promoCarouselIndex, setPromoCarouselIndex] = useState(0);
+  const [showAllCampaignTags, setShowAllCampaignTags] = useState(false);
 
   const promoSlideWidth = screenWidth - horizontalPadding * 2;
 
@@ -62,8 +69,26 @@ export default function DealsScreen() {
   );
 
   const primaryFlashEvent = data?.flashEvents[0] ?? null;
-  const dealProducts = data?.dealProducts ?? [];
+  const dealProducts = useMemo(() => data?.dealProducts ?? [], [data?.dealProducts]);
   const campaigns = data?.campaigns ?? [];
+  const hasCustomBanners = (data?.banners.length ?? 0) > 0;
+  const bestDeal = useMemo(() => {
+    if (hasCustomBanners || dealProducts.length === 0) {
+      return null;
+    }
+    let best: { product: (typeof dealProducts)[number]; savingsPercent: number } | null = null;
+    for (const product of dealProducts) {
+      const savingsPercent = computeSavingsPercent(product.price, product.oldPrice);
+      if (savingsPercent != null && (!best || savingsPercent > best.savingsPercent)) {
+        best = { product, savingsPercent };
+      }
+    }
+    return best;
+  }, [dealProducts, hasCustomBanners]);
+  const activeVoucherCount = useMemo(
+    () => vouchers.filter((item) => item.status === "active").length,
+    [vouchers],
+  );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -109,7 +134,43 @@ export default function DealsScreen() {
 
   return (
     <View style={screenStyles.screen}>
-      <ProfileHeader title="Deals & Promos" />
+      <ProfileHeader
+        title="Deals & Promos"
+        rightNode={
+          <TouchableOpacity
+            onPress={() => router.push("/(root)/screens/profileScreens/Account/Vouchers")}
+            activeOpacity={0.82}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="My vouchers"
+            style={{ width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+          >
+            <Ionicons name="pricetags-outline" size={22} color={colors.text} />
+            {activeVoucherCount > 0 ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 2,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: colors.dangerText,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 3,
+                  borderWidth: 2,
+                  borderColor: colors.screen,
+                }}
+              >
+                <Text style={{ color: colors.onPrimary, fontSize: 9, fontFamily: Fonts.titleBold }}>
+                  {activeVoucherCount > 9 ? "9+" : activeVoucherCount}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -117,7 +178,7 @@ export default function DealsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => void handleRefresh()}
-            tintColor={AppColors.primary}
+            tintColor={colors.primary}
           />
         }
         contentContainerStyle={[
@@ -133,7 +194,7 @@ export default function DealsScreen() {
               style={{
                 fontFamily: Fonts.titleBold,
                 fontSize: 24,
-                color: "#111827",
+                color: colors.text,
               }}
             >
               Save more on ODOS
@@ -142,7 +203,7 @@ export default function DealsScreen() {
               style={{
                 fontFamily: Fonts.text,
                 fontSize: 14,
-                color: "#64748B",
+                color: colors.textMuted,
                 lineHeight: 20,
               }}
             >
@@ -160,11 +221,11 @@ export default function DealsScreen() {
             />
           ) : (
             <>
-              <PromoBanner
-                banners={(data?.banners.length ?? 0) > 0 ? data?.banners : undefined}
-                dealCount={dealProducts.length}
-                inset={false}
-              />
+              {hasCustomBanners ? (
+                <PromoBanner banners={data?.banners} dealCount={dealProducts.length} inset={false} />
+              ) : bestDeal ? (
+                <TopDealSpotlight product={bestDeal.product} savingsPercent={bestDeal.savingsPercent} />
+              ) : null}
 
               {campaigns.length > 0 ? (
                 <View style={{ gap: rV(12) }}>
@@ -186,39 +247,44 @@ export default function DealsScreen() {
                           marginRight: 10,
                           borderRadius: 16,
                           overflow: "hidden",
-                          backgroundColor: "#FFFFFF",
+                          backgroundColor: colors.card,
                           borderWidth: 1,
-                          borderColor: "#E5E7EB",
+                          borderColor: colors.border,
                         }}
                       >
                         {campaign.thumbnailImageUrl || campaign.bannerImageUrl ? (
-                          <Image
+                          <CommerceImage
                             source={{
                               uri: campaign.thumbnailImageUrl || campaign.bannerImageUrl,
                             }}
                             style={{ width: "100%", height: 96 }}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            trackingId={`deals-campaign-${campaign.id}`}
+                            recyclingKey={
+                              campaign.thumbnailImageUrl || campaign.bannerImageUrl || campaign.id
+                            }
+                            placeholderColor={colors.imagePlaceholder}
                           />
                         ) : (
                           <View
                             style={{
                               width: "100%",
                               height: 96,
-                              backgroundColor: "#F3F4F6",
+                              backgroundColor: colors.imagePlaceholder,
                             }}
                           />
                         )}
                         <View style={{ padding: 12, gap: 4 }}>
                           <Text
                             numberOfLines={1}
-                            style={{ fontFamily: Fonts.titleBold, fontSize: 13, color: "#111827" }}
+                            style={{ fontFamily: Fonts.titleBold, fontSize: 13, color: colors.text }}
                           >
                             {campaign.title}
                           </Text>
                           {campaign.subtitle ? (
                             <Text
                               numberOfLines={2}
-                              style={{ fontFamily: Fonts.text, fontSize: 11, color: "#64748B" }}
+                              style={{ fontFamily: Fonts.text, fontSize: 11, color: colors.textMuted }}
                             >
                               {campaign.subtitle}
                             </Text>
@@ -246,7 +312,7 @@ export default function DealsScreen() {
                       style={{
                         fontFamily: Fonts.titleBold,
                         fontSize: 13,
-                        color: AppColors.primary,
+                        color: colors.primary,
                       }}
                     >
                       View all flash sales →
@@ -255,19 +321,14 @@ export default function DealsScreen() {
                 </View>
               ) : null}
 
+              {promotions.length > 0 ? (
               <View style={{ gap: rV(12) }}>
                 <CommerceSeeAllSectionHeader
                   title="Promo codes"
                   subtitle="Save to your wallet, then apply at checkout"
                   count={promotions.length}
                 />
-                {promotions.length === 0 ? (
-                  <CommerceSeeAllEmptyState
-                    icon="pricetags-outline"
-                    title="No promo codes right now"
-                    subtitle="New platform offers appear here when campaigns go live."
-                  />
-                ) : promotions.length === 1 ? (
+                {promotions.length === 1 ? (
                   <PromoOfferCard
                     offer={promotions[0]}
                     fullWidth
@@ -310,6 +371,7 @@ export default function DealsScreen() {
                   </View>
                 )}
               </View>
+              ) : null}
 
               <View style={{ gap: rV(12) }}>
                 <CommerceSeeAllSectionHeader
@@ -334,12 +396,26 @@ export default function DealsScreen() {
 
               {(data?.campaignTags.length ?? 0) > 0 ? (
                 <View style={{ gap: rV(10) }}>
-                  <CommerceSeeAllSectionHeader
-                    title="Seasonal campaigns"
-                    subtitle="Ghana shopping moments on ODOS"
-                  />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowAllCampaignTags((current) => !current)}
+                    style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                  >
+                    <CommerceSeeAllSectionHeader
+                      title="Seasonal campaigns"
+                      subtitle="Ghana shopping moments on ODOS"
+                    />
+                    <Ionicons
+                      name={showAllCampaignTags ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {data?.campaignTags.map((campaign) => (
+                    {(showAllCampaignTags
+                      ? data?.campaignTags
+                      : data?.campaignTags.slice(0, CAMPAIGN_TAGS_PREVIEW_COUNT)
+                    )?.map((campaign) => (
                       <TouchableOpacity
                         key={campaign.tag}
                         activeOpacity={0.85}
@@ -348,19 +424,31 @@ export default function DealsScreen() {
                           paddingHorizontal: 12,
                           paddingVertical: 8,
                           borderRadius: 999,
-                          backgroundColor: "#FFF7ED",
+                          backgroundColor: colors.warningSoft,
                           borderWidth: 1,
-                          borderColor: "#FED7AA",
+                          borderColor: colors.warningBorder,
                         }}
                       >
                         <Text
-                          style={{ fontFamily: Fonts.textBold, fontSize: 12, color: "#9A3412" }}
+                          style={{ fontFamily: Fonts.textBold, fontSize: 12, color: colors.warningText }}
                         >
                           {campaign.label}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {(data?.campaignTags.length ?? 0) > CAMPAIGN_TAGS_PREVIEW_COUNT ? (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowAllCampaignTags((current) => !current)}
+                    >
+                      <Text style={{ fontFamily: Fonts.titleBold, fontSize: 12.5, color: colors.primary }}>
+                        {showAllCampaignTags
+                          ? "Show less"
+                          : `Show all ${data?.campaignTags.length} moments`}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               ) : null}
             </>

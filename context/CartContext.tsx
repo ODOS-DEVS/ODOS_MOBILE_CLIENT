@@ -2,6 +2,7 @@ import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import {
   BEHAVIOR_EVENT_TYPES,
   trackBehaviorEvent,
@@ -126,8 +127,21 @@ async function getStoredAccessToken() {
   return SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
 }
 
+async function parseCartErrorMessage(response: Response) {
+  try {
+    const payload = await response.json();
+    if (typeof payload?.detail === "string" && payload.detail.trim()) {
+      return payload.detail;
+    }
+  } catch {
+    // fall through to the generic message below
+  }
+  return "We couldn't update your cart right now.";
+}
+
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, accessToken } = useAuth();
+  const { showErrorToast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSyncingCart, setIsSyncingCart] = useState(false);
   const guestCartRef = useRef<CartItem[]>([]);
@@ -269,7 +283,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        await Promise.all(
+        const responses = await Promise.all(
           normalizedProducts.map((product) =>
             fetch(`${API_BASE_URL}/cart`, {
               method: "POST",
@@ -297,6 +311,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           ),
         );
 
+        const failedResponse = responses.find((response) => !response.ok);
+        if (failedResponse) {
+          throw new Error(await parseCartErrorMessage(failedResponse));
+        }
+
         normalizedProducts.forEach((product) => {
           trackBehaviorEvent({
             eventType: BEHAVIOR_EVENT_TYPES.ADD_TO_CART,
@@ -309,11 +328,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             },
           });
         });
-      } catch {
-        // Keep optimistic UI state for now.
+      } catch (error) {
+        // The optimistic add wasn't accepted server-side (e.g. out of stock) —
+        // resync from the server's authoritative cart instead of leaving a lie on screen.
+        showErrorToast(
+          error instanceof Error ? error.message : "We couldn't update your cart right now.",
+        );
+        void refreshCart();
       }
     },
-    [accessToken, user],
+    [accessToken, refreshCart, showErrorToast, user],
   );
 
   const addToCart = useCallback(
@@ -335,7 +359,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        await fetch(`${API_BASE_URL}/cart/${encodeURIComponent(id)}`, {
+        const response = await fetch(`${API_BASE_URL}/cart/${encodeURIComponent(id)}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -343,11 +367,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           },
           body: JSON.stringify({ quantity }),
         });
-      } catch {
-        // Keep optimistic UI state for now.
+        if (!response.ok) {
+          throw new Error(await parseCartErrorMessage(response));
+        }
+      } catch (error) {
+        // e.g. quantity now exceeds available stock — resync to the server's real cart.
+        showErrorToast(
+          error instanceof Error ? error.message : "We couldn't update your cart right now.",
+        );
+        void refreshCart();
       }
     },
-    [accessToken, user],
+    [accessToken, refreshCart, showErrorToast, user],
   );
 
   const increaseQty = useCallback(
@@ -405,12 +436,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        await fetch(`${API_BASE_URL}/cart/${encodeURIComponent(normalizedId)}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const response = await fetch(
+          `${API_BASE_URL}/cart/${encodeURIComponent(normalizedId)}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
-        });
+        );
+        if (!response.ok) {
+          throw new Error(await parseCartErrorMessage(response));
+        }
         if (removedItem) {
           trackBehaviorEvent({
             eventType: BEHAVIOR_EVENT_TYPES.REMOVE_FROM_CART,
@@ -419,11 +456,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             sourceScreen: "cart",
           });
         }
-      } catch {
-        // Keep optimistic UI state for now.
+      } catch (error) {
+        // Removal didn't actually take on the server — put it back rather than
+        // leaving the customer believing it's gone.
+        showErrorToast(
+          error instanceof Error ? error.message : "We couldn't update your cart right now.",
+        );
+        void refreshCart();
       }
     },
-    [accessToken, user],
+    [accessToken, refreshCart, showErrorToast, user],
   );
 
   const clearCart = useCallback(async () => {
@@ -439,16 +481,22 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      await fetch(`${API_BASE_URL}/cart`, {
+      const response = await fetch(`${API_BASE_URL}/cart`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-    } catch {
-      // Keep optimistic UI state for now.
+      if (!response.ok) {
+        throw new Error(await parseCartErrorMessage(response));
+      }
+    } catch (error) {
+      showErrorToast(
+        error instanceof Error ? error.message : "We couldn't update your cart right now.",
+      );
+      void refreshCart();
     }
-  }, [accessToken, user]);
+  }, [accessToken, refreshCart, showErrorToast, user]);
 
   const getItemQuantity = useCallback(
     (productId: string) => {

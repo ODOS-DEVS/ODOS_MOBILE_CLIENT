@@ -155,6 +155,7 @@ export default function VendorOrderAlertOverlay({
               style={[
                 styles.pulseRing,
                 {
+                  backgroundColor: colors.inverseText,
                   opacity: pulse.interpolate({
                     inputRange: [0, 1],
                     outputRange: [0.18, 0.45],
@@ -173,11 +174,11 @@ export default function VendorOrderAlertOverlay({
 
             <View style={styles.headerRow}>
               <View style={styles.iconShell}>
-                <Ionicons name="receipt" size={rMS(22)} color="#FFFFFF" />
+                <Ionicons name="receipt" size={rMS(22)} color={colors.inverseText} />
               </View>
               <View style={styles.headerCopy}>
                 <Text style={styles.eyebrow}>{eyebrow}</Text>
-                <Text style={styles.orderNumber}>{headline}</Text>
+                <Text style={[styles.orderNumber, { color: colors.inverseText }]}>{headline}</Text>
               </View>
               <TouchableOpacity
                 style={styles.closeButton}
@@ -186,20 +187,20 @@ export default function VendorOrderAlertOverlay({
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss order alert"
               >
-                <Ionicons name="close" size={rMS(20)} color="#FFFFFF" />
+                <Ionicons name="close" size={rMS(20)} color={colors.inverseText} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.metaRow}>
               <View style={styles.metaPill}>
-                <Ionicons name="cube-outline" size={rMS(14)} color="#FFFFFF" />
-                <Text style={styles.metaText}>
+                <Ionicons name="cube-outline" size={rMS(14)} color={colors.inverseText} />
+                <Text style={[styles.metaText, { color: colors.inverseText }]}>
                   {alert.productCount} {itemLabel}
                 </Text>
               </View>
               <View style={styles.metaPill}>
-                <Ionicons name="cash-outline" size={rMS(14)} color="#FFFFFF" />
-                <Text style={styles.metaText}>{formatAmount(alert.totalAmount)}</Text>
+                <Ionicons name="cash-outline" size={rMS(14)} color={colors.inverseText} />
+                <Text style={[styles.metaText, { color: colors.inverseText }]}>{formatAmount(alert.totalAmount)}</Text>
               </View>
             </View>
 
@@ -217,7 +218,7 @@ export default function VendorOrderAlertOverlay({
                 onPress={onDismiss}
                 activeOpacity={0.88}
               >
-                <Text style={styles.secondaryLabel}>Later</Text>
+                <Text style={[styles.secondaryLabel, { color: colors.inverseText }]}>Later</Text>
               </TouchableOpacity>
               {onAcknowledge && alert.kind !== "reminder" ? (
                 <TouchableOpacity
@@ -225,7 +226,7 @@ export default function VendorOrderAlertOverlay({
                   onPress={handleAcknowledge}
                   activeOpacity={0.88}
                 >
-                  <Text style={styles.secondaryLabel}>Seen it</Text>
+                  <Text style={[styles.secondaryLabel, { color: colors.inverseText }]}>Seen it</Text>
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity
@@ -263,7 +264,6 @@ const styles = StyleSheet.create({
   pulseRing: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: rMS(22),
-    backgroundColor: "#FFFFFF",
   },
   headerRow: {
     flexDirection: "row",
@@ -294,7 +294,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     fontSize: rMS(24),
     lineHeight: rMS(28),
-    color: "#FFFFFF",
   },
   closeButton: {
     width: rMS(34),
@@ -321,7 +320,6 @@ const styles = StyleSheet.create({
   metaText: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(12.5),
-    color: "#FFFFFF",
   },
   customerLine: {
     fontFamily: Fonts.text,
@@ -353,7 +351,6 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(13.5),
-    color: "#FFFFFF",
   },
   primaryButton: {
     flexGrow: 1.4,

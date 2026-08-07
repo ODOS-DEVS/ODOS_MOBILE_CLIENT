@@ -1,8 +1,9 @@
+import CommerceImage from "@/components/media/CommerceImage";
 import { productCardGapX, productCardGapY, rS, rV } from "@/styles/responsive";
 import { useCatalogCardTextStyles, useCommerceTheme } from "@/styles/themedCommerce";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface MarketCardProps {
   id: string;
@@ -67,10 +68,11 @@ const MarketCard: React.FC<MarketCardProps> = ({
           }}
         >
           {image ? (
-            <Image
+            <CommerceImage
               source={image}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
+              trackingId={`market-${id}`}
+              recyclingKey={id}
+              placeholderColor={colors.imagePlaceholder}
             />
           ) : (
             <View

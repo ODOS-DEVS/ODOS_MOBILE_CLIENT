@@ -1,4 +1,5 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
+import { formatApiDetail } from "@/services/apiClient";
 import type {
   ChatMessage,
   ChatThread,
@@ -59,9 +60,7 @@ type ChatMessageApi = {
 async function parseErrorMessage(response: Response) {
   try {
     const payload = await response.json();
-    return typeof payload?.detail === "string"
-      ? payload.detail
-      : "We couldn't complete that request.";
+    return formatApiDetail(payload?.detail, "We couldn't complete that request.");
   } catch {
     return response.statusText || "We couldn't complete that request.";
   }

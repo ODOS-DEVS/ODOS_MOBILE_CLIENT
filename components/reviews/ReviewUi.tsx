@@ -5,17 +5,18 @@ import {
   AccountFormSheet,
   AccountListCard,
 } from "@/components/account/AccountUi";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useReviewStyles } from "@/styles/themedReviewStyles";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { getStarIconName } from "@/utils/ratings";
 import { resolveImageSource } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Image,
   LayoutAnimation,
   Platform,
   StyleSheet,
@@ -77,6 +78,7 @@ type ReviewStarsRowProps = {
 
 export function ReviewStarsRow({ rating, size = rMS(14), showValue = false }: ReviewStarsRowProps) {
   const reviewStyles = useReviewStyles();
+  const { colors } = useTheme();
   return (
     <View style={reviewStyles.starsRow}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -84,7 +86,7 @@ export function ReviewStarsRow({ rating, size = rMS(14), showValue = false }: Re
           key={`star-${star}-${rating}`}
           name={getStarIconName(star, rating)}
           size={size}
-          color="#F59E0B"
+          color={colors.ratingText}
         />
       ))}
       {showValue ? <Text style={reviewStyles.starsValue}>{rating.toFixed(1)}</Text> : null}
@@ -106,10 +108,11 @@ export function ReviewProductThumbnail({
   const reviewStyles = useReviewStyles();
   return (
     <View style={[reviewStyles.imageWrap, { width: size, height: size }]}>
-      <Image
+      <CommerceImage
         source={getReviewImageSource({ imageKey, imageUrl })}
         style={reviewStyles.image}
-        resizeMode="cover"
+        contentFit="cover"
+        recyclingKey={imageKey || imageUrl || undefined}
       />
     </View>
   );
@@ -195,6 +198,7 @@ type ReviewRatingPickerProps = {
 
 export function ReviewRatingPicker({ rating, onChange }: ReviewRatingPickerProps) {
   const reviewStyles = useReviewStyles();
+  const { colors } = useTheme();
   const handleStarPress = useCallback(
     (star: number) => {
       onChange(star);
@@ -226,7 +230,7 @@ export function ReviewRatingPicker({ rating, onChange }: ReviewRatingPickerProps
                 <Ionicons
                   name={getStarIconName(star, rating)}
                   size={rMS(30)}
-                  color={rating >= star - 0.5 ? "#F59E0B" : "#CBD5E1"}
+                  color={rating >= star - 0.5 ? colors.ratingText : colors.mutedOnInverse}
                 />
               </TouchableOpacity>
             ))}
@@ -278,6 +282,7 @@ export function ReviewComposerSheet({
   onSubmit,
 }: ReviewComposerSheetProps) {
   const reviewStyles = useReviewStyles();
+  const { colors } = useTheme();
   const [step, setStep] = useState<ReviewComposerStep>("rating");
   const [showRatingRequired, setShowRatingRequired] = useState(false);
 
@@ -381,7 +386,7 @@ export function ReviewComposerSheet({
               activeOpacity={0.86}
               onPress={goToRatingStep}
             >
-              <Ionicons name="star-outline" size={rMS(12)} color="#B45309" />
+              <Ionicons name="star-outline" size={rMS(12)} color={colors.ratingText} />
               <Text style={reviewStyles.changeRatingText}>Change rating</Text>
             </TouchableOpacity>
           </View>
@@ -397,15 +402,16 @@ export function ReviewComposerSheet({
             onChangeText={onCommentChange}
             multiline
             autoFocus
+            maxLength={500}
             placeholder="Share fit, quality, delivery, or anything future shoppers should know."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.placeholder}
             style={reviewStyles.commentInput}
             textAlignVertical="top"
           />
           <Text style={reviewStyles.ratingHint}>
             {comment.trim().length < 8
               ? "Add at least 8 characters so your review feels helpful."
-              : "Looks good — publish when you're ready."}
+              : `Looks good — publish when you're ready. (${comment.length}/500)`}
           </Text>
         </View>
       )}
@@ -437,6 +443,8 @@ export function ProductReviewsPanel({
   onWriteReviewPress,
   writeReviewLabel = "Write review",
 }: ProductReviewsPanelProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <AccountListCard>
       <View style={styles.panelHeader}>
@@ -453,7 +461,7 @@ export function ProductReviewsPanel({
           activeOpacity={0.86}
           onPress={onWriteReviewPress}
         >
-          <Ionicons name="create-outline" size={rMS(14)} color={AppColors.text} />
+          <Ionicons name="create-outline" size={rMS(14)} color={colors.text} />
           <Text style={styles.manageButtonText}>{writeReviewLabel}</Text>
         </TouchableOpacity>
       </View>
@@ -465,7 +473,7 @@ export function ProductReviewsPanel({
           <Text style={styles.summaryLabel}>{reviewsLabel}</Text>
         </View>
         <View style={styles.summaryHintCard}>
-          <Ionicons name="star-outline" size={rMS(20)} color={AppColors.primary} />
+          <Ionicons name="star-outline" size={rMS(20)} color={colors.primary} />
           <Text style={styles.summaryHint}>
             Delivered orders unlock reviews in your account. Honest ratings help other shoppers choose with confidence.
           </Text>
@@ -498,115 +506,117 @@ export function ProductReviewsPanel({
   );
 }
 
-const styles = StyleSheet.create({
-  panelHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  panelHeaderCopy: {
-    flex: 1,
-    gap: rV(4),
-  },
-  panelTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-  },
-  panelSubtitle: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-  manageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: "#F3F4F6",
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(9),
-  },
-  manageButtonText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11.5),
-    color: AppColors.text,
-  },
-  summaryRow: {
-    marginTop: rV(14),
-    flexDirection: "row",
-    gap: rS(10),
-  },
-  summaryScoreCard: {
-    flex: 0.9,
-    backgroundColor: AppColors.text,
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    gap: rV(6),
-  },
-  summaryScore: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(26),
-    color: "#FFFFFF",
-  },
-  summaryLabel: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    color: "#CBD5E1",
-  },
-  summaryHintCard: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    gap: rV(8),
-  },
-  summaryHint: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    lineHeight: rMS(17),
-    color: "#6B7280",
-  },
-  previewStack: {
-    marginTop: rV(14),
-    gap: rV(10),
-  },
-  previewCard: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#EEF2F6",
-  },
-  previewTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(8),
-  },
-  previewDate: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(10.5),
-    color: "#9CA3AF",
-  },
-  previewComment: {
-    marginTop: rV(8),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: AppColors.text,
-  },
-  moreReviewsText: {
-    textAlign: "center",
-    fontFamily: Fonts.title,
-    fontSize: rMS(11.5),
-    color: AppColors.primary,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    panelHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: rS(12),
+    },
+    panelHeaderCopy: {
+      flex: 1,
+      gap: rV(4),
+    },
+    panelTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+      color: colors.text,
+    },
+    panelSubtitle: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+    manageButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      backgroundColor: colors.pill,
+      borderRadius: rMS(14),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(9),
+    },
+    manageButtonText: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11.5),
+      color: colors.text,
+    },
+    summaryRow: {
+      marginTop: rV(14),
+      flexDirection: "row",
+      gap: rS(10),
+    },
+    summaryScoreCard: {
+      flex: 0.9,
+      backgroundColor: colors.inverseSurface,
+      borderRadius: rMS(18),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      gap: rV(6),
+    },
+    summaryScore: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(26),
+      color: colors.onInverseSurface,
+    },
+    summaryLabel: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+      color: colors.mutedOnInverse,
+    },
+    summaryHintCard: {
+      flex: 1,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: rMS(18),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(12),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      gap: rV(8),
+    },
+    summaryHint: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+      lineHeight: rMS(17),
+      color: colors.textMuted,
+    },
+    previewStack: {
+      marginTop: rV(14),
+      gap: rV(10),
+    },
+    previewCard: {
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: rMS(16),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    previewTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: rS(8),
+    },
+    previewDate: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(10.5),
+      color: colors.placeholder,
+    },
+    previewComment: {
+      marginTop: rV(8),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+      color: colors.text,
+    },
+    moreReviewsText: {
+      textAlign: "center",
+      fontFamily: Fonts.title,
+      fontSize: rMS(11.5),
+      color: colors.primary,
+    },
+  });
+}

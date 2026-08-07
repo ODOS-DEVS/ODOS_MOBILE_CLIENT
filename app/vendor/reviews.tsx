@@ -8,6 +8,7 @@ import {
   VendorScreenShell,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
+import CommerceImage from "@/components/media/CommerceImage";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
@@ -22,7 +23,6 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   RefreshControl,
   Text,
   TextInput,
@@ -133,6 +133,10 @@ export default function VendorReviewsScreen() {
         data={filteredReviews}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -213,7 +217,12 @@ export default function VendorReviewsScreen() {
                     }}
                   >
                     {image ? (
-                      <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} />
+                      <CommerceImage
+                        source={{ uri: image }}
+                        trackingId={`vendor-review-${item.id}`}
+                        recyclingKey={image}
+                        placeholderColor={colors.imagePlaceholder}
+                      />
                     ) : (
                       <Ionicons name="cube-outline" size={rMS(20)} color={colors.iconMuted} />
                     )}
@@ -230,21 +239,25 @@ export default function VendorReviewsScreen() {
                       {item.productTitle}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <Ionicons
-                          key={`${item.id}-star-${index}`}
-                          name={index < Math.round(item.rating) ? "star" : "star-outline"}
-                          size={rMS(13)}
-                          color="#F59E0B"
-                        />
-                      ))}
+                      <View style={{ flexDirection: "row", gap: 2 }}>
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <Ionicons
+                            key={`${item.id}-star-${index}`}
+                            name={index < Math.round(item.rating) ? "star" : "star-outline"}
+                            size={rMS(13)}
+                            color={colors.ratingText}
+                          />
+                        ))}
+                      </View>
                       <Text
                         style={{
+                          flexShrink: 1,
                           marginLeft: 4,
                           fontFamily: Fonts.text,
                           fontSize: rMS(12),
                           color: colors.textMuted,
                         }}
+                        numberOfLines={1}
                       >
                         {item.customerName || "Shopper"}
                       </Text>
@@ -335,7 +348,7 @@ export default function VendorReviewsScreen() {
                           onPress={() => void handleReply(item)}
                           style={{
                             alignSelf: "flex-start",
-                            backgroundColor: colors.text,
+                            backgroundColor: colors.inverseSurface,
                             borderRadius: rMS(12),
                             paddingHorizontal: rS(14),
                             paddingVertical: rV(10),
@@ -346,13 +359,13 @@ export default function VendorReviewsScreen() {
                           }}
                         >
                           {busy ? (
-                            <ActivityIndicator size="small" color={colors.onPrimary} />
+                            <ActivityIndicator size="small" color={colors.onInverseSurface} />
                           ) : null}
                           <Text
                             style={{
                               fontFamily: Fonts.textBold,
                               fontSize: rMS(12.5),
-                              color: colors.onPrimary,
+                              color: colors.onInverseSurface,
                             }}
                           >
                             Reply

@@ -2,12 +2,18 @@ import * as ImagePicker from "expo-image-picker";
 
 export type CropAspect = readonly [number, number];
 
+// Generous ceiling for a single (already-compressed-by-`quality`) upload — catches
+// unusually huge originals before they hit a slow/failing multipart POST, rather than
+// letting the upload fail server-side with no explanation.
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 export async function pickCroppedImage(aspect?: CropAspect, quality = 0.85) {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     return {
       granted: false as const,
       canceled: false as const,
+      tooLarge: false as const,
       uri: null,
     };
   }
@@ -23,6 +29,17 @@ export async function pickCroppedImage(aspect?: CropAspect, quality = 0.85) {
     return {
       granted: true as const,
       canceled: true as const,
+      tooLarge: false as const,
+      uri: null,
+    };
+  }
+
+  const asset = result.assets[0];
+  if (typeof asset.fileSize === "number" && asset.fileSize > MAX_IMAGE_BYTES) {
+    return {
+      granted: true as const,
+      canceled: false as const,
+      tooLarge: true as const,
       uri: null,
     };
   }
@@ -30,6 +47,7 @@ export async function pickCroppedImage(aspect?: CropAspect, quality = 0.85) {
   return {
     granted: true as const,
     canceled: false as const,
-    uri: result.assets[0].uri,
+    tooLarge: false as const,
+    uri: asset.uri,
   };
 }

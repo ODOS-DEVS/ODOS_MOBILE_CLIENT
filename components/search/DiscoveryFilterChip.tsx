@@ -1,7 +1,8 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
 type DiscoveryFilterChipProps = {
@@ -15,6 +16,9 @@ export default function DiscoveryFilterChip({
   active = false,
   onPress,
 }: DiscoveryFilterChipProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <TouchableOpacity
       activeOpacity={0.82}
@@ -28,29 +32,31 @@ export default function DiscoveryFilterChip({
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    borderRadius: 999,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  chipDefault: {
-    backgroundColor: "#F7FAFC",
-    borderColor: "#E2E8F0",
-  },
-  chipActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
-  },
-  label: {
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.title,
-  },
-  labelDefault: {
-    color: AppColors.text,
-  },
-  labelActive: {
-    color: AppColors.white,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    chip: {
+      borderRadius: 999,
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(7),
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    chipDefault: {
+      backgroundColor: colors.surfaceSubtle,
+      borderColor: colors.border,
+    },
+    chipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    label: {
+      fontSize: rMS(11.5),
+      fontFamily: Fonts.title,
+    },
+    labelDefault: {
+      color: colors.text,
+    },
+    labelActive: {
+      color: colors.onPrimary,
+    },
+  });
+}

@@ -1,5 +1,4 @@
 import CommerceImage from "@/components/media/CommerceImage";
-import { AppColors } from "@/constants/Colors";
 import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
@@ -56,6 +55,9 @@ interface RecommendationCardProps {
   badgeLabel?: string;
   sourceScreen?: string;
   storeId?: string;
+  flashSaleEndsAt?: string;
+  flashSaleStockLimit?: number;
+  flashSaleUnitsRemaining?: number;
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
@@ -74,6 +76,9 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   badgeLabel = "ODOS Pick",
   sourceScreen = "recommendations",
   storeId,
+  flashSaleEndsAt,
+  flashSaleStockLimit,
+  flashSaleUnitsRemaining,
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createRecommendationStyles(colors), [colors]);
@@ -81,6 +86,11 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const hasPrice = typeof price === "number" || typeof oldPrice === "number";
   const hasRating = typeof rating === "number" && Number.isFinite(rating);
   const offerLabel = buildOfferLabel(discount, oldPrice, price);
+  const hasFlashScarcity =
+    Boolean(flashSaleEndsAt) &&
+    new Date(flashSaleEndsAt as string).getTime() > Date.now() &&
+    typeof flashSaleStockLimit === "number" &&
+    typeof flashSaleUnitsRemaining === "number";
   const isLargeAndroidScreen = Platform.OS === "android" && width >= 500;
   const reviewCount =
     typeof reviews === "number"
@@ -152,7 +162,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
         >
           <View style={styles.topRow}>
             <View style={styles.pill}>
-              <Ionicons name="sparkles-outline" size={rMS(12)} color="#8A6A2E" />
+              <Ionicons name="sparkles-outline" size={rMS(12)} color={colors.warningText} />
               <Text style={styles.pillText}>{badgeLabel}</Text>
             </View>
 
@@ -229,13 +239,18 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               ) : (
                 <Text style={styles.noPriceText}>Check latest price</Text>
               )}
+              {hasFlashScarcity ? (
+                <Text style={styles.scarcityText}>
+                  ⚡ Only {flashSaleUnitsRemaining} left
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.actionRow}>
               <AddToWishList
                 size={rMS(15)}
-                iconColor={AppColors.secondary}
-                activeIconColor="#D64747"
+                iconColor={colors.textMuted}
+                activeIconColor={colors.dangerText}
                 containerStyle={styles.actionButton}
                 product={{
                   id,
@@ -250,7 +265,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               />
               <AddToCartBtn
                 iconSize={rMS(15)}
-                iconColor={AppColors.primary}
+                iconColor={colors.primary}
                 containerStyle={styles.actionButton}
                 item={{
                   id,
@@ -346,12 +361,12 @@ function createRecommendationStyles(colors: ThemeColors) {
     borderRadius: rS(999),
     paddingHorizontal: rS(9),
     paddingVertical: rV(4),
-    backgroundColor: "#F6EFE1",
+    backgroundColor: colors.warningSoft,
   },
   pillText: {
     fontFamily: Fonts.title,
     fontSize: rMS(10),
-    color: "#8A6A2E",
+    color: colors.warningText,
     letterSpacing: 0.3,
   },
   ratingWrap: {
@@ -438,13 +453,19 @@ function createRecommendationStyles(colors: ThemeColors) {
     marginTop: rV(3),
     fontFamily: Fonts.title,
     fontSize: rMS(11),
-    color: "#F87171",
+    color: colors.dangerText,
     textDecorationLine: "line-through",
   },
   noPriceText: {
     fontFamily: Fonts.text,
     fontSize: rMS(11),
     color: colors.textMuted,
+  },
+  scarcityText: {
+    marginTop: rV(3),
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(10.5),
+    color: "#DC2626",
   },
   actionRow: {
     flexDirection: "row",

@@ -6,6 +6,7 @@ import {
   VendorPageIntro,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import type { VendorOrder, VendorOrderQueueTab } from "@/types/store";
@@ -53,6 +54,7 @@ export default function VendorOrdersList({
   initialTab = "new",
   tabParam,
 }: VendorOrdersListProps) {
+  const { colors } = useTheme();
   const { contentMaxWidth } = useResponsive();
   const { session } = useRequireVendor();
   const [activeTab, setActiveTab] = useState<VendorOrderQueueTab>(initialTab);
@@ -116,6 +118,10 @@ export default function VendorOrdersList({
       data={filteredOrders}
       keyExtractor={(item) => item.id}
       showsVerticalScrollIndicator={false}
+      initialNumToRender={8}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      removeClippedSubviews
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
       }
@@ -178,7 +184,7 @@ export default function VendorOrdersList({
               }}
             >
               <ActivityIndicator size="small" />
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>Updating order...</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>Updating order...</Text>
             </View>
           ) : null}
         </View>

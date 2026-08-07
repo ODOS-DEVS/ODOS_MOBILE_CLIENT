@@ -75,6 +75,10 @@ export default function VendorCustomersScreen() {
         data={customers}
         keyExtractor={(item) => item.customerKey}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

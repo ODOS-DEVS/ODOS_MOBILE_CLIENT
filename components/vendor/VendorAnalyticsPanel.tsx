@@ -4,12 +4,12 @@ import { useTheme } from "@/context/ThemeContext";
 import type { VendorAnalyticsInsights } from "@/types/vendor";
 import { formatCompactCurrency } from "@/utils/vendorAnalytics";
 import { resolveApiMediaUrl } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -34,7 +34,14 @@ function TrendBars({
   onHero?: boolean;
 }) {
   const { colors, isDark } = useTheme();
-  const maxSales = Math.max(...insights.dailyTrend.map((day) => day.sales), 1);
+  // This chart is always captioned "Last 7 days" — trim to the trailing week even
+  // when `insights` was built for a longer 30d/90d period, otherwise every day in
+  // the period gets crammed into this small hero chart and weekday labels repeat.
+  const trendDays = useMemo(
+    () => insights.dailyTrend.slice(-7),
+    [insights.dailyTrend],
+  );
+  const maxSales = Math.max(...trendDays.map((day) => day.sales), 1);
 
   return (
     <View
@@ -44,22 +51,22 @@ function TrendBars({
         onHero ? styles.trendWrapHero : null,
       ]}
     >
-      {insights.dailyTrend.map((day) => {
+      {trendDays.map((day, index) => {
         const barHeight = Math.max(
           (day.sales / maxSales) * height,
           day.orders > 0 ? rV(6) : rV(3),
         );
-        const isToday = day === insights.dailyTrend[insights.dailyTrend.length - 1];
+        const isToday = index === trendDays.length - 1;
 
         const trackColor = onHero
           ? "rgba(255,255,255,0.16)"
           : isDark
             ? colors.surfaceMuted
-            : "#EEF2FF";
+            : colors.infoSoft;
 
         const barColor = onHero
           ? isToday
-            ? "#FFFFFF"
+            ? colors.inverseText
             : "rgba(255,255,255,0.58)"
           : isToday
             ? colors.primary
@@ -69,14 +76,14 @@ function TrendBars({
 
         const labelColor = onHero
           ? isToday
-            ? "#FFFFFF"
+            ? colors.inverseText
             : "rgba(255,255,255,0.78)"
           : isToday
             ? colors.primary
             : colors.textMuted;
 
         return (
-          <View key={day.label} style={styles.trendColumn}>
+          <View key={`${day.label}-${index}`} style={styles.trendColumn}>
             <View style={[styles.trendTrack, { height, backgroundColor: trackColor }]}>
               <View
                 style={[
@@ -85,7 +92,7 @@ function TrendBars({
                     height: barHeight,
                     backgroundColor: barColor,
                   },
-                  onHero && isToday ? styles.trendBarTodayHero : null,
+                  onHero && isToday ? [styles.trendBarTodayHero, { shadowColor: colors.shadow }] : null,
                 ]}
               />
             </View>
@@ -110,12 +117,12 @@ function MetricPill({
 
   const palette =
     tone === "success"
-      ? { bg: isDark ? "#14532D" : "#ECFDF3", text: isDark ? "#86EFAC" : "#166534" }
+      ? { bg: colors.successSoft, text: colors.successText }
       : tone === "warning"
-        ? { bg: isDark ? "#422006" : "#FFF7ED", text: isDark ? "#FCD34D" : "#B45309" }
+        ? { bg: colors.warningSoft, text: colors.warningText }
         : tone === "accent"
-          ? { bg: isDark ? "#1E1B4B" : "#EEF2FF", text: isDark ? "#C7D2FE" : colors.primary }
-          : { bg: isDark ? colors.pill : "#F8FAFC", text: colors.text };
+          ? { bg: colors.infoSoft, text: isDark ? colors.infoText : colors.primary }
+          : { bg: isDark ? colors.pill : colors.surfaceSubtle, text: colors.text };
 
   return (
     <View style={[styles.metricPill, { backgroundColor: palette.bg }]}>
@@ -147,9 +154,14 @@ function TopProductRow({
     <View style={styles.productRow}>
       <Text style={[styles.productRank, { color: colors.textMuted }]}>{rank}</Text>
       {resolved ? (
-        <Image source={{ uri: resolved }} style={styles.productImage} />
+        <CommerceImage
+          source={{ uri: resolved }}
+          style={styles.productImage}
+          recyclingKey={resolved}
+          placeholderColor={isDark ? colors.pill : colors.infoSoft}
+        />
       ) : (
-        <View style={[styles.productImageFallback, { backgroundColor: isDark ? colors.pill : "#EEF2FF" }]}>
+        <View style={[styles.productImageFallback, { backgroundColor: isDark ? colors.pill : colors.infoSoft }]}>
           <Ionicons name="cube-outline" size={rMS(14)} color={colors.primary} />
         </View>
       )}
@@ -188,19 +200,19 @@ export default function VendorAnalyticsPanel({
   }, [currency, period.week.avgOrderValue, period.week.orders]);
 
   const content = (
-    <View style={[styles.shell, { backgroundColor: isDark ? colors.card : "#FFFFFF", borderColor: colors.cardBorder }]}>
+    <View style={[styles.shell, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
       <LinearGradient colors={heroGradient} style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.heroCopy}>
             <Text style={styles.heroEyebrow}>Last 7 days</Text>
-            <Text style={styles.heroValue}>
+            <Text style={[styles.heroValue, { color: colors.inverseText }]}>
               {formatCompactCurrency(period.week.sales, currency)}
             </Text>
             <Text style={styles.heroSub}>{headline}</Text>
           </View>
           {onPress ? (
             <View style={styles.heroAction}>
-              <Ionicons name="arrow-forward" size={rMS(16)} color="#FFFFFF" />
+              <Ionicons name="arrow-forward" size={rMS(16)} color={colors.inverseText} />
             </View>
           ) : null}
         </View>
@@ -250,7 +262,7 @@ export default function VendorAnalyticsPanel({
               />
             </View>
 
-            <View style={[styles.financeStrip, { backgroundColor: isDark ? colors.surfaceSubtle : "#F8FAFC" }]}>
+            <View style={[styles.financeStrip, { backgroundColor: colors.surfaceSubtle }]}>
               <View style={styles.financeItem}>
                 <Text style={[styles.financeLabel, { color: colors.textMuted }]}>Wallet</Text>
                 <Text style={[styles.financeValue, { color: colors.text }]}>
@@ -351,7 +363,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     fontSize: rMS(28),
     lineHeight: rMS(32),
-    color: "#FFFFFF",
     letterSpacing: -0.4,
   },
   heroSub: {
@@ -414,7 +425,6 @@ const styles = StyleSheet.create({
     borderRadius: rMS(6),
   },
   trendBarTodayHero: {
-    shadowColor: "#000000",
     shadowOpacity: 0.18,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },

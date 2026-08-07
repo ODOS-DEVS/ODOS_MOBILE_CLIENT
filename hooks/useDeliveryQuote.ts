@@ -1,6 +1,7 @@
 import { fetchDeliveryQuote } from "@/services/deliveryApi";
 import {
   buildDeliveryOptions,
+  FREE_SHIPPING_THRESHOLD,
   resolveActiveDeliveryMethod,
   resolveDeliveryAmount,
   type DeliveryMethodId,
@@ -31,7 +32,7 @@ export function useDeliveryQuote(input: {
       city: input.city,
     }),
   );
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(299);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(FREE_SHIPPING_THRESHOLD);
   const [sameDayCutoffPassed, setSameDayCutoffPassed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

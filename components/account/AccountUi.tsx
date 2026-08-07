@@ -1,4 +1,3 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -68,11 +67,11 @@ export function AccountEmptyState({
   actionLabel,
   onAction,
 }: AccountEmptyStateProps) {
-  const { emptyStyles } = useAccountUiStyles();
+  const { emptyStyles, colors } = useAccountUiStyles();
   return (
     <View style={emptyStyles.wrap}>
       <View style={emptyStyles.iconShell}>
-        <Ionicons name={icon} size={rMS(30)} color={AppColors.primary} />
+        <Ionicons name={icon} size={rMS(30)} color={colors.primary} />
       </View>
       <Text style={emptyStyles.title}>{title}</Text>
       <Text style={emptyStyles.message}>{message}</Text>
@@ -187,17 +186,19 @@ export function AccountListCard({
 
 export function AccountIconShell({
   icon,
-  color = AppColors.primary,
-  backgroundColor = "#EEF2FF",
+  color,
+  backgroundColor,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   color?: string;
   backgroundColor?: string;
 }) {
-  const { iconShellStyles } = useAccountUiStyles();
+  const { iconShellStyles, colors } = useAccountUiStyles();
+  const resolvedColor = color ?? colors.primary;
+  const resolvedBackgroundColor = backgroundColor ?? colors.infoSoft;
   return (
-    <View style={[iconShellStyles.wrap, { backgroundColor }]}>
-      <Ionicons name={icon} size={rMS(20)} color={color} />
+    <View style={[iconShellStyles.wrap, { backgroundColor: resolvedBackgroundColor }]}>
+      <Ionicons name={icon} size={rMS(20)} color={resolvedColor} />
     </View>
   );
 }
@@ -211,7 +212,7 @@ export function AccountFab({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       activeOpacity={0.9}
     >
-      <Ionicons name="add" size={rMS(28)} color={colors.onPrimary} />
+      <Ionicons name="add" size={rMS(28)} color={colors.onInverseSurface} />
     </TouchableOpacity>
   );
 }
@@ -565,9 +566,9 @@ export function AccountProfileHero({
           activeOpacity={0.88}
         >
           {isEditingPhoto ? (
-            <ActivityIndicator size="small" color={colors.onPrimary} />
+            <ActivityIndicator size="small" color={colors.onInverseSurface} />
           ) : (
-            <Ionicons name="camera" size={rMS(16)} color={colors.onPrimary} />
+            <Ionicons name="camera" size={rMS(16)} color={colors.onInverseSurface} />
           )}
         </TouchableOpacity>
       </View>

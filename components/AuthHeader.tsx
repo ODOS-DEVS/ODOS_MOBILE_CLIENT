@@ -29,12 +29,14 @@ const AuthHeader: React.FC<AuthHeaderProps> = ({ title, header, subtitle }) => {
         style={[styles.gradient, { paddingTop: insets.top + rV(16) }]}
       >
         <View style={styles.brandMark}>
-          <Text style={styles.brandText}>ODOS</Text>
+          <Text style={[styles.brandText, { color: colors.onPrimary }]}>ODOS</Text>
         </View>
 
         {title ? <Text style={styles.eyebrow}>{title}</Text> : null}
 
-        {header ? <Text style={styles.header}>{header}</Text> : null}
+        {header ? (
+          <Text style={[styles.header, { color: colors.onPrimary }]}>{header}</Text>
+        ) : null}
 
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </LinearGradient>
@@ -73,7 +75,6 @@ const styles = StyleSheet.create({
   brandText: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(15),
-    color: "#FFFFFF",
     letterSpacing: 2.4,
   },
   eyebrow: {
@@ -88,7 +89,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     fontSize: rMS(27),
     lineHeight: rMS(34),
-    color: "#FFFFFF",
     maxWidth: rS(320),
   },
   subtitle: {

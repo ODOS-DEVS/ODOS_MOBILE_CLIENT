@@ -25,6 +25,11 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "customer_vouchers") {
+    router.push("/(root)/screens/profileScreens/Account/Vouchers" as any);
+    return;
+  }
+
   if (route.type === "vendor_order") {
     if (route.orderId) {
       router.push({
@@ -65,6 +70,16 @@ export async function openActivityRoute(route: ActivityRoute) {
 
   if (route.type === "vendor_flash_sale") {
     router.push("/vendor/flash-sales" as any);
+    return;
+  }
+
+  if (route.type === "vendor_campaign") {
+    router.push("/vendor/campaigns" as any);
+    return;
+  }
+
+  if (route.type === "vendor_vouchers") {
+    router.push("/vendor/vouchers" as any);
     return;
   }
 
@@ -112,6 +127,20 @@ export function routeFromPushData(
     return { type: "customer_wallet" };
   }
 
+  if (
+    routeType === "customer_vouchers" ||
+    readString(data.type) === "voucher_expiring_soon"
+  ) {
+    return { type: "customer_vouchers" };
+  }
+
+  if (
+    routeType === "vendor_vouchers" ||
+    readString(data.type) === "vendor_voucher_expiring_unused"
+  ) {
+    return { type: "vendor_vouchers" };
+  }
+
   if (routeType === "vendor_order") {
     return { type: "vendor_order", orderId: routeTargetId ?? undefined };
   }
@@ -143,6 +172,13 @@ export function routeFromPushData(
     readString(data.type) === "vendor_flash_sale_nomination"
   ) {
     return { type: "vendor_flash_sale" };
+  }
+
+  if (
+    routeType === "vendor_campaign" ||
+    readString(data.type) === "vendor_campaign_opt_in"
+  ) {
+    return { type: "vendor_campaign" };
   }
 
   if (

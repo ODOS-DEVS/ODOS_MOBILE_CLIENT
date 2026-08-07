@@ -2,6 +2,9 @@ import type { Href } from "expo-router";
 
 export const HOME_TABS_HREF = "/(root)/(tabs)" as Href;
 export const HOME_TAB_HREF = "/(root)/(tabs)/" as Href;
+// Seller Center home for approved vendors in "sell_only" workspace mode — the
+// customer `index` tab is hidden (href: null) for them, so HOME_TAB_HREF is unreachable.
+export const VENDOR_HOME_TAB_HREF = "/(root)/(tabs)/vendor" as Href;
 
 export type RouterLike = {
   back: () => void;

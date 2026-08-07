@@ -23,6 +23,7 @@ import {
   VendorScreenShell,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { fetchCampaignTags, type CampaignTagOption } from "@/hooks/useDealProducts";
 import { useCatalogCategories } from "@/hooks/useCatalog";
@@ -30,6 +31,7 @@ import type { CatalogCategoryItem } from "@/hooks/useCatalog";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useStoreStore } from "@/stores/storeStore";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { VendorProduct, VendorProductInput } from "@/types/store";
 import {
@@ -145,6 +147,9 @@ export default function NewVendorProductScreen() {
   const { createProduct, updateProduct, fetchProducts, products, error, isSavingProduct, isLoadingProducts } =
     useStoreStore();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const pfStyles = useMemo(() => productFormStyles(colors), [colors]);
   const {
     categories: catalogCategories,
     isLoading: isLoadingCategories,
@@ -314,6 +319,10 @@ export default function NewVendorProductScreen() {
     const result = await pickCroppedImage(undefined, 0.85);
     if (!result.granted) {
       showToast("Allow photo access to upload product images.");
+      return;
+    }
+    if (result.tooLarge) {
+      showToast("That photo is too large. Please choose one under 8MB.");
       return;
     }
     if (result.canceled || !result.uri) {
@@ -523,7 +532,7 @@ export default function NewVendorProductScreen() {
             </AccountSectionCard>
 
             <AccountSectionCard title="Basics">
-              <View style={productFormStyles.sectionGap}>
+              <View style={pfStyles.sectionGap}>
               <TextInputField
                   label="Product name *"
                 icon="cube-outline"
@@ -556,17 +565,17 @@ export default function NewVendorProductScreen() {
             </AccountSectionCard>
 
             <AccountSectionCard title="Pricing & inventory">
-              <View style={productFormStyles.sectionGap}>
+              <View style={pfStyles.sectionGap}>
                 {useSplitRows ? (
                   <>
-                    <View style={productFormStyles.rowStack}>{priceFields}</View>
-                    <View style={productFormStyles.rowStack}>{stockAndPromoFields}</View>
+                    <View style={pfStyles.rowStack}>{priceFields}</View>
+                    <View style={pfStyles.rowStack}>{stockAndPromoFields}</View>
                   </>
                 ) : (
                   <>
-                    <View style={productFormStyles.rowSplit}>
-                      <View style={productFormStyles.rowHalf}>{priceFields}</View>
-                      <View style={productFormStyles.rowHalf}>{stockAndPromoFields}</View>
+                    <View style={pfStyles.rowSplit}>
+                      <View style={pfStyles.rowHalf}>{priceFields}</View>
+                      <View style={pfStyles.rowHalf}>{stockAndPromoFields}</View>
                 </View>
                   </>
                 )}
@@ -574,7 +583,7 @@ export default function NewVendorProductScreen() {
             </AccountSectionCard>
 
             <AccountSectionCard title="Variants (optional)">
-              <Text style={productFormStyles.helperText}>
+              <Text style={pfStyles.helperText}>
                 Only add options that apply. Leave blank for single-SKU items.
               </Text>
 
@@ -647,13 +656,13 @@ export default function NewVendorProductScreen() {
                 multiline
                 numberOfLines={5}
               />
-              <Text style={productFormStyles.helperText}>
+              <Text style={pfStyles.helperText}>
                 One detail per line — great for electronics, appliances, or measurements.
               </Text>
             </AccountSectionCard>
 
             <AccountSectionCard title="Returns">
-              <Text style={productFormStyles.helperText}>
+              <Text style={pfStyles.helperText}>
                 Returnable items can be requested in the shopper returns hub after delivery.
               </Text>
               <ProductFormPolicyPicker
@@ -662,7 +671,7 @@ export default function NewVendorProductScreen() {
               />
             </AccountSectionCard>
 
-            {error ? <Text style={productFormStyles.errorText}>{error}</Text> : null}
+            {error ? <Text style={pfStyles.errorText}>{error}</Text> : null}
 
             {!isEditing ? (
               <Text style={styles.reviewNote}>
@@ -681,41 +690,43 @@ export default function NewVendorProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  formStack: {
-    gap: rV(14),
-  },
-  inlineRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: rS(10),
-  },
-  inlineField: {
-    flex: 1,
-  },
-  inlineAddBtn: {
-    minWidth: rS(72),
-    borderRadius: rMS(14),
-    backgroundColor: "#E8EEF6",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    marginBottom: rV(12),
-  },
-  inlineAddLabel: {
-    color: "#1D4ED8",
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12.5),
-    textAlign: "center",
-  },
-  reviewNote: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-    textAlign: "center",
-    paddingHorizontal: rS(8),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
+    formStack: {
+      gap: rV(14),
+    },
+    inlineRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: rS(10),
+    },
+    inlineField: {
+      flex: 1,
+    },
+    inlineAddBtn: {
+      minWidth: rS(72),
+      borderRadius: rMS(14),
+      backgroundColor: colors.infoSoft,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      marginBottom: rV(12),
+    },
+    inlineAddLabel: {
+      color: colors.infoText,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12.5),
+      textAlign: "center",
+    },
+    reviewNote: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+      textAlign: "center",
+      paddingHorizontal: rS(8),
+    },
+  });
+}

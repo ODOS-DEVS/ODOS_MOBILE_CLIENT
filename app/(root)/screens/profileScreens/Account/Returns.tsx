@@ -11,10 +11,12 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import CommerceImage from "@/components/media/CommerceImage";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import TextInputField from "@/components/TextInputField";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -24,7 +26,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  Image,
   Modal,
   Platform,
   ScrollView,
@@ -43,22 +44,22 @@ type ReturnTarget = {
 
 const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
 
-function getReturnStatusMeta(status: ReturnRequest["status"]) {
+function getReturnStatusMeta(status: ReturnRequest["status"], colors: ThemeColors) {
   switch (status) {
     case "requested":
-      return { label: "Requested", bg: "#FEF3C7", color: "#92400E" };
+      return { label: "Requested", bg: colors.warningSoft, color: colors.warningText };
     case "under_review":
-      return { label: "Under Review", bg: "#DBEAFE", color: "#1D4ED8" };
+      return { label: "Under Review", bg: colors.infoSoft, color: colors.infoText };
     case "approved":
-      return { label: "Approved", bg: "#DCFCE7", color: "#166534" };
+      return { label: "Approved", bg: colors.successSoft, color: colors.successText };
     case "rejected":
-      return { label: "Declined", bg: "#FEE2E2", color: "#B91C1C" };
+      return { label: "Declined", bg: colors.dangerSoft, color: colors.dangerText };
     case "refunded":
-      return { label: "Refunded", bg: "#DCFCE7", color: "#166534" };
+      return { label: "Refunded", bg: colors.successSoft, color: colors.successText };
     case "exchanged":
-      return { label: "Exchanged", bg: "#EDE9FE", color: "#6D28D9" };
+      return { label: "Exchanged", bg: colors.infoSoft, color: colors.infoText };
     default:
-      return { label: status.replace(/_/g, " "), bg: "#EEF2F6", color: AppColors.secondary };
+      return { label: status.replace(/_/g, " "), bg: colors.surfaceMuted, color: colors.textSecondary };
   }
 }
 
@@ -79,6 +80,8 @@ export default function ReturnsScreen() {
   const { orders, isLoadingOrders, createReturnRequest, isMutatingOrder, refreshOrders } =
     useOrders();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeView, setActiveView] = useState<ReturnsView>("eligible");
   const [target, setTarget] = useState<ReturnTarget | null>(null);
   const [returnType, setReturnType] = useState<"refund" | "exchange" | "return">("refund");
@@ -179,6 +182,11 @@ export default function ReturnsScreen() {
       return;
     }
 
+    if (picked.tooLarge) {
+      Alert.alert("Photo too large", "Please choose a photo under 8MB.");
+      return;
+    }
+
     if (picked.canceled || !picked.uri) {
       return;
     }
@@ -276,16 +284,25 @@ export default function ReturnsScreen() {
               const hasOpenRequest = latestRequest
                 ? OPEN_RETURN_STATUSES.has(latestRequest.status)
                 : false;
-              const statusMeta = latestRequest ? getReturnStatusMeta(latestRequest.status) : null;
+              const statusMeta = latestRequest
+                ? getReturnStatusMeta(latestRequest.status, colors)
+                : null;
 
               return (
                 <AccountListCard key={`${order.id}-${item.id}`}>
                   <View style={styles.itemTopRow}>
                     <View style={styles.itemImageWrap}>
                       {imageSource ? (
-                        <Image source={imageSource} style={styles.itemImage} resizeMode="contain" />
+                        <CommerceImage
+                          source={imageSource}
+                          style={styles.itemImage}
+                          contentFit="contain"
+                          trackingId={`return-item-${item.id}`}
+                          recyclingKey={item.image_url || item.image_key || item.id}
+                          placeholderColor={colors.surfaceMuted}
+                        />
                       ) : (
-                        <Ionicons name="image-outline" size={rMS(20)} color={AppColors.secondary} />
+                        <Ionicons name="image-outline" size={rMS(20)} color={colors.iconMuted} />
                       )}
                     </View>
 
@@ -333,7 +350,7 @@ export default function ReturnsScreen() {
           />
         ) : (
           submittedRequests.map(({ order, request, item }) => {
-            const statusMeta = getReturnStatusMeta(request.status);
+            const statusMeta = getReturnStatusMeta(request.status, colors);
             return (
               <AccountListCard key={request.id}>
                 <View style={styles.requestTopRow}>
@@ -360,10 +377,14 @@ export default function ReturnsScreen() {
                     {request.evidence_image_urls.map((imageUrl, index) => {
                       const source = resolveImageSource(imageUrl);
                       return source ? (
-                        <Image
+                        <CommerceImage
                           key={`${request.id}-${index}`}
                           source={source}
                           style={styles.evidenceThumb}
+                          contentFit="cover"
+                          trackingId={`return-evidence-${request.id}-${index}`}
+                          recyclingKey={imageUrl}
+                          placeholderColor={colors.segmentBg}
                         />
                       ) : null;
                     })}
@@ -464,7 +485,7 @@ export default function ReturnsScreen() {
                         disabled={quantity <= 1}
                         onPress={() => setQuantity((current) => Math.max(1, current - 1))}
                       >
-                        <Ionicons name="remove" size={rMS(16)} color={AppColors.text} />
+                        <Ionicons name="remove" size={rMS(16)} color={colors.text} />
                       </TouchableOpacity>
                       <Text style={styles.quantityValue}>{quantity}</Text>
                       <TouchableOpacity
@@ -473,7 +494,7 @@ export default function ReturnsScreen() {
                         disabled={quantity >= target.item.quantity}
                         onPress={() => setQuantity((current) => Math.min(target.item.quantity, current + 1))}
                       >
-                        <Ionicons name="add" size={rMS(16)} color={AppColors.text} />
+                        <Ionicons name="add" size={rMS(16)} color={colors.text} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -507,7 +528,7 @@ export default function ReturnsScreen() {
                       </Text>
                     </View>
                     <TouchableOpacity style={styles.addPhotoButton} activeOpacity={0.88} onPress={() => void handleAddEvidence()}>
-                      <Ionicons name="camera-outline" size={rMS(14)} color="#1D4ED8" />
+                      <Ionicons name="camera-outline" size={rMS(14)} color={colors.infoText} />
                       <Text style={styles.addPhotoButtonText}>Add photo</Text>
                     </TouchableOpacity>
                   </View>
@@ -522,13 +543,20 @@ export default function ReturnsScreen() {
                         const source = resolveImageSource(imageUri);
                         return source ? (
                           <View key={imageUri} style={styles.composerImageWrap}>
-                            <Image source={source} style={styles.composerImage} />
+                            <CommerceImage
+                              source={source}
+                              style={styles.composerImage}
+                              contentFit="cover"
+                              trackingId={`return-composer-evidence-${imageUri}`}
+                              recyclingKey={imageUri}
+                              placeholderColor={colors.segmentBg}
+                            />
                             <TouchableOpacity
                               style={styles.removePhotoButton}
                               activeOpacity={0.88}
                               onPress={() => handleRemoveEvidence(imageUri)}
                             >
-                              <Ionicons name="close" size={rMS(12)} color={AppColors.white} />
+                              <Ionicons name="close" size={rMS(12)} color={colors.onInverseSurface} />
                             </TouchableOpacity>
                           </View>
                         ) : null;
@@ -536,7 +564,7 @@ export default function ReturnsScreen() {
                     </ScrollView>
                   ) : (
                     <View style={styles.photoEmptyState}>
-                      <Ionicons name="images-outline" size={rMS(18)} color={AppColors.secondary} />
+                      <Ionicons name="images-outline" size={rMS(18)} color={colors.iconMuted} />
                       <Text style={styles.photoEmptyText}>No photos attached yet.</Text>
                     </View>
                   )}
@@ -559,444 +587,446 @@ export default function ReturnsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(14),
-    paddingBottom: rV(32),
-  },
-  heroCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    padding: rS(18),
-    marginBottom: rV(14),
-  },
-  heroTitle: {
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  heroText: {
-    marginTop: rV(8),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  switcher: {
-    flexDirection: "row",
-    backgroundColor: "#EDEFF3",
-    borderRadius: rMS(16),
-    padding: rMS(4),
-    marginBottom: rV(14),
-  },
-  switchChip: {
-    flex: 1,
-    borderRadius: rMS(12),
-    paddingVertical: rV(10),
-    alignItems: "center",
-  },
-  switchChipActive: {
-    backgroundColor: AppColors.white,
-  },
-  switchChipText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  switchChipTextActive: {
-    color: AppColors.text,
-  },
-  emptyCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(22),
-    alignItems: "center",
-  },
-  emptyTitle: {
-    marginTop: rV(10),
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  emptyText: {
-    marginTop: rV(8),
-    textAlign: "center",
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  itemCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  itemTopRow: {
-    flexDirection: "row",
-    gap: rS(12),
-  },
-  itemImageWrap: {
-    width: rMS(68),
-    height: rMS(68),
-    borderRadius: rMS(14),
-    backgroundColor: "#F1F4F7",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  itemImage: {
-    width: "84%",
-    height: "84%",
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  itemMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    lineHeight: rMS(16),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  itemFooter: {
-    marginTop: rV(14),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  statusPill: {
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-  },
-  statusPillText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-  },
-  helperPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-    backgroundColor: "#F4F7FA",
-  },
-  helperPillText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  actionButton: {
-    minHeight: rV(38),
-    borderRadius: rMS(12),
-    paddingHorizontal: rS(14),
-    backgroundColor: "#1D4ED8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionButtonDisabled: {
-    backgroundColor: "#B6C0CC",
-  },
-  actionButtonText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  requestCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(20),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  requestTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  requestTopText: {
-    flex: 1,
-  },
-  requestTitle: {
-    fontSize: rMS(14),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  requestMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    lineHeight: rMS(16),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  requestReason: {
-    marginTop: rV(12),
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  requestDetails: {
-    marginTop: rV(5),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  evidenceRow: {
-    gap: rS(10),
-    paddingTop: rV(12),
-  },
-  evidenceThumb: {
-    width: rMS(86),
-    height: rMS(86),
-    borderRadius: rMS(12),
-    backgroundColor: "#EEF2F6",
-  },
-  requestFooter: {
-    marginTop: rV(12),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  requestTimestamp: {
-    flex: 1,
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  requestRefund: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#166534",
-  },
-  noteCard: {
-    marginTop: rV(12),
-    backgroundColor: "#EEF4FF",
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(10),
-  },
-  noteLabel: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-    color: "#1D4ED8",
-    textTransform: "uppercase",
-  },
-  noteText: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.text,
-  },
-  modalScreen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  modalHeader: {
-    backgroundColor: AppColors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7EBF0",
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-    paddingBottom: rV(14),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  modalHeaderAction: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.primary,
-  },
-  modalHeaderTitle: {
-    fontSize: rMS(15),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  modalContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  modalCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    padding: rS(16),
-    marginBottom: rV(12),
-  },
-  modalSectionTitle: {
-    fontSize: rMS(13),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    marginBottom: rV(10),
-  },
-  modalItemTitle: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  modalItemMeta: {
-    marginTop: rV(4),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  choiceRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-    marginBottom: rV(16),
-  },
-  choiceChip: {
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(9),
-    borderRadius: rMS(999),
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    backgroundColor: "#F8FAFC",
-  },
-  choiceChipActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#EAF2FF",
-  },
-  choiceChipText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  choiceChipTextActive: {
-    color: "#1D4ED8",
-  },
-  quantityRow: {
-    borderRadius: rMS(16),
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  quantityInfo: {
-    flex: 1,
-  },
-  quantityLabel: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  quantityHint: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    lineHeight: rMS(16),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  quantityStepper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-  },
-  quantityButton: {
-    width: rMS(32),
-    height: rMS(32),
-    borderRadius: rMS(16),
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    backgroundColor: AppColors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quantityValue: {
-    minWidth: rS(24),
-    textAlign: "center",
-    fontSize: rMS(14),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  modalEvidenceHeader: {
-    gap: rV(10),
-  },
-  modalEvidenceTextWrap: {
-    width: "100%",
-  },
-  modalEvidenceHint: {
-    marginTop: rV(4),
-    fontSize: rMS(11),
-    lineHeight: rMS(16),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  addPhotoButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    borderRadius: rMS(999),
-    backgroundColor: "#EAF2FF",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-  },
-  addPhotoButtonText: {
-    fontSize: rMS(11),
-    fontFamily: Fonts.textBold,
-    color: "#1D4ED8",
-  },
-  evidenceComposerRow: {
-    gap: rS(10),
-    paddingTop: rV(12),
-  },
-  composerImageWrap: {
-    width: rMS(94),
-    height: rMS(94),
-    borderRadius: rMS(14),
-    overflow: "hidden",
-    backgroundColor: "#EEF2F6",
-  },
-  composerImage: {
-    width: "100%",
-    height: "100%",
-  },
-  removePhotoButton: {
-    position: "absolute",
-    top: rV(6),
-    right: rS(6),
-    width: rMS(22),
-    height: rMS(22),
-    borderRadius: rMS(11),
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  photoEmptyState: {
-    marginTop: rV(12),
-    borderRadius: rMS(14),
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  photoEmptyText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    content: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(14),
+      paddingBottom: rV(32),
+    },
+    heroCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(22),
+      padding: rS(18),
+      marginBottom: rV(14),
+    },
+    heroTitle: {
+      fontSize: rMS(17),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    heroText: {
+      marginTop: rV(8),
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    switcher: {
+      flexDirection: "row",
+      backgroundColor: colors.segmentBg,
+      borderRadius: rMS(16),
+      padding: rMS(4),
+      marginBottom: rV(14),
+    },
+    switchChip: {
+      flex: 1,
+      borderRadius: rMS(12),
+      paddingVertical: rV(10),
+      alignItems: "center",
+    },
+    switchChipActive: {
+      backgroundColor: colors.segmentActive,
+    },
+    switchChipText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+    },
+    switchChipTextActive: {
+      color: colors.text,
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(22),
+      paddingHorizontal: rS(18),
+      paddingVertical: rV(22),
+      alignItems: "center",
+    },
+    emptyTitle: {
+      marginTop: rV(10),
+      fontSize: rMS(15),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    emptyText: {
+      marginTop: rV(8),
+      textAlign: "center",
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    itemCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(20),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    itemTopRow: {
+      flexDirection: "row",
+      gap: rS(12),
+    },
+    itemImageWrap: {
+      width: rMS(68),
+      height: rMS(68),
+      borderRadius: rMS(14),
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    itemImage: {
+      width: "84%",
+      height: "84%",
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemTitle: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    itemMeta: {
+      marginTop: rV(4),
+      fontSize: rMS(11),
+      lineHeight: rMS(16),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    itemFooter: {
+      marginTop: rV(14),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(10),
+    },
+    statusPill: {
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(6),
+    },
+    statusPillText: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+    },
+    helperPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(6),
+      backgroundColor: colors.surfaceSubtle,
+    },
+    helperPillText: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+    },
+    actionButton: {
+      minHeight: rV(38),
+      borderRadius: rMS(12),
+      paddingHorizontal: rS(14),
+      backgroundColor: colors.infoText,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionButtonDisabled: {
+      backgroundColor: colors.iconMuted,
+    },
+    actionButtonText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.onPrimary,
+    },
+    requestCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(20),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    requestTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    requestTopText: {
+      flex: 1,
+    },
+    requestTitle: {
+      fontSize: rMS(14),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    requestMeta: {
+      marginTop: rV(4),
+      fontSize: rMS(11),
+      lineHeight: rMS(16),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    requestReason: {
+      marginTop: rV(12),
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    requestDetails: {
+      marginTop: rV(5),
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    evidenceRow: {
+      gap: rS(10),
+      paddingTop: rV(12),
+    },
+    evidenceThumb: {
+      width: rMS(86),
+      height: rMS(86),
+      borderRadius: rMS(12),
+      backgroundColor: colors.segmentBg,
+    },
+    requestFooter: {
+      marginTop: rV(12),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(10),
+    },
+    requestTimestamp: {
+      flex: 1,
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    requestRefund: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.successText,
+    },
+    noteCard: {
+      marginTop: rV(12),
+      backgroundColor: colors.infoSoft,
+      borderRadius: rMS(14),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(10),
+    },
+    noteLabel: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+      color: colors.infoText,
+      textTransform: "uppercase",
+    },
+    noteText: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.text,
+    },
+    modalScreen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    modalHeader: {
+      backgroundColor: colors.header,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.headerBorder,
+      paddingHorizontal: rS(16),
+      paddingTop: rV(18),
+      paddingBottom: rV(14),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    modalHeaderAction: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.primary,
+    },
+    modalHeaderTitle: {
+      fontSize: rMS(15),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    modalContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(16),
+      paddingBottom: rV(28),
+    },
+    modalCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(18),
+      padding: rS(16),
+      marginBottom: rV(12),
+    },
+    modalSectionTitle: {
+      fontSize: rMS(13),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+      marginBottom: rV(10),
+    },
+    modalItemTitle: {
+      fontSize: rMS(16),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    modalItemMeta: {
+      marginTop: rV(4),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    choiceRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+      marginBottom: rV(16),
+    },
+    choiceChip: {
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(9),
+      borderRadius: rMS(999),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    choiceChipActive: {
+      borderColor: colors.infoText,
+      backgroundColor: colors.infoSoft,
+    },
+    choiceChipText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+    },
+    choiceChipTextActive: {
+      color: colors.infoText,
+    },
+    quantityRow: {
+      borderRadius: rMS(16),
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    quantityInfo: {
+      flex: 1,
+    },
+    quantityLabel: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    quantityHint: {
+      marginTop: rV(4),
+      fontSize: rMS(11),
+      lineHeight: rMS(16),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    quantityStepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(10),
+    },
+    quantityButton: {
+      width: rMS(32),
+      height: rMS(32),
+      borderRadius: rMS(16),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quantityValue: {
+      minWidth: rS(24),
+      textAlign: "center",
+      fontSize: rMS(14),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    modalEvidenceHeader: {
+      gap: rV(10),
+    },
+    modalEvidenceTextWrap: {
+      width: "100%",
+    },
+    modalEvidenceHint: {
+      marginTop: rV(4),
+      fontSize: rMS(11),
+      lineHeight: rMS(16),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    addPhotoButton: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      borderRadius: rMS(999),
+      backgroundColor: colors.infoSoft,
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(8),
+    },
+    addPhotoButtonText: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.infoText,
+    },
+    evidenceComposerRow: {
+      gap: rS(10),
+      paddingTop: rV(12),
+    },
+    composerImageWrap: {
+      width: rMS(94),
+      height: rMS(94),
+      borderRadius: rMS(14),
+      overflow: "hidden",
+      backgroundColor: colors.segmentBg,
+    },
+    composerImage: {
+      width: "100%",
+      height: "100%",
+    },
+    removePhotoButton: {
+      position: "absolute",
+      top: rV(6),
+      right: rS(6),
+      width: rMS(22),
+      height: rMS(22),
+      borderRadius: rMS(11),
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    photoEmptyState: {
+      marginTop: rV(12),
+      borderRadius: rMS(14),
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+    },
+    photoEmptyText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+  });
+}

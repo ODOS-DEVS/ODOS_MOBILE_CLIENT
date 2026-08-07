@@ -28,10 +28,10 @@ export default function VendorStoreActionRow({
 
   const badgeColors =
     badgeTone === "warning"
-      ? { bg: isDark ? "#422006" : "#FEF3C7", text: isDark ? "#FCD34D" : "#92400E" }
+      ? { bg: colors.warningSoft, text: colors.warningText }
       : badgeTone === "success"
-        ? { bg: isDark ? "#14532D" : "#DCFCE7", text: isDark ? "#86EFAC" : "#166534" }
-        : { bg: isDark ? colors.pill : "#F3F4F6", text: colors.textMuted };
+        ? { bg: colors.successSoft, text: colors.successText }
+        : { bg: colors.pill, text: colors.textMuted };
 
   return (
     <TouchableOpacity
@@ -45,7 +45,7 @@ export default function VendorStoreActionRow({
       <View
         style={[
           styles.iconShell,
-          { backgroundColor: isDark ? colors.pill : "#EEF2FF" },
+          { backgroundColor: isDark ? colors.pill : colors.infoSoft },
         ]}
       >
         <Ionicons name={icon} size={rMS(18)} color={colors.primary} />

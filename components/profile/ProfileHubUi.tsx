@@ -14,7 +14,7 @@ export {
   AccountSegmentedTabs,
 } from "@/components/account/AccountUi";
 import { useTheme } from "@/context/ThemeContext";
-import { AppColors } from "@/constants/Colors";
+import type { ThemeColors } from "@/constants/theme";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,9 +39,11 @@ export function AccountTipBanner({
   message: string;
   icon?: keyof typeof Ionicons.glyphMap;
 }) {
+  const { colors } = useTheme();
+  const tipStyles = useMemo(() => createTipStyles(colors), [colors]);
   return (
     <View style={tipStyles.wrap}>
-      <AccountIconShell icon={icon} color="#1D4ED8" backgroundColor="#DBEAFE" />
+      <AccountIconShell icon={icon} color={colors.infoText} backgroundColor={colors.infoSoft} />
       <View style={tipStyles.copy}>
         <Text style={tipStyles.title}>{title}</Text>
         <Text style={tipStyles.message}>{message}</Text>
@@ -83,6 +85,8 @@ export function AccountSettingToggle({
   disabled?: boolean;
   isLast?: boolean;
 }) {
+  const { colors } = useTheme();
+  const toggleStyles = useMemo(() => createToggleStyles(colors), [colors]);
   return (
     <View style={[toggleStyles.row, !isLast && toggleStyles.rowBorder, disabled && toggleStyles.rowDisabled]}>
       <View style={toggleStyles.copy}>
@@ -97,9 +101,9 @@ export function AccountSettingToggle({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: "#E5E7EB", true: AppColors.text }}
-        thumbColor="#FFFFFF"
-        ios_backgroundColor="#E5E7EB"
+        trackColor={{ false: colors.border, true: colors.text }}
+        thumbColor={colors.card}
+        ios_backgroundColor={colors.border}
       />
     </View>
   );
@@ -120,6 +124,8 @@ export function AccountRadioRow({
   disabled?: boolean;
   isLast?: boolean;
 }) {
+  const { colors } = useTheme();
+  const radioStyles = useMemo(() => createRadioStyles(colors), [colors]);
   return (
     <TouchableOpacity
       style={[radioStyles.row, !isLast && radioStyles.rowBorder, disabled && radioStyles.rowDisabled]}
@@ -153,6 +159,8 @@ export function AccountLinkRow({
   badge?: string;
   isLast?: boolean;
 }) {
+  const { colors } = useTheme();
+  const linkStyles = useMemo(() => createLinkStyles(colors), [colors]);
   const content = (
     <>
       <AccountIconShell icon={icon} />
@@ -168,7 +176,7 @@ export function AccountLinkRow({
         {subtitle ? <Text style={linkStyles.subtitle}>{subtitle}</Text> : null}
       </View>
       {onPress ? (
-        <Ionicons name="chevron-forward" size={rMS(18)} color="#D1D5DB" />
+        <Ionicons name="chevron-forward" size={rMS(18)} color={colors.iconMuted} />
       ) : null}
     </>
   );
@@ -201,6 +209,8 @@ export function AccountChannelCard({
   onPress?: () => void;
   active?: boolean;
 }) {
+  const { colors } = useTheme();
+  const channelStyles = useMemo(() => createChannelStyles(colors), [colors]);
   return (
     <TouchableOpacity
       style={[channelStyles.card, !active && channelStyles.cardMuted]}
@@ -259,6 +269,8 @@ export function AccountStickySaveBar({
 }
 
 export function AccountBulletList({ points }: { points: string[] }) {
+  const { colors } = useTheme();
+  const bulletStyles = useMemo(() => createBulletStyles(colors), [colors]);
   return (
     <View style={bulletStyles.wrap}>
       {points.map((point, index) => (
@@ -282,6 +294,8 @@ export function AccountMetaFooter({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const { colors } = useTheme();
+  const footerStyles = useMemo(() => createFooterStyles(colors), [colors]);
   return (
     <AccountListCard style={footerStyles.card}>
       <Text style={footerStyles.meta}>{meta}</Text>
@@ -297,34 +311,36 @@ export function AccountMetaFooter({
 
 export { AccountInsightCard, useAccountStyles };
 
-const tipStyles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(12),
-    backgroundColor: "#EFF6FF",
-    borderRadius: rMS(20),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#BFDBFE",
-  },
-  copy: {
-    flex: 1,
-    gap: rV(4),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13.5),
-    color: AppColors.text,
-  },
-  message: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#4B5563",
-  },
-});
+function createTipStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(12),
+      backgroundColor: colors.infoSoft,
+      borderRadius: rMS(20),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.infoBorder,
+    },
+    copy: {
+      flex: 1,
+      gap: rV(4),
+    },
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13.5),
+      color: colors.text,
+    },
+    message: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textSecondary,
+    },
+  });
+}
 
 const groupStyles = StyleSheet.create({
   body: {
@@ -332,245 +348,243 @@ const groupStyles = StyleSheet.create({
   },
 });
 
-const toggleStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-    paddingVertical: rV(14),
-  },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-  rowDisabled: {
-    opacity: 0.55,
-  },
-  copy: {
-    flex: 1,
-    gap: rV(4),
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  titleDisabled: {
-    color: "#9CA3AF",
-  },
-  description: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-    color: "#6B7280",
-  },
-  descriptionDisabled: {
-    color: "#9CA3AF",
-  },
-});
+function createToggleStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: rS(12),
+      paddingVertical: rV(14),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    rowDisabled: {
+      opacity: 0.55,
+    },
+    copy: {
+      flex: 1,
+      gap: rV(4),
+    },
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    titleDisabled: {
+      color: colors.placeholder,
+    },
+    description: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(17),
+      color: colors.textMuted,
+    },
+    descriptionDisabled: {
+      color: colors.placeholder,
+    },
+  });
+}
 
-const radioStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-    paddingVertical: rV(14),
-  },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-  rowDisabled: {
-    opacity: 0.5,
-  },
-  copy: {
-    flex: 1,
-    gap: rV(2),
-  },
-  label: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  labelSelected: {
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-  },
-  hint: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    color: "#9CA3AF",
-  },
-  outer: {
-    width: rMS(22),
-    height: rMS(22),
-    borderRadius: rMS(11),
-    borderWidth: 2,
-    borderColor: "#D1D5DB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  outerSelected: {
-    borderColor: AppColors.text,
-  },
-  inner: {
-    width: rMS(10),
-    height: rMS(10),
-    borderRadius: rMS(5),
-    backgroundColor: AppColors.text,
-  },
-});
+function createRadioStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: rS(12),
+      paddingVertical: rV(14),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    rowDisabled: {
+      opacity: 0.5,
+    },
+    copy: {
+      flex: 1,
+      gap: rV(2),
+    },
+    label: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    labelSelected: {
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+    },
+    hint: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+      color: colors.placeholder,
+    },
+    outer: {
+      width: rMS(22),
+      height: rMS(22),
+      borderRadius: rMS(11),
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    outerSelected: {
+      borderColor: colors.text,
+    },
+    inner: {
+      width: rMS(10),
+      height: rMS(10),
+      borderRadius: rMS(5),
+      backgroundColor: colors.text,
+    },
+  });
+}
 
-const linkStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-    paddingVertical: rV(12),
-  },
-  rowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-  copy: {
-    flex: 1,
-    gap: rV(3),
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-    flexWrap: "wrap",
-  },
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14),
-    color: AppColors.text,
-  },
-  subtitle: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(17),
-    color: "#6B7280",
-  },
-  badge: {
-    paddingHorizontal: rS(8),
-    paddingVertical: rV(3),
-    borderRadius: 999,
-    backgroundColor: "#F3F4F6",
-  },
-  badgeText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(10),
-    color: "#6B7280",
-  },
-});
+function createLinkStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(12),
+      paddingVertical: rV(12),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    copy: {
+      flex: 1,
+      gap: rV(3),
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      flexWrap: "wrap",
+    },
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14),
+      color: colors.text,
+    },
+    subtitle: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(17),
+      color: colors.textMuted,
+    },
+    badge: {
+      paddingHorizontal: rS(8),
+      paddingVertical: rV(3),
+      borderRadius: 999,
+      backgroundColor: colors.pill,
+    },
+    badgeText: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(10),
+      color: colors.pillText,
+    },
+  });
+}
 
-const channelStyles = StyleSheet.create({
-  card: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: rMS(18),
-    paddingVertical: rV(16),
-    paddingHorizontal: rS(12),
-    alignItems: "center",
-    gap: rV(8),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E6EAF0",
-  },
-  cardMuted: {
-    backgroundColor: "#F9FAFB",
-  },
-  iconWrap: {
-    width: rMS(44),
-    height: rMS(44),
-    borderRadius: rMS(22),
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  labelMuted: {
-    color: "#9CA3AF",
-  },
-  soon: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(10),
-    color: "#9CA3AF",
-  },
-});
+function createChannelStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      width: "48%",
+      backgroundColor: colors.card,
+      borderRadius: rMS(18),
+      paddingVertical: rV(16),
+      paddingHorizontal: rS(12),
+      alignItems: "center",
+      gap: rV(8),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    cardMuted: {
+      backgroundColor: colors.surfaceSubtle,
+    },
+    iconWrap: {
+      width: rMS(44),
+      height: rMS(44),
+      borderRadius: rMS(22),
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    label: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12),
+      color: colors.text,
+      textAlign: "center",
+    },
+    labelMuted: {
+      color: colors.placeholder,
+    },
+    soon: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(10),
+      color: colors.placeholder,
+    },
+  });
+}
 
-const saveBarStyles = StyleSheet.create({
-  wrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: rS(16),
-    paddingTop: rV(10),
-    backgroundColor: "#F5F7FA",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
-  },
-});
+function createBulletStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      gap: rV(10),
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    dot: {
+      marginTop: rV(6),
+      width: rMS(6),
+      height: rMS(6),
+      borderRadius: rMS(3),
+      backgroundColor: colors.primary,
+    },
+    text: {
+      flex: 1,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+      color: colors.textSecondary,
+    },
+  });
+}
 
-const bulletStyles = StyleSheet.create({
-  wrap: {
-    gap: rV(10),
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  dot: {
-    marginTop: rV(6),
-    width: rMS(6),
-    height: rMS(6),
-    borderRadius: rMS(3),
-    backgroundColor: AppColors.primary,
-  },
-  text: {
-    flex: 1,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-    color: "#4B5563",
-  },
-});
-
-const footerStyles = StyleSheet.create({
-  card: {
-    alignItems: "center",
-    gap: rV(6),
-  },
-  meta: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(11),
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  message: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  action: {
-    marginTop: rV(4),
-  },
-  actionText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-});
+function createFooterStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      alignItems: "center",
+      gap: rV(6),
+    },
+    meta: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(11),
+      color: colors.placeholder,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    message: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+      textAlign: "center",
+    },
+    action: {
+      marginTop: rV(4),
+    },
+    actionText: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.primary,
+    },
+  });
+}

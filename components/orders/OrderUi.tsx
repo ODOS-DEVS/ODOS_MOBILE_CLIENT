@@ -7,10 +7,10 @@ import type { Order } from "@/hooks/useOrders";
 import { getActiveOrderTimelineStep } from "@/utils/orderTracking";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useOrderStyles } from "@/styles/themedOrderStyles";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -109,7 +109,13 @@ export function OrderThumbnail({ order, size = rS(64) }: OrderThumbnailProps) {
   return (
     <View style={[orderStyles.imageWrap, { width: size, height: size }]}>
       {imageSource ? (
-        <Image source={imageSource} style={orderStyles.image} resizeMode="cover" />
+        <CommerceImage
+          source={imageSource}
+          style={orderStyles.image}
+          contentFit="cover"
+          trackingId={`order-thumb-${order.id}`}
+          recyclingKey={order.id}
+        />
       ) : (
         <Ionicons name="cube-outline" size={rMS(24)} color={colors.iconMuted} />
       )}
@@ -160,9 +166,9 @@ export function OrderTrackingPreview({ order }: OrderTrackingPreviewProps) {
 
   const iconColor =
     activeStep.state === "done"
-      ? "#16A34A"
+      ? colors.successText
       : activeStep.state === "cancelled"
-        ? "#DC2626"
+        ? colors.dangerText
         : colors.text;
 
   return (

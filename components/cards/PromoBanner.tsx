@@ -7,12 +7,12 @@ import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { resolveApiMediaUrl } from "@/utils/media";
 import { navigateFromPromoBanner } from "@/utils/promoNavigation";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
@@ -108,7 +108,7 @@ function PromoBannerCard({
         eyebrow: {
           fontFamily: Fonts.title,
           fontSize: rMS(11),
-          color: isDark ? "#FCD34D" : "#92400E",
+          color: colors.warningText,
           textTransform: "uppercase",
           letterSpacing: 0.8,
         },
@@ -117,14 +117,14 @@ function PromoBannerCard({
           fontFamily: Fonts.titleBold,
           fontSize: rMS(24),
           lineHeight: rMS(28),
-          color: isDark ? "#F8FAFC" : "#111827",
+          color: colors.text,
         },
         subtitle: {
           marginTop: rV(8),
           fontFamily: Fonts.text,
           fontSize: rMS(13),
           lineHeight: rMS(18),
-          color: isDark ? "#CBD5E1" : "#475569",
+          color: colors.textSecondary,
         },
         cta: {
           marginTop: rV(16),
@@ -132,7 +132,7 @@ function PromoBannerCard({
           flexDirection: "row",
           alignItems: "center",
           gap: rS(6),
-          backgroundColor: isDark ? "#F8FAFC" : "#111827",
+          backgroundColor: colors.text,
           paddingHorizontal: rS(16),
           paddingVertical: rV(11),
           borderRadius: rMS(999),
@@ -140,7 +140,7 @@ function PromoBannerCard({
         ctaText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(12.5),
-          color: isDark ? "#111827" : "#FFFFFF",
+          color: isDark ? colors.screen : colors.inverseText,
         },
         artWrap: {
           width: rS(96),
@@ -154,7 +154,16 @@ function PromoBannerCard({
           height: rV(112),
         },
       }),
-    [colors.border, colors.shadow, isDark],
+    [
+      colors.border,
+      colors.inverseText,
+      colors.screen,
+      colors.shadow,
+      colors.text,
+      colors.textSecondary,
+      colors.warningText,
+      isDark,
+    ],
   );
 
   const handlePress = () => {
@@ -191,16 +200,18 @@ function PromoBannerCard({
             <Ionicons
               name="arrow-forward"
               size={rMS(14)}
-              color={isDark ? "#111827" : "#FFFFFF"}
+              color={isDark ? colors.screen : colors.inverseText}
             />
           </View>
         </View>
 
         <View style={styles.artWrap}>
-          <Image
+          <CommerceImage
             source={imageSource}
             style={styles.artImage}
-            resizeMode="contain"
+            contentFit="contain"
+            trackingId={banner?.id ? `promo-banner-${banner.id}` : undefined}
+            recyclingKey={banner?.id ?? banner?.imageUrl ?? undefined}
           />
         </View>
       </LinearGradient>
@@ -215,6 +226,7 @@ export default function PromoBanner({
   onPress,
   inset = true,
 }: PromoBannerProps) {
+  const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const { horizontalPadding } = useResponsive();
   const listRef = useRef<FlatList<PromoBannerItem>>(null);
@@ -292,11 +304,11 @@ export default function PromoBanner({
         counterText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(10),
-          color: "#F8FAFC",
+          color: colors.onInverseSurface,
           letterSpacing: 0.4,
         },
       }),
-    [cardPadding],
+    [cardPadding, colors.onInverseSurface],
   );
 
   if (banners.length > 0) {

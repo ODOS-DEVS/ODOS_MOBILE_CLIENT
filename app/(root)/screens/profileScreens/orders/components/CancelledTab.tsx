@@ -13,6 +13,7 @@ import { Order } from "@/hooks/useOrders";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { rMS } from "@/styles/responsive";
+import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
@@ -23,6 +24,7 @@ function formatCancelledDate(order: Order) {
 
 export default function CancelledTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
+  const { colors } = useTheme();
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
@@ -52,7 +54,7 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
               </View>
 
               <View style={orderStyles.reasonRow}>
-                <Ionicons name="alert-circle-outline" size={rMS(14)} color="#9CA3AF" />
+                <Ionicons name="alert-circle-outline" size={rMS(14)} color={colors.iconMuted} />
                 <Text style={orderStyles.reasonText}>
                   Reason: {order.cancellation_reason || "Cancelled by the store"}
                 </Text>

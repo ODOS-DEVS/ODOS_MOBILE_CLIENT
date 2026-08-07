@@ -126,10 +126,10 @@ function buildAccountStyles(c: ThemeColors) {
       color: c.pillText,
     },
     pillDark: {
-      backgroundColor: c.text,
+      backgroundColor: c.inverseSurface,
     },
     pillDarkText: {
-      color: c.onPrimary,
+      color: c.onInverseSurface,
     },
     actionRow: {
       marginTop: rV(14),
@@ -150,8 +150,8 @@ function buildAccountStyles(c: ThemeColors) {
       borderColor: c.border,
     },
     filterChipActive: {
-      backgroundColor: c.text,
-      borderColor: c.text,
+      backgroundColor: c.inverseSurface,
+      borderColor: c.inverseSurface,
     },
     filterChipText: {
       fontFamily: Fonts.title,
@@ -159,7 +159,7 @@ function buildAccountStyles(c: ThemeColors) {
       color: c.textSecondary,
     },
     filterChipTextActive: {
-      color: c.onPrimary,
+      color: c.onInverseSurface,
     },
     segmentRow: {
       flexDirection: "row",
@@ -241,13 +241,13 @@ function buildEmptyStyles(c: ThemeColors) {
       minWidth: "72%",
       minHeight: rV(48),
       borderRadius: rMS(14),
-      backgroundColor: c.text,
+      backgroundColor: c.inverseSurface,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: rS(20),
     },
     buttonText: {
-      color: c.onPrimary,
+      color: c.onInverseSurface,
       fontFamily: Fonts.titleBold,
       fontSize: rMS(14),
     },
@@ -272,20 +272,20 @@ function buildBadgeStyles(c: ThemeColors) {
     { wrap: ViewStyle; text: TextStyle }
   > = {
     neutral: { wrap: { backgroundColor: c.pill }, text: { color: c.pillText } },
-    dark: { wrap: { backgroundColor: c.text }, text: { color: c.onPrimary } },
+    dark: { wrap: { backgroundColor: c.inverseSurface }, text: { color: c.onInverseSurface } },
     success: {
-      wrap: { backgroundColor: "#DCFCE7" },
-      text: { color: "#166534" },
+      wrap: { backgroundColor: c.successSoft },
+      text: { color: c.successText },
     },
     warning: {
-      wrap: { backgroundColor: "#FEF3C7" },
-      text: { color: "#92400E" },
+      wrap: { backgroundColor: c.warningSoft },
+      text: { color: c.warningText },
     },
     danger: {
-      wrap: { backgroundColor: "#FEE2E2" },
-      text: { color: "#B91C1C" },
+      wrap: { backgroundColor: c.dangerSoft },
+      text: { color: c.dangerText },
     },
-    info: { wrap: { backgroundColor: "#DBEAFE" }, text: { color: "#1D4ED8" } },
+    info: { wrap: { backgroundColor: c.infoSoft }, text: { color: c.infoText } },
   };
 
   return { ...shared, ...tones };
@@ -316,9 +316,14 @@ function buildActionStyles(c: ThemeColors) {
     { btn: ViewStyle; text: TextStyle; iconColor: string }
   > = {
     primary: {
-      btn: { backgroundColor: c.text },
-      text: { color: c.onPrimary },
-      iconColor: c.onPrimary,
+      // Was `c.text` — near-black in light mode (a nice dark pill) but near-WHITE in
+      // dark mode (body text has to be light against a dark screen), which made this
+      // button invisible white-on-white in dark mode. `inverseSurface` is the token
+      // built for exactly this — an always-dark pill regardless of theme, same pairing
+      // already used correctly by the product-detail Add to Cart/Buy Now buttons.
+      btn: { backgroundColor: c.inverseSurface },
+      text: { color: c.onInverseSurface },
+      iconColor: c.onInverseSurface,
     },
     secondary: {
       btn: {
@@ -331,12 +336,12 @@ function buildActionStyles(c: ThemeColors) {
     },
     danger: {
       btn: {
-        backgroundColor: "#FEF2F2",
+        backgroundColor: c.dangerSoft,
         borderWidth: StyleSheet.hairlineWidth,
-        borderColor: "#FECACA",
+        borderColor: c.dangerText,
       },
-      text: { color: "#DC2626" },
-      iconColor: "#DC2626",
+      text: { color: c.dangerText },
+      iconColor: c.dangerText,
     },
     ghost: {
       btn: { backgroundColor: "transparent" },
@@ -368,7 +373,7 @@ function buildFabStyles(c: ThemeColors) {
       width: rS(56),
       height: rS(56),
       borderRadius: rS(28),
-      backgroundColor: c.text,
+      backgroundColor: c.inverseSurface,
       alignItems: "center",
       justifyContent: "center",
       shadowColor: c.shadow,
@@ -456,7 +461,7 @@ function buildSheetStyles(c: ThemeColors) {
       marginTop: rV(8),
       minHeight: rV(50),
       borderRadius: rMS(14),
-      backgroundColor: c.text,
+      backgroundColor: c.inverseSurface,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -464,7 +469,7 @@ function buildSheetStyles(c: ThemeColors) {
       opacity: 0.7,
     },
     saveBtnText: {
-      color: c.onPrimary,
+      color: c.onInverseSurface,
       fontFamily: Fonts.titleBold,
       fontSize: rMS(14),
     },
@@ -592,7 +597,7 @@ function buildProfileHeroStyles(c: ThemeColors) {
       width: rS(36),
       height: rS(36),
       borderRadius: rS(18),
-      backgroundColor: c.text,
+      backgroundColor: c.inverseSurface,
       borderWidth: 3,
       borderColor: c.editAvatarBorder,
       alignItems: "center",

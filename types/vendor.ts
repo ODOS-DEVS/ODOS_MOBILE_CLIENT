@@ -236,6 +236,7 @@ export type VendorWallet = {
   lifetimeEarnings: number;
   totalWithdrawn: number;
   totalCommission: number;
+  commissionRate: number;
   payoutMethodType?: string | null;
   payoutAccountName?: string | null;
   payoutAccountNumberMasked?: string | null;

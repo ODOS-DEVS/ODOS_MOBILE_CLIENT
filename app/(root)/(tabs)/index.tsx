@@ -9,6 +9,7 @@ import {
   SectionSkeleton,
 } from "@/components/loaders/CommerceSkeletons";
 import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
+import CommerceImage from "@/components/media/CommerceImage";
 import { ViewAllButton } from "@/components/browse/ViewAllButton";
 import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
@@ -28,10 +29,10 @@ import { useMerchandisingCampaigns } from "@/hooks/useMerchandisingCampaigns";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { navigateToMerchandisingCampaign } from "@/utils/promoNavigation";
-import { productCardGapY, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapY, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Image, RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type HomeSectionProps = {
@@ -40,6 +41,8 @@ type HomeSectionProps = {
   headerRight?: React.ReactNode;
   isLoading: boolean;
   isEmpty: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   skeleton: React.ReactNode;
   children: React.ReactNode;
   sectionSpacing: number;
@@ -52,12 +55,18 @@ function HomeSection({
   headerRight,
   isLoading,
   isEmpty,
+  error,
+  onRetry,
   skeleton,
   children,
   sectionSpacing,
   horizontalPadding,
 }: HomeSectionProps) {
-  if (!isLoading && isEmpty) {
+  const { colors } = useTheme();
+
+  // A section that failed to load looks identical to "genuinely nothing here" once
+  // hidden — only skip rendering when it's empty for real, not because its fetch failed.
+  if (!isLoading && isEmpty && !error) {
     return null;
   }
 
@@ -98,6 +107,29 @@ function HomeSection({
       {isLoading && isEmpty ? (
         <View style={{ paddingHorizontal: horizontalPadding }}>
           {skeleton}
+        </View>
+      ) : error && isEmpty ? (
+        <View
+          style={{
+            paddingHorizontal: horizontalPadding,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: rS(8),
+          }}
+        >
+          <Text style={{ color: colors.textMuted, fontSize: rMS(12.5), flexShrink: 1 }}>
+            Couldn&apos;t load this section.
+          </Text>
+          {onRetry ? (
+            <TouchableOpacity onPress={onRetry} accessibilityRole="button">
+              <Text
+                className="font-montserrat-bold"
+                style={{ color: colors.primary, fontSize: rMS(12.5) }}
+              >
+                Retry
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ) : (
         children
@@ -342,6 +374,8 @@ const HomeScreen = () => {
                 }
                 isLoading={isLoadingFlashSales}
                 isEmpty={flashSaleProducts.length === 0}
+                error={flashSalesError}
+                onRetry={() => void refreshFlashSales()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
                 horizontalPadding={horizontalPadding}
@@ -406,12 +440,15 @@ const HomeScreen = () => {
                         }}
                       >
                         {item.thumbnailImageUrl || item.bannerImageUrl ? (
-                          <Image
+                          <CommerceImage
                             source={{
                               uri: item.thumbnailImageUrl || item.bannerImageUrl,
                             }}
                             style={{ width: "100%", height: rV(110) }}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            trackingId={`home-campaign-${item.id}`}
+                            recyclingKey={item.thumbnailImageUrl || item.bannerImageUrl || item.id}
+                            placeholderColor={colors.imagePlaceholder}
                           />
                         ) : (
                           <View
@@ -529,6 +566,8 @@ const HomeScreen = () => {
                 onSeeAll={() => router.push("../screens/stores/stores")}
                 isLoading={isLoadingStores}
                 isEmpty={storeItems.length === 0}
+                error={storesError}
+                onRetry={() => void refreshStores()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
                 horizontalPadding={horizontalPadding}
@@ -549,6 +588,8 @@ const HomeScreen = () => {
                 onSeeAll={() => router.push("../screens/popular")}
                 isLoading={isLoadingPopular}
                 isEmpty={popularProducts.length === 0}
+                error={popularError}
+                onRetry={() => void refreshPopular()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
                 horizontalPadding={horizontalPadding}
@@ -572,6 +613,8 @@ const HomeScreen = () => {
                 onSeeAll={() => router.push("../screens/market")}
                 isLoading={isLoadingMarkets}
                 isEmpty={marketItems.length === 0}
+                error={marketsError}
+                onRetry={() => void refreshMarkets()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
                 horizontalPadding={horizontalPadding}

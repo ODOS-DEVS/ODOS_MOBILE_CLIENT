@@ -148,7 +148,15 @@ export const darkTheme: ThemeColors = {
   tabFocused: "#2D3B52",
   shadow: "#000000",
   backdrop: "rgba(0, 0, 0, 0.72)",
-  primary: "#8E8E8E",
+  // `primary` doubles as (a) a button background paired with white onPrimary text
+  // and (b) a foreground color for links/icons/active-tab labels sitting directly on
+  // the near-black screen/card backgrounds — those two uses pull the ideal value in
+  // opposite directions. #4B4B4B satisfied (a) but was so dark it nearly disappeared
+  // against the dark backgrounds required by (b) (contrast ~2.7:1, read as a dim
+  // brownish smudge). #7F8699 is a mid-tone slate balanced between the two: ~3.6:1
+  // against white (fine for bold/large button labels) and ~5.3:1 against the dark
+  // screen background (clearly legible as text/icons on dark surfaces).
+  primary: "#7F8699",
   onPrimary: "#FFFFFF",
   inverseText: "#FFFFFF",
   editAvatarBorder: "#131A29",

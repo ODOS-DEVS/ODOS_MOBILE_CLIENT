@@ -10,9 +10,11 @@ import {
   VendorSectionHeader,
   vendorStyles,
 } from "@/components/vendor/VendorUi";
+import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useVendorSession } from "@/hooks/useVendorSession";
 import { useVendorStore } from "@/stores/vendorStore";
-import { rV, useResponsive } from "@/styles/responsive";
+import { rMS, rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
@@ -47,6 +49,7 @@ const statusCopy = {
 
 export default function VendorApplicationStatusScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { contentMaxWidth } = useResponsive();
   const { isHydrating, session, user } = useVendorSession();
   const {
@@ -129,7 +132,11 @@ export default function VendorApplicationStatusScreen() {
           <AccountListCard>
             <StatusBadge status={vendorStatus} />
             <VendorSectionHeader title={currentCopy.title} description={currentCopy.body} />
-            {error ? <Text style={vendorStyles.errorText}>{error}</Text> : null}
+            {error ? (
+              <Text style={{ fontFamily: Fonts.text, fontSize: rMS(12), color: colors.dangerText }}>
+                {error}
+              </Text>
+            ) : null}
           </AccountListCard>
 
           {vendorStatus === "none" ? (

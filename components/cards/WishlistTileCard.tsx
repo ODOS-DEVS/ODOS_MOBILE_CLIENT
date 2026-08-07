@@ -1,6 +1,5 @@
 import AddToCartBtn from "@/components/buttons/AddToCartBtn";
 import CommerceImage from "@/components/media/CommerceImage";
-import { AppColors } from "@/constants/Colors";
 import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -56,13 +55,13 @@ export default function WishlistTileCard({
           borderRadius: rMS(18),
           backgroundColor: colors.card,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: isDark ? colors.cardBorder : "#FBCFE8",
+          borderColor: isDark ? colors.cardBorder : `${colors.dangerText}33`,
           overflow: "hidden",
           marginBottom: rV(10),
           ...(isDark
             ? {}
             : {
-                shadowColor: "#FB7185",
+                shadowColor: colors.dangerText,
                 shadowOpacity: 0.06,
                 shadowRadius: 8,
                 shadowOffset: { width: 0, height: 3 },
@@ -71,7 +70,7 @@ export default function WishlistTileCard({
         },
         imageShell: {
           height: rV(96),
-          backgroundColor: isDark ? colors.imagePlaceholder : "#FFF1F2",
+          backgroundColor: isDark ? colors.imagePlaceholder : colors.dangerSoft,
           position: "relative",
         },
         image: {
@@ -93,10 +92,10 @@ export default function WishlistTileCard({
           paddingHorizontal: rS(8),
           paddingVertical: rV(4),
           borderRadius: rS(999),
-          backgroundColor: "#F43F5E",
+          backgroundColor: colors.dangerText,
         },
         savedPillText: {
-          color: "#FFFFFF",
+          color: isDark ? colors.screen : colors.onPrimary,
           fontFamily: Fonts.titleBold,
           fontSize: rMS(9),
           letterSpacing: 0.2,
@@ -111,7 +110,7 @@ export default function WishlistTileCard({
           backgroundColor: "rgba(17, 24, 39, 0.78)",
         },
         offerPillText: {
-          color: "#FFFFFF",
+          color: colors.onInverseSurface,
           fontFamily: Fonts.titleBold,
           fontSize: rMS(9),
         },
@@ -177,7 +176,7 @@ export default function WishlistTileCard({
           justifyContent: "center",
           backgroundColor: colors.dangerSoft,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: isDark ? colors.cardBorder : "#FECDD3",
+          borderColor: isDark ? colors.cardBorder : `${colors.dangerText}33`,
         },
       }),
     [colors, isDark],
@@ -209,12 +208,16 @@ export default function WishlistTileCard({
           />
         ) : (
           <View style={styles.imageFallback}>
-            <Ionicons name="heart-outline" size={rS(20)} color="#F472B6" />
+            <Ionicons name="heart-outline" size={rS(20)} color={colors.dangerText} />
           </View>
         )}
 
         <View style={styles.savedPill}>
-          <Ionicons name="heart" size={rS(10)} color="#FFFFFF" />
+          <Ionicons
+            name="heart"
+            size={rS(10)}
+            color={isDark ? colors.screen : colors.onPrimary}
+          />
           <Text style={styles.savedPillText}>Saved</Text>
         </View>
 
@@ -257,7 +260,7 @@ export default function WishlistTileCard({
               image,
             }}
             iconSize={rS(14)}
-            iconColor={AppColors.primary}
+            iconColor={colors.primary}
             containerStyle={styles.cartBtn}
           />
           <TouchableOpacity
@@ -265,7 +268,7 @@ export default function WishlistTileCard({
             style={styles.removeBtn}
             activeOpacity={0.86}
           >
-            <Ionicons name="heart-dislike-outline" size={rS(15)} color="#E11D48" />
+            <Ionicons name="heart-dislike-outline" size={rS(15)} color={colors.dangerText} />
           </TouchableOpacity>
         </View>
       </View>

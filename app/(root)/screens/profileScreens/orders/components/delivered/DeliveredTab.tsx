@@ -12,6 +12,7 @@ import { Order } from "@/hooks/useOrders";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { rMS } from "@/styles/responsive";
+import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -22,6 +23,7 @@ function formatDeliveredText(order: Order) {
 
 export default function DeliveredTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
+  const { colors } = useTheme();
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
@@ -60,7 +62,7 @@ export default function DeliveredTab({ orders }: { orders: Order[] }) {
                   <View style={orderStyles.rightColumn}>
                     <AccountBadge label="Delivered" tone="success" />
                     <Text style={orderStyles.price}>{formatOrderMoney(order.total_amount)}</Text>
-                    <Ionicons name="chevron-forward" size={rMS(16)} color="#D1D5DB" />
+                    <Ionicons name="chevron-forward" size={rMS(16)} color={colors.iconMuted} />
                   </View>
                 </View>
               </AccountListCard>

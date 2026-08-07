@@ -26,8 +26,8 @@ export default function EmailVerificationSuccess({
   const slide = useRef(new Animated.Value(rV(18))).current;
 
   const gradientColors = isDark
-    ? (["#151C2B", "#0B1220", "#151C2B"] as const)
-    : (["#F8FAFC", "#FFFFFF", "#F3F4F6"] as const);
+    ? ([colors.surfaceSubtle, colors.screen, colors.surfaceSubtle] as const)
+    : ([colors.surfaceSubtle, colors.card, colors.surfaceMuted] as const);
 
   useEffect(() => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -72,10 +72,15 @@ export default function EmailVerificationSuccess({
             colors={["#16A34A", "#15803D"]}
             style={styles.heroOrbGradient}
           >
-            <Ionicons name="mail-open-outline" size={rMS(34)} color="#FFFFFF" />
+            <Ionicons name="mail-open-outline" size={rMS(34)} color={colors.onPrimary} />
           </LinearGradient>
-          <View style={[styles.checkBadge, { borderColor: colors.card }]}>
-            <Ionicons name="checkmark" size={rMS(16)} color="#FFFFFF" />
+          <View
+            style={[
+              styles.checkBadge,
+              { backgroundColor: colors.inverseSurface, borderColor: colors.card },
+            ]}
+          >
+            <Ionicons name="checkmark" size={rMS(16)} color={colors.onInverseSurface} />
           </View>
         </Animated.View>
 
@@ -171,7 +176,6 @@ const styles = StyleSheet.create({
     width: rMS(34),
     height: rMS(34),
     borderRadius: rMS(17),
-    backgroundColor: "#111827",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,

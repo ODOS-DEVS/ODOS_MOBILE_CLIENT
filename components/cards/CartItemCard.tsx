@@ -1,11 +1,12 @@
 import { useTheme } from "@/context/ThemeContext";
 import Fonts from "@/constants/Fonts";
+import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { formatCurrency } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface CartItemProps {
   id: string;
@@ -170,7 +171,12 @@ const CartItemCard = ({
         <TouchableOpacity activeOpacity={0.92} onPress={openProduct} style={styles.row}>
           <View style={styles.imageWrap}>
             {image ? (
-              <Image source={image} style={styles.image} resizeMode="cover" />
+              <CommerceImage
+                source={image}
+                trackingId={`cart-item-${id}`}
+                recyclingKey={imageKey || id}
+                placeholderColor={colors.imagePlaceholder}
+              />
             ) : (
               <View style={styles.imageFallback}>
                 <Ionicons name="bag-outline" size={rS(18)} color={colors.iconMuted} />

@@ -8,14 +8,16 @@ import {
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useBlockBackNavigation } from "@/hooks/useBlockBackNavigation";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { ThemeColors } from "@/constants/theme";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -24,6 +26,9 @@ export default function OrderSuccessScreen() {
   const accountStyles = useAccountStyles();
   const orderStyles = useOrderStyles();
   const params = useLocalSearchParams();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   useBlockBackNavigation(true);
   const orderNumber = getParam(params.orderNumber) ?? "ORD-000000";
   const orderId = getParam(params.orderId) ?? "";
@@ -41,7 +46,7 @@ export default function OrderSuccessScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
-            <Ionicons name="checkmark-circle" size={rMS(72)} color="#15803D" />
+            <Ionicons name="checkmark-circle" size={rMS(72)} color={colors.successText} />
           </View>
           <Text style={styles.title}>Your order is in</Text>
           <Text style={styles.subtitle}>
@@ -60,7 +65,7 @@ export default function OrderSuccessScreen() {
         </AccountListCard>
 
         <View style={styles.noteCard}>
-          <Ionicons name="mail-unread-outline" size={rMS(18)} color={AppColors.primary} />
+          <Ionicons name="mail-unread-outline" size={rMS(18)} color={colors.primary} />
           <Text style={styles.noteText}>
             We&apos;ll keep your order updated in My Orders as it moves through processing and delivery.
           </Text>
@@ -68,15 +73,15 @@ export default function OrderSuccessScreen() {
 
         <AccountSectionCard title="What happens next">
           <View style={styles.timelineStep}>
-            <Ionicons name="checkmark-circle" size={rMS(18)} color="#16A34A" />
+            <Ionicons name="checkmark-circle" size={rMS(18)} color={colors.successText} />
             <Text style={styles.timelineText}>Your order has been placed successfully.</Text>
           </View>
           <View style={styles.timelineStep}>
-            <Ionicons name="radio-button-on" size={rMS(18)} color="#2563EB" />
+            <Ionicons name="radio-button-on" size={rMS(18)} color={colors.infoText} />
             <Text style={styles.timelineText}>We&apos;re preparing it for delivery now.</Text>
           </View>
           <View style={styles.timelineStep}>
-            <Ionicons name="ellipse-outline" size={rMS(18)} color="#A0AEC0" />
+            <Ionicons name="ellipse-outline" size={rMS(18)} color={colors.iconMuted} />
             <Text style={styles.timelineText}>
               You&apos;ll be able to confirm delivery once it arrives.
             </Text>
@@ -84,7 +89,7 @@ export default function OrderSuccessScreen() {
         </AccountSectionCard>
       </ScrollView>
 
-      <View style={orderStyles.stickyFooter}>
+      <View style={[orderStyles.stickyFooter, { paddingBottom: insets.bottom + rV(12) }]}>
         <AccountActionButton
           label="Track Order"
           variant="primary"
@@ -105,66 +110,68 @@ export default function OrderSuccessScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: rV(150),
-  },
-  hero: {
-    alignItems: "center",
-    paddingHorizontal: rS(12),
-    marginBottom: rV(6),
-  },
-  iconWrap: {
-    width: rMS(108),
-    height: rMS(108),
-    borderRadius: rMS(54),
-    backgroundColor: "#EAF7EE",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: rV(18),
-  },
-  title: {
-    fontSize: rMS(26),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.text,
-    marginBottom: rV(8),
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: rMS(13),
-    lineHeight: rMS(20),
-    fontFamily: Fonts.text,
-    color: "#6B7280",
-    textAlign: "center",
-    maxWidth: rS(300),
-  },
-  noteCard: {
-    backgroundColor: "#EEF4FF",
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  noteText: {
-    flex: 1,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: AppColors.text,
-  },
-  timelineStep: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-    marginBottom: rV(10),
-  },
-  timelineText: {
-    flex: 1,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    fontFamily: Fonts.text,
-    color: "#6B7280",
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    scrollContent: {
+      paddingBottom: rV(150),
+    },
+    hero: {
+      alignItems: "center",
+      paddingHorizontal: rS(12),
+      marginBottom: rV(6),
+    },
+    iconWrap: {
+      width: rMS(108),
+      height: rMS(108),
+      borderRadius: rMS(54),
+      backgroundColor: colors.successSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: rV(18),
+    },
+    title: {
+      fontSize: rMS(26),
+      fontFamily: Fonts.titleBold,
+      color: colors.text,
+      marginBottom: rV(8),
+      textAlign: "center",
+    },
+    subtitle: {
+      fontSize: rMS(13),
+      lineHeight: rMS(20),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+      textAlign: "center",
+      maxWidth: rS(300),
+    },
+    noteCard: {
+      backgroundColor: colors.infoSoft,
+      borderRadius: rMS(18),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    noteText: {
+      flex: 1,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.text,
+    },
+    timelineStep: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(10),
+      marginBottom: rV(10),
+    },
+    timelineText: {
+      flex: 1,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+    },
+  });
+}

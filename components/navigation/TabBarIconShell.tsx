@@ -97,7 +97,7 @@ export default function TabBarIconShell({
           minWidth: rS(15),
           height: rS(15),
           borderRadius: rS(7.5),
-          backgroundColor: "#E53935",
+          backgroundColor: colors.dangerText,
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: rS(2),
@@ -105,7 +105,7 @@ export default function TabBarIconShell({
           borderColor: isDark ? colors.card : colors.bottomBar,
         },
         badgeText: {
-          color: "#FFFFFF",
+          color: isDark ? colors.screen : colors.onPrimary,
           fontSize: rMS(7.5),
           fontFamily: Fonts.titleBold,
         },

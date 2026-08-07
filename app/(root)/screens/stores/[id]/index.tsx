@@ -1,4 +1,5 @@
 import VerifiedSeal from "@/components/badges/VerifiedSeal";
+import CommerceImage from "@/components/media/CommerceImage";
 import { StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreDealsShowcase from "@/components/store/StoreDealsShowcase";
 import StoreExploreBar from "@/components/store/StoreExploreBar";
@@ -33,7 +34,6 @@ import React, {
 } from "react";
 import {
   Animated,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -219,11 +219,11 @@ const StoreLandingScreen = () => {
           </Text>
           <View style={styles.emptyActions}>
             <TouchableOpacity
-              style={[styles.emptyPrimary, { backgroundColor: colors.text }]}
+              style={[styles.emptyPrimary, { backgroundColor: colors.inverseSurface }]}
               activeOpacity={0.9}
               onPress={() => void refresh()}
             >
-              <Text style={[styles.emptyPrimaryText, { color: colors.onPrimary }]}>
+              <Text style={[styles.emptyPrimaryText, { color: colors.onInverseSurface }]}>
                 Try again
               </Text>
             </TouchableOpacity>
@@ -396,6 +396,7 @@ const StoreLandingScreen = () => {
             transform: [{ translateY: stickyHeaderTranslateY }],
             backgroundColor: colors.card,
             borderBottomColor: colors.headerBorder,
+            shadowColor: colors.shadow,
           },
         ]}
       >
@@ -419,10 +420,13 @@ const StoreLandingScreen = () => {
 
           <View style={styles.stickyTitleWrap}>
             {store.image ? (
-              <Image
+              <CommerceImage
                 source={store.image}
                 style={styles.stickyLogo}
-                resizeMode="cover"
+                contentFit="cover"
+                trackingId={`store-sticky-logo-${store.id}`}
+                recyclingKey={store.id}
+                placeholderColor={colors.pill}
               />
             ) : (
               <View
@@ -526,7 +530,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    shadowColor: "#0F172A",
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },

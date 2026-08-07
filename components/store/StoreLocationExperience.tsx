@@ -1,5 +1,6 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import {
   buildMapsSearchUrl,
@@ -9,13 +10,13 @@ import {
 } from "@/utils/location";
 import { isGoogleMapsEnabled, odosGoogleMapProps } from "@/utils/mapViewConfig";
 import { resolveImageSource } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
-  Image,
   Linking,
   Platform,
   Pressable,
@@ -88,14 +89,16 @@ function StoreMapPin({
   logoSource: ReturnType<typeof resolveImageSource> | null;
   title?: string;
 }) {
+  const { colors } = useTheme();
+  const pinStyles = useMemo(() => createPinStyles(colors), [colors]);
   return (
     <View style={pinStyles.wrap} accessibilityLabel={`${title ?? "Store"} location pin`}>
       <View style={[pinStyles.pulse, { opacity: 0.22, transform: [{ scale: 1 }] }]} />
       <View style={pinStyles.bubble}>
         {logoSource ? (
-          <Image source={logoSource} style={pinStyles.logo} />
+          <CommerceImage source={logoSource} style={pinStyles.logo} />
         ) : (
-          <Ionicons name="storefront" size={rMS(22)} color={AppColors.primary} />
+          <Ionicons name="storefront" size={rMS(22)} color={colors.primary} />
         )}
       </View>
       <View style={pinStyles.stem} />
@@ -115,6 +118,8 @@ function QuickAction({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const { colors } = useTheme();
+  const actionStyles = useMemo(() => createActionStyles(colors), [colors]);
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -124,7 +129,7 @@ function QuickAction({
       <Ionicons
         name={icon}
         size={rMS(16)}
-        color={primary ? "#FFFFFF" : AppColors.primary}
+        color={primary ? colors.onPrimary : colors.primary}
       />
       <Text style={[actionStyles.chipLabel, primary ? actionStyles.chipLabelPrimary : null]}>
         {label}
@@ -139,6 +144,8 @@ export default function StoreLocationExperience({
   onBack,
 }: StoreLocationExperienceProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const mapRef = useRef<MapView>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
 
@@ -284,7 +291,7 @@ export default function StoreLocationExperience({
       ) : (
         <View style={styles.fallbackCanvas}>
           <LinearGradient
-            colors={["#eef6fb", "#f5f5f1", "#eef3e8"]}
+            colors={[colors.infoSoft, colors.screen, colors.successSoft]}
             style={StyleSheet.absoluteFillObject}
           />
           <View style={styles.fallbackWater} />
@@ -315,7 +322,7 @@ export default function StoreLocationExperience({
         style={[styles.topChrome, { paddingTop: insets.top + rV(10) }]}
       >
         <TouchableOpacity activeOpacity={0.88} onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={rMS(22)} color="#1F2937" />
+          <Ionicons name="arrow-back" size={rMS(22)} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.topCopy}>
@@ -332,7 +339,7 @@ export default function StoreLocationExperience({
           style={[styles.mapControls, { bottom: mapBottomPadding + rV(12) }]}
         >
           <TouchableOpacity style={styles.mapControlBtn} onPress={focusStore} activeOpacity={0.9}>
-            <Ionicons name="locate" size={rMS(20)} color="#111827" />
+            <Ionicons name="locate" size={rMS(20)} color={colors.text} />
           </TouchableOpacity>
         </View>
       ) : null}
@@ -355,10 +362,15 @@ export default function StoreLocationExperience({
             >
               <View style={styles.peekIdentity}>
                 {logoSource ? (
-                  <Image source={logoSource} style={styles.peekLogo} />
+                  <CommerceImage
+                    source={logoSource}
+                    style={styles.peekLogo}
+                    trackingId={store?.id ? `store-peek-logo-${store.id}` : undefined}
+                    recyclingKey={store?.imageKey || store?.imageUrl || store?.id}
+                  />
                 ) : (
                   <View style={styles.peekLogoPlaceholder}>
-                    <Ionicons name="storefront-outline" size={rMS(20)} color="#94A3B8" />
+                    <Ionicons name="storefront-outline" size={rMS(20)} color={colors.iconMuted} />
                   </View>
                 )}
                 <View style={styles.peekCopy}>
@@ -374,7 +386,7 @@ export default function StoreLocationExperience({
               <Ionicons
                 name={sheetExpanded ? "chevron-down" : "chevron-up"}
                 size={rMS(20)}
-                color="#9CA3AF"
+                color={colors.placeholder}
               />
             </Pressable>
 
@@ -402,9 +414,14 @@ export default function StoreLocationExperience({
         >
           {bannerSource ? (
             <View style={styles.bannerWrap}>
-              <Image source={bannerSource} style={styles.bannerImage} />
+              <CommerceImage
+                source={bannerSource}
+                style={styles.bannerImage}
+                trackingId={store?.id ? `store-banner-${store.id}` : undefined}
+                recyclingKey={store?.imageBannerKey || store?.imageBannerUrl || store?.id}
+              />
               <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.95)"]}
+                colors={["transparent", colors.card]}
                 style={styles.bannerFade}
               />
             </View>
@@ -415,7 +432,7 @@ export default function StoreLocationExperience({
             {fullAddress ? (
               <View style={styles.addressCard}>
                 <View style={styles.addressIcon}>
-                  <Ionicons name="location" size={rMS(18)} color="#FFFFFF" />
+                  <Ionicons name="location" size={rMS(18)} color={colors.onPrimary} />
                 </View>
                 <Text style={styles.addressText}>{fullAddress}</Text>
               </View>
@@ -431,21 +448,21 @@ export default function StoreLocationExperience({
             <View style={styles.statsRow}>
               {store.distanceKm ? (
                 <View style={styles.statCard}>
-                  <Ionicons name="navigate-outline" size={rMS(16)} color={AppColors.primary} />
+                  <Ionicons name="navigate-outline" size={rMS(16)} color={colors.primary} />
                   <Text style={styles.statValue}>{store.distanceKm}</Text>
                   <Text style={styles.statLabel}>distance</Text>
                 </View>
               ) : null}
               {store.travelMinutes ? (
                 <View style={styles.statCard}>
-                  <Ionicons name="time-outline" size={rMS(16)} color={AppColors.primary} />
+                  <Ionicons name="time-outline" size={rMS(16)} color={colors.primary} />
                   <Text style={styles.statValue}>{store.travelMinutes}</Text>
                   <Text style={styles.statLabel}>travel</Text>
                 </View>
               ) : null}
               {typeof store.rating === "number" ? (
                 <View style={styles.statCard}>
-                  <Ionicons name="star" size={rMS(16)} color="#F59E0B" />
+                  <Ionicons name="star" size={rMS(16)} color={colors.ratingText} />
                   <Text style={styles.statValue}>{store.rating.toFixed(1)}</Text>
                   <Text style={styles.statLabel}>rating</Text>
                 </View>
@@ -465,7 +482,7 @@ export default function StoreLocationExperience({
               <Text style={styles.sectionLabel}>Contact</Text>
               {store.phone ? (
                 <TouchableOpacity style={styles.contactRow} onPress={callStore}>
-                  <Ionicons name="call-outline" size={rMS(18)} color={AppColors.primary} />
+                  <Ionicons name="call-outline" size={rMS(18)} color={colors.primary} />
                   <Text style={styles.contactText}>{store.phone}</Text>
                 </TouchableOpacity>
               ) : null}
@@ -474,7 +491,7 @@ export default function StoreLocationExperience({
                   style={styles.contactRow}
                   onPress={() => void Linking.openURL(`mailto:${store.email}`)}
                 >
-                  <Ionicons name="mail-outline" size={rMS(18)} color={AppColors.primary} />
+                  <Ionicons name="mail-outline" size={rMS(18)} color={colors.primary} />
                   <Text style={styles.contactText}>{store.email}</Text>
                 </TouchableOpacity>
               ) : null}
@@ -484,12 +501,12 @@ export default function StoreLocationExperience({
           {mapsUrl ? (
             <TouchableOpacity style={styles.primaryCta} onPress={openExternalMaps}>
               <LinearGradient
-                colors={["#4B5563", "#374151"]}
+                colors={[colors.inverseSurface, colors.inverseSurface]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryCtaGradient}
               >
-                <Ionicons name="map" size={rMS(20)} color="#FFFFFF" />
+                <Ionicons name="map" size={rMS(20)} color={colors.onInverseSurface} />
                 <Text style={styles.primaryCtaText}>Open in Google Maps</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -497,7 +514,7 @@ export default function StoreLocationExperience({
 
           {!showNativeMap ? (
             <View style={styles.fallbackNote}>
-              <Ionicons name="phone-portrait-outline" size={rMS(18)} color={AppColors.primary} />
+              <Ionicons name="phone-portrait-outline" size={rMS(18)} color={colors.primary} />
               <Text style={styles.fallbackNoteText}>
                 {hasLiveMap
                   ? "Live map navigation works best in the ODOS mobile app."
@@ -511,88 +528,93 @@ export default function StoreLocationExperience({
   );
 }
 
-const pinStyles = StyleSheet.create({
-  wrap: {
-    alignItems: "center",
-    width: rS(72),
-    height: rV(92),
-  },
-  pulse: {
-    position: "absolute",
-    top: rV(8),
-    width: rS(56),
-    height: rS(56),
-    borderRadius: rS(28),
-    backgroundColor: AppColors.primary,
-  },
-  bubble: {
-    width: rS(52),
-    height: rS(52),
-    borderRadius: rS(26),
-    backgroundColor: "#FFFFFF",
-    borderWidth: 3,
-    borderColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  logo: {
-    width: "100%",
-    height: "100%",
-  },
-  stem: {
-    width: rS(4),
-    height: rV(14),
-    marginTop: rV(-2),
-    borderRadius: rS(2),
-    backgroundColor: AppColors.primary,
-  },
-  shadowDot: {
-    width: rS(16),
-    height: rS(6),
-    borderRadius: rS(8),
-    backgroundColor: "rgba(15,23,42,0.18)",
-    marginTop: rV(2),
-  },
-});
+function createPinStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      alignItems: "center",
+      width: rS(72),
+      height: rV(92),
+    },
+    pulse: {
+      position: "absolute",
+      top: rV(8),
+      width: rS(56),
+      height: rS(56),
+      borderRadius: rS(28),
+      backgroundColor: colors.primary,
+    },
+    bubble: {
+      width: rS(52),
+      height: rS(52),
+      borderRadius: rS(26),
+      backgroundColor: colors.card,
+      borderWidth: 3,
+      borderColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.22,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    logo: {
+      width: "100%",
+      height: "100%",
+    },
+    stem: {
+      width: rS(4),
+      height: rV(14),
+      marginTop: rV(-2),
+      borderRadius: rS(2),
+      backgroundColor: colors.primary,
+    },
+    shadowDot: {
+      width: rS(16),
+      height: rS(6),
+      borderRadius: rS(8),
+      backgroundColor: "rgba(15,23,42,0.18)",
+      marginTop: rV(2),
+    },
+  });
+}
 
-const actionStyles = StyleSheet.create({
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(10),
-    borderRadius: rS(999),
-    backgroundColor: "#F3F4F6",
-  },
-  chipPrimary: {
-    backgroundColor: AppColors.primary,
-  },
-  chipLabel: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12.5),
-    color: AppColors.text,
-  },
-  chipLabelPrimary: {
-    color: "#FFFFFF",
-  },
-});
+function createActionStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(10),
+      borderRadius: rS(999),
+      backgroundColor: colors.pill,
+    },
+    chipPrimary: {
+      backgroundColor: colors.primary,
+    },
+    chipLabel: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12.5),
+      color: colors.text,
+    },
+    chipLabelPrimary: {
+      color: colors.onPrimary,
+    },
+  });
+}
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f5f5f1",
+    backgroundColor: colors.screen,
   },
   fallbackCanvas: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
-    backgroundColor: "#f5f5f1",
+    backgroundColor: colors.screen,
   },
   fallbackWater: {
     position: "absolute",
@@ -617,9 +639,9 @@ const styles = StyleSheet.create({
     width: rS(42),
     height: rV(42),
     borderRadius: rS(6),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E0E0E0",
+    borderColor: colors.border,
   },
   fallbackPin: {
     ...StyleSheet.absoluteFillObject,
@@ -646,8 +668,8 @@ const styles = StyleSheet.create({
     borderRadius: rS(22),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
+    backgroundColor: colors.card,
+    shadowColor: colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -660,14 +682,14 @@ const styles = StyleSheet.create({
   topEyebrow: {
     fontFamily: Fonts.title,
     fontSize: rMS(11),
-    color: "#6B7280",
+    color: colors.textMuted,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
   topTitle: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(18),
-    color: "#111827",
+    color: colors.text,
   },
   mapControls: {
     position: "absolute",
@@ -677,10 +699,10 @@ const styles = StyleSheet.create({
     width: rS(48),
     height: rS(48),
     borderRadius: rS(16),
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0F172A",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -691,10 +713,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderTopLeftRadius: rMS(28),
     borderTopRightRadius: rMS(28),
-    shadowColor: "#0F172A",
+    shadowColor: colors.shadow,
     shadowOpacity: 0.2,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: -10 },
@@ -706,14 +728,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: rS(18),
     paddingBottom: rV(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
+    borderBottomColor: colors.border,
   },
   sheetHandle: {
     alignSelf: "center",
     width: rS(46),
     height: rV(5),
     borderRadius: rS(999),
-    backgroundColor: "#D1D5DB",
+    backgroundColor: colors.border,
     marginBottom: rV(14),
   },
   peekHeader: {
@@ -737,7 +759,7 @@ const styles = StyleSheet.create({
     width: rS(54),
     height: rS(54),
     borderRadius: rS(18),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.imagePlaceholder,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -748,12 +770,12 @@ const styles = StyleSheet.create({
   peekName: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(17),
-    color: "#111827",
+    color: colors.text,
   },
   peekMeta: {
     fontFamily: Fonts.text,
     fontSize: rMS(12.5),
-    color: "#6B7280",
+    color: colors.textMuted,
   },
   quickActions: {
     flexDirection: "row",
@@ -771,7 +793,7 @@ const styles = StyleSheet.create({
     height: rV(140),
     borderRadius: rMS(20),
     overflow: "hidden",
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.border,
   },
   bannerImage: {
     width: "100%",
@@ -786,7 +808,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(13),
-    color: "#6B7280",
+    color: colors.textMuted,
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },
@@ -794,17 +816,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: rS(12),
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfaceSubtle,
     borderRadius: rMS(18),
     padding: rS(14),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E2E8F0",
+    borderColor: colors.cardBorder,
   },
   addressIcon: {
     width: rS(36),
     height: rS(36),
     borderRadius: rS(12),
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -813,13 +835,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     fontSize: rMS(14),
     lineHeight: rMS(21),
-    color: "#1F2937",
+    color: colors.text,
   },
   mutedCopy: {
     fontFamily: Fonts.text,
     fontSize: rMS(13),
     lineHeight: rMS(19),
-    color: "#6B7280",
+    color: colors.textMuted,
   },
   statsRow: {
     flexDirection: "row",
@@ -827,24 +849,24 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surfaceSubtle,
     borderRadius: rMS(16),
     paddingVertical: rV(12),
     paddingHorizontal: rS(10),
     alignItems: "center",
     gap: rV(4),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E2E8F0",
+    borderColor: colors.cardBorder,
   },
   statValue: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(14),
-    color: "#111827",
+    color: colors.text,
   },
   statLabel: {
     fontFamily: Fonts.text,
     fontSize: rMS(10.5),
-    color: "#6B7280",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
@@ -852,7 +874,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     fontSize: rMS(13.5),
     lineHeight: rMS(20),
-    color: "#374151",
+    color: colors.text,
   },
   contactRow: {
     flexDirection: "row",
@@ -863,7 +885,7 @@ const styles = StyleSheet.create({
   contactText: {
     fontFamily: Fonts.title,
     fontSize: rMS(13.5),
-    color: AppColors.text,
+    color: colors.text,
   },
   primaryCta: {
     borderRadius: rMS(18),
@@ -879,13 +901,13 @@ const styles = StyleSheet.create({
   primaryCtaText: {
     fontFamily: Fonts.titleBold,
     fontSize: rMS(14.5),
-    color: "#FFFFFF",
+    color: colors.onInverseSurface,
   },
   fallbackNote: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: rS(10),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.pill,
     borderRadius: rMS(16),
     padding: rS(14),
   },
@@ -894,6 +916,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.text,
     fontSize: rMS(12.5),
     lineHeight: rMS(18),
-    color: "#4B5563",
+    color: colors.textSecondary,
   },
-});
+  });
+}

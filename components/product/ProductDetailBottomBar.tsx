@@ -61,7 +61,7 @@ export default function ProductDetailBottomBar({
           product={wishlistProduct}
           size={18}
           iconColor={colors.textMuted}
-          activeIconColor="#E11D48"
+          activeIconColor={colors.dangerText}
           containerStyle={styles.bottomWishlistButton}
         />
 

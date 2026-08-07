@@ -7,14 +7,16 @@ import {
   ChatQuickReplies,
   ChatScreenHeader,
   ChatScreenShell,
+  ChatScrollToBottomButton,
   ChatTypingIndicator,
   renderChatMessageItem,
   useChatStyles,
 } from "@/components/chat/ChatUi";
-import { AppColors } from "@/constants/Colors";
+import CommerceImage from "@/components/media/CommerceImage";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useRealtime } from "@/context/RealtimeContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS } from "@/styles/responsive";
 import { resolveImageSource } from "@/utils/media";
@@ -24,7 +26,8 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StatusBar,
   Text,
   View,
@@ -42,6 +45,7 @@ const VENDOR_QUICK_REPLIES = [
 
 export default function VendorChatScreen() {
   const chatStyles = useChatStyles();
+  const { colors } = useTheme();
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -71,10 +75,12 @@ export default function VendorChatScreen() {
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const messagesByThreadRef = useRef(messagesByThread);
+  const isAtBottomRef = useRef(true);
   messagesByThreadRef.current = messagesByThread;
   const thread = getThreadById(resolvedThreadId);
   const messages = resolvedThreadId
@@ -217,12 +223,33 @@ export default function VendorChatScreen() {
     if (!messages.length && !isSending) {
       return;
     }
+    if (!isSending && !isAtBottomRef.current) {
+      return;
+    }
     const timeoutId = setTimeout(
       () => listRef.current?.scrollToEnd({ animated: true }),
       50,
     );
     return () => clearTimeout(timeoutId);
   }, [isSending, messages.length]);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      const nearBottom = distanceFromBottom < 120;
+      isAtBottomRef.current = nearBottom;
+      setIsAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
+    },
+    [],
+  );
+
+  const scrollToBottom = useCallback(() => {
+    listRef.current?.scrollToEnd({ animated: true });
+    isAtBottomRef.current = true;
+    setIsAtBottom(true);
+  }, []);
 
   const onSend = async () => {
     if (!resolvedThreadId || !input.trim()) {
@@ -258,26 +285,30 @@ export default function VendorChatScreen() {
 
   const headerAvatar =
     viewer === "vendor" && thread?.counterpart.avatarUrl ? (
-      <Image
+      <CommerceImage
         source={{ uri: thread.counterpart.avatarUrl }}
         style={chatStyles.headerAvatar}
-        resizeMode="cover"
+        contentFit="cover"
+        trackingId={`chat-header-avatar-${thread?.id ?? "counterpart"}`}
+        recyclingKey={thread.counterpart.avatarUrl}
       />
     ) : thread?.store.imageUrl || thread?.store.imageKey ? (
-      <Image
+      <CommerceImage
         source={resolveImageSource(
           thread?.store.imageUrl,
           thread?.store.imageKey,
         )}
         style={chatStyles.headerAvatar}
-        resizeMode="cover"
+        contentFit="cover"
+        trackingId={`chat-header-store-${thread?.id ?? "store"}`}
+        recyclingKey={thread?.store.imageUrl || thread?.store.imageKey || undefined}
       />
     ) : (
       <View style={chatStyles.avatarPlaceholder}>
         <Ionicons
           name={viewer === "vendor" ? "person-outline" : "storefront-outline"}
           size={rMS(20)}
-          color={AppColors.primary}
+          color={colors.primary}
         />
       </View>
     );
@@ -322,49 +353,57 @@ export default function VendorChatScreen() {
       ) : null}
 
       {!emptyState ? (
-        <FlatList
-          ref={listRef}
-          style={chatStyles.messagesList}
-          data={messages}
-          keyExtractor={(message) => message.id}
-          contentContainerStyle={chatStyles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={false}
-          renderItem={({ item, index }) =>
-            renderChatMessageItem({
-              item,
-              index,
-              messages,
-              currentUserId: user?.id,
-              onCopied: showCopyFeedback,
-            })
-          }
-          ListFooterComponent={
-            <ChatTypingIndicator
-              visible={isSending}
-              variant="outgoing"
-              label="Sending"
-            />
-          }
-          ListEmptyComponent={
-            isLoadingMessages ? (
-              <View style={chatStyles.loadingWrap}>
-                <ChatTypingIndicator visible variant="incoming" />
-                <Text style={chatStyles.loadingText}>Loading messages...</Text>
-              </View>
-            ) : (
-              <ChatMessagesEmpty
-                title="No messages yet"
-                description={
-                  viewer === "vendor"
-                    ? "Reply here when a shopper reaches out."
-                    : "Say hello and ask anything about this store or product."
-                }
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={listRef}
+            style={chatStyles.messagesList}
+            data={messages}
+            keyExtractor={(message) => message.id}
+            contentContainerStyle={chatStyles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item, index }) =>
+              renderChatMessageItem({
+                item,
+                index,
+                messages,
+                currentUserId: user?.id,
+                onCopied: showCopyFeedback,
+              })
+            }
+            ListFooterComponent={
+              <ChatTypingIndicator
+                visible={isSending}
+                variant="outgoing"
+                label="Sending"
               />
-            )
-          }
-        />
+            }
+            ListEmptyComponent={
+              isLoadingMessages ? (
+                <View style={chatStyles.loadingWrap}>
+                  <ChatTypingIndicator visible variant="incoming" />
+                  <Text style={chatStyles.loadingText}>Loading messages...</Text>
+                </View>
+              ) : (
+                <ChatMessagesEmpty
+                  title="No messages yet"
+                  description={
+                    viewer === "vendor"
+                      ? "Reply here when a shopper reaches out."
+                      : "Say hello and ask anything about this store or product."
+                  }
+                />
+              )
+            }
+          />
+          <ChatScrollToBottomButton
+            visible={!isAtBottom && messages.length > 0}
+            onPress={scrollToBottom}
+          />
+        </View>
       ) : null}
 
       {viewer === "vendor" ? (

@@ -20,11 +20,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Fonts from "@/constants/Fonts";
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS } from "@/styles/responsive";
 
 export default function VendorFlashSalesScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { contentMaxWidth } = useResponsive();
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
   const [nominations, setNominations] = useState<VendorFlashSaleNomination[]>([]);
@@ -82,7 +83,7 @@ export default function VendorFlashSalesScreen() {
       onPress={() => router.push("/vendor/flash-sales/nominate" as any)}
       activeOpacity={0.82}
     >
-      <Text style={styles.headerAction}>Nominate</Text>
+      <Text style={[styles.headerAction, { color: colors.primary }]}>Nominate</Text>
     </TouchableOpacity>
   );
 
@@ -118,6 +119,10 @@ export default function VendorFlashSalesScreen() {
         data={nominations}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />
         }
@@ -163,7 +168,6 @@ export default function VendorFlashSalesScreen() {
 
 const styles = {
   headerAction: {
-    color: AppColors.primary,
     fontFamily: Fonts.titleBold,
     fontSize: rMS(13),
   },

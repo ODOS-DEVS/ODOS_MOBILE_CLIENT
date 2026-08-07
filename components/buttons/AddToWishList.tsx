@@ -1,5 +1,6 @@
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/context/ToastContext";
+import { useTheme } from "@/context/ThemeContext";
 import { rS } from "@/styles/responsive";
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
@@ -32,6 +33,7 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
 }) => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { showToast } = useToast();
+  const { colors } = useTheme();
 
   const normalizedId = String(product.id);
   const liked = wishlist.some((item) => item.id === normalizedId);
@@ -52,7 +54,7 @@ const AddToWishList: React.FC<AddToWishListProps> = ({
       activeOpacity={0.7}
       style={[
         {
-          backgroundColor: "#F1F3F5",
+          backgroundColor: colors.surfaceMuted,
           padding: rS(10),
           borderRadius: rS(50),
           justifyContent: "center",

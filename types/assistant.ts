@@ -1,19 +1,12 @@
 export type AssistantReferenceContext = {
-  type: "store";
-  store_id: string;
+  type: "store" | "product" | "checkout";
+  store_id?: string | null;
   store_name?: string | null;
   market_title?: string | null;
   vendor_user_id?: string | null;
   category?: string | null;
-};
-
-export type AssistantReferenceContext = {
-  type: "store";
-  store_id: string;
-  store_name?: string | null;
-  market_title?: string | null;
-  vendor_user_id?: string | null;
-  category?: string | null;
+  product_id?: string | null;
+  product_title?: string | null;
 };
 
 export type AssistantMessage = {
@@ -26,6 +19,8 @@ export type AssistantMessage = {
   escalatedToSupport?: boolean;
   feedbackRating?: number | null;
   createdAt: number;
+  /** Client-only: set when this message failed to send/receive a reply. */
+  failed?: boolean;
 };
 
 export type AssistantAction = {

@@ -7,10 +7,9 @@ import { router, SplashScreen as ExpoSplashScreen } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
-import { HOME_TAB_HREF } from "@/utils/navigation";
 
 export default function SplashScreen() {
-  const { isHydrating } = useAuth();
+  const { isHydrating, user } = useAuth();
   const [launchTarget, setLaunchTarget] = useState<"tabs" | "onboarding" | null>(null);
   const hasNavigatedRef = useRef(false);
 
@@ -44,12 +43,12 @@ export default function SplashScreen() {
       if (launchTarget === "onboarding") {
         router.replace(AUTH_ONBOARDING_HREF);
       } else {
-        router.replace(HOME_TAB_HREF);
+        exitAuthToHome(router, user);
       }
 
       await ExpoSplashScreen.hideAsync();
     })();
-  }, [isHydrating, launchTarget]);
+  }, [isHydrating, launchTarget, user]);
 
   // Keep the native launch splash visible; match its black background if anything peeks through.
   return <View style={{ flex: 1, backgroundColor: "#000000" }} />;

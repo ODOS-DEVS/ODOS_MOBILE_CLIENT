@@ -1,12 +1,13 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rV } from "@/styles/responsive";
+import CommerceImage from "@/components/media/CommerceImage";
 import { AntDesign } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Dimensions,
   FlatList,
-  Image,
   ImageSourcePropType,
   Modal,
   ScrollView,
@@ -29,6 +30,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const screenWidth = Dimensions.get("window").width;
 const DISMISS_THRESHOLD = 120;
+
+function getGalleryImageKey(source: ImageSourcePropType, index: number): string {
+  if (source && typeof source === "object" && "uri" in source && source.uri) {
+    return String(source.uri);
+  }
+  return `gallery-image-${index}`;
+}
 
 type ProductImageGalleryModalProps = {
   visible: boolean;
@@ -54,6 +62,8 @@ export default function ProductImageGalleryModal({
   onSharePress,
 }: ProductImageGalleryModalProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const galleryRef = useRef<FlatList<ImageSourcePropType>>(null);
   const translateY = useSharedValue(0);
   const backdropOpacity = useSharedValue(1);
@@ -139,7 +149,7 @@ export default function ProductImageGalleryModal({
                 activeOpacity={0.8}
                 onPress={onSharePress}
               >
-                <AntDesign name="share-alt" size={rMS(18)} color={AppColors.white} />
+                <AntDesign name="share-alt" size={rMS(18)} color={colors.onInverseSurface} />
               </TouchableOpacity>
             </View>
           </View>
@@ -162,9 +172,15 @@ export default function ProductImageGalleryModal({
               const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
               onIndexChange(index);
             }}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <View style={styles.fullscreenImageSlide}>
-                <Image source={item} style={styles.fullscreenImage} resizeMode="contain" />
+                <CommerceImage
+                  source={item}
+                  style={styles.fullscreenImage}
+                  contentFit="contain"
+                  trackingId={`product-gallery-${getGalleryImageKey(item, index)}`}
+                  recyclingKey={getGalleryImageKey(item, index)}
+                />
               </View>
             )}
           />
@@ -195,10 +211,12 @@ export default function ProductImageGalleryModal({
                         active && styles.fullscreenThumbWrapActive,
                       ]}
                     >
-                      <Image
+                      <CommerceImage
                         source={item}
                         style={styles.fullscreenThumbImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        trackingId={`product-gallery-thumb-${getGalleryImageKey(item, index)}`}
+                        recyclingKey={getGalleryImageKey(item, index)}
                       />
                     </TouchableOpacity>
                   );
@@ -212,107 +230,109 @@ export default function ProductImageGalleryModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#020617",
-  },
-  fullscreenModal: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  galleryList: {
-    flex: 1,
-  },
-  fullscreenHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    gap: rV(8),
-  },
-  dragHandleWrap: {
-    alignItems: "center",
-    gap: rV(6),
-  },
-  dragHandle: {
-    width: rMS(42),
-    height: rV(4),
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.28)",
-  },
-  dragHint: {
-    fontSize: rMS(11),
-    color: "rgba(255,255,255,0.62)",
-    fontFamily: Fonts.text,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  fullscreenHeaderButton: {
-    width: rMS(42),
-    height: rMS(42),
-    borderRadius: rMS(21),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenCounter: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  fullscreenCounterText: {
-    color: AppColors.white,
-    fontSize: rMS(12),
-    fontFamily: Fonts.titleBold,
-  },
-  fullscreenImageSlide: {
-    width: screenWidth,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenImage: {
-    width: screenWidth,
-    height: "72%",
-  },
-  fullscreenFooter: {
-    paddingHorizontal: 18,
-    paddingBottom: rV(24),
-  },
-  fullscreenTitle: {
-    color: AppColors.white,
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-  },
-  fullscreenPrice: {
-    marginTop: rV(4),
-    color: "#F8FAFC",
-    fontSize: rMS(18),
-    fontFamily: Fonts.titleBold,
-  },
-  fullscreenThumbs: {
-    gap: 10,
-    paddingTop: rV(14),
-  },
-  fullscreenThumbWrap: {
-    width: rMS(54),
-    height: rMS(54),
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  fullscreenThumbWrapActive: {
-    borderColor: AppColors.white,
-  },
-  fullscreenThumbImage: {
-    width: "100%",
-    height: "100%",
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: colors.shadow,
+    },
+    fullscreenModal: {
+      flex: 1,
+      backgroundColor: colors.shadow,
+    },
+    galleryList: {
+      flex: 1,
+    },
+    fullscreenHeader: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 10,
+      gap: rV(8),
+    },
+    dragHandleWrap: {
+      alignItems: "center",
+      gap: rV(6),
+    },
+    dragHandle: {
+      width: rMS(42),
+      height: rV(4),
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.28)",
+    },
+    dragHint: {
+      fontSize: rMS(11),
+      color: "rgba(255,255,255,0.62)",
+      fontFamily: Fonts.text,
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    fullscreenHeaderButton: {
+      width: rMS(42),
+      height: rMS(42),
+      borderRadius: rMS(21),
+      backgroundColor: "rgba(255,255,255,0.08)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fullscreenCounter: {
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: "rgba(255,255,255,0.08)",
+    },
+    fullscreenCounterText: {
+      color: colors.onInverseSurface,
+      fontSize: rMS(12),
+      fontFamily: Fonts.titleBold,
+    },
+    fullscreenImageSlide: {
+      width: screenWidth,
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fullscreenImage: {
+      width: screenWidth,
+      height: "72%",
+    },
+    fullscreenFooter: {
+      paddingHorizontal: 18,
+      paddingBottom: rV(24),
+    },
+    fullscreenTitle: {
+      color: colors.onInverseSurface,
+      fontSize: rMS(16),
+      fontFamily: Fonts.titleBold,
+    },
+    fullscreenPrice: {
+      marginTop: rV(4),
+      color: colors.onInverseSurface,
+      fontSize: rMS(18),
+      fontFamily: Fonts.titleBold,
+    },
+    fullscreenThumbs: {
+      gap: 10,
+      paddingTop: rV(14),
+    },
+    fullscreenThumbWrap: {
+      width: rMS(54),
+      height: rMS(54),
+      borderRadius: 12,
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    fullscreenThumbWrapActive: {
+      borderColor: colors.onInverseSurface,
+    },
+    fullscreenThumbImage: {
+      width: "100%",
+      height: "100%",
+    },
+  });
+}

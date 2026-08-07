@@ -1,4 +1,5 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
+import { formatApiDetail } from "@/services/apiClient";
 import { enrichOrderWithProductImages, enrichOrdersWithProductImages } from "@/utils/orderImages";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtime } from "@/context/RealtimeContext";
@@ -31,6 +32,7 @@ export type OrderPayload = {
   address_street: string;
   address_city: string;
   address_region: string;
+  delivery_instructions?: string | null;
   payment_type: string;
   payment_label: string;
   payment_network?: string | null;
@@ -97,11 +99,39 @@ export type ReturnRequestPayload = {
   evidence_images?: string[] | null;
 };
 
+export type OrderTimelineStage =
+  | "pending_payment"
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "ready"
+  | "out_for_delivery"
+  | "delivered"
+  | "cancelled"
+  | string;
+
+export type OrderStatusEvent = {
+  id: string;
+  status: OrderTimelineStage;
+  actor_role: "customer" | "vendor" | "admin" | "system" | string;
+  note: string | null;
+  occurred_at: string;
+};
+
 export type Order = {
   id: string;
   order_number: string;
   source: "buy_now" | "cart";
   status: "pending_payment" | "processing" | "delivered" | "cancelled" | string;
+  vendor_status:
+    | "pending"
+    | "confirmed"
+    | "processing"
+    | "ready"
+    | "out_for_delivery"
+    | "delivered"
+    | "cancelled"
+    | string;
   payment_status:
     | "pending"
     | "paid"
@@ -120,6 +150,14 @@ export type Order = {
   progress: number | null;
   tracking_eta: string | null;
   cancellation_reason: string | null;
+  delivery_code: string | null;
+  delivery_instructions: string | null;
+  delivery_rating: number | null;
+  delivery_rated_at: string | null;
+  reschedule_requested_at: string | null;
+  reschedule_note: string | null;
+  dispatch_photo_url: string | null;
+  departure_notified_at: string | null;
   address_full_name: string;
   address_phone: string;
   address_street: string;
@@ -141,6 +179,7 @@ export type Order = {
   updated_at: string;
   items: OrderItem[];
   return_requests: ReturnRequest[];
+  timeline: OrderStatusEvent[];
 };
 
 export type CheckoutSession = {
@@ -217,11 +256,9 @@ async function getStoredAccessToken() {
 }
 
 function normalizeErrorMessage(detail: unknown) {
-  if (typeof detail === "string" && detail.trim()) {
-    return detail;
-  }
-
-  return "We couldn't complete that request right now.";
+  // Pydantic 422s send `detail` as an array of field issues, not a string — the naive
+  // string-only check silently dropped those and always showed the generic fallback.
+  return formatApiDetail(detail, "We couldn't complete that request right now.");
 }
 
 async function parseErrorMessage(response: Response) {
@@ -364,6 +401,16 @@ export async function createWalletCheckoutRequest(
   return (await response.json()) as WalletCheckoutResult;
 }
 
+export class FetchOrderError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "FetchOrderError";
+    this.status = status;
+  }
+}
+
 async function fetchOrderRequest(accessToken: string, orderId: string) {
   const response = await fetch(`${API_BASE_URL}/orders/${encodeURIComponent(orderId)}`, {
     headers: {
@@ -372,7 +419,7 @@ async function fetchOrderRequest(accessToken: string, orderId: string) {
   });
 
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
+    throw new FetchOrderError(await parseErrorMessage(response), response.status);
   }
 
   return (await response.json()) as Order;
@@ -430,10 +477,12 @@ export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isMutatingOrder, setIsMutatingOrder] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
 
   const refreshOrders = useCallback(async () => {
     if (!user) {
       setOrders([]);
+      setOrdersError(null);
       setIsLoadingOrders(false);
       return;
     }
@@ -458,8 +507,15 @@ export function useOrders() {
 
       const payload = (await response.json()) as Order[];
       setOrders(await enrichOrdersWithProductImages(payload));
-    } catch {
-      setOrders([]);
+      setOrdersError(null);
+    } catch (error) {
+      // Keep whatever orders we already loaded on screen — a network blip shouldn't
+      // make a real order history look like "you have no orders."
+      setOrdersError(
+        error instanceof Error && error.message
+          ? error.message
+          : "We couldn't load your orders right now.",
+      );
     } finally {
       setIsLoadingOrders(false);
     }
@@ -573,6 +629,84 @@ export function useOrders() {
     [accessToken],
   );
 
+  const submitDeliveryRating = useCallback(
+    async (orderId: string, rating: number) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        throw new Error("Please sign in again to manage this order.");
+      }
+
+      setIsMutatingOrder(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/delivery-rating`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ rating }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(await parseErrorMessage(response));
+        }
+
+        const updatedOrder = await enrichOrderWithProductImages(
+          (await response.json()) as Order,
+        );
+        setOrders((current) =>
+          current.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      } finally {
+        setIsMutatingOrder(false);
+      }
+    },
+    [accessToken],
+  );
+
+  const requestReschedule = useCallback(
+    async (orderId: string, note?: string) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        throw new Error("Please sign in again to manage this order.");
+      }
+
+      setIsMutatingOrder(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/reschedule`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ note: note ?? null }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(await parseErrorMessage(response));
+        }
+
+        const updatedOrder = await enrichOrderWithProductImages(
+          (await response.json()) as Order,
+        );
+        setOrders((current) =>
+          current.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      } finally {
+        setIsMutatingOrder(false);
+      }
+    },
+    [accessToken],
+  );
+
   const removeOrder = useCallback(
     async (orderId: string) => {
       const token = await getAccessToken(accessToken);
@@ -625,9 +759,12 @@ export function useOrders() {
     orders,
     isLoadingOrders,
     isMutatingOrder,
+    ordersError,
     cancelOrder,
     confirmDelivery,
     createReturnRequest,
+    submitDeliveryRating,
+    requestReschedule,
     removeOrder,
     refreshOrders,
   };
@@ -638,6 +775,7 @@ export function useOrder(orderId?: string) {
   const { subscribe } = useRealtime();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(Boolean(orderId));
+  const [orderErrorKind, setOrderErrorKind] = useState<"not_found" | "network" | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -667,6 +805,7 @@ export function useOrder(orderId?: string) {
 
     if (isMountedRef.current) {
       setIsLoadingOrder(true);
+      setOrderErrorKind(null);
     }
     try {
       const payload = await fetchOrderRequest(token, orderId);
@@ -675,9 +814,12 @@ export function useOrder(orderId?: string) {
         setOrder(enriched);
       }
       return enriched;
-    } catch {
+    } catch (error) {
       if (isMountedRef.current) {
         setOrder(null);
+        setOrderErrorKind(
+          error instanceof FetchOrderError && error.status === 404 ? "not_found" : "network",
+        );
       }
       return null;
     } finally {
@@ -714,5 +856,5 @@ export function useOrder(orderId?: string) {
     });
   }, [orderId, subscribe, user]);
 
-  return { order, isLoadingOrder, refreshOrder };
+  return { order, isLoadingOrder, orderErrorKind, refreshOrder };
 }

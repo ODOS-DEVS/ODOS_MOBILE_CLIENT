@@ -9,11 +9,13 @@ import {
   fetchVendorOrders,
   fetchVendorProducts,
   fetchVendorStore,
+  notifyVendorOrderDepartureApi,
   patchVendorProductStock,
   updateVendorProduct,
   updateVendorProductStatus,
   updateVendorOrderStatus,
   updateVendorStore,
+  uploadVendorOrderDispatchPhoto,
 } from "@/services/storeService";
 import type {
   ManagedStoreProfile,
@@ -79,8 +81,15 @@ type StoreStoreState = {
     session: VendorSessionContext,
     orderId: string,
     status: VendorOrderStatus,
+    deliveryCode?: string,
   ) => Promise<VendorOrder>;
   acknowledgeOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
+  uploadOrderDispatchPhoto: (
+    session: VendorSessionContext,
+    orderId: string,
+    photoUri: string,
+  ) => Promise<VendorOrder>;
+  notifyOrderDeparture: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   upsertRealtimeProduct: (product: VendorProduct) => void;
   upsertRealtimeOrder: (order: VendorOrder) => void;
   clearStoreState: () => void;
@@ -338,10 +347,10 @@ export const useStoreStore = create<StoreStoreState>((set, get) => ({
     return order;
   },
 
-  updateOrderStatus: async (session, orderId, status) => {
+  updateOrderStatus: async (session, orderId, status, deliveryCode) => {
     set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
     try {
-      const updatedOrder = await updateVendorOrderStatus(session, orderId, status);
+      const updatedOrder = await updateVendorOrderStatus(session, orderId, status, deliveryCode);
       set((state) => ({
         orders: state.orders.map((order) =>
           order.id === updatedOrder.id ? updatedOrder : order,
@@ -392,6 +401,46 @@ export const useStoreStore = create<StoreStoreState>((set, get) => ({
         updatingOrderId: null,
         error: nextMessage,
       });
+      throw error;
+    }
+  },
+
+  uploadOrderDispatchPhoto: async (session, orderId, photoUri) => {
+    set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
+    try {
+      const updatedOrder = await uploadVendorOrderDispatchPhoto(session, orderId, photoUri);
+      set((state) => ({
+        orders: state.orders.map((order) =>
+          order.id === updatedOrder.id ? updatedOrder : order,
+        ),
+        isUpdatingOrder: false,
+        updatingOrderId: null,
+      }));
+      return updatedOrder;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error ? error.message : "We couldn't attach that photo right now.";
+      set({ isUpdatingOrder: false, updatingOrderId: null, error: nextMessage });
+      throw error;
+    }
+  },
+
+  notifyOrderDeparture: async (session, orderId) => {
+    set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
+    try {
+      const updatedOrder = await notifyVendorOrderDepartureApi(session, orderId);
+      set((state) => ({
+        orders: state.orders.map((order) =>
+          order.id === updatedOrder.id ? updatedOrder : order,
+        ),
+        isUpdatingOrder: false,
+        updatingOrderId: null,
+      }));
+      return updatedOrder;
+    } catch (error) {
+      const nextMessage =
+        error instanceof Error ? error.message : "We couldn't send that heads-up right now.";
+      set({ isUpdatingOrder: false, updatingOrderId: null, error: nextMessage });
       throw error;
     }
   },

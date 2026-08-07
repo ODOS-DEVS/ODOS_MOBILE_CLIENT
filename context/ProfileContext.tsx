@@ -47,7 +47,8 @@ type AddPaymentInput = {
   label?: string;
   isDefault?: boolean;
   cardName?: string;
-  cardNumber?: string;
+  /** Last 4 digits only — the full card number never leaves the device. */
+  cardLast4?: string;
   expiry?: string;
   network?: MomoNetwork;
   phone?: string;
@@ -416,7 +417,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           label: payment.label,
           is_default: payment.isDefault ?? false,
           card_name: payment.cardName,
-          card_number: payment.cardNumber,
+          card_last4: payment.cardLast4,
           expiry: payment.expiry,
           network: payment.network,
           phone: payment.phone,

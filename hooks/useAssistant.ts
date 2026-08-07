@@ -12,7 +12,7 @@ import type {
 import { buildAssistantWelcomeMessage } from "@/utils/assistantQuickPrompts";
 import { consumeAssistantStream } from "@/utils/assistantStream";
 import * as SecureStore from "expo-secure-store";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type AssistantChatApiResponse = {
   reply: string;
@@ -132,6 +132,20 @@ export function useAssistant(
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedMessageId, setFailedMessageId] = useState<string | null>(null);
+  // Tracks every in-flight send's AbortController so a screen navigation away
+  // mid-request can cancel it — otherwise a request can keep running after the
+  // user leaves, and its fallback-on-failure logic could resubmit the same
+  // message as a brand-new turn once nothing is around to render the result.
+  const inFlightRequestsRef = useRef<Set<AbortController>>(new Set());
+
+  useEffect(() => {
+    const inFlight = inFlightRequestsRef.current;
+    return () => {
+      inFlight.forEach((controller) => controller.abort());
+      inFlight.clear();
+    };
+  }, []);
 
   useEffect(() => {
     setActiveContext(referenceContext ?? null);
@@ -175,7 +189,23 @@ export function useAssistant(
       if (screen) {
         params.set("screen", screen);
       }
-      if (referenceContext?.store_id) {
+      if (referenceContext?.type === "product" && referenceContext.product_id) {
+        params.set("product_id", referenceContext.product_id);
+        if (referenceContext.product_title) {
+          params.set("product_title", referenceContext.product_title);
+        }
+        if (referenceContext.store_id) {
+          params.set("store_id", referenceContext.store_id);
+        }
+        if (referenceContext.store_name) {
+          params.set("store_name", referenceContext.store_name);
+        }
+        if (referenceContext.category) {
+          params.set("category", referenceContext.category);
+        }
+      } else if (referenceContext?.type === "checkout") {
+        params.set("context_type", "checkout");
+      } else if (referenceContext?.store_id) {
         params.set("store_id", referenceContext.store_id);
         if (referenceContext.store_name) {
           params.set("store_name", referenceContext.store_name);
@@ -223,23 +253,25 @@ export function useAssistant(
     void loadSession();
   }, [loadSession]);
 
-  const sendMessage = useCallback(
-    async (rawMessage: string) => {
-      const message = rawMessage.trim();
-      if (!message || isSending) {
-        return;
-      }
-
-      const userMessage: AssistantMessage = {
-        id: createMessageId(),
-        role: "user",
-        content: message,
-        createdAt: Date.now(),
-      };
-
-      setMessages((current) => [...current, userMessage]);
+  const performSend = useCallback(
+    async (outgoingUserMessage: AssistantMessage, historyMessages: AssistantMessage[]) => {
+      const message = outgoingUserMessage.content;
       setIsSending(true);
       setError(null);
+      setFailedMessageId(null);
+
+      const controller = new AbortController();
+      inFlightRequestsRef.current.add(controller);
+      const isAbortError = (value: unknown) =>
+        value instanceof Error && value.name === "AbortError";
+      const markFailed = () => {
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === outgoingUserMessage.id ? { ...item, failed: true } : item,
+          ),
+        );
+        setFailedMessageId(outgoingUserMessage.id);
+      };
 
       try {
         const token = await getToken();
@@ -250,7 +282,7 @@ export function useAssistant(
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const history = [...messages, userMessage]
+        const history = [...historyMessages, outgoingUserMessage]
           .filter((item) => item.id !== "welcome")
           .slice(-10)
           .map((item) => ({
@@ -268,15 +300,35 @@ export function useAssistant(
 
         const streamAssistantId = createMessageId();
         let streamed = false;
+        // Tracks whether the backend ever accepted (200'd) the streaming
+        // request — once true, the server has started (or finished)
+        // processing this exact message, so a broken connection from here on
+        // must NOT be silently retried as a brand-new message via the
+        // non-streaming endpoint below. That used to cause the same user text
+        // to be submitted twice — once via the interrupted stream, once via
+        // the "fallback" — leaving an orphaned duplicate with no reply
+        // whenever the second attempt also didn't make it back to the screen
+        // (e.g. the user had already navigated away).
+        let streamRequestAccepted = false;
 
         if (status?.enabled) {
-          const streamResponse = await fetch(`${API_BASE_URL}/assistant/chat/stream`, {
-            method: "POST",
-            headers,
-            body: requestBody,
-          });
+          let streamResponse: Response | null = null;
+          try {
+            streamResponse = await fetch(`${API_BASE_URL}/assistant/chat/stream`, {
+              method: "POST",
+              headers,
+              body: requestBody,
+              signal: controller.signal,
+            });
+          } catch (connectError) {
+            if (isAbortError(connectError)) {
+              return;
+            }
+            streamResponse = null;
+          }
 
-          if (streamResponse.ok) {
+          if (streamResponse?.ok) {
+            streamRequestAccepted = true;
             setMessages((current) => [
               ...current,
               {
@@ -321,7 +373,10 @@ export function useAssistant(
                   setError(message);
                 },
               });
-            } catch {
+            } catch (streamError) {
+              if (isAbortError(streamError)) {
+                return;
+              }
               streamed = false;
             }
 
@@ -335,10 +390,19 @@ export function useAssistant(
           return;
         }
 
+        if (streamRequestAccepted) {
+          // The server already started this exact turn once — ask the user
+          // to explicitly retry rather than silently resubmitting it.
+          setError("The connection dropped while the assistant was replying. Tap to retry.");
+          markFailed();
+          return;
+        }
+
         const response = await fetch(`${API_BASE_URL}/assistant/chat`, {
           method: "POST",
           headers,
           body: requestBody,
+          signal: controller.signal,
         });
 
         const payload = (await response.json().catch(() => null)) as
@@ -373,25 +437,83 @@ export function useAssistant(
 
         setMessages((current) => [...current, assistantMessage]);
       } catch (sendError) {
+        if (isAbortError(sendError)) {
+          return;
+        }
         setError(
           sendError instanceof Error
             ? sendError.message
             : "Something went wrong. Please try again.",
         );
+        markFailed();
       } finally {
+        inFlightRequestsRef.current.delete(controller);
         setIsSending(false);
       }
     },
-    [
-      activeContext,
-      conversationId,
-      getToken,
-      isSending,
-      messages,
-      referenceContext,
-      screen,
-      status?.enabled,
-    ],
+    [activeContext, conversationId, getToken, referenceContext, screen, status?.enabled],
+  );
+
+  const sendMessage = useCallback(
+    async (rawMessage: string) => {
+      const message = rawMessage.trim();
+      if (!message || isSending) {
+        return;
+      }
+
+      const userMessage: AssistantMessage = {
+        id: createMessageId(),
+        role: "user",
+        content: message,
+        createdAt: Date.now(),
+      };
+
+      setMessages((current) => [...current, userMessage]);
+      await performSend(userMessage, messages);
+    },
+    [isSending, messages, performSend],
+  );
+
+  const regenerateResponse = useCallback(
+    async (assistantMessageId: string) => {
+      if (isSending) {
+        return;
+      }
+      const index = messages.findIndex((item) => item.id === assistantMessageId);
+      if (index <= 0) {
+        return;
+      }
+      const priorUserMessage = [...messages.slice(0, index)]
+        .reverse()
+        .find((item) => item.role === "user");
+      if (!priorUserMessage) {
+        return;
+      }
+
+      const truncated = messages.slice(0, index);
+      setMessages(truncated);
+      await performSend(priorUserMessage, truncated.slice(0, -1));
+    },
+    [isSending, messages, performSend],
+  );
+
+  const retryMessage = useCallback(
+    async (userMessageId: string) => {
+      if (isSending) {
+        return;
+      }
+      const index = messages.findIndex((item) => item.id === userMessageId);
+      if (index < 0 || messages[index].role !== "user") {
+        return;
+      }
+
+      const historyBefore = messages.slice(0, index);
+      const retryTarget: AssistantMessage = { ...messages[index], failed: false };
+      setMessages([...historyBefore, retryTarget]);
+      setFailedMessageId(null);
+      await performSend(retryTarget, historyBefore);
+    },
+    [isSending, messages, performSend],
   );
 
   const submitFeedback = useCallback(
@@ -445,7 +567,10 @@ export function useAssistant(
     isLoadingSession,
     isSending,
     error,
+    failedMessageId,
     sendMessage,
+    regenerateResponse,
+    retryMessage,
     submitFeedback,
     resetConversation,
     refreshStatus,

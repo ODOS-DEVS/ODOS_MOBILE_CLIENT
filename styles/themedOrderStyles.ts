@@ -152,11 +152,14 @@ export function buildOrderStyles(c: ThemeColors) {
       fontFamily: Fonts.text,
       fontSize: rMS(13),
       color: c.textMuted,
+      flexShrink: 0,
     },
     summaryValue: {
+      flex: 1,
       fontFamily: Fonts.titleBold,
       fontSize: rMS(13),
       color: c.text,
+      textAlign: "right",
     },
     summaryValueAccent: {
       color: c.successText,

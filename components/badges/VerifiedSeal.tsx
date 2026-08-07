@@ -1,3 +1,4 @@
+import { useTheme } from "@/context/ThemeContext";
 import { rS } from "@/styles/responsive";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
@@ -9,6 +10,7 @@ type VerifiedSealProps = {
 };
 
 export default function VerifiedSeal({ size = rS(26), style }: VerifiedSealProps) {
+  const { colors } = useTheme();
   const ringSize = size + rS(4);
 
   return (
@@ -20,13 +22,16 @@ export default function VerifiedSeal({ size = rS(26), style }: VerifiedSealProps
             width: ringSize,
             height: ringSize,
             borderRadius: ringSize / 2,
+            backgroundColor: colors.editAvatarBorder,
+            borderColor: colors.editAvatarBorder,
+            shadowColor: colors.shadow,
           },
         ]}
       />
       <MaterialCommunityIcons
         name="check-decagram"
         size={size}
-        color="#1D9BF0"
+        color={colors.infoText}
         style={styles.icon}
       />
     </View>
@@ -40,10 +45,7 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: "absolute",
-    backgroundColor: "#FFFFFF",
     borderWidth: 2,
-    borderColor: "#FFFFFF",
-    shadowColor: "#0F172A",
     shadowOpacity: 0.14,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

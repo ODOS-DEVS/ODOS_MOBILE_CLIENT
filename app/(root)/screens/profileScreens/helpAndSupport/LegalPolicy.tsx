@@ -7,8 +7,9 @@ import {
   AccountSegmentedTabs,
   useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rV } from "@/styles/responsive";
 import React, { useMemo, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -53,6 +54,8 @@ const POLICY_TABS: Array<{ key: PolicyKey; label: string }> = [
 
 export default function LegalPoliciesScreen() {
   const accountStyles = useAccountStyles();
+  const { colors } = useTheme();
+  const policyStyles = useMemo(() => createPolicyStyles(colors), [colors]);
   const [activePolicy, setActivePolicy] = useState<PolicyKey>("terms");
   const activeContent = useMemo(() => POLICY_CONTENT[activePolicy], [activePolicy]);
 
@@ -94,21 +97,23 @@ export default function LegalPoliciesScreen() {
   );
 }
 
-const policyStyles = StyleSheet.create({
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-  },
-  subtitle: {
-    marginTop: rV(4),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#6B7280",
-  },
-  divider: {
-    marginVertical: rV(12),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-  },
-});
+function createPolicyStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+      color: colors.text,
+    },
+    subtitle: {
+      marginTop: rV(4),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.textMuted,
+    },
+    divider: {
+      marginVertical: rV(12),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderStrong,
+    },
+  });
+}

@@ -41,6 +41,7 @@ import { validateCardForm, type CardFieldErrors } from "@/utils/cardPayment";
 import { rV } from "@/styles/responsive";
 import { router, useLocalSearchParams } from "expo-router";
 import { goBackOr } from "@/utils/navigation";
+import { openSignInFromApp } from "@/utils/authNavigation";
 import { WALLET_CHECKOUT_PAYMENT_ID } from "@/utils/checkoutPayment";
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
@@ -78,7 +79,6 @@ function validateWalletForm(
       cardName: form.cardName ?? "",
       cardNumber: form.cardNumber ?? "",
       expiry: form.expiry ?? "",
-      cvv: form.cvv ?? "",
     });
   }
 
@@ -104,7 +104,7 @@ export default function WalletScreen() {
     setDefaultPayment,
     setCheckoutPaymentId,
   } = useProfile();
-  const { accessToken } = useAuth();
+  const { user, accessToken } = useAuth();
   const { showErrorToast, showInfoToast } = useToast();
 
   const params = useLocalSearchParams();
@@ -151,12 +151,15 @@ export default function WalletScreen() {
         const { cardName, cardNumber, expiry } = form;
         const normalizedCardNumber = cardNumber.replace(/\D/g, "");
         const lastFour = normalizedCardNumber.slice(-4);
+        // Only the last 4 digits (already truncated here) ever leave the device —
+        // the full card number is used solely to render the on-device preview and
+        // derive this label, then discarded.
         savedPaymentId = await addPayment({
           type: "card",
           label: `**** ${lastFour}`,
           isDefault: paymentMethods.length === 0,
           cardName: cardName.trim(),
-          cardNumber: normalizedCardNumber,
+          cardLast4: lastFour,
           expiry,
         });
       } else {
@@ -290,6 +293,21 @@ export default function WalletScreen() {
   };
 
   const screenTitle = fromCheckout ? "Choose Payment" : "Wallet & Payment";
+
+  if (!user) {
+    return (
+      <View style={accountStyles.screen}>
+        <ProfileHeader title={screenTitle} />
+        <AccountEmptyState
+          icon="wallet-outline"
+          title="Sign in to view your wallet"
+          message="Your wallet balance and saved payment methods are tied to your account."
+          actionLabel="Sign in"
+          onAction={() => openSignInFromApp(router)}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={accountStyles.screen}>
@@ -459,7 +477,6 @@ export default function WalletScreen() {
               cardName: form.cardName ?? "",
               cardNumber: form.cardNumber ?? "",
               expiry: form.expiry ?? "",
-              cvv: form.cvv ?? "",
             }}
             errors={fieldErrors}
             onChange={(field, value) => {

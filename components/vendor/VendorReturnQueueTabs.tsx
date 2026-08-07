@@ -23,10 +23,10 @@ export default function VendorReturnQueueTabs({
   resolvedCount,
   onChange,
 }: VendorReturnQueueTabsProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.shell, { backgroundColor: isDark ? colors.pill : "#F3F4F6" }]}>
+    <View style={[styles.shell, { backgroundColor: colors.pill }]}>
       {TABS.map((tab) => {
         const isActive = tab.key === activeTab;
         const count = tab.key === "open" ? openCount : resolvedCount;
@@ -39,7 +39,7 @@ export default function VendorReturnQueueTabs({
             style={[
               styles.tab,
               isActive && {
-                backgroundColor: isDark ? colors.card : "#FFFFFF",
+                backgroundColor: colors.card,
                 borderColor: colors.cardBorder,
               },
             ]}

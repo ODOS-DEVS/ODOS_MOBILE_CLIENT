@@ -56,7 +56,7 @@ export function WalletPaymentHero({
           width: rMS(44),
           height: rMS(44),
           borderRadius: rMS(14),
-          backgroundColor: "rgba(255,255,255,0.88)",
+          backgroundColor: colors.card,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -85,7 +85,7 @@ export function WalletPaymentHero({
         },
         stat: {
           flex: 1,
-          backgroundColor: "rgba(255,255,255,0.78)",
+          backgroundColor: colors.card,
           borderRadius: rMS(14),
           paddingVertical: rV(10),
           paddingHorizontal: rS(8),
@@ -113,7 +113,7 @@ export function WalletPaymentHero({
   return (
     <Reanimated.View style={styles.wrap}>
       <LinearGradient
-        colors={[colors.accentSoft, "#FFFFFF"]}
+        colors={[colors.accentSoft, colors.card]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.inner}
@@ -188,7 +188,7 @@ export function WalletPaymentTabs({ active, onChange }: WalletPaymentTabsProps) 
           color: colors.textSecondary,
         },
         tabTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -210,7 +210,7 @@ export function WalletPaymentTabs({ active, onChange }: WalletPaymentTabsProps) 
               <Ionicons
                 name={tab.icon}
                 size={rMS(16)}
-                color={isActive ? "#FFFFFF" : colors.textMuted}
+                color={isActive ? colors.onPrimary : colors.textMuted}
               />
               <Text style={[styles.tabText, isActive ? styles.tabTextActive : null]}>
                 {tab.label}
@@ -257,7 +257,7 @@ export function WalletAmountChips({ amounts, selected, onSelect }: WalletAmountC
           color: colors.text,
         },
         chipTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -324,7 +324,7 @@ export function WalletTopupMethodToggle({ value, onChange }: WalletTopupMethodTo
           color: colors.text,
         },
         textActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -343,7 +343,7 @@ export function WalletTopupMethodToggle({ value, onChange }: WalletTopupMethodTo
             <Ionicons
               name={option.icon}
               size={rMS(15)}
-              color={active ? "#FFFFFF" : colors.textMuted}
+              color={active ? colors.onPrimary : colors.textMuted}
             />
             <Text style={[styles.text, active ? styles.textActive : null]}>{option.label}</Text>
           </Pressable>
@@ -468,7 +468,7 @@ export function WalletSavedMethodPicker({
         addText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(11),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         row: {
           flexDirection: "row",
@@ -507,7 +507,7 @@ export function WalletSavedMethodPicker({
         badgeText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(10),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -521,7 +521,7 @@ export function WalletSavedMethodPicker({
           tab to fund your wallet.
         </Text>
         <Pressable style={styles.addBtn} onPress={onAddMethod}>
-          <Ionicons name="add" size={rMS(14)} color="#FFFFFF" />
+          <Ionicons name="add" size={rMS(14)} color={colors.onPrimary} />
           <Text style={styles.addText}>Add payment method</Text>
         </Pressable>
       </View>
@@ -590,8 +590,8 @@ export function WalletTopupButton({ loading, paymentType, onPress }: WalletTopup
         opacity: loading ? 0.7 : 1,
       }}
     >
-      <Ionicons name="add-circle-outline" size={rMS(18)} color="#FFFFFF" />
-      <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(14), color: "#FFFFFF" }}>
+      <Ionicons name="add-circle-outline" size={rMS(18)} color={colors.onPrimary} />
+      <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(14), color: colors.onPrimary }}>
         {loading ? "Opening secure checkout…" : `Top up via ${paymentType === "card" ? "Card" : "MoMo"}`}
       </Text>
     </Pressable>
@@ -776,7 +776,7 @@ export function PaymentMethodCard({
         defaultText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(10),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         actions: {
           flexDirection: "row",
@@ -797,7 +797,7 @@ export function PaymentMethodCard({
         actionPrimaryText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(12),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         actionSecondary: {
           flexDirection: "row",
@@ -861,7 +861,7 @@ export function PaymentMethodCard({
         <View style={styles.actions}>
           {fromCheckout && onUse ? (
             <Pressable style={styles.actionPrimary} onPress={onUse}>
-              <Ionicons name="checkmark-circle-outline" size={rMS(15)} color="#FFFFFF" />
+              <Ionicons name="checkmark-circle-outline" size={rMS(15)} color={colors.onPrimary} />
               <Text style={styles.actionPrimaryText}>Use at checkout</Text>
             </Pressable>
           ) : (
@@ -940,8 +940,8 @@ export function WalletCheckoutCard({ balance, onUse }: WalletCheckoutCardProps) 
             paddingVertical: rV(12),
           }}
         >
-          <Ionicons name="checkmark-circle-outline" size={rMS(16)} color="#FFFFFF" />
-          <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: "#FFFFFF" }}>
+          <Ionicons name="checkmark-circle-outline" size={rMS(16)} color={colors.onPrimary} />
+          <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: colors.onPrimary }}>
             Pay with wallet
           </Text>
         </Pressable>
@@ -1091,7 +1091,7 @@ export function WalletPaymentTypeToggle({
               style={{
                 fontFamily: Fonts.titleBold,
                 fontSize: rMS(13),
-                color: active ? "#FFFFFF" : colors.text,
+                color: active ? colors.onPrimary : colors.text,
               }}
             >
               {option.label}
@@ -1146,7 +1146,7 @@ export function WalletNetworkPicker({
                 style={{
                   fontFamily: Fonts.titleBold,
                   fontSize: rMS(12),
-                  color: active ? "#FFFFFF" : colors.text,
+                  color: active ? colors.onPrimary : colors.text,
                 }}
               >
                 {network}

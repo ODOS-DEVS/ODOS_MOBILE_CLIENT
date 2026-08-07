@@ -51,6 +51,9 @@ export type StoreItem = {
   distanceKm?: string;
   travelMinutes?: string;
   description?: string;
+  isOnVacation?: boolean;
+  vacationMessage?: string;
+  businessHours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
 };
 
 type MarketApiItem = {
@@ -90,6 +93,9 @@ type StoreApiItem = {
   distance_km: string | null;
   travel_minutes: string | null;
   description: string | null;
+  is_on_vacation?: boolean;
+  vacation_message?: string | null;
+  business_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
 };
 
 type CatalogStoreChangedEvent = {
@@ -141,6 +147,9 @@ function mapStore(item: StoreApiItem): StoreItem {
     distanceKm: item.distance_km ?? undefined,
     travelMinutes: item.travel_minutes ?? undefined,
     description: item.description ?? undefined,
+    isOnVacation: item.is_on_vacation ?? undefined,
+    vacationMessage: item.vacation_message ?? undefined,
+    businessHours: item.business_hours ?? undefined,
   };
 }
 
@@ -179,7 +188,10 @@ function isSameStore(a: StoreItem, b: StoreItem) {
     a.city === b.city &&
     a.distanceKm === b.distanceKm &&
     a.travelMinutes === b.travelMinutes &&
-    a.description === b.description
+    a.description === b.description &&
+    a.isOnVacation === b.isOnVacation &&
+    a.vacationMessage === b.vacationMessage &&
+    JSON.stringify(a.businessHours ?? null) === JSON.stringify(b.businessHours ?? null)
   );
 }
 

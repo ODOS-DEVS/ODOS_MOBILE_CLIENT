@@ -3,7 +3,7 @@ import { rMS, rS, rV } from "@/styles/responsive";
 import { useChatStyles } from "@/styles/themedChatStyles";
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import Reanimated from "react-native-reanimated";
+import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 /** Short opacity-only entrance — no slide or spring. */
 export const CHAT_FADE_IN_MS = 140;
@@ -15,9 +15,11 @@ type TypingDotsProps = {
 };
 
 export function TypingDots({
-  color = "#94A3B8",
+  color,
   dotSize = rS(5.5),
 }: TypingDotsProps) {
+  const { colors } = useTheme();
+  const dotColor = color ?? colors.textMuted;
   const dotOne = useRef(new Animated.Value(0)).current;
   const dotTwo = useRef(new Animated.Value(0)).current;
   const dotThree = useRef(new Animated.Value(0)).current;
@@ -60,7 +62,7 @@ export function TypingDots({
         width: dotSize,
         height: dotSize,
         borderRadius: dotSize / 2,
-        backgroundColor: color,
+        backgroundColor: dotColor,
         opacity: value.interpolate({
           inputRange: [0, 1],
           outputRange: [0.28, 0.95],
@@ -100,6 +102,8 @@ export function ChatTypingIndicator({
 
   return (
     <Reanimated.View
+      entering={FadeIn.duration(CHAT_FADE_IN_MS)}
+      exiting={FadeOut.duration(CHAT_FADE_OUT_MS)}
       style={[
         chatStyles.messageRow,
         isOutgoing ? chatStyles.messageRowMine : chatStyles.messageRowTheirs,
@@ -146,7 +150,7 @@ export function AnimatedChatMessageWrap({
   }
 
   return (
-    <Reanimated.View>
+    <Reanimated.View entering={FadeIn.duration(CHAT_FADE_IN_MS)}>
       {children}
     </Reanimated.View>
   );
@@ -157,10 +161,22 @@ type AnimatedChatThreadWrapProps = {
   children: React.ReactNode;
 };
 
+const THREAD_STAGGER_MS = 35;
+const THREAD_STAGGER_CAP = 8;
+
 export function AnimatedChatThreadWrap({
   children,
+  index,
 }: AnimatedChatThreadWrapProps) {
-  return <View>{children}</View>;
+  return (
+    <Reanimated.View
+      entering={FadeIn.duration(220).delay(
+        Math.min(index, THREAD_STAGGER_CAP) * THREAD_STAGGER_MS,
+      )}
+    >
+      {children}
+    </Reanimated.View>
+  );
 }
 
 const styles = StyleSheet.create({

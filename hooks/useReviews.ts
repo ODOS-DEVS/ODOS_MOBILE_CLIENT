@@ -1,4 +1,5 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
+import { formatApiDetail } from "@/services/apiClient";
 import { useAuth } from "@/context/AuthContext";
 import { enrichStoredReview, enrichStoredReviews } from "@/utils/reviewImages";
 import { resolveApiMediaUrl } from "@/utils/media";
@@ -68,11 +69,7 @@ type UserReviewApiItem = {
 };
 
 function normalizeErrorMessage(detail: unknown) {
-  if (typeof detail === "string" && detail.trim()) {
-    return detail;
-  }
-
-  return "We couldn't complete that request right now.";
+  return formatApiDetail(detail, "We couldn't complete that request right now.");
 }
 
 async function parseErrorMessage(response: Response) {

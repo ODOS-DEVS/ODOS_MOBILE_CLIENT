@@ -89,12 +89,12 @@ export default function AssistantFab() {
           accessibilityLabel="Open ODOS Assistant"
         >
           <LinearGradient
-            colors={[colors.primary, "#4B5563"]}
+            colors={[colors.primary, colors.textSecondary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradient}
           >
-            <Ionicons name="sparkles" size={rMS(22)} color="#FFFFFF" />
+            <Ionicons name="sparkles" size={rMS(22)} color={colors.onPrimary} />
           </LinearGradient>
         </Pressable>
       </View>

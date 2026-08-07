@@ -9,13 +9,15 @@ import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
+import CommerceImage from "@/components/media/CommerceImage";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import { useTheme } from "@/context/ThemeContext";
 import { useMerchandisingCampaignDetail } from "@/hooks/useMerchandisingCampaigns";
 import { productCardGapY, rV, useResponsive } from "@/styles/responsive";
 import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo } from "react";
-import { FlatList, Image, RefreshControl, View } from "react-native";
+import { FlatList, RefreshControl, View } from "react-native";
 
 function parseParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -26,6 +28,7 @@ function parseParam(value: string | string[] | undefined) {
 
 export default function MerchandisingCampaignScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
+  const { colors } = useTheme();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const params = useLocalSearchParams<{ slug?: string }>();
   const slug = parseParam(params.slug);
@@ -55,15 +58,17 @@ export default function MerchandisingCampaignScreen() {
   const listHeader = (
     <View style={{ gap: rV(14) }}>
       {campaign?.bannerImageUrl ? (
-        <Image
+        <CommerceImage
           source={{ uri: campaign.bannerImageUrl }}
           style={{
             width: "100%",
             height: rV(160),
             borderRadius: 18,
-            backgroundColor: "#E5E7EB",
           }}
-          resizeMode="cover"
+          contentFit="cover"
+          trackingId={`campaign-banner-${campaign.slug}`}
+          recyclingKey={campaign.bannerImageUrl}
+          placeholderColor={colors.imagePlaceholder}
         />
       ) : null}
 
@@ -140,6 +145,10 @@ export default function MerchandisingCampaignScreen() {
             data={products}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={listHeader}
+            initialNumToRender={8}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            removeClippedSubviews
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={() => void refresh()} />
             }

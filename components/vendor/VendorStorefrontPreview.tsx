@@ -6,11 +6,11 @@ import type { ManagedStoreProfile } from "@/types/store";
 import { resolveApiMediaUrl } from "@/utils/media";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useCommerceTheme } from "@/styles/themedCommerce";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,7 +36,7 @@ export default function VendorStorefrontPreview({
   onPress,
   onEditPress,
 }: VendorStorefrontPreviewProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { cardShell, colors: commerceColors } = useCommerceTheme();
   const [shareVisible, setShareVisible] = useState(false);
   const bannerUri = resolveApiMediaUrl(store.bannerImage);
@@ -51,7 +51,13 @@ export default function VendorStorefrontPreview({
       <TouchableOpacity activeOpacity={0.94} onPress={onPress}>
         <View style={[styles.cover, { backgroundColor: commerceColors.imagePlaceholder }]}>
           {bannerUri ? (
-            <Image source={{ uri: bannerUri }} style={styles.coverImage} />
+            <CommerceImage
+              source={{ uri: bannerUri }}
+              style={styles.coverImage}
+              trackingId={`vendor-storefront-banner-${store.id}`}
+              recyclingKey={bannerUri}
+              placeholderColor={commerceColors.imagePlaceholder}
+            />
           ) : (
             <View style={styles.coverFallback}>
               <Ionicons name="image-outline" size={rMS(24)} color={colors.iconMuted} />
@@ -67,8 +73,10 @@ export default function VendorStorefrontPreview({
           />
 
           <View style={[styles.statusPill, isLive ? styles.livePill : styles.draftPill]}>
-            {isLive ? <View style={styles.liveDot} /> : null}
-            <Text style={styles.statusPillText}>
+            {isLive ? (
+              <View style={[styles.liveDot, { backgroundColor: colors.inverseText }]} />
+            ) : null}
+            <Text style={[styles.statusPillText, { color: colors.inverseText }]}>
               {isLive ? "Live on ODOS" : "Draft storefront"}
             </Text>
           </View>
@@ -86,7 +94,13 @@ export default function VendorStorefrontPreview({
               ]}
             >
               {logoUri ? (
-                <Image source={{ uri: logoUri }} style={styles.logoImage} />
+                <CommerceImage
+                  source={{ uri: logoUri }}
+                  style={styles.logoImage}
+                  trackingId={`vendor-storefront-logo-${store.id}`}
+                  recyclingKey={logoUri}
+                  placeholderColor={colors.imagePlaceholder}
+                />
               ) : (
                 <Ionicons name="storefront" size={rMS(26)} color={colors.primary} />
               )}
@@ -127,13 +141,13 @@ export default function VendorStorefrontPreview({
                 styles.details,
                 {
                   borderTopColor: colors.border,
-                  backgroundColor: isDark ? colors.surfaceSubtle : "#F8FAFC",
+                  backgroundColor: colors.surfaceSubtle,
                 },
               ]}
             >
               {locationLine ? (
                 <View style={styles.detailRow}>
-                  <View style={[styles.detailIconShell, { backgroundColor: isDark ? colors.pill : "#EEF2FF" }]}>
+                  <View style={[styles.detailIconShell, { backgroundColor: colors.infoSoft }]}>
                     <Ionicons name="location-outline" size={rMS(14)} color={colors.primary} />
                   </View>
                   <Text
@@ -163,7 +177,7 @@ export default function VendorStorefrontPreview({
           styles.footer,
           {
             borderTopColor: colors.border,
-            backgroundColor: isDark ? colors.surfaceSubtle : "#F8FAFC",
+            backgroundColor: colors.surfaceSubtle,
           },
         ]}
       >
@@ -254,10 +268,8 @@ const styles = StyleSheet.create({
     width: rS(6),
     height: rS(6),
     borderRadius: rS(3),
-    backgroundColor: "#FFFFFF",
   },
   statusPillText: {
-    color: "#FFFFFF",
     fontFamily: Fonts.titleBold,
     fontSize: rMS(10.5),
     letterSpacing: 0.2,

@@ -130,7 +130,7 @@ export function FaqHero({ totalCount, categoryCount }: FaqHeroProps) {
   return (
     <Reanimated.View style={styles.wrap}>
       <LinearGradient
-        colors={[colors.accentSoft, "#FFFFFF"]}
+        colors={[colors.accentSoft, colors.card]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.inner}
@@ -261,7 +261,7 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
           color: colors.textSecondary,
         },
         chipTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         badge: {
           minWidth: rMS(18),
@@ -281,7 +281,7 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
           color: colors.textMuted,
         },
         badgeTextActive: {
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
       }),
     [colors],
@@ -306,7 +306,7 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
               <Ionicons
                 name={item.icon}
                 size={rMS(14)}
-                color={active ? "#FFFFFF" : colors.textMuted}
+                color={active ? colors.onPrimary : colors.textMuted}
               />
               <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>
                 {item.label}
@@ -530,7 +530,7 @@ export function FaqStillNeedHelp() {
         primaryText: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(13),
-          color: "#FFFFFF",
+          color: colors.onPrimary,
         },
         secondaryBtn: {
           flex: 1,
@@ -556,7 +556,7 @@ export function FaqStillNeedHelp() {
   return (
     <Reanimated.View style={styles.wrap}>
       <LinearGradient
-        colors={["#FFFFFF", colors.accentSoft]}
+        colors={[colors.card, colors.accentSoft]}
         style={styles.inner}
       >
         <Text style={styles.title}>Still need help?</Text>
@@ -568,7 +568,7 @@ export function FaqStillNeedHelp() {
             style={styles.primaryBtn}
             onPress={() => router.push("/screens/assistant" as any)}
           >
-            <Ionicons name="sparkles" size={rMS(16)} color="#FFFFFF" />
+            <Ionicons name="sparkles" size={rMS(16)} color={colors.onPrimary} />
             <Text style={styles.primaryText}>AI Assistant</Text>
           </Pressable>
           <Pressable
@@ -641,7 +641,7 @@ export function FaqEmptyState({ onClear }: { onClear: () => void }) {
           backgroundColor: colors.primary,
         }}
       >
-        <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: "#FFFFFF" }}>
+        <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(13), color: colors.onPrimary }}>
           Clear filters
         </Text>
       </Pressable>

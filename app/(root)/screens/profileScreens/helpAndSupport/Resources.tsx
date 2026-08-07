@@ -6,12 +6,13 @@ import {
   useAccountStyles,
 } from "@/components/profile/ProfileHubUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { rMS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const resources = [
@@ -44,6 +45,8 @@ const resources = [
 export default function ResourcesScreen() {
   const accountStyles = useAccountStyles();
   const { requireAuth } = useRequireAuth();
+  const { colors } = useTheme();
+  const supportStyles = useMemo(() => createSupportStyles(colors), [colors]);
 
   const openSupport = () => {
     if (
@@ -109,18 +112,20 @@ export default function ResourcesScreen() {
   );
 }
 
-const supportStyles = StyleSheet.create({
-  title: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    color: AppColors.text,
-  },
-  subtitle: {
-    marginTop: rV(6),
-    marginBottom: rV(14),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-});
+function createSupportStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    title: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(15),
+      color: colors.text,
+    },
+    subtitle: {
+      marginTop: rV(6),
+      marginBottom: rV(14),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+  });
+}

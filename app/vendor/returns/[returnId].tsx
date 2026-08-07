@@ -11,10 +11,11 @@ import {
   formatVendorReturnType,
 } from "@/utils/vendorReturns";
 import { resolveApiMediaUrl } from "@/utils/media";
+import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
@@ -78,6 +79,20 @@ export default function VendorReturnDetailScreen() {
       }
     },
     [returnId, session],
+  );
+
+  const confirmStatusUpdate = useCallback(
+    (status: string, options: { title: string; message: string; confirmLabel: string }) => {
+      Alert.alert(options.title, options.message, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: options.confirmLabel,
+          style: status === "rejected" ? "destructive" : "default",
+          onPress: () => void handleStatusUpdate(status),
+        },
+      ]);
+    },
+    [handleStatusUpdate],
   );
 
   if (isCheckingVendorAccess) {
@@ -146,7 +161,15 @@ export default function VendorReturnDetailScreen() {
             </View>
             <AccountBadge label={formatVendorReturnStatus(item.status)} tone="warning" />
           </View>
-          {imageUri ? <Image source={{ uri: imageUri }} style={styles.image} /> : null}
+          {imageUri ? (
+            <CommerceImage
+              source={{ uri: imageUri }}
+              style={styles.image}
+              trackingId={`vendor-return-${item.id}`}
+              recyclingKey={imageUri}
+              placeholderColor={colors.imagePlaceholder}
+            />
+          ) : null}
         </AccountListCard>
 
         <AccountListCard>
@@ -174,7 +197,15 @@ export default function VendorReturnDetailScreen() {
             <View style={styles.evidenceGrid}>
               {item.evidenceImageUrls.map((uri) => {
                 const resolved = resolveApiMediaUrl(uri) ?? uri;
-                return <Image key={resolved} source={{ uri: resolved }} style={styles.evidenceImage} />;
+                return (
+                  <CommerceImage
+                    key={resolved}
+                    source={{ uri: resolved }}
+                    style={styles.evidenceImage}
+                    recyclingKey={resolved}
+                    placeholderColor={colors.imagePlaceholder}
+                  />
+                );
               })}
             </View>
           </AccountListCard>
@@ -195,13 +226,25 @@ export default function VendorReturnDetailScreen() {
                 colors={colors}
                 primary
                 disabled={isUpdating}
-                onPress={() => void handleStatusUpdate("approved")}
+                onPress={() =>
+                  confirmStatusUpdate("approved", {
+                    title: "Approve this return?",
+                    message: `This clears ${item.productTitle} for refund and lets the shopper know it's approved.`,
+                    confirmLabel: "Approve",
+                  })
+                }
               />
               <ActionButton
                 label="Decline"
                 colors={colors}
                 disabled={isUpdating}
-                onPress={() => void handleStatusUpdate("rejected")}
+                onPress={() =>
+                  confirmStatusUpdate("rejected", {
+                    title: "Decline this return?",
+                    message: "The shopper will be notified that this return was declined.",
+                    confirmLabel: "Decline",
+                  })
+                }
               />
             </View>
           </AccountListCard>
@@ -218,7 +261,14 @@ export default function VendorReturnDetailScreen() {
               colors={colors}
               primary
               disabled={isUpdating}
-              onPress={() => void handleStatusUpdate("refunded")}
+              onPress={() =>
+                confirmStatusUpdate("refunded", {
+                  title: "Mark this return as refunded?",
+                  message:
+                    "Only confirm once the customer has actually received their money or wallet credit — this can't be undone from here.",
+                  confirmLabel: "Mark refunded",
+                })
+              }
             />
           </AccountListCard>
         ) : null}

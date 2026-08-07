@@ -1,14 +1,13 @@
 export type CardBrand = "visa" | "mastercard" | "amex" | "discover" | "verve" | "unknown";
 
 export type CardFieldErrors = Partial<
-  Record<"cardName" | "cardNumber" | "expiry" | "cvv", string>
+  Record<"cardName" | "cardNumber" | "expiry", string>
 >;
 
 export type CardFormValues = {
   cardName: string;
   cardNumber: string;
   expiry: string;
-  cvv: string;
 };
 
 const CARD_BRAND_LABELS: Record<CardBrand, string> = {
@@ -60,10 +59,6 @@ export function getCardNumberMaxLength(brand: CardBrand) {
   return 16;
 }
 
-export function getCvvMaxLength(brand: CardBrand) {
-  return brand === "amex" ? 4 : 3;
-}
-
 export function formatCardNumberInput(raw: string, brand?: CardBrand): string {
   const resolvedBrand = brand ?? detectCardBrand(raw);
   const digits = raw.replace(/\D/g, "").slice(0, getCardNumberMaxLength(resolvedBrand));
@@ -106,11 +101,6 @@ export function formatCardExpiryInput(raw: string): string {
 
 export function formatCardholderName(raw: string): string {
   return raw.replace(/\s{2,}/g, " ").replace(/[^a-zA-Z\s.'-]/g, "").slice(0, 40);
-}
-
-export function formatCardCvvInput(raw: string, brand?: CardBrand): string {
-  const resolvedBrand = brand ?? "unknown";
-  return raw.replace(/\D/g, "").slice(0, getCvvMaxLength(resolvedBrand));
 }
 
 export function passesLuhnCheck(cardNumber: string): boolean {
@@ -188,7 +178,6 @@ export function validateCardForm(values: CardFormValues): CardFieldErrors {
   const errors: CardFieldErrors = {};
   const brand = detectCardBrand(values.cardNumber);
   const cardDigits = values.cardNumber.replace(/\D/g, "");
-  const cvvDigits = values.cvv.replace(/\D/g, "");
 
   if (!values.cardName.trim() || values.cardName.trim().length < 2) {
     errors.cardName = "Enter the name printed on your card.";
@@ -204,14 +193,6 @@ export function validateCardForm(values: CardFormValues): CardFieldErrors {
     errors.expiry = "Enter expiry as MM/YY.";
   } else if (!isCardExpiryValid(values.expiry)) {
     errors.expiry = "This card appears to be expired.";
-  }
-
-  const requiredCvvLength = getCvvMaxLength(brand);
-  if (cvvDigits.length < requiredCvvLength) {
-    errors.cvv =
-      brand === "amex"
-        ? "Enter the 4-digit security code on the front."
-        : "Enter the 3-digit CVV on the back.";
   }
 
   return errors;

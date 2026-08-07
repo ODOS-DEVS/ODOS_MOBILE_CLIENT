@@ -62,7 +62,7 @@ export default function CheckoutProcessingOverlay({
   discount,
   total,
 }: CheckoutProcessingOverlayProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const isWallet = mode === "wallet";
 
   const styles = useMemo(
@@ -81,7 +81,7 @@ export default function CheckoutProcessingOverlay({
           borderRadius: rMS(24),
           overflow: "hidden",
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(255,255,255,0.22)",
+          borderColor: isDark ? colors.cardBorder : "rgba(255,255,255,0.22)",
         },
         inner: {
           paddingHorizontal: rS(22),
@@ -94,7 +94,7 @@ export default function CheckoutProcessingOverlay({
           width: rMS(56),
           height: rMS(56),
           borderRadius: rMS(18),
-          backgroundColor: "rgba(255,255,255,0.9)",
+          backgroundColor: colors.cardElevated,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -117,7 +117,7 @@ export default function CheckoutProcessingOverlay({
           paddingHorizontal: rS(14),
           paddingVertical: rV(12),
           borderRadius: rMS(16),
-          backgroundColor: "rgba(255,255,255,0.72)",
+          backgroundColor: colors.surfaceSubtle,
         },
         divider: {
           height: StyleSheet.hairlineWidth,
@@ -125,7 +125,7 @@ export default function CheckoutProcessingOverlay({
           marginVertical: rV(2),
         },
       }),
-    [colors],
+    [colors, isDark],
   );
 
   return (
@@ -133,7 +133,7 @@ export default function CheckoutProcessingOverlay({
       <View style={styles.backdrop}>
         <Reanimated.View style={styles.card}>
           <LinearGradient
-            colors={[colors.accentSoft, "#FFFFFF"]}
+            colors={[colors.accentSoft, colors.card]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.inner}

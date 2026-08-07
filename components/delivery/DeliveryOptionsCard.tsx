@@ -104,12 +104,12 @@ function DeliveryOptionRow({
           borderRadius: 999,
           paddingHorizontal: 8,
           paddingVertical: 3,
-          backgroundColor: "#DCFCE7",
+          backgroundColor: colors.successSoft,
         },
         badgeText: {
           fontSize: rMS(10),
           fontFamily: Fonts.titleBold,
-          color: "#166534",
+          color: colors.successText,
         },
         radio: {
           width: rMS(18),

@@ -22,28 +22,47 @@ import {
   normalizePhoneForDialer,
 } from "@/utils/vendorOrderFulfillment";
 import { resolveApiMediaUrl } from "@/utils/media";
+import { pickCroppedImage } from "@/utils/imagePicker";
+import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
-  Image,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
 type VendorOrderDetailViewProps = {
   order: VendorOrder;
   isUpdating?: boolean;
-  onAdvance: () => void;
+  isAttachingPhoto?: boolean;
+  onAdvance: (deliveryCode?: string) => void;
   onCancel: () => void;
   onAcknowledge: () => void;
+  onNotifyDeparture: () => void;
+  onAttachDispatchPhoto: (photoUri: string) => void;
 };
+
+function formatTimelineEventDate(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 function openDialer(phone?: string | null) {
   const normalized = normalizePhoneForDialer(phone);
@@ -63,16 +82,22 @@ function timelineIndex(status: VendorOrderStatus) {
 export default function VendorOrderDetailView({
   order,
   isUpdating = false,
+  isAttachingPhoto = false,
   onAdvance,
   onCancel,
   onAcknowledge,
+  onNotifyDeparture,
+  onAttachDispatchPhoto,
 }: VendorOrderDetailViewProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const nextStatus = VENDOR_ORDER_NEXT_STATUS[order.status];
   const nextAction = getVendorOrderNextActionLabel(order.status);
   const address = formatVendorOrderAddress(order);
   const currentStep = timelineIndex(order.status);
   const slaTone = getVendorOrderSlaTone(order);
   const dialablePhone = normalizePhoneForDialer(order.customerPhone);
+  const [codeModalVisible, setCodeModalVisible] = useState(false);
+  const [enteredCode, setEnteredCode] = useState("");
 
   const confirmCancel = () => {
     Alert.alert(
@@ -83,6 +108,36 @@ export default function VendorOrderDetailView({
         { text: "Cancel order", style: "destructive", onPress: onCancel },
       ],
     );
+  };
+
+  const handleAdvancePress = () => {
+    if (nextStatus === "delivered") {
+      setEnteredCode("");
+      setCodeModalVisible(true);
+      return;
+    }
+    onAdvance();
+  };
+
+  const handleConfirmDeliveryCode = () => {
+    const trimmed = enteredCode.trim();
+    if (trimmed.length < 4) {
+      return;
+    }
+    setCodeModalVisible(false);
+    onAdvance(trimmed);
+  };
+
+  const handlePickDispatchPhoto = async () => {
+    const result = await pickCroppedImage();
+    if (result.tooLarge) {
+      Alert.alert("Image too large", "Please choose a smaller photo (under 8MB).");
+      return;
+    }
+    if (!result.uri) {
+      return;
+    }
+    onAttachDispatchPhoto(result.uri);
   };
 
   return (
@@ -207,6 +262,26 @@ export default function VendorOrderDetailView({
           ) : null}
         </View>
 
+        {order.deliveryInstructions ? (
+          <View style={[styles.instructionsBanner, { backgroundColor: colors.infoSoft }]}>
+            <Ionicons name="chatbox-ellipses-outline" size={rMS(16)} color={colors.infoText} />
+            <Text style={[styles.instructionsText, { color: colors.infoText }]}>
+              {order.deliveryInstructions}
+            </Text>
+          </View>
+        ) : null}
+
+        {order.rescheduleRequestedAt ? (
+          <View style={[styles.instructionsBanner, { backgroundColor: colors.warningSoft }]}>
+            <Ionicons name="time-outline" size={rMS(16)} color={colors.warningText} />
+            <Text style={[styles.instructionsText, { color: colors.warningText }]}>
+              {order.rescheduleNote
+                ? `Customer may not be available: "${order.rescheduleNote}"`
+                : "Customer flagged that they may not be available right now."}
+            </Text>
+          </View>
+        ) : null}
+
         <AccountActionRow>
           <AccountActionButton
             label={dialablePhone ? `Call ${dialablePhone}` : "Call customer"}
@@ -238,11 +313,17 @@ export default function VendorOrderDetailView({
                 <View
                   style={[
                     styles.itemImageShell,
-                    { backgroundColor: isDark ? colors.pill : "#F3F4F6" },
+                    { backgroundColor: colors.pill },
                   ]}
                 >
                   {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={styles.itemImage} />
+                    <CommerceImage
+                      source={{ uri: imageUri }}
+                      style={styles.itemImage}
+                      trackingId={`vendor-order-item-${item.id}`}
+                      recyclingKey={imageUri}
+                      placeholderColor={colors.pill}
+                    />
                   ) : (
                     <Ionicons name="cube-outline" size={rMS(18)} color={colors.iconMuted} />
                   )}
@@ -264,6 +345,70 @@ export default function VendorOrderDetailView({
         </View>
       </AccountListCard>
 
+      {order.status === "ready" ? (
+        <AccountActionButton
+          label={order.departureNotifiedAt ? "Customer already notified" : "I'm on my way 🚴 — notify customer"}
+          variant="secondary"
+          onPress={onNotifyDeparture}
+          disabled={isUpdating || Boolean(order.departureNotifiedAt)}
+          style={styles.fulfillmentButton}
+        />
+      ) : null}
+
+      {order.status === "out_for_delivery" ? (
+        <AccountListCard>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Dispatch photo</Text>
+          {order.dispatchPhotoUrl ? (
+            <View style={styles.dispatchPhotoWrap}>
+              <CommerceImage
+                source={{ uri: resolveApiMediaUrl(order.dispatchPhotoUrl) ?? order.dispatchPhotoUrl }}
+                style={styles.dispatchPhoto}
+                trackingId={`vendor-order-dispatch-${order.id}`}
+                recyclingKey={order.dispatchPhotoUrl}
+                placeholderColor={colors.pill}
+              />
+              <Text style={[styles.dispatchPhotoCaption, { color: colors.textMuted }]}>
+                Attached — useful if there&apos;s ever a dispute.
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.dispatchPhotoButton, { borderColor: colors.border }]}
+              onPress={() => void handlePickDispatchPhoto()}
+              disabled={isAttachingPhoto}
+            >
+              {isAttachingPhoto ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={rMS(20)} color={colors.textMuted} />
+                  <Text style={[styles.dispatchPhotoButtonText, { color: colors.textMuted }]}>
+                    Snap the package before you go (optional)
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          )}
+        </AccountListCard>
+      ) : null}
+
+      {order.deliveryCode && order.status !== "delivered" && order.status !== "cancelled" ? (
+        <AccountListCard style={[styles.codeCard, { backgroundColor: colors.inverseSurface }]}>
+          <Ionicons name="key-outline" size={rMS(20)} color={colors.onInverseSurface} />
+          <View style={styles.codeCopy}>
+            <Text style={[styles.codeLabel, { color: colors.mutedOnInverse }]}>
+              Delivery code on file
+            </Text>
+            <Text style={[styles.codeHelper, { color: colors.onInverseSurface }]}>
+              Ask the customer for this code before marking the order delivered.
+            </Text>
+          </View>
+          <Text style={[styles.codeValue, { color: colors.onInverseSurface }]}>
+            {order.deliveryCode}
+          </Text>
+        </AccountListCard>
+      ) : null}
+
       {order.status !== "cancelled" ? (
         <AccountListCard>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Fulfillment timeline</Text>
@@ -271,6 +416,8 @@ export default function VendorOrderDetailView({
             {VENDOR_ORDER_TIMELINE.map((step, index) => {
               const reached = currentStep >= index;
               const isCurrent = currentStep === index;
+              const event = order.timeline.find((item) => item.status === step);
+              const eventDate = formatTimelineEventDate(event?.occurredAt);
               return (
                 <View key={step} style={styles.timelineRow}>
                   <View
@@ -282,17 +429,24 @@ export default function VendorOrderDetailView({
                       },
                     ]}
                   />
-                  <Text
-                    style={[
-                      styles.timelineLabel,
-                      {
-                        color: reached ? colors.text : colors.textMuted,
-                        fontFamily: isCurrent ? Fonts.titleBold : Fonts.text,
-                      },
-                    ]}
-                  >
-                    {formatVendorOrderStatus(step)}
-                  </Text>
+                  <View style={styles.timelineCopy}>
+                    <Text
+                      style={[
+                        styles.timelineLabel,
+                        {
+                          color: reached ? colors.text : colors.textMuted,
+                          fontFamily: isCurrent ? Fonts.titleBold : Fonts.text,
+                        },
+                      ]}
+                    >
+                      {formatVendorOrderStatus(step)}
+                    </Text>
+                    {eventDate ? (
+                      <Text style={[styles.timelineTimestamp, { color: colors.textMuted }]}>
+                        {eventDate}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               );
             })}
@@ -301,11 +455,11 @@ export default function VendorOrderDetailView({
       ) : null}
 
       <View style={styles.actionsBlock}>
-        {nextAction && VENDOR_ORDER_NEXT_STATUS[order.status] ? (
+        {nextAction && nextStatus ? (
           <AccountActionButton
             label={isUpdating ? "Updating..." : nextAction}
             variant="primary"
-            onPress={onAdvance}
+            onPress={handleAdvancePress}
             disabled={isUpdating}
             style={styles.fulfillmentButton}
           />
@@ -321,6 +475,56 @@ export default function VendorOrderDetailView({
           />
         ) : null}
       </View>
+
+      <Modal
+        visible={codeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCodeModalVisible(false)}
+      >
+        <Pressable
+          style={[styles.backdrop, { backgroundColor: colors.backdrop }]}
+          onPress={() => setCodeModalVisible(false)}
+        >
+          <Pressable
+            style={[styles.codeModalSheet, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Confirm delivery</Text>
+            <Text style={[styles.codeModalHelper, { color: colors.textSecondary }]}>
+              Ask the customer for their delivery code and enter it below to confirm the handoff.
+            </Text>
+            <TextInput
+              value={enteredCode}
+              onChangeText={setEnteredCode}
+              placeholder="Enter code"
+              placeholderTextColor={colors.placeholder}
+              keyboardType="number-pad"
+              maxLength={8}
+              autoFocus
+              style={[
+                styles.codeInput,
+                { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
+              ]}
+            />
+            <View style={styles.codeModalActions}>
+              <AccountActionButton
+                label="Cancel"
+                variant="secondary"
+                onPress={() => setCodeModalVisible(false)}
+                style={styles.codeModalButton}
+              />
+              <AccountActionButton
+                label={isUpdating ? "Confirming..." : "Confirm delivery"}
+                variant="primary"
+                onPress={handleConfirmDeliveryCode}
+                disabled={isUpdating || enteredCode.trim().length < 4}
+                style={styles.codeModalButton}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -504,6 +708,71 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     fontSize: rMS(13),
   },
+  instructionsBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rS(8),
+    borderRadius: rMS(14),
+    padding: rS(12),
+    marginTop: rV(8),
+  },
+  instructionsText: {
+    flex: 1,
+    fontFamily: Fonts.text,
+    fontSize: rMS(12.5),
+    lineHeight: rMS(18),
+  },
+  dispatchPhotoWrap: {
+    gap: rV(8),
+  },
+  dispatchPhoto: {
+    width: "100%",
+    height: rV(180),
+    borderRadius: rMS(16),
+  },
+  dispatchPhotoCaption: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+  },
+  dispatchPhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rS(8),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: "dashed",
+    borderRadius: rMS(16),
+    paddingVertical: rV(20),
+  },
+  dispatchPhotoButtonText: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+  },
+  codeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(12),
+  },
+  codeCopy: {
+    flex: 1,
+    gap: rV(3),
+  },
+  codeLabel: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(11),
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  codeHelper: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    lineHeight: rMS(17),
+  },
+  codeValue: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(22),
+    letterSpacing: rMS(2),
+  },
   timeline: {
     gap: rV(10),
   },
@@ -518,9 +787,57 @@ const styles = StyleSheet.create({
     borderRadius: rMS(6),
     borderWidth: 2,
   },
+  timelineCopy: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
   timelineLabel: {
     fontFamily: Fonts.text,
     fontSize: rMS(13),
+  },
+  timelineTimestamp: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(11),
+  },
+  backdrop: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: rS(20),
+  },
+  codeModalSheet: {
+    width: "100%",
+    borderRadius: rMS(20),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: rS(20),
+    gap: rV(10),
+  },
+  codeModalHelper: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(13),
+    lineHeight: rMS(19),
+  },
+  codeInput: {
+    marginTop: rV(6),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: rMS(14),
+    paddingHorizontal: rS(16),
+    paddingVertical: rV(12),
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(20),
+    letterSpacing: rMS(2),
+    textAlign: "center",
+  },
+  codeModalActions: {
+    flexDirection: "row",
+    gap: rS(10),
+    marginTop: rV(8),
+  },
+  codeModalButton: {
+    flex: 1,
   },
   actionsBlock: {
     gap: rV(14),

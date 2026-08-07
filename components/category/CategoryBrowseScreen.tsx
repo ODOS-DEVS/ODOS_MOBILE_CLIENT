@@ -203,6 +203,10 @@ export function CategoryBrowseScreen({
         ListHeaderComponent={listHeader}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.45}
+        initialNumToRender={numColumns * 4}
+        maxToRenderPerBatch={numColumns * 3}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isLoading && categoryProducts.length > 0}

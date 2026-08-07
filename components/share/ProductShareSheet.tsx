@@ -1,5 +1,6 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import {
@@ -9,12 +10,12 @@ import {
   shareProduct,
   type ProductSharePayload,
 } from "@/utils/shareCatalog";
+import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -42,10 +43,12 @@ function ShareChannel({
   tint: string;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <TouchableOpacity style={styles.channel} activeOpacity={0.88} onPress={onPress}>
       <View style={[styles.channelIcon, { backgroundColor: tint }]}>
-        <Ionicons name={icon} size={rMS(20)} color="#FFFFFF" />
+        <Ionicons name={icon} size={rMS(20)} color={colors.onPrimary} />
       </View>
       <Text style={styles.channelLabel}>{label}</Text>
     </TouchableOpacity>
@@ -59,6 +62,8 @@ export default function ProductShareSheet({
   onClose,
 }: ProductShareSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { showSuccessToast, showInfoToast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -135,14 +140,20 @@ export default function ProductShareSheet({
 
           <View style={styles.previewCard}>
             <LinearGradient
-              colors={["#F8FAFC", "#FFFFFF"]}
+              colors={[colors.surfaceSubtle, colors.card]}
               style={StyleSheet.absoluteFillObject}
             />
             {imageSource ? (
-              <Image source={imageSource} style={styles.previewImage} resizeMode="cover" />
+              <CommerceImage
+                source={imageSource}
+                style={styles.previewImage}
+                contentFit="cover"
+                trackingId={`product-share-preview-${product.id}`}
+                recyclingKey={product.imageUrl || product.id}
+              />
             ) : (
               <View style={styles.previewPlaceholder}>
-                <Ionicons name="image-outline" size={rMS(28)} color="#94A3B8" />
+                <Ionicons name="image-outline" size={rMS(28)} color={colors.iconMuted} />
               </View>
             )}
             <View style={styles.previewCopy}>
@@ -161,7 +172,7 @@ export default function ProductShareSheet({
           </View>
 
           <View style={styles.linkCard}>
-            <Ionicons name="link-outline" size={rMS(18)} color={AppColors.primary} />
+            <Ionicons name="link-outline" size={rMS(18)} color={colors.primary} />
             <Text style={styles.linkText} numberOfLines={2}>
               {content.shareLink}
             </Text>
@@ -183,7 +194,7 @@ export default function ProductShareSheet({
             <ShareChannel
               icon="ellipsis-horizontal"
               label="More"
-              tint="#374151"
+              tint={colors.inverseSurface}
               onPress={() => void handleShare()}
             />
           </View>
@@ -195,10 +206,10 @@ export default function ProductShareSheet({
             disabled={isSharing}
           >
             {isSharing ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <>
-                <Ionicons name="share-social-outline" size={rMS(20)} color="#FFFFFF" />
+                <Ionicons name="share-social-outline" size={rMS(20)} color={colors.onPrimary} />
                 <Text style={styles.primaryButtonText}>Share with photo & link</Text>
               </>
             )}
@@ -211,10 +222,10 @@ export default function ProductShareSheet({
             disabled={isCopying}
           >
             {isCopying ? (
-              <ActivityIndicator color={AppColors.primary} />
+              <ActivityIndicator color={colors.primary} />
             ) : (
               <>
-                <Ionicons name="copy-outline" size={rMS(18)} color={AppColors.primary} />
+                <Ionicons name="copy-outline" size={rMS(18)} color={colors.primary} />
                 <Text style={styles.secondaryButtonText}>Copy link only</Text>
               </>
             )}
@@ -225,152 +236,154 @@ export default function ProductShareSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15,23,42,0.45)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: rMS(28),
-    borderTopRightRadius: rMS(28),
-    paddingHorizontal: rS(20),
-    paddingTop: rV(10),
-  },
-  handle: {
-    alignSelf: "center",
-    width: rS(44),
-    height: rV(5),
-    borderRadius: rS(999),
-    backgroundColor: "#D1D5DB",
-    marginBottom: rV(14),
-  },
-  sheetTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(20),
-    color: "#111827",
-  },
-  sheetSubtitle: {
-    marginTop: rV(6),
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(19),
-    color: AppColors.secondary,
-  },
-  previewCard: {
-    marginTop: rV(18),
-    flexDirection: "row",
-    gap: rS(12),
-    borderRadius: rMS(20),
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    padding: rS(12),
-  },
-  previewImage: {
-    width: rMS(88),
-    height: rMS(88),
-    borderRadius: rMS(16),
-    backgroundColor: "#F3F4F6",
-  },
-  previewPlaceholder: {
-    width: rMS(88),
-    height: rMS(88),
-    borderRadius: rMS(16),
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  previewCopy: {
-    flex: 1,
-    justifyContent: "center",
-    gap: rV(4),
-  },
-  previewTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(15),
-    color: "#111827",
-    lineHeight: rMS(20),
-  },
-  previewMeta: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  previewStore: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: AppColors.secondary,
-  },
-  linkCard: {
-    marginTop: rV(14),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-    backgroundColor: "#F8FAFC",
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(11),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  linkText: {
-    flex: 1,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#4B5563",
-  },
-  channelsRow: {
-    marginTop: rV(18),
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(8),
-  },
-  channel: {
-    flex: 1,
-    alignItems: "center",
-    gap: rV(6),
-  },
-  channelIcon: {
-    width: rMS(48),
-    height: rMS(48),
-    borderRadius: rMS(16),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  channelLabel: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(11),
-    color: AppColors.text,
-    textAlign: "center",
-  },
-  primaryButton: {
-    marginTop: rV(20),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rS(8),
-    backgroundColor: AppColors.primary,
-    borderRadius: rMS(16),
-    paddingVertical: rV(15),
-  },
-  primaryButtonText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(14.5),
-    color: "#FFFFFF",
-  },
-  secondaryButton: {
-    marginTop: rV(10),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rS(8),
-    paddingVertical: rV(12),
-  },
-  secondaryButtonText: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13.5),
-    color: AppColors.primary,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.backdrop,
+      justifyContent: "flex-end",
+    },
+    sheet: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: rMS(28),
+      borderTopRightRadius: rMS(28),
+      paddingHorizontal: rS(20),
+      paddingTop: rV(10),
+    },
+    handle: {
+      alignSelf: "center",
+      width: rS(44),
+      height: rV(5),
+      borderRadius: rS(999),
+      backgroundColor: colors.border,
+      marginBottom: rV(14),
+    },
+    sheetTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(20),
+      color: colors.text,
+    },
+    sheetSubtitle: {
+      marginTop: rV(6),
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+      lineHeight: rMS(19),
+      color: colors.textMuted,
+    },
+    previewCard: {
+      marginTop: rV(18),
+      flexDirection: "row",
+      gap: rS(12),
+      borderRadius: rMS(20),
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      padding: rS(12),
+    },
+    previewImage: {
+      width: rMS(88),
+      height: rMS(88),
+      borderRadius: rMS(16),
+      backgroundColor: colors.imagePlaceholder,
+    },
+    previewPlaceholder: {
+      width: rMS(88),
+      height: rMS(88),
+      borderRadius: rMS(16),
+      backgroundColor: colors.imagePlaceholder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    previewCopy: {
+      flex: 1,
+      justifyContent: "center",
+      gap: rV(4),
+    },
+    previewTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(15),
+      color: colors.text,
+      lineHeight: rMS(20),
+    },
+    previewMeta: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(13),
+      color: colors.primary,
+    },
+    previewStore: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.textMuted,
+    },
+    linkCard: {
+      marginTop: rV(14),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(10),
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: rMS(14),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(11),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    linkText: {
+      flex: 1,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.textSecondary,
+    },
+    channelsRow: {
+      marginTop: rV(18),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: rS(8),
+    },
+    channel: {
+      flex: 1,
+      alignItems: "center",
+      gap: rV(6),
+    },
+    channelIcon: {
+      width: rMS(48),
+      height: rMS(48),
+      borderRadius: rMS(16),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    channelLabel: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(11),
+      color: colors.text,
+      textAlign: "center",
+    },
+    primaryButton: {
+      marginTop: rV(20),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rS(8),
+      backgroundColor: colors.primary,
+      borderRadius: rMS(16),
+      paddingVertical: rV(15),
+    },
+    primaryButtonText: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(14.5),
+      color: colors.onPrimary,
+    },
+    secondaryButton: {
+      marginTop: rV(10),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rS(8),
+      paddingVertical: rV(12),
+    },
+    secondaryButtonText: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13.5),
+      color: colors.primary,
+    },
+  });
+}

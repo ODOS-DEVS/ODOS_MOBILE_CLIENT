@@ -52,7 +52,7 @@ export default function VendorOrderQueueTabs({
             <Text
               style={[
                 styles.chipLabel,
-                { color: selected ? "#FFFFFF" : colors.text },
+                { color: selected ? colors.onPrimary : colors.text },
               ]}
             >
               {tab.label}
@@ -65,14 +65,14 @@ export default function VendorOrderQueueTabs({
                     ? "rgba(255,255,255,0.18)"
                     : isDark
                       ? colors.pill
-                      : "#EEF2FF",
+                      : colors.infoSoft,
                 },
               ]}
             >
               <Text
                 style={[
                   styles.countText,
-                  { color: selected ? "#FFFFFF" : colors.primary },
+                  { color: selected ? colors.onPrimary : colors.primary },
                 ]}
               >
                 {counts[tab.key]}

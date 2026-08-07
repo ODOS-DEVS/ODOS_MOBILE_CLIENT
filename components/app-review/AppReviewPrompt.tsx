@@ -1,8 +1,9 @@
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   Pressable,
@@ -27,12 +28,15 @@ export function AppReviewPrompt({
   onRate,
   onDismiss,
 }: AppReviewPromptProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <View style={styles.iconShell}>
-            <Ionicons name="star" size={rMS(28)} color={AppColors.primary} />
+            <Ionicons name="star" size={rMS(28)} color={colors.primary} />
           </View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
@@ -48,69 +52,71 @@ export function AppReviewPrompt({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
-    justifyContent: "center",
-    paddingHorizontal: rS(24),
-  },
-  card: {
-    borderRadius: rS(28),
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: rS(24),
-    paddingVertical: rV(24),
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
-  },
-  iconShell: {
-    alignSelf: "center",
-    width: rMS(64),
-    height: rMS(64),
-    borderRadius: rMS(20),
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(17, 94, 89, 0.08)",
-    marginBottom: rV(16),
-  },
-  title: {
-    textAlign: "center",
-    fontFamily: Fonts.title,
-    fontSize: rMS(22),
-    color: AppColors.text,
-    marginBottom: rV(8),
-  },
-  message: {
-    textAlign: "center",
-    fontFamily: Fonts.text,
-    fontSize: rMS(15),
-    lineHeight: rMS(22),
-    color: AppColors.subtext[200],
-    marginBottom: rV(22),
-  },
-  primaryButton: {
-    borderRadius: rS(16),
-    backgroundColor: AppColors.primary,
-    paddingVertical: rV(14),
-    alignItems: "center",
-    marginBottom: rV(10),
-  },
-  primaryButtonText: {
-    fontFamily: Fonts.title,
-    fontSize: rMS(16),
-    color: "#FFFFFF",
-  },
-  secondaryButton: {
-    borderRadius: rS(16),
-    paddingVertical: rV(12),
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(15),
-    color: AppColors.subtext[200],
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.backdrop,
+      justifyContent: "center",
+      paddingHorizontal: rS(24),
+    },
+    card: {
+      borderRadius: rS(28),
+      backgroundColor: colors.card,
+      paddingHorizontal: rS(24),
+      paddingVertical: rV(24),
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 8,
+    },
+    iconShell: {
+      alignSelf: "center",
+      width: rMS(64),
+      height: rMS(64),
+      borderRadius: rMS(20),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.accentSoft,
+      marginBottom: rV(16),
+    },
+    title: {
+      textAlign: "center",
+      fontFamily: Fonts.title,
+      fontSize: rMS(22),
+      color: colors.text,
+      marginBottom: rV(8),
+    },
+    message: {
+      textAlign: "center",
+      fontFamily: Fonts.text,
+      fontSize: rMS(15),
+      lineHeight: rMS(22),
+      color: colors.textMuted,
+      marginBottom: rV(22),
+    },
+    primaryButton: {
+      borderRadius: rS(16),
+      backgroundColor: colors.primary,
+      paddingVertical: rV(14),
+      alignItems: "center",
+      marginBottom: rV(10),
+    },
+    primaryButtonText: {
+      fontFamily: Fonts.title,
+      fontSize: rMS(16),
+      color: colors.onPrimary,
+    },
+    secondaryButton: {
+      borderRadius: rS(16),
+      paddingVertical: rV(12),
+      alignItems: "center",
+    },
+    secondaryButtonText: {
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(15),
+      color: colors.textMuted,
+    },
+  });
+}

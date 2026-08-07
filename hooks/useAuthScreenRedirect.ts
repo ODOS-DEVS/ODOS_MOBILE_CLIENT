@@ -21,6 +21,6 @@ export function useAuthScreenRedirect() {
       return;
     }
 
-    exitAuthToHome(router);
+    exitAuthToHome(router, user);
   }, [router, user]);
 }

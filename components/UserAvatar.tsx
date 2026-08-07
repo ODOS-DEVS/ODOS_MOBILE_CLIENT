@@ -1,9 +1,10 @@
+import CommerceImage from "@/components/media/CommerceImage";
+import { useTheme } from "@/context/ThemeContext";
 import { getProfileCoverPalette } from "@/utils/profileCover";
 import { resolveApiMediaUrl } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Image,
   ImageStyle,
   StyleProp,
   View,
@@ -28,6 +29,7 @@ function DefaultUserIcon({
   size: number;
   bordered?: boolean;
 }) {
+  const { colors } = useTheme();
   const palette = useMemo(() => getProfileCoverPalette(gender), [gender]);
   const borderWidth = bordered ? Math.max(3, Math.round(size * 0.04)) : 1;
 
@@ -41,8 +43,8 @@ function DefaultUserIcon({
         alignItems: "center",
         justifyContent: "center",
         borderWidth,
-        borderColor: bordered ? palette.avatarBorder : "#D8DEE6",
-        shadowColor: "#0F172A",
+        borderColor: bordered ? palette.avatarBorder : colors.border,
+        shadowColor: colors.shadow,
         shadowOpacity: bordered ? 0.12 : 0.06,
         shadowRadius: bordered ? 6 : 3,
         shadowOffset: { width: 0, height: bordered ? 3 : 1 },
@@ -66,6 +68,7 @@ export default function UserAvatar({
   imageStyle,
   bordered = false,
 }: UserAvatarProps) {
+  const { colors } = useTheme();
   const palette = useMemo(() => getProfileCoverPalette(gender), [gender]);
   const resolvedAvatarUrl = useMemo(
     () => resolveApiMediaUrl(avatarUrl) ?? avatarUrl?.trim() ?? "",
@@ -97,7 +100,7 @@ export default function UserAvatar({
           overflow: "hidden",
           borderWidth,
           borderColor: palette.avatarBorder,
-          shadowColor: "#0F172A",
+          shadowColor: colors.shadow,
           shadowOpacity: bordered ? 0.12 : 0.06,
           shadowRadius: bordered ? 6 : 3,
           shadowOffset: { width: 0, height: bordered ? 3 : 1 },
@@ -106,9 +109,12 @@ export default function UserAvatar({
         style,
       ]}
     >
-      <Image
+      <CommerceImage
         source={{ uri: resolvedAvatarUrl }}
         onError={() => setImageFailed(true)}
+        contentFit="cover"
+        trackingId={`user-avatar-${resolvedAvatarUrl}`}
+        recyclingKey={resolvedAvatarUrl}
         style={[
           {
             width: size,

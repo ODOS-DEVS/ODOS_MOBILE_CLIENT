@@ -4,20 +4,22 @@ import {
   AssistantCopyFeedback,
   AssistantEscalationBanner,
   AssistantMessageItem,
+  AssistantMessagesSkeleton,
   AssistantQuickPrompts,
   AssistantTypingIndicator,
   AssistantWelcomeHero,
 } from "@/components/assistant/AssistantUi";
 import {
   ChatComposer,
-  ChatLoadingCenter,
   ChatScreenHeader,
   ChatScreenShell,
+  ChatScrollToBottomButton,
   ChatStatusBadge,
 } from "@/components/chat/ChatUi";
 
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
+import { useRealtime } from "@/context/RealtimeContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAssistant } from "@/hooks/useAssistant";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
@@ -71,6 +73,9 @@ export default function AssistantScreen() {
     marketTitle?: string;
     vendorUserId?: string;
     category?: string;
+    productId?: string;
+    productTitle?: string;
+    contextType?: string;
   }>();
   const screenContext =
     typeof params.screen === "string" ? params.screen : "assistant";
@@ -82,6 +87,9 @@ export default function AssistantScreen() {
       params.storeId,
       params.storeName,
       params.vendorUserId,
+      params.productId,
+      params.productTitle,
+      params.contextType,
     ],
   );
   const {
@@ -93,6 +101,8 @@ export default function AssistantScreen() {
     isSending,
     error,
     sendMessage,
+    regenerateResponse,
+    retryMessage,
     submitFeedback,
     resetConversation,
   } = useAssistant(screenContext, referenceContext);
@@ -101,6 +111,7 @@ export default function AssistantScreen() {
     useSpeechInput();
   const [input, setInput] = useState("");
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listRef = useRef<GestureFlatList<AssistantMessage>>(null);
   const isNearBottomRef = useRef(true);
@@ -137,7 +148,7 @@ export default function AssistantScreen() {
     messages.length === 1 &&
     (messages[0]?.id === "welcome" || Boolean(nudge));
   const hasEscalation = messages.some((message) => message.escalatedToSupport);
-  const connectionState = status?.enabled ? "connected" : "disconnected";
+  const { connectionState } = useRealtime();
 
   const scrollToEnd = useCallback((animated = true) => {
     requestAnimationFrame(() => {
@@ -156,10 +167,18 @@ export default function AssistantScreen() {
       const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
       const distanceFromBottom =
         contentSize.height - layoutMeasurement.height - contentOffset.y;
-      isNearBottomRef.current = distanceFromBottom < 120;
+      const nearBottom = distanceFromBottom < 120;
+      isNearBottomRef.current = nearBottom;
+      setIsAtBottom((prev) => (prev === nearBottom ? prev : nearBottom));
     },
     [],
   );
+
+  const scrollToBottomAndResume = useCallback(() => {
+    isNearBottomRef.current = true;
+    setIsAtBottom(true);
+    scrollToEnd();
+  }, [scrollToEnd]);
 
   useEffect(() => {
     if (isSending || isNearBottomRef.current) {
@@ -252,6 +271,13 @@ export default function AssistantScreen() {
           message={item}
           onFeedback={submitFeedback}
           onCopied={showCopyFeedback}
+          onRegenerate={(id) => {
+            void regenerateResponse(id);
+          }}
+          onRetry={(id) => {
+            void retryMessage(id);
+          }}
+          showRegenerate={item.role === "assistant" && item.id === lastMessage?.id}
           isStreaming={isStreamingReply && item.id === lastMessage?.id}
           showAvatar={layout.showAvatar}
           showTimestamp={layout.showTimestamp}
@@ -260,7 +286,15 @@ export default function AssistantScreen() {
         />
       );
     },
-    [isStreamingReply, lastMessage?.id, messages, showCopyFeedback, submitFeedback],
+    [
+      isStreamingReply,
+      lastMessage?.id,
+      messages,
+      regenerateResponse,
+      retryMessage,
+      showCopyFeedback,
+      submitFeedback,
+    ],
   );
 
   const listFooter = useMemo(
@@ -354,7 +388,7 @@ export default function AssistantScreen() {
         />
 
         {isLoadingSession ? (
-          <ChatLoadingCenter label="Loading your assistant conversation..." />
+          <AssistantMessagesSkeleton />
         ) : (
           <>
         {hasEscalation ? (
@@ -369,34 +403,40 @@ export default function AssistantScreen() {
 
         <AssistantContextChip context={focusedContext} />
 
-        <GestureFlatList
-          ref={listRef}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={
-            showQuickPrompts ? (
-              <AssistantWelcomeHero
-                signedIn={Boolean(user)}
-                aiEnabled={Boolean(status?.enabled)}
-                context={focusedContext}
-              />
-            ) : null
-          }
-          ListFooterComponent={listFooter}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={false}
-          onContentSizeChange={() => {
-            if (isNearBottomRef.current || isSending) {
-              scrollToEnd();
+        <View style={{ flex: 1 }}>
+          <GestureFlatList
+            ref={listRef}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            ListHeaderComponent={
+              showQuickPrompts ? (
+                <AssistantWelcomeHero
+                  signedIn={Boolean(user)}
+                  aiEnabled={Boolean(status?.enabled)}
+                  context={focusedContext}
+                />
+              ) : null
             }
-          }}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
+            ListFooterComponent={listFooter}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={false}
+            onContentSizeChange={() => {
+              if (isNearBottomRef.current || isSending) {
+                scrollToEnd();
+              }
+            }}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          />
+          <ChatScrollToBottomButton
+            visible={!isAtBottom && messages.length > 0}
+            onPress={scrollToBottomAndResume}
+          />
+        </View>
 
         <ChatComposer
           hint={

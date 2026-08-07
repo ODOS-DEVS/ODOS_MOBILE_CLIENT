@@ -2,7 +2,6 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import {
   detectCardBrand,
-  formatCardCvvInput,
   formatCardExpiryInput,
   formatCardholderName,
   formatCardNumberForPreview,
@@ -10,7 +9,6 @@ import {
   getCardBrandColors,
   getCardBrandLabel,
   getCardNumberMaxLength,
-  getCvvMaxLength,
   type CardBrand,
   type CardFieldErrors,
   type CardFormValues,
@@ -89,7 +87,6 @@ export default function CardEntryForm({
   const { colors } = useTheme();
   const numberRef = useRef<TextInputType>(null);
   const expiryRef = useRef<TextInputType>(null);
-  const cvvRef = useRef<TextInputType>(null);
 
   const brand = useMemo(() => detectCardBrand(values.cardNumber), [values.cardNumber]);
   const previewNumber = useMemo(
@@ -99,7 +96,6 @@ export default function CardEntryForm({
   const previewExpiry = values.expiry || "MM/YY";
   const previewName = values.cardName.trim() || "YOUR NAME";
   const gradientColors = getCardBrandColors(brand);
-  const cvvMaxLength = getCvvMaxLength(brand);
   const cardNumberMaxLength = getCardNumberMaxLength(brand);
   const formattedCardNumber = formatCardNumberInput(values.cardNumber, brand);
 
@@ -139,7 +135,7 @@ export default function CardEntryForm({
           fontFamily: Fonts.titleBold,
           fontSize: rMS(21),
           letterSpacing: 1.6,
-          color: "#FFFFFF",
+          color: colors.inverseText,
           marginTop: rV(18),
         },
         previewBottom: {
@@ -159,13 +155,13 @@ export default function CardEntryForm({
         previewName: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(14),
-          color: "#FFFFFF",
+          color: colors.inverseText,
           textTransform: "uppercase",
         },
         previewExpiry: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(14),
-          color: "#FFFFFF",
+          color: colors.inverseText,
           letterSpacing: 1,
         },
         secureNote: {
@@ -230,16 +226,6 @@ export default function CardEntryForm({
           fontSize: rMS(11),
           color: colors.primary,
         },
-        row: {
-          flexDirection: "row",
-          gap: rS(10),
-        },
-        cvvHelp: {
-          marginTop: rV(4),
-          fontFamily: Fonts.text,
-          fontSize: rMS(11),
-          color: colors.textMuted,
-        },
       }),
     [colors],
   );
@@ -260,9 +246,6 @@ export default function CardEntryForm({
   const handleExpiryChange = (raw: string) => {
     const formatted = formatCardExpiryInput(raw);
     updateField("expiry", formatted);
-    if (formatted.length === 5) {
-      cvvRef.current?.focus();
-    }
   };
 
   return (
@@ -294,8 +277,9 @@ export default function CardEntryForm({
       <View style={styles.secureNote}>
         <Ionicons name="shield-checkmark-outline" size={rMS(16)} color={colors.primary} />
         <Text style={styles.secureText}>
-          Your card is tokenized for wallet top-ups through Paystack. ODOS never stores your full
-          card number or CVV.
+          This just saves a label for your own reference — we only keep the last 4 digits.
+          Your full card number never leaves this device or reaches ODOS; actual charges are
+          entered directly and processed securely by Paystack.
         </Text>
       </View>
 
@@ -345,55 +329,27 @@ export default function CardEntryForm({
         )}
       </View>
 
-      <View style={styles.row}>
-        <View style={[styles.fieldBlock, { flex: 1 }]}>
-          <Text style={styles.fieldLabel}>Expiry date</Text>
-          <View style={[styles.inputRow, errors.expiry ? styles.inputRowError : null]}>
-            <Ionicons name="calendar-outline" size={rMS(18)} color={colors.placeholder} />
-            <TextInput
-              ref={expiryRef}
-              value={values.expiry}
-              onChangeText={handleExpiryChange}
-              placeholder="MM/YY"
-              placeholderTextColor={colors.placeholder}
-              keyboardType="number-pad"
-              returnKeyType="next"
-              onSubmitEditing={() => cvvRef.current?.focus()}
-              maxLength={5}
-              style={styles.input}
-            />
-          </View>
-          {errors.expiry ? (
-            <Text style={styles.error}>{errors.expiry}</Text>
-          ) : (
-            <Text style={styles.helper}>Type month and year — we add the slash for you.</Text>
-          )}
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabel}>Expiry date</Text>
+        <View style={[styles.inputRow, errors.expiry ? styles.inputRowError : null]}>
+          <Ionicons name="calendar-outline" size={rMS(18)} color={colors.placeholder} />
+          <TextInput
+            ref={expiryRef}
+            value={values.expiry}
+            onChangeText={handleExpiryChange}
+            placeholder="MM/YY"
+            placeholderTextColor={colors.placeholder}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            maxLength={5}
+            style={styles.input}
+          />
         </View>
-
-        <View style={[styles.fieldBlock, { flex: 1 }]}>
-          <Text style={styles.fieldLabel}>Security code</Text>
-          <View style={[styles.inputRow, errors.cvv ? styles.inputRowError : null]}>
-            <Ionicons name="lock-closed-outline" size={rMS(18)} color={colors.placeholder} />
-            <TextInput
-              ref={cvvRef}
-              value={values.cvv}
-              onChangeText={(value) => updateField("cvv", formatCardCvvInput(value, brand))}
-              placeholder={brand === "amex" ? "1234" : "123"}
-              placeholderTextColor={colors.placeholder}
-              keyboardType="number-pad"
-              secureTextEntry
-              maxLength={cvvMaxLength}
-              style={styles.input}
-            />
-          </View>
-          {errors.cvv ? (
-            <Text style={styles.error}>{errors.cvv}</Text>
-          ) : (
-            <Text style={styles.cvvHelp}>
-              {brand === "amex" ? "4 digits on the front." : "3 digits on the back."}
-            </Text>
-          )}
-        </View>
+        {errors.expiry ? (
+          <Text style={styles.error}>{errors.expiry}</Text>
+        ) : (
+          <Text style={styles.helper}>Type month and year — we add the slash for you.</Text>
+        )}
       </View>
     </View>
   );

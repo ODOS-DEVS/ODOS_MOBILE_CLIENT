@@ -12,14 +12,15 @@ import {
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
+import type { ThemeColors } from "@/constants/theme";
 import Fonts from "@/constants/Fonts";
+import { useTheme } from "@/context/ThemeContext";
 import { useOrder } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const getParam = (value: string | string[] | undefined) =>
@@ -28,6 +29,8 @@ const getParam = (value: string | string[] | undefined) =>
 export default function OrderReceiptScreen() {
   const accountStyles = useAccountStyles();
   const orderStyles = useOrderStyles();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder } = useOrder(orderId);
@@ -168,7 +171,7 @@ export default function OrderReceiptScreen() {
         </View>
 
         <View style={styles.noteCard}>
-          <Ionicons name="information-circle-outline" size={rMS(18)} color={AppColors.primary} />
+          <Ionicons name="information-circle-outline" size={rMS(18)} color={colors.primary} />
           <Text style={styles.noteText}>
             Keep this receipt handy if you ever need help with delivery, refunds, or order support.
           </Text>
@@ -191,96 +194,98 @@ export default function OrderReceiptScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  emptyWrap: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: rS(16),
-  },
-  heroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(16),
-    color: AppColors.text,
-  },
-  heroText: {
-    marginTop: rV(4),
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: "#6B7280",
-  },
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(12),
-    paddingBottom: rV(12),
-  },
-  itemRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEF2F6",
-    marginBottom: rV(12),
-  },
-  itemTextWrap: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-  },
-  itemMeta: {
-    marginTop: rV(4),
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-    color: "#6B7280",
-  },
-  itemAmount: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-  },
-  dualRow: {
-    flexDirection: "row",
-    gap: rS(10),
-  },
-  miniCard: {
-    flex: 1,
-  },
-  detailPrimary: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-    color: AppColors.text,
-    marginBottom: rV(4),
-  },
-  detailText: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    color: "#6B7280",
-    lineHeight: rMS(18),
-    marginBottom: rV(2),
-  },
-  noteCard: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  noteText: {
-    flex: 1,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-    lineHeight: rMS(18),
-    color: AppColors.text,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    emptyWrap: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: rS(16),
+    },
+    heroRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(12),
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(16),
+      color: colors.text,
+    },
+    heroText: {
+      marginTop: rV(4),
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.textMuted,
+    },
+    itemRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(12),
+      paddingBottom: rV(12),
+    },
+    itemRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.borderStrong,
+      marginBottom: rV(12),
+    },
+    itemTextWrap: {
+      flex: 1,
+    },
+    itemTitle: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.text,
+    },
+    itemMeta: {
+      marginTop: rV(4),
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+      color: colors.textMuted,
+    },
+    itemAmount: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.text,
+    },
+    dualRow: {
+      flexDirection: "row",
+      gap: rS(10),
+    },
+    miniCard: {
+      flex: 1,
+    },
+    detailPrimary: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+      color: colors.text,
+      marginBottom: rV(4),
+    },
+    detailText: {
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      color: colors.textMuted,
+      lineHeight: rMS(18),
+      marginBottom: rV(2),
+    },
+    noteCard: {
+      backgroundColor: colors.pill,
+      borderRadius: rMS(18),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    noteText: {
+      flex: 1,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+      lineHeight: rMS(18),
+      color: colors.text,
+    },
+  });
+}

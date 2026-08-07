@@ -208,11 +208,11 @@ const MyCart = () => {
           minHeight: rV(44),
           minWidth: rS(118),
           borderRadius: rMS(14),
-          backgroundColor: colors.text,
+          backgroundColor: colors.inverseSurface,
           paddingHorizontal: rS(18),
         },
         checkoutButtonText: {
-          color: colors.onPrimary,
+          color: colors.onInverseSurface,
           fontFamily: Fonts.titleBold,
           fontSize: rMS(14),
         },

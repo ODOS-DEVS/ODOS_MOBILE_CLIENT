@@ -121,6 +121,17 @@ export function getAssistantQuickPrompts(
   context?: AssistantReferenceContext | null,
 ): AssistantQuickPrompt[] {
   const key = (screen ?? "assistant") as AssistantScreenContext;
+
+  if (context?.type === "product" && context.product_id) {
+    const productName = context.product_title?.trim() || "this product";
+    return [
+      { label: "Is it in stock?", prompt: `Is ${productName} in stock and ready to ship?` },
+      { label: "Delivery time", prompt: `How long will delivery take for ${productName}?` },
+      { label: "Any deals?", prompt: `Are there any vouchers or discounts for ${productName}?` },
+      { label: "Return policy", prompt: `What is the return policy for ${productName}?` },
+    ];
+  }
+
   const storeName = context?.store_name?.trim();
   if ((key === "store" || context?.store_id) && storeName) {
     return [
@@ -205,6 +216,24 @@ export function buildAssistantWelcomeMessage(
   const context = (screen ?? "assistant") as AssistantScreenContext;
   const custom = WELCOME_BY_SCREEN[context];
   const storeName = reference?.store_name?.trim();
+
+  if (reference?.type === "product" && reference.product_id) {
+    const productName = reference.product_title?.trim() || "this product";
+    return {
+      id: "welcome",
+      role: "assistant",
+      content: `Looking at ${productName}? Ask about stock, delivery, deals, or returns — I'll keep answers focused on this item.`,
+      suggestedActions: [
+        {
+          label: "Product page",
+          route: "/screens/[id]",
+          params: { id: reference.product_id },
+        },
+        { label: "Browse deals", route: "/screens/deals" },
+      ],
+      createdAt: Date.now(),
+    };
+  }
 
   if (reference?.store_id && storeName) {
     return {

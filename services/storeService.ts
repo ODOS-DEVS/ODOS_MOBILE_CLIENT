@@ -91,6 +91,12 @@ type VendorOrderApi = {
   is_settled?: boolean;
   currency?: string;
   status?: VendorOrderStatus;
+  delivery_code?: string | null;
+  delivery_instructions?: string | null;
+  reschedule_requested_at?: string | null;
+  reschedule_note?: string | null;
+  dispatch_photo_url?: string | null;
+  departure_notified_at?: string | null;
   placed_at?: string | null;
   paid_at?: string | null;
   created_at?: string;
@@ -101,6 +107,13 @@ type VendorOrderApi = {
     quantity?: number;
     unit_price?: number;
     image_url?: string | null;
+  }>;
+  timeline?: Array<{
+    id: string;
+    status: string;
+    actor_role: string;
+    note?: string | null;
+    occurred_at: string;
   }>;
 };
 
@@ -257,6 +270,12 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
     isSettled: payload.is_settled ?? false,
     currency: payload.currency ?? "GHS",
     status: payload.status ?? "pending",
+    deliveryCode: payload.delivery_code ?? undefined,
+    deliveryInstructions: payload.delivery_instructions ?? undefined,
+    rescheduleRequestedAt: payload.reschedule_requested_at ?? undefined,
+    rescheduleNote: payload.reschedule_note ?? undefined,
+    dispatchPhotoUrl: payload.dispatch_photo_url ?? undefined,
+    departureNotifiedAt: payload.departure_notified_at ?? undefined,
     placedAt: payload.placed_at ?? undefined,
     paidAt: payload.paid_at ?? undefined,
     createdAt: payload.created_at ?? new Date().toISOString(),
@@ -268,6 +287,14 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
         quantity: item.quantity ?? 0,
         unitPrice: item.unit_price ?? 0,
         imageUrl: resolveApiMediaUrl(item.image_url) ?? item.image_url ?? undefined,
+      })) ?? [],
+    timeline:
+      payload.timeline?.map((event) => ({
+        id: event.id,
+        status: event.status,
+        actorRole: event.actor_role,
+        note: event.note ?? undefined,
+        occurredAt: event.occurred_at,
       })) ?? [],
   };
 }
@@ -508,6 +535,7 @@ export async function updateVendorOrderStatus(
   session: VendorSessionContext,
   orderId: string,
   status: VendorOrderStatus,
+  deliveryCode?: string,
 ) {
   const accessToken = requireAccessToken(session);
   const response = await fetch(
@@ -515,7 +543,9 @@ export async function updateVendorOrderStatus(
     {
       method: "PATCH",
       headers: buildHeaders(accessToken),
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(
+        deliveryCode ? { status, delivery_code: deliveryCode } : { status },
+      ),
     },
   );
 
@@ -570,6 +600,59 @@ export async function acknowledgeVendorOrderApi(
   const payload = await parseResponse<VendorOrderApi>(response);
   if (!payload) {
     throw new Error("That order could not be acknowledged.");
+  }
+  return mapOrder(payload);
+}
+
+export async function uploadVendorOrderDispatchPhoto(
+  session: VendorSessionContext,
+  orderId: string,
+  photoUri: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const formData = new FormData();
+  appendImageToFormData(formData, "photo", photoUri, "dispatch-photo");
+
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}/dispatch-photo`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorOrderApi>(response);
+  if (!payload) {
+    throw new Error("The dispatch photo upload response was empty.");
+  }
+  return mapOrder(payload);
+}
+
+export async function notifyVendorOrderDepartureApi(
+  session: VendorSessionContext,
+  orderId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders/${encodeURIComponent(orderId)}/notify-departure`,
+    {
+      method: "POST",
+      headers: buildHeaders(accessToken),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorOrderApi>(response);
+  if (!payload) {
+    throw new Error("That heads-up could not be sent.");
   }
   return mapOrder(payload);
 }
@@ -740,6 +823,7 @@ export type VendorCampaignOptIn = {
   productTitle: string;
   status: string;
   reviewNotes?: string | null;
+  unitsSoldSinceApproval?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -753,6 +837,7 @@ type VendorCampaignOptInApi = {
   product_title?: string;
   status?: string;
   review_notes?: string | null;
+  units_sold_since_approval?: number | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -779,6 +864,7 @@ export async function fetchVendorCampaignOptIns(session: VendorSessionContext) {
         productTitle: row.product_title ?? row.product_id ?? "",
         status: row.status ?? "pending",
         reviewNotes: row.review_notes,
+        unitsSoldSinceApproval: row.units_sold_since_approval,
         createdAt: row.created_at ?? new Date().toISOString(),
         updatedAt: row.updated_at ?? new Date().toISOString(),
       }),

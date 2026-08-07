@@ -1,5 +1,15 @@
 import { API_BASE_URL } from "@/constants/auth";
 
+export class CachedFetchError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "CachedFetchError";
+    this.status = status;
+  }
+}
+
 type CacheEntry<T> = {
   data: T;
   fetchedAt: number;
@@ -37,16 +47,65 @@ export type CachedFetchOptions = {
   force?: boolean;
 };
 
-async function fetchFresh<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
+// The backend runs on a free tier that goes to sleep when idle, so the very
+// first request after a period of inactivity (typically right when the app
+// cold-starts) can time out or briefly 5xx while it wakes up. Without this,
+// that shows up as "flash sales/stores/markets fail to load until I tap
+// retry" — the retry only "worked" because by then the backend was awake.
+// Retrying a few times with backoff makes that first load self-heal instead
+// of requiring a manual tap.
+const FETCH_RETRY_DELAYS_MS = [0, 2000, 5000, 10000];
+const FETCH_TIMEOUT_MS = 20_000;
 
-  const data = (await response.json()) as T;
-  memoryCache.set(url, { data, fetchedAt: Date.now() });
-  notifyCacheListeners(url, data);
-  return data;
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchError(error: unknown): boolean {
+  if (error instanceof CachedFetchError) {
+    return error.status >= 500;
+  }
+  if (error instanceof Error) {
+    return /network request failed|failed to fetch|timed out|timeout|aborted/i.test(
+      error.message,
+    );
+  }
+  return false;
+}
+
+async function fetchOnce<T>(url: string, init?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) {
+      throw new CachedFetchError(`Request failed: ${response.status}`, response.status);
+    }
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchFresh<T>(url: string, init?: RequestInit): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < FETCH_RETRY_DELAYS_MS.length; attempt += 1) {
+    if (attempt > 0) {
+      await delay(FETCH_RETRY_DELAYS_MS[attempt]);
+    }
+    try {
+      const data = await fetchOnce<T>(url, init);
+      memoryCache.set(url, { data, fetchedAt: Date.now() });
+      notifyCacheListeners(url, data);
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableFetchError(error)) {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
 }
 
 function scheduleBackgroundRefresh<T>(url: string, init?: RequestInit) {

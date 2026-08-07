@@ -133,6 +133,10 @@ export default function PromoDealsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <RecommendationCard {...item} />}
           ListHeaderComponent={listHeader}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
           ListEmptyComponent={
             <CommerceSeeAllEmptyState
               icon="pricetags-outline"

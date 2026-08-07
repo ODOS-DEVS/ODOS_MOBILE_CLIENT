@@ -8,6 +8,16 @@ import { router } from "expo-router";
 const SHOPPING_HOME = "/(root)/(tabs)/" as const;
 const SELLER_HOME = "/(root)/(tabs)/vendor" as const;
 
+/** Just the navigation half of a workspace switch — exposed so callers that need to
+ * defer it (e.g. until a Modal has actually finished dismissing) can do so. */
+export function navigateToWorkspaceHome(next: WorkspaceMode) {
+  if (next === "sell_only") {
+    router.replace(SELLER_HOME as any);
+  } else {
+    router.replace(SHOPPING_HOME as any);
+  }
+}
+
 export async function switchWorkspaceMode(next: WorkspaceMode): Promise<WorkspaceMode> {
   await useWorkspaceModeStore.getState().setMode(next);
 
@@ -16,11 +26,7 @@ export async function switchWorkspaceMode(next: WorkspaceMode): Promise<Workspac
     requestAnimationFrame(() => resolve());
   });
 
-  if (next === "sell_only") {
-    router.replace(SELLER_HOME as any);
-  } else {
-    router.replace(SHOPPING_HOME as any);
-  }
+  navigateToWorkspaceHome(next);
 
   return next;
 }

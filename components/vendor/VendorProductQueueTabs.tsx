@@ -50,7 +50,7 @@ export default function VendorProductQueueTabs({
               },
             ]}
           >
-            <Text style={[styles.chipLabel, { color: selected ? "#FFFFFF" : colors.text }]}>
+            <Text style={[styles.chipLabel, { color: selected ? colors.onPrimary : colors.text }]}>
               {tab.label}
             </Text>
             <View
@@ -61,12 +61,12 @@ export default function VendorProductQueueTabs({
                     ? "rgba(255,255,255,0.18)"
                     : isDark
                       ? colors.pill
-                      : "#EEF2FF",
+                      : colors.infoSoft,
                 },
               ]}
             >
               <Text
-                style={[styles.countText, { color: selected ? "#FFFFFF" : colors.primary }]}
+                style={[styles.countText, { color: selected ? colors.onPrimary : colors.primary }]}
               >
                 {counts[tab.key]}
               </Text>

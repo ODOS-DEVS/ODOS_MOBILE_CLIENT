@@ -1,4 +1,4 @@
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -9,6 +9,8 @@ type CarouselDotsProps = {
 };
 
 export function CarouselDots({ count, activeIndex, onSelectIndex }: CarouselDotsProps) {
+  const { colors } = useTheme();
+
   if (count <= 1) {
     return null;
   }
@@ -28,7 +30,7 @@ export function CarouselDots({ count, activeIndex, onSelectIndex }: CarouselDots
               styles.dot,
               {
                 width: rS(isActive ? 20 : 7),
-                backgroundColor: isActive ? AppColors.text : "#CBD5E1",
+                backgroundColor: isActive ? colors.text : colors.mutedOnInverse,
                 opacity: isActive ? 1 : 0.95,
               },
             ]}

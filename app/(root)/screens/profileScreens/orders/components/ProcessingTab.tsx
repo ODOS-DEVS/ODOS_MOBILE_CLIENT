@@ -12,9 +12,10 @@ import {
   OrderTrackingPreview,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
+import { useToast } from "@/context/ToastContext";
 import { Order } from "@/hooks/useOrders";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
 
 export default function ProcessingTab({
@@ -27,6 +28,20 @@ export default function ProcessingTab({
   isMutatingOrder: boolean;
 }) {
   const orderStyles = useOrderStyles();
+  const { showErrorToast } = useToast();
+
+  const handleCancel = useCallback(
+    (orderId: string) => {
+      void onCancelOrder(orderId).catch((error) => {
+        showErrorToast(
+          error instanceof Error && error.message
+            ? error.message
+            : "We couldn't cancel this order right now.",
+        );
+      });
+    },
+    [onCancelOrder, showErrorToast],
+  );
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
@@ -76,9 +91,7 @@ export default function ProcessingTab({
                         {
                           text: "Cancel order",
                           style: "destructive",
-                          onPress: () => {
-                            void onCancelOrder(order.id);
-                          },
+                          onPress: () => handleCancel(order.id),
                         },
                       ],
                     )

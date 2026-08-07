@@ -10,9 +10,10 @@ import {
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { useProfile } from "@/context/ProfileContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import {
   type VoucherStatus,
@@ -42,26 +43,27 @@ const filters: { key: VoucherFilter; label: string }[] = [
   { key: "expired", label: "Expired" },
 ];
 
-const statusMeta: Record<
-  VoucherStatus,
-  { label: string; badgeBg: string; badgeText: string }
-> = {
-  active: {
-    label: "Active",
-    badgeBg: "#DCFCE7",
-    badgeText: "#166534",
-  },
-  used: {
-    label: "Used",
-    badgeBg: "#E5E7EB",
-    badgeText: "#4B5563",
-  },
-  expired: {
-    label: "Expired",
-    badgeBg: "#FEE2E2",
-    badgeText: "#B91C1C",
-  },
-};
+function getStatusMeta(
+  colors: ThemeColors,
+): Record<VoucherStatus, { label: string; badgeBg: string; badgeText: string }> {
+  return {
+    active: {
+      label: "Active",
+      badgeBg: colors.successSoft,
+      badgeText: colors.successText,
+    },
+    used: {
+      label: "Used",
+      badgeBg: colors.surfaceMuted,
+      badgeText: colors.textSecondary,
+    },
+    expired: {
+      label: "Expired",
+      badgeBg: colors.dangerSoft,
+      badgeText: colors.dangerText,
+    },
+  };
+}
 
 function formatExpiry(value?: string | null) {
   if (!value) {
@@ -115,6 +117,9 @@ export default function VouchersScreen() {
   const { vouchers, isLoadingVouchers } = useVouchers();
   const [activeFilter, setActiveFilter] = useState<VoucherFilter>("all");
   const [activeSection, setActiveSection] = useState<WalletSection>("promotions");
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const statusMeta = useMemo(() => getStatusMeta(colors), [colors]);
 
   const filteredVouchers = useMemo(() => {
     if (activeFilter === "all") {
@@ -152,6 +157,18 @@ export default function VouchersScreen() {
       <ProfileHeader
         title="My Vouchers"
         fallbackHref={fromCheckout ? ("/(root)/screens/Checkout" as any) : "/(root)/(tabs)/profile"}
+        rightNode={
+          <TouchableOpacity
+            onPress={() => router.push("/(root)/screens/deals" as any)}
+            activeOpacity={0.82}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Browse deals"
+            style={{ width: 38, height: 38, alignItems: "center", justifyContent: "center" }}
+          >
+            <Ionicons name="pricetags-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+        }
       />
 
       {isLoadingVouchers ? (
@@ -207,7 +224,7 @@ export default function VouchersScreen() {
                           <Ionicons
                             name={voucher.scope === "store" ? "storefront-outline" : "sparkles-outline"}
                             size={rMS(14)}
-                            color={AppColors.secondary}
+                            color={colors.iconMuted}
                           />
                           <Text style={styles.storeBadgeText}>
                             {voucher.scope === "store"
@@ -266,7 +283,7 @@ export default function VouchersScreen() {
                             <Ionicons
                               name="calendar-outline"
                               size={rMS(13)}
-                              color={AppColors.subtext[100]}
+                              color={colors.iconMuted}
                             />
                             <Text style={styles.metaText}>{formatExpiry(voucher.expiresAt)}</Text>
                           </View>
@@ -278,7 +295,7 @@ export default function VouchersScreen() {
                               <Ionicons
                                 name="checkmark-circle"
                                 size={rMS(15)}
-                                color="#166534"
+                                color={colors.successText}
                               />
                               <Text style={styles.selectedPillText}>Selected</Text>
                             </View>
@@ -311,295 +328,297 @@ export default function VouchersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  content: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(16),
-    paddingBottom: rV(28),
-  },
-  summaryCard: {
-    borderRadius: rMS(18),
-    padding: rS(16),
-    backgroundColor: AppColors.secondary,
-  },
-  summaryTitle: {
-    fontSize: rMS(17),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.white,
-  },
-  summarySub: {
-    marginTop: rV(6),
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: "#E5E7EB",
-    lineHeight: rMS(18),
-  },
-  summaryStatsRow: {
-    marginTop: rV(14),
-    borderRadius: rMS(12),
-    backgroundColor: "rgba(255,255,255,0.16)",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: rV(10),
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-    color: AppColors.white,
-  },
-  statLabel: {
-    marginTop: rV(2),
-    fontSize: rMS(11),
-    fontFamily: Fonts.text,
-    color: "#E5E7EB",
-  },
-  statDivider: {
-    width: 1,
-    height: "60%",
-    backgroundColor: "rgba(255,255,255,0.22)",
-  },
-  filterRow: {
-    gap: rS(8),
-    paddingVertical: rV(14),
-  },
-  sectionSwitchRow: {
-    flexDirection: "row",
-    gap: rS(8),
-    marginTop: rV(14),
-  },
-  sectionSwitchBtn: {
-    flex: 1,
-    borderRadius: rMS(14),
-    borderWidth: 1,
-    borderColor: "#D7DDE5",
-    backgroundColor: AppColors.white,
-    paddingVertical: rV(12),
-    alignItems: "center",
-  },
-  sectionSwitchBtnActive: {
-    borderColor: AppColors.text,
-    backgroundColor: AppColors.text,
-  },
-  sectionSwitchText: {
-    fontSize: rMS(12.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  sectionSwitchTextActive: {
-    color: AppColors.white,
-  },
-  filterBtn: {
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(8),
-    borderRadius: rMS(99),
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    backgroundColor: AppColors.white,
-  },
-  filterBtnActive: {
-    backgroundColor: AppColors.text,
-    borderColor: AppColors.text,
-  },
-  filterText: {
-    fontSize: rMS(12),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-  },
-  filterTextActive: {
-    color: AppColors.white,
-  },
-  voucherCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(18),
-    paddingHorizontal: rS(13),
-    paddingVertical: rV(13),
-    marginBottom: rV(12),
-    borderWidth: 1,
-    borderColor: "#E8EDF3",
-  },
-  cardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: rV(10),
-  },
-  storeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    backgroundColor: "#F7F4ED",
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(9),
-    paddingVertical: rV(5),
-  },
-  storeBadgeText: {
-    fontSize: rMS(10.5),
-    fontFamily: Fonts.title,
-    color: AppColors.secondary,
-  },
-  statusBadge: {
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(9),
-    paddingVertical: rV(4),
-  },
-  statusText: {
-    fontSize: rMS(10),
-    fontFamily: Fonts.textBold,
-  },
-  heroRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  heroTextBlock: {
-    flex: 1,
-  },
-  voucherTitle: {
-    fontSize: rMS(14.5),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  rewardText: {
-    marginTop: rV(4),
-    fontSize: rMS(19.5),
-    fontFamily: Fonts.black,
-    color: AppColors.text,
-  },
-  codeBadge: {
-    minWidth: rS(84),
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(8),
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E5EAF0",
-    alignItems: "flex-start",
-  },
-  codeBadgeLabel: {
-    fontSize: rMS(9.5),
-    fontFamily: Fonts.text,
-    color: AppColors.subtext[100],
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  codeBadgeText: {
-    marginTop: rV(2),
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.text,
-    letterSpacing: 0.5,
-  },
-  infoChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(7),
-    marginTop: rV(8),
-  },
-  infoChip: {
-    borderRadius: rMS(999),
-    backgroundColor: "#F4F7FA",
-    paddingHorizontal: rS(9),
-    paddingVertical: rV(5),
-  },
-  infoChipMuted: {
-    backgroundColor: "#FCF7EE",
-  },
-  infoChipText: {
-    fontSize: rMS(10.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.secondary,
-  },
-  infoChipMutedText: {
-    color: "#8A6D3B",
-  },
-  metaText: {
-    fontSize: rMS(11.25),
-    fontFamily: Fonts.text,
-    color: AppColors.subtext[100],
-  },
-  descriptionText: {
-    marginTop: rV(8),
-    fontSize: rMS(11.5),
-    lineHeight: rMS(17),
-    fontFamily: Fonts.text,
-    color: AppColors.secondary,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-  },
-  footerRow: {
-    marginTop: rV(11),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(10),
-  },
-  expiryStack: {
-    flex: 1,
-  },
-  footerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: rS(8),
-  },
-  selectedPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(5),
-    paddingHorizontal: rS(9),
-    paddingVertical: rV(7),
-    borderRadius: rMS(999),
-    backgroundColor: "#DCFCE7",
-  },
-  selectedPillText: {
-    fontSize: rMS(10.5),
-    fontFamily: Fonts.textBold,
-    color: "#166534",
-  },
-  actionBtn: {
-    borderRadius: rMS(999),
-    backgroundColor: AppColors.text,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(9),
-  },
-  actionBtnText: {
-    fontSize: rMS(11.5),
-    fontFamily: Fonts.textBold,
-    color: AppColors.white,
-  },
-  emptyWrap: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(16),
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: rV(38),
-    paddingHorizontal: rS(18),
-  },
-  emptyTitle: {
-    marginTop: rV(8),
-    fontSize: rMS(16),
-    fontFamily: Fonts.title,
-    color: AppColors.text,
-  },
-  emptySub: {
-    marginTop: rV(6),
-    textAlign: "center",
-    fontSize: rMS(12),
-    fontFamily: Fonts.text,
-    color: AppColors.subtext[100],
-    lineHeight: rMS(18),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    content: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(16),
+      paddingBottom: rV(28),
+    },
+    summaryCard: {
+      borderRadius: rMS(18),
+      padding: rS(16),
+      backgroundColor: colors.inverseSurface,
+    },
+    summaryTitle: {
+      fontSize: rMS(17),
+      fontFamily: Fonts.titleBold,
+      color: colors.onInverseSurface,
+    },
+    summarySub: {
+      marginTop: rV(6),
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.mutedOnInverse,
+      lineHeight: rMS(18),
+    },
+    summaryStatsRow: {
+      marginTop: rV(14),
+      borderRadius: rMS(12),
+      backgroundColor: "rgba(255,255,255,0.16)",
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: rV(10),
+    },
+    statItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    statValue: {
+      fontSize: rMS(16),
+      fontFamily: Fonts.titleBold,
+      color: colors.onInverseSurface,
+    },
+    statLabel: {
+      marginTop: rV(2),
+      fontSize: rMS(11),
+      fontFamily: Fonts.text,
+      color: colors.mutedOnInverse,
+    },
+    statDivider: {
+      width: 1,
+      height: "60%",
+      backgroundColor: "rgba(255,255,255,0.22)",
+    },
+    filterRow: {
+      gap: rS(8),
+      paddingVertical: rV(14),
+    },
+    sectionSwitchRow: {
+      flexDirection: "row",
+      gap: rS(8),
+      marginTop: rV(14),
+    },
+    sectionSwitchBtn: {
+      flex: 1,
+      borderRadius: rMS(14),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      paddingVertical: rV(12),
+      alignItems: "center",
+    },
+    sectionSwitchBtnActive: {
+      borderColor: colors.inverseSurface,
+      backgroundColor: colors.inverseSurface,
+    },
+    sectionSwitchText: {
+      fontSize: rMS(12.5),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    sectionSwitchTextActive: {
+      color: colors.onInverseSurface,
+    },
+    filterBtn: {
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(8),
+      borderRadius: rMS(99),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    filterBtnActive: {
+      backgroundColor: colors.inverseSurface,
+      borderColor: colors.inverseSurface,
+    },
+    filterText: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+    },
+    filterTextActive: {
+      color: colors.onInverseSurface,
+    },
+    voucherCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(18),
+      paddingHorizontal: rS(13),
+      paddingVertical: rV(13),
+      marginBottom: rV(12),
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    cardTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: rV(10),
+    },
+    storeBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(5),
+      backgroundColor: colors.warningSoft,
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(9),
+      paddingVertical: rV(5),
+    },
+    storeBadgeText: {
+      fontSize: rMS(10.5),
+      fontFamily: Fonts.title,
+      color: colors.textSecondary,
+    },
+    statusBadge: {
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(9),
+      paddingVertical: rV(4),
+    },
+    statusText: {
+      fontSize: rMS(10),
+      fontFamily: Fonts.textBold,
+    },
+    heroRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    heroTextBlock: {
+      flex: 1,
+    },
+    voucherTitle: {
+      fontSize: rMS(14.5),
+      fontFamily: Fonts.title,
+      color: colors.text,
+    },
+    rewardText: {
+      marginTop: rV(4),
+      fontSize: rMS(19.5),
+      fontFamily: Fonts.black,
+      color: colors.text,
+    },
+    codeBadge: {
+      minWidth: rS(84),
+      borderRadius: rMS(14),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(8),
+      backgroundColor: colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      alignItems: "flex-start",
+    },
+    codeBadgeLabel: {
+      fontSize: rMS(9.5),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    codeBadgeText: {
+      marginTop: rV(2),
+      fontSize: rMS(11.5),
+      fontFamily: Fonts.textBold,
+      color: colors.text,
+      letterSpacing: 0.5,
+    },
+    infoChipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(7),
+      marginTop: rV(8),
+    },
+    infoChip: {
+      borderRadius: rMS(999),
+      backgroundColor: colors.pill,
+      paddingHorizontal: rS(9),
+      paddingVertical: rV(5),
+    },
+    infoChipMuted: {
+      backgroundColor: colors.warningSoft,
+    },
+    infoChipText: {
+      fontSize: rMS(10.5),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+    },
+    infoChipMutedText: {
+      color: colors.warningText,
+    },
+    metaText: {
+      fontSize: rMS(11.25),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+    },
+    descriptionText: {
+      marginTop: rV(8),
+      fontSize: rMS(11.5),
+      lineHeight: rMS(17),
+      fontFamily: Fonts.text,
+      color: colors.textSecondary,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(6),
+    },
+    footerRow: {
+      marginTop: rV(11),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: rS(10),
+    },
+    expiryStack: {
+      flex: 1,
+    },
+    footerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: rS(8),
+    },
+    selectedPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(5),
+      paddingHorizontal: rS(9),
+      paddingVertical: rV(7),
+      borderRadius: rMS(999),
+      backgroundColor: colors.successSoft,
+    },
+    selectedPillText: {
+      fontSize: rMS(10.5),
+      fontFamily: Fonts.textBold,
+      color: colors.successText,
+    },
+    actionBtn: {
+      borderRadius: rMS(999),
+      backgroundColor: colors.inverseSurface,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: rS(16),
+      paddingVertical: rV(9),
+    },
+    actionBtnText: {
+      fontSize: rMS(11.5),
+      fontFamily: Fonts.textBold,
+      color: colors.onInverseSurface,
+    },
+    emptyWrap: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(16),
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: rV(38),
+      paddingHorizontal: rS(18),
+    },
+    emptyTitle: {
+      marginTop: rV(8),
+      fontSize: rMS(16),
+      fontFamily: Fonts.title,
+      color: colors.text,
+    },
+    emptySub: {
+      marginTop: rV(6),
+      textAlign: "center",
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+      lineHeight: rMS(18),
+    },
+  });
+}

@@ -18,6 +18,7 @@ export default function EmailVerifiedBadge({ email }: EmailVerifiedBadgeProps) {
         chip: {
           alignSelf: "flex-start",
           marginTop: rV(8),
+          marginBottom: rV(12),
           flexDirection: "row",
           alignItems: "center",
           gap: rS(6),

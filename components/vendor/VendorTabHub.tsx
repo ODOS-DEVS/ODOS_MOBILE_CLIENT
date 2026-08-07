@@ -89,34 +89,34 @@ function useMetricPalette(tone: MetricTone = "default") {
   return useMemo(() => {
     if (tone === "warning") {
       return {
-        bg: isDark ? "#422006" : "#FFF7ED",
-        border: isDark ? "#78350F" : "#FED7AA",
-        accent: "#F59E0B",
-        value: isDark ? "#FCD34D" : "#92400E",
-        label: isDark ? "#FDE68A" : "#B45309",
-        iconBg: isDark ? "#78350F" : "#FEF3C7",
-        icon: isDark ? "#FCD34D" : "#D97706",
+        bg: colors.warningSoft,
+        border: colors.warningBorder,
+        accent: colors.warningText,
+        value: colors.warningText,
+        label: colors.warningText,
+        iconBg: colors.warningBorder,
+        icon: colors.warningText,
       };
     }
     if (tone === "success") {
       return {
-        bg: isDark ? "#052E16" : "#F0FDF4",
-        border: isDark ? "#166534" : "#BBF7D0",
-        accent: "#22C55E",
-        value: isDark ? "#86EFAC" : "#166534",
-        label: isDark ? "#A7F3D0" : "#15803D",
-        iconBg: isDark ? "#14532D" : "#DCFCE7",
-        icon: isDark ? "#86EFAC" : "#16A34A",
+        bg: colors.successSoft,
+        border: colors.successBorder,
+        accent: colors.successText,
+        value: colors.successText,
+        label: colors.successText,
+        iconBg: colors.successBorder,
+        icon: colors.successText,
       };
     }
     if (tone === "accent") {
       return {
-        bg: isDark ? "#1E1B4B" : "#EEF2FF",
-        border: isDark ? "#4338CA" : "#C7D2FE",
+        bg: colors.infoSoft,
+        border: colors.infoBorder,
         accent: colors.primary,
         value: colors.text,
         label: colors.textMuted,
-        iconBg: isDark ? colors.pill : "#FFFFFF",
+        iconBg: isDark ? colors.pill : colors.card,
         icon: colors.primary,
       };
     }
@@ -126,7 +126,7 @@ function useMetricPalette(tone: MetricTone = "default") {
       accent: colors.border,
       value: colors.text,
       label: colors.textMuted,
-      iconBg: isDark ? colors.pill : "#F3F4F6",
+      iconBg: colors.pill,
       icon: colors.primary,
     };
   }, [colors, isDark, tone]);
@@ -147,8 +147,8 @@ function VendorStoreTabHero({
 }) {
   const { colors, isDark } = useTheme();
   const gradientColors = isDark
-    ? (["#111827", "#1E1B4B", "#0F172A"] as const)
-    : (["#EEF2FF", "#F5F3FF", "#FFFFFF"] as const);
+    ? ([colors.card, colors.infoSoft, colors.header] as const)
+    : ([colors.infoSoft, colors.accentSoft, colors.card] as const);
 
   const vendorLabel =
     vendorStatus === "approved" ? "Seller Center" : "Vendor account";
@@ -177,6 +177,9 @@ function VendorStoreTabHero({
           <TouchableOpacity
             style={[
               heroStyles.settingsButton,
+              // Translucent glass chip sitting directly on the gradient hero — kept as
+              // literal rgba (rather than a solid token) so the gradient shows through;
+              // already isDark-aware.
               {
                 backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)",
                 borderColor: isDark ? colors.border : "rgba(99, 102, 241, 0.12)",
@@ -196,6 +199,7 @@ function VendorStoreTabHero({
         <View
           style={[
             heroStyles.badge,
+            // Translucent glass badge over the gradient hero; already isDark-aware.
             { backgroundColor: isDark ? colors.pill : "rgba(99, 102, 241, 0.1)" },
           ]}
         >
@@ -211,17 +215,17 @@ function VendorStoreTabHero({
                 ? isDark
                   ? "rgba(34, 197, 94, 0.18)"
                   : "rgba(22, 163, 74, 0.1)"
-                : isDark
-                  ? colors.pill
-                  : "#F3F4F6",
+                : colors.pill,
             },
           ]}
         >
-          {isLive ? <View style={heroStyles.liveDot} /> : null}
+          {isLive ? (
+            <View style={[heroStyles.liveDot, { backgroundColor: colors.successText }]} />
+          ) : null}
           <Text
             style={[
               heroStyles.badgeText,
-              { color: isLive ? (isDark ? "#86EFAC" : "#166534") : colors.textMuted },
+              { color: isLive ? colors.successText : colors.textMuted },
             ]}
           >
             {isLive ? "Live storefront" : "Draft storefront"}
@@ -259,12 +263,12 @@ function VendorNotificationsPrompt() {
       style={[
         promptStyles.shell,
         {
-          backgroundColor: isDark ? "#1E1B4B" : "#EEF2FF",
-          borderColor: isDark ? "#4338CA" : "#C7D2FE",
+          backgroundColor: colors.infoSoft,
+          borderColor: colors.infoBorder,
         },
       ]}
     >
-      <View style={[promptStyles.iconShell, { backgroundColor: isDark ? colors.pill : "#FFFFFF" }]}>
+      <View style={[promptStyles.iconShell, { backgroundColor: isDark ? colors.pill : colors.card }]}>
         <Ionicons name="notifications" size={rMS(20)} color={colors.primary} />
       </View>
       <View style={promptStyles.copy}>
@@ -624,12 +628,12 @@ export default function VendorTabHub({
               style={[
                 styles.vacationBanner,
                 {
-                  backgroundColor: isDark ? colors.surfaceSubtle : "#FEF3C7",
+                  backgroundColor: isDark ? colors.surfaceSubtle : colors.warningSoft,
                   borderColor: colors.border,
                 },
               ]}
             >
-              <Ionicons name="pause-circle-outline" size={rS(18)} color="#B45309" />
+              <Ionicons name="pause-circle-outline" size={rS(18)} color={colors.warningText} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.vacationTitle, { color: colors.text }]}>
                   Store on vacation
@@ -654,12 +658,14 @@ export default function VendorTabHub({
                     style={[
                       styles.attentionChip,
                       {
-                        backgroundColor: isDark ? colors.surfaceSubtle : "#FFF7ED",
-                        borderColor: isDark ? colors.border : "#FED7AA",
+                        backgroundColor: isDark ? colors.surfaceSubtle : colors.warningSoft,
+                        borderColor: isDark ? colors.border : colors.warningBorder,
                       },
                     ]}
                   >
-                    <Text style={[styles.attentionValue, { color: "#B45309" }]}>{item.value}</Text>
+                    <Text style={[styles.attentionValue, { color: colors.warningText }]}>
+                      {item.value}
+                    </Text>
                     <Text style={[styles.attentionLabel, { color: colors.text }]} numberOfLines={2}>
                       {item.label}
                     </Text>
@@ -721,6 +727,10 @@ export default function VendorTabHub({
                         style={[
                           styles.quickBadge,
                           {
+                            // Fixed amber-500, not a theme token: the badge always pairs
+                            // with fixed white (onPrimary) text, and the theme's
+                            // warningText token swaps to a pale amber in dark mode that
+                            // would lose contrast against that white text.
                             backgroundColor:
                               tile.badgeTone === "warning" ? "#F59E0B" : colors.text,
                           },
@@ -964,7 +974,6 @@ const heroStyles = StyleSheet.create({
     width: rS(7),
     height: rS(7),
     borderRadius: rS(4),
-    backgroundColor: "#22C55E",
   },
 });
 

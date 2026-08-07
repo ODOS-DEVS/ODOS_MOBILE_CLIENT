@@ -114,6 +114,14 @@ export type VendorOrderItem = {
   imageUrl?: string | null;
 };
 
+export type VendorOrderStatusEvent = {
+  id: string;
+  status: string;
+  actorRole: string;
+  note?: string | null;
+  occurredAt: string;
+};
+
 export type VendorOrder = {
   id: string;
   orderNumber: string;
@@ -132,10 +140,17 @@ export type VendorOrder = {
   isSettled?: boolean;
   currency?: string;
   status: VendorOrderStatus;
+  deliveryCode?: string | null;
+  deliveryInstructions?: string | null;
+  rescheduleRequestedAt?: string | null;
+  rescheduleNote?: string | null;
+  dispatchPhotoUrl?: string | null;
+  departureNotifiedAt?: string | null;
   placedAt?: string | null;
   paidAt?: string | null;
   createdAt: string;
   items: VendorOrderItem[];
+  timeline: VendorOrderStatusEvent[];
 };
 
 export type VendorReturnRequest = {
@@ -175,6 +190,8 @@ export type VendorFlashSaleNomination = {
   proposedPrice?: number | null;
   proposedOldPrice?: number | null;
   stockLimit?: number | null;
+  unitsSold?: number | null;
+  unitsRemaining?: number | null;
   maxPerUser?: number | null;
   vendorNote?: string | null;
   status: "pending" | "approved" | "rejected" | string;

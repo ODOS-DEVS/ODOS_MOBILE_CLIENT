@@ -1,7 +1,7 @@
 import VendorProductsList from "@/components/vendor/VendorProductsList";
 import { VendorScreenShell } from "@/components/vendor/VendorUi";
 import Fonts from "@/constants/Fonts";
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { rMS, rV } from "@/styles/responsive";
 import { router } from "expo-router";
@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function VendorProductsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { hasVendorAccess, isCheckingVendorAccess } = useRequireVendor();
 
   const addButton = (
@@ -20,7 +21,7 @@ export default function VendorProductsScreen() {
     >
       <Text
         style={{
-          color: AppColors.primary,
+          color: colors.primary,
           fontFamily: Fonts.titleBold,
           fontSize: rMS(13),
         }}

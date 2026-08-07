@@ -138,8 +138,8 @@ export function useCommerceSeeAllUiStyles() {
           borderColor: colors.border,
         },
         filterChipActive: {
-          backgroundColor: colors.text,
-          borderColor: colors.text,
+          backgroundColor: colors.inverseSurface,
+          borderColor: colors.inverseSurface,
         },
         filterChipText: {
           fontSize: rMS(12.5),
@@ -147,7 +147,7 @@ export function useCommerceSeeAllUiStyles() {
           color: colors.textMuted,
         },
         filterChipTextActive: {
-          color: colors.onPrimary,
+          color: colors.onInverseSurface,
         },
         filterCountPill: {
           minWidth: rS(24),

@@ -11,9 +11,10 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
+import type { ThemeColors } from "@/constants/theme";
 import { useRealtime } from "@/context/RealtimeContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import {
@@ -32,6 +33,7 @@ import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -63,37 +65,37 @@ function formatDateTime(value: string | null | undefined) {
   });
 }
 
-function statusTone(status: VendorWithdrawalStatus) {
+function statusTone(status: VendorWithdrawalStatus, colors: ThemeColors) {
   switch (status) {
     case "approved":
       return {
-        backgroundColor: "#DCFCE7",
-        textColor: "#166534",
+        backgroundColor: colors.successSoft,
+        textColor: colors.successText,
       };
     case "processing":
       return {
-        backgroundColor: "#DBEAFE",
-        textColor: "#1D4ED8",
+        backgroundColor: colors.infoSoft,
+        textColor: colors.infoText,
       };
     case "paid":
       return {
-        backgroundColor: "#DCFCE7",
-        textColor: "#166534",
+        backgroundColor: colors.successSoft,
+        textColor: colors.successText,
       };
     case "failed":
       return {
-        backgroundColor: "#FEE2E2",
-        textColor: "#B91C1C",
+        backgroundColor: colors.dangerSoft,
+        textColor: colors.dangerText,
       };
     case "rejected":
       return {
-        backgroundColor: "#FEE2E2",
-        textColor: "#B91C1C",
+        backgroundColor: colors.dangerSoft,
+        textColor: colors.dangerText,
       };
     default:
       return {
-        backgroundColor: "#FEF3C7",
-        textColor: "#92400E",
+        backgroundColor: colors.warningSoft,
+        textColor: colors.warningText,
       };
   }
 }
@@ -102,10 +104,12 @@ function SummaryCard({
   label,
   value,
   helper,
+  styles,
 }: {
   label: string;
   value: string;
   helper: string;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.summaryCard}>
@@ -121,6 +125,8 @@ export default function VendorWalletScreen() {
   const { contentMaxWidth, isTablet, width } = useResponsive();
   const { subscribe } = useRealtime();
   const { showToast } = useToast();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { hasVendorAccess, isCheckingVendorAccess, session } = useRequireVendor();
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -261,6 +267,11 @@ export default function VendorWalletScreen() {
         value: formatVendorCurrency(wallet.lifetimeEarnings, wallet.currency),
         helper: "Net vendor earnings settled so far",
       },
+      {
+        label: "ODOS commission",
+        value: `${(wallet.commissionRate * 100).toFixed(0)}%`,
+        helper: `${formatVendorCurrency(wallet.totalCommission, wallet.currency)} taken lifetime`,
+      },
     ];
   }, [wallet]);
 
@@ -349,13 +360,7 @@ export default function VendorWalletScreen() {
     }
   }
 
-  async function handleRequestWithdrawal() {
-    const amount = Number(withdrawalAmount);
-    if (!amount || Number.isNaN(amount) || amount <= 0) {
-      showToast("Enter a valid withdrawal amount.");
-      return;
-    }
-
+  async function submitWithdrawal(amount: number) {
     setIsRequestingWithdrawal(true);
     try {
       await createVendorWithdrawal(session, {
@@ -375,6 +380,38 @@ export default function VendorWalletScreen() {
     } finally {
       setIsRequestingWithdrawal(false);
     }
+  }
+
+  function handleRequestWithdrawal() {
+    const amount = Number(withdrawalAmount);
+    if (!amount || Number.isNaN(amount) || amount <= 0) {
+      showToast("Enter a valid withdrawal amount.");
+      return;
+    }
+
+    const availableBalance = wallet?.availableBalance ?? 0;
+    if (amount > availableBalance) {
+      showToast(
+        `You can withdraw up to ${formatVendorCurrency(availableBalance, walletCurrency)} right now.`,
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Request this withdrawal?",
+      `${formatVendorCurrency(amount, walletCurrency)} will move into payout review${
+        payoutAccountNumber.trim() || wallet?.payoutAccountNumberMasked
+          ? " for your saved payout details"
+          : ""
+      }.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Request withdrawal",
+          onPress: () => void submitWithdrawal(amount),
+        },
+      ],
+    );
   }
 
   const walletCurrency = wallet?.currency ?? "GHS";
@@ -423,6 +460,7 @@ export default function VendorWalletScreen() {
                     label={card.label}
                     value={card.value}
                     helper={card.helper}
+                    styles={styles}
                   />
                 </View>
               ))}
@@ -582,7 +620,7 @@ export default function VendorWalletScreen() {
                     </Text>
                   </View>
                   {isLoadingInstitutions ? (
-                    <ActivityIndicator size="small" color={AppColors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <Text style={styles.selectorFieldAction}>Select</Text>
                   )}
@@ -606,7 +644,7 @@ export default function VendorWalletScreen() {
             </Text>
             {wallet?.withdrawalRequests.length ? (
               wallet.withdrawalRequests.map((request) => {
-                const tone = statusTone(request.status);
+                const tone = statusTone(request.status, colors);
                 return (
                   <View key={request.id} style={styles.listCard}>
                     <View style={styles.listHeader}>
@@ -742,6 +780,13 @@ export default function VendorWalletScreen() {
                         Gross: {formatVendorCurrency(transaction.grossAmount, wallet.currency)}
                       </Text>
                     ) : null}
+                    {transaction.commissionAmount !== null &&
+                    transaction.commissionAmount !== undefined ? (
+                      <Text style={styles.listMeta}>
+                        ODOS commission ({(wallet.commissionRate * 100).toFixed(0)}%): -
+                        {formatVendorCurrency(transaction.commissionAmount, wallet.currency)}
+                      </Text>
+                    ) : null}
                   </View>
                 );
               })
@@ -789,7 +834,7 @@ export default function VendorWalletScreen() {
               value={institutionSearch}
               onChangeText={setInstitutionSearch}
               placeholder="Search by name"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.placeholder}
               style={styles.selectorSearchInput}
             />
 
@@ -846,450 +891,455 @@ export default function VendorWalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  scrollContent: {
-    paddingHorizontal: rS(16),
-    paddingTop: rV(18),
-  },
-  contentWrap: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  heroCard: {
-    backgroundColor: "#0B1526",
-    borderRadius: rMS(30),
-    paddingHorizontal: rS(20),
-    paddingVertical: rV(20),
-    marginBottom: rV(18),
-  },
-  heroOverline: {
-    color: "rgba(255,255,255,0.72)",
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  heroValue: {
-    marginTop: rV(10),
-    color: AppColors.white,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(28),
-  },
-  heroBody: {
-    marginTop: rV(8),
-    color: "rgba(255,255,255,0.78)",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-  heroMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-    marginTop: rV(16),
-  },
-  heroMetaCard: {
-    flex: 1,
-    minWidth: rS(132),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: rMS(20),
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  heroMetaLabel: {
-    color: "rgba(255,255,255,0.62)",
-    fontFamily: Fonts.text,
-    fontSize: rMS(11),
-  },
-  heroMetaValue: {
-    marginTop: rV(7),
-    color: AppColors.white,
-    fontFamily: Fonts.title,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-  },
-  errorText: {
-    marginBottom: rV(12),
-    color: "#B91C1C",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  summaryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: rS(12),
-    marginBottom: rV(18),
-  },
-  summaryCardWrap: {
-    width: "100%",
-  },
-  summaryCardWrapWide: {
-    width: "48.6%",
-  },
-  summaryCard: {
-    width: "100%",
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(22),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(16),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-  },
-  summaryLabel: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12),
-  },
-  summaryValue: {
-    marginTop: rV(8),
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-  },
-  summaryHelper: {
-    marginTop: rV(6),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    lineHeight: rMS(16),
-  },
-  stepsCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    marginBottom: rV(18),
-  },
-  stepsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(12),
-    marginTop: rV(10),
-  },
-  stepItem: {
-    flex: 1,
-    minWidth: rS(130),
-    borderRadius: rMS(18),
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-  },
-  stepIndex: {
-    width: rMS(26),
-    height: rMS(26),
-    borderRadius: rMS(13),
-    overflow: "hidden",
-    textAlign: "center",
-    textAlignVertical: "center",
-    backgroundColor: "#0B1526",
-    color: AppColors.white,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(12),
-    lineHeight: rMS(26),
-  },
-  stepTitle: {
-    marginTop: rV(10),
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(13.5),
-  },
-  stepBody: {
-    marginTop: rV(6),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-    lineHeight: rMS(17),
-  },
-  sectionCard: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    marginBottom: rV(18),
-  },
-  sectionTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(15),
-  },
-  sectionEyebrow: {
-    color: "#8B5E34",
-    fontFamily: Fonts.text,
-    fontSize: rMS(10.5),
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-    marginBottom: rV(6),
-  },
-  sectionBody: {
-    marginTop: rV(6),
-    marginBottom: rV(14),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-  managementGrid: {
-    gap: rS(14),
-    marginBottom: rV(18),
-  },
-  managementGridWide: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  gridCard: {
-    marginBottom: 0,
-  },
-  gridCardWide: {
-    width: "48.8%",
-  },
-  segmentRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginBottom: rV(16),
-  },
-  segmentButton: {
-    flex: 1,
-    borderRadius: rMS(999),
-    borderWidth: 1,
-    borderColor: "#D7DBE2",
-    backgroundColor: "#F8FAFC",
-    paddingVertical: rV(12),
-    alignItems: "center",
-  },
-  segmentButtonActive: {
-    borderColor: AppColors.primary,
-    backgroundColor: "#E7EEF8",
-  },
-  segmentButtonLabel: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12.5),
-  },
-  segmentButtonLabelActive: {
-    color: AppColors.primary,
-  },
-  selectorFieldWrap: {
-    marginBottom: rV(16),
-  },
-  selectorLabel: {
-    marginBottom: rV(6),
-    paddingLeft: rS(8),
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-    color: AppColors.primary,
-  },
-  selectorField: {
-    minHeight: rV(58),
-    borderRadius: rMS(22),
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  selectorFieldTextWrap: {
-    flex: 1,
-  },
-  selectorFieldValue: {
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13.5),
-  },
-  selectorFieldHelper: {
-    marginTop: rV(4),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-  },
-  selectorFieldAction: {
-    color: AppColors.primary,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(12),
-  },
-  selectorOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "center",
-    paddingHorizontal: rS(18),
-  },
-  selectorModal: {
-    backgroundColor: AppColors.white,
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingTop: rV(18),
-    paddingBottom: rV(16),
-    maxHeight: "78%",
-  },
-  selectorModalTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(18),
-  },
-  selectorModalBody: {
-    marginTop: rV(6),
-    marginBottom: rV(14),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-  },
-  selectorSearchInput: {
-    borderRadius: rMS(18),
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(12),
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-  },
-  selectorList: {
-    marginTop: rV(14),
-    marginBottom: rV(14),
-  },
-  selectorListContent: {
-    gap: rV(10),
-  },
-  selectorOption: {
-    borderRadius: rMS(18),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(13),
-  },
-  selectorOptionSelected: {
-    borderColor: AppColors.primary,
-    backgroundColor: "#E7EEF8",
-  },
-  selectorOptionLabel: {
-    color: AppColors.text,
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(13),
-  },
-  selectorOptionLabelSelected: {
-    color: AppColors.primary,
-  },
-  selectorOptionCode: {
-    marginTop: rV(3),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.5),
-  },
-  selectorEmptyText: {
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(18),
-    paddingVertical: rV(12),
-  },
-  listCard: {
-    borderRadius: rMS(18),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FAFBFC",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(14),
-    marginTop: rV(10),
-  },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: rS(10),
-  },
-  listTitleWrap: {
-    flex: 1,
-  },
-  listTitle: {
-    color: AppColors.text,
-    fontFamily: Fonts.title,
-    fontSize: rMS(14),
-  },
-  listMeta: {
-    marginTop: rV(4),
-    color: AppColors.secondary,
-    fontFamily: Fonts.text,
-    fontSize: rMS(11.8),
-    lineHeight: rMS(17),
-  },
-  detailChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(8),
-    marginTop: rV(10),
-  },
-  detailChip: {
-    borderRadius: rMS(999),
-    backgroundColor: "#EDF2F7",
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(5),
-  },
-  detailChipText: {
-    color: "#44556E",
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(10.5),
-    textTransform: "capitalize",
-  },
-  listNote: {
-    marginTop: rV(7),
-    color: AppColors.text,
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.2),
-    lineHeight: rMS(18),
-  },
-  statusChip: {
-    borderRadius: rMS(999),
-    paddingHorizontal: rS(10),
-    paddingVertical: rV(6),
-  },
-  statusChipLabel: {
-    fontFamily: Fonts.textBold,
-    fontSize: rMS(11.2),
-    textTransform: "capitalize",
-  },
-  transactionAmount: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(13),
-  },
-  transactionAmountPositive: {
-    color: "#15803D",
-  },
-  transactionAmountNegative: {
-    color: "#B91C1C",
-  },
-  supportCard: {
-    backgroundColor: "#0B1526",
-    borderRadius: rMS(24),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-  },
-  supportTitle: {
-    marginTop: rV(8),
-    color: AppColors.white,
-    fontFamily: Fonts.title,
-    fontSize: rMS(15),
-  },
-  supportBody: {
-    marginTop: rV(8),
-    color: "rgba(255,255,255,0.72)",
-    fontFamily: Fonts.text,
-    fontSize: rMS(12.5),
-    lineHeight: rMS(19),
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.screen,
+    },
+    scrollContent: {
+      paddingHorizontal: rS(16),
+      paddingTop: rV(18),
+    },
+    contentWrap: {
+      width: "100%",
+      alignSelf: "center",
+    },
+    // Hero balance card is a deliberately always-dark branded surface (same intent as
+    // colors.inverseSurface) — kept as a fixed navy rather than the theme token so it
+    // doesn't lighten in dark mode and lose its "premium" contrast against onInverseSurface text.
+    heroCard: {
+      backgroundColor: "#0B1526",
+      borderRadius: rMS(30),
+      paddingHorizontal: rS(20),
+      paddingVertical: rV(20),
+      marginBottom: rV(18),
+    },
+    heroOverline: {
+      color: "rgba(255,255,255,0.72)",
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    heroValue: {
+      marginTop: rV(10),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(28),
+    },
+    heroBody: {
+      marginTop: rV(8),
+      color: "rgba(255,255,255,0.78)",
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+    heroMetaRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(10),
+      marginTop: rV(16),
+    },
+    heroMetaCard: {
+      flex: 1,
+      minWidth: rS(132),
+      backgroundColor: "rgba(255,255,255,0.08)",
+      borderRadius: rMS(20),
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+    },
+    heroMetaLabel: {
+      color: "rgba(255,255,255,0.62)",
+      fontFamily: Fonts.text,
+      fontSize: rMS(11),
+    },
+    heroMetaValue: {
+      marginTop: rV(7),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.title,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+    },
+    errorText: {
+      marginBottom: rV(12),
+      color: colors.dangerText,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+    },
+    summaryGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      gap: rS(12),
+      marginBottom: rV(18),
+    },
+    summaryCardWrap: {
+      width: "100%",
+    },
+    summaryCardWrapWide: {
+      width: "48.6%",
+    },
+    summaryCard: {
+      width: "100%",
+      backgroundColor: colors.card,
+      borderRadius: rMS(22),
+      paddingHorizontal: rS(16),
+      paddingVertical: rV(16),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+    },
+    summaryLabel: {
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12),
+    },
+    summaryValue: {
+      marginTop: rV(8),
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(18),
+    },
+    summaryHelper: {
+      marginTop: rV(6),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+      lineHeight: rMS(16),
+    },
+    stepsCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(18),
+      paddingVertical: rV(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+      marginBottom: rV(18),
+    },
+    stepsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(12),
+      marginTop: rV(10),
+    },
+    stepItem: {
+      flex: 1,
+      minWidth: rS(130),
+      borderRadius: rMS(18),
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+    },
+    stepIndex: {
+      width: rMS(26),
+      height: rMS(26),
+      borderRadius: rMS(13),
+      overflow: "hidden",
+      textAlign: "center",
+      textAlignVertical: "center",
+      backgroundColor: "#0B1526",
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(12),
+      lineHeight: rMS(26),
+    },
+    stepTitle: {
+      marginTop: rV(10),
+      color: colors.text,
+      fontFamily: Fonts.title,
+      fontSize: rMS(13.5),
+    },
+    stepBody: {
+      marginTop: rV(6),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+      lineHeight: rMS(17),
+    },
+    sectionCard: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(18),
+      paddingVertical: rV(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.cardBorder,
+      marginBottom: rV(18),
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontFamily: Fonts.title,
+      fontSize: rMS(15),
+    },
+    sectionEyebrow: {
+      color: colors.warningText,
+      fontFamily: Fonts.text,
+      fontSize: rMS(10.5),
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+      marginBottom: rV(6),
+    },
+    sectionBody: {
+      marginTop: rV(6),
+      marginBottom: rV(14),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+    managementGrid: {
+      gap: rS(14),
+      marginBottom: rV(18),
+    },
+    managementGridWide: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
+    gridCard: {
+      marginBottom: 0,
+    },
+    gridCardWide: {
+      width: "48.8%",
+    },
+    segmentRow: {
+      flexDirection: "row",
+      gap: rS(10),
+      marginBottom: rV(16),
+    },
+    segmentButton: {
+      flex: 1,
+      borderRadius: rMS(999),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+      paddingVertical: rV(12),
+      alignItems: "center",
+    },
+    segmentButtonActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.infoSoft,
+    },
+    segmentButtonLabel: {
+      color: colors.textSecondary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12.5),
+    },
+    segmentButtonLabelActive: {
+      color: colors.primary,
+    },
+    selectorFieldWrap: {
+      marginBottom: rV(16),
+    },
+    selectorLabel: {
+      marginBottom: rV(6),
+      paddingLeft: rS(8),
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+      color: colors.primary,
+    },
+    selectorField: {
+      minHeight: rV(58),
+      borderRadius: rMS(22),
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      backgroundColor: colors.inputBg,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: rS(12),
+    },
+    selectorFieldTextWrap: {
+      flex: 1,
+    },
+    selectorFieldValue: {
+      color: colors.text,
+      fontFamily: Fonts.text,
+      fontSize: rMS(13.5),
+    },
+    selectorFieldHelper: {
+      marginTop: rV(4),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+    },
+    selectorFieldAction: {
+      color: colors.primary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(12),
+    },
+    selectorOverlay: {
+      flex: 1,
+      backgroundColor: colors.backdrop,
+      justifyContent: "center",
+      paddingHorizontal: rS(18),
+    },
+    selectorModal: {
+      backgroundColor: colors.card,
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(18),
+      paddingTop: rV(18),
+      paddingBottom: rV(16),
+      maxHeight: "78%",
+    },
+    selectorModalTitle: {
+      color: colors.text,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(18),
+    },
+    selectorModalBody: {
+      marginTop: rV(6),
+      marginBottom: rV(14),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+    },
+    selectorSearchInput: {
+      borderRadius: rMS(18),
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+      backgroundColor: colors.inputBg,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(12),
+      color: colors.text,
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+    },
+    selectorList: {
+      marginTop: rV(14),
+      marginBottom: rV(14),
+    },
+    selectorListContent: {
+      gap: rV(10),
+    },
+    selectorOption: {
+      borderRadius: rMS(18),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(13),
+    },
+    selectorOptionSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.infoSoft,
+    },
+    selectorOptionLabel: {
+      color: colors.text,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(13),
+    },
+    selectorOptionLabelSelected: {
+      color: colors.primary,
+    },
+    selectorOptionCode: {
+      marginTop: rV(3),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.5),
+    },
+    selectorEmptyText: {
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(18),
+      paddingVertical: rV(12),
+    },
+    listCard: {
+      borderRadius: rMS(18),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceSubtle,
+      paddingHorizontal: rS(14),
+      paddingVertical: rV(14),
+      marginTop: rV(10),
+    },
+    listHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: rS(10),
+    },
+    listTitleWrap: {
+      flex: 1,
+    },
+    listTitle: {
+      color: colors.text,
+      fontFamily: Fonts.title,
+      fontSize: rMS(14),
+    },
+    listMeta: {
+      marginTop: rV(4),
+      color: colors.textSecondary,
+      fontFamily: Fonts.text,
+      fontSize: rMS(11.8),
+      lineHeight: rMS(17),
+    },
+    detailChipsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(8),
+      marginTop: rV(10),
+    },
+    detailChip: {
+      borderRadius: rMS(999),
+      backgroundColor: colors.surfaceMuted,
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(5),
+    },
+    detailChipText: {
+      color: colors.textSecondary,
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(10.5),
+      textTransform: "capitalize",
+    },
+    listNote: {
+      marginTop: rV(7),
+      color: colors.text,
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.2),
+      lineHeight: rMS(18),
+    },
+    statusChip: {
+      borderRadius: rMS(999),
+      paddingHorizontal: rS(10),
+      paddingVertical: rV(6),
+    },
+    statusChipLabel: {
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(11.2),
+      textTransform: "capitalize",
+    },
+    transactionAmount: {
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+    },
+    transactionAmountPositive: {
+      color: colors.successText,
+    },
+    transactionAmountNegative: {
+      color: colors.dangerText,
+    },
+    supportCard: {
+      backgroundColor: "#0B1526",
+      borderRadius: rMS(24),
+      paddingHorizontal: rS(18),
+      paddingVertical: rV(18),
+    },
+    supportTitle: {
+      marginTop: rV(8),
+      color: colors.onInverseSurface,
+      fontFamily: Fonts.title,
+      fontSize: rMS(15),
+    },
+    supportBody: {
+      marginTop: rV(8),
+      color: "rgba(255,255,255,0.72)",
+      fontFamily: Fonts.text,
+      fontSize: rMS(12.5),
+      lineHeight: rMS(19),
+    },
+  });
+}

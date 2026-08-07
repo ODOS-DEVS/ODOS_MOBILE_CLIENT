@@ -4,8 +4,9 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { VendorFlashSaleNomination } from "@/types/store";
 import { rMS, rS, rV } from "@/styles/responsive";
+import CommerceImage from "@/components/media/CommerceImage";
 import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 type VendorFlashSaleNominationCardProps = {
   nomination: VendorFlashSaleNomination;
@@ -49,6 +50,19 @@ export default function VendorFlashSaleNominationCard({
         ) : null}
       </View>
 
+      {nomination.status === "approved" ? (
+        <View style={[styles.performanceCard, { backgroundColor: colors.pill }]}>
+          <Text style={[styles.performanceValue, { color: colors.text }]}>
+            {nomination.unitsSold ?? 0} sold
+          </Text>
+          <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>
+            {nomination.stockLimit != null
+              ? `${nomination.unitsRemaining ?? 0} of ${nomination.stockLimit} left at this price`
+              : "No stock cap set"}
+          </Text>
+        </View>
+      ) : null}
+
       {nomination.reviewNotes ? (
         <Text style={[styles.reviewNotes, { color: colors.textSecondary }]}>
           {nomination.reviewNotes}
@@ -56,7 +70,13 @@ export default function VendorFlashSaleNominationCard({
       ) : null}
 
       {nomination.productImageUrl ? (
-        <Image source={{ uri: nomination.productImageUrl }} style={styles.image} />
+        <CommerceImage
+          source={{ uri: nomination.productImageUrl }}
+          style={[styles.image, { backgroundColor: colors.imagePlaceholder }]}
+          trackingId={`vendor-flashsale-nomination-${nomination.id}`}
+          recyclingKey={nomination.productImageUrl}
+          placeholderColor={colors.imagePlaceholder}
+        />
       ) : null}
     </AccountListCard>
   );
@@ -100,10 +120,23 @@ const styles = StyleSheet.create({
     fontSize: rMS(12.5),
     lineHeight: rMS(18),
   },
+  performanceCard: {
+    borderRadius: rMS(12),
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(10),
+    gap: 2,
+  },
+  performanceValue: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(14),
+  },
+  performanceLabel: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(11.5),
+  },
   image: {
     width: "100%",
     height: rV(120),
     borderRadius: rMS(14),
-    backgroundColor: "#F3F4F6",
   },
 });

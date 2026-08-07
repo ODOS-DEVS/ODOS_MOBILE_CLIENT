@@ -1,5 +1,5 @@
 import { SearchBar } from "@/components/SearchBar";
-import { AppColors } from "@/constants/Colors";
+import { useTheme } from "@/context/ThemeContext";
 import { useCommerceSeeAllUiStyles } from "@/styles/themedBrowseStyles";
 import { rMS } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,6 +56,7 @@ export function CommerceSeeAllHero({
   stats = [],
   accent = "default",
 }: CommerceSeeAllHeroProps) {
+  const { colors } = useTheme();
   const styles = useCommerceSeeAllUiStyles();
   const badgeStyle =
     accent === "gold"
@@ -77,7 +78,11 @@ export function CommerceSeeAllHero({
           name={badgeIcon}
           size={rMS(14)}
           color={
-            accent === "gold" ? "#8A6A2E" : accent === "teal" ? "#0F766E" : AppColors.primary
+            accent === "gold"
+              ? colors.warningText
+              : accent === "teal"
+                ? colors.successText
+                : colors.primary
           }
         />
         <Text style={[styles.heroBadgeText, badgeTextStyle]}>{badgeLabel}</Text>
@@ -217,12 +222,13 @@ export function CommerceSeeAllEmptyState({
   title: string;
   subtitle: string;
 }) {
+  const { colors } = useTheme();
   const styles = useCommerceSeeAllUiStyles();
 
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconWrap}>
-        <Ionicons name={icon} size={rMS(22)} color={AppColors.subtext[100]} />
+        <Ionicons name={icon} size={rMS(22)} color={colors.iconMuted} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptySubtitle}>{subtitle}</Text>

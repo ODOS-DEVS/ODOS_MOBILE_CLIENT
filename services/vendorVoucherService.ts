@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/constants/auth";
+import { parseApiErrorMessage } from "@/services/apiClient";
 import type {
   VendorVoucher,
   VendorVoucherInput,
@@ -38,14 +39,7 @@ function requireToken(session: VendorSessionContext) {
 }
 
 async function parseErrorMessage(response: Response) {
-  try {
-    const payload = await response.json();
-    return typeof payload?.detail === "string"
-      ? payload.detail
-      : "We couldn't complete that request.";
-  } catch {
-    return response.statusText || "We couldn't complete that request.";
-  }
+  return parseApiErrorMessage(response, "We couldn't complete that request.");
 }
 
 function mapVoucher(payload: VendorVoucherApi): VendorVoucher {
