@@ -81,7 +81,6 @@ type StoreStoreState = {
     session: VendorSessionContext,
     orderId: string,
     status: VendorOrderStatus,
-    deliveryCode?: string,
   ) => Promise<VendorOrder>;
   acknowledgeOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   uploadOrderDispatchPhoto: (
@@ -347,10 +346,10 @@ export const useStoreStore = create<StoreStoreState>((set, get) => ({
     return order;
   },
 
-  updateOrderStatus: async (session, orderId, status, deliveryCode) => {
+  updateOrderStatus: async (session, orderId, status) => {
     set({ isUpdatingOrder: true, updatingOrderId: orderId, error: null });
     try {
-      const updatedOrder = await updateVendorOrderStatus(session, orderId, status, deliveryCode);
+      const updatedOrder = await updateVendorOrderStatus(session, orderId, status);
       set((state) => ({
         orders: state.orders.map((order) =>
           order.id === updatedOrder.id ? updatedOrder : order,

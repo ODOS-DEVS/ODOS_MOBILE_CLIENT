@@ -91,7 +91,8 @@ type VendorOrderApi = {
   is_settled?: boolean;
   currency?: string;
   status?: VendorOrderStatus;
-  delivery_code?: string | null;
+  delivery_status?: string;
+  delivery_problem_reason?: string | null;
   delivery_instructions?: string | null;
   reschedule_requested_at?: string | null;
   reschedule_note?: string | null;
@@ -270,7 +271,8 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
     isSettled: payload.is_settled ?? false,
     currency: payload.currency ?? "GHS",
     status: payload.status ?? "pending",
-    deliveryCode: payload.delivery_code ?? undefined,
+    deliveryStatus: payload.delivery_status ?? undefined,
+    deliveryProblemReason: payload.delivery_problem_reason ?? undefined,
     deliveryInstructions: payload.delivery_instructions ?? undefined,
     rescheduleRequestedAt: payload.reschedule_requested_at ?? undefined,
     rescheduleNote: payload.reschedule_note ?? undefined,
@@ -535,7 +537,6 @@ export async function updateVendorOrderStatus(
   session: VendorSessionContext,
   orderId: string,
   status: VendorOrderStatus,
-  deliveryCode?: string,
 ) {
   const accessToken = requireAccessToken(session);
   const response = await fetch(
@@ -543,9 +544,7 @@ export async function updateVendorOrderStatus(
     {
       method: "PATCH",
       headers: buildHeaders(accessToken),
-      body: JSON.stringify(
-        deliveryCode ? { status, delivery_code: deliveryCode } : { status },
-      ),
+      body: JSON.stringify({ status }),
     },
   );
 

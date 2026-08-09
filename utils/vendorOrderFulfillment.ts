@@ -1,5 +1,9 @@
 import type { VendorOrder, VendorOrderQueueTab, VendorOrderStatus } from "@/types/store";
 
+// "out_for_delivery" is deliberately not mapped to "delivered": the customer
+// confirms delivery themselves in their own app (or it auto-releases after a
+// grace window) — a vendor can't self-certify a handoff they have every
+// incentive to claim happened.
 export const VENDOR_ORDER_NEXT_STATUS: Partial<
   Record<VendorOrderStatus, VendorOrderStatus>
 > = {
@@ -7,7 +11,6 @@ export const VENDOR_ORDER_NEXT_STATUS: Partial<
   confirmed: "processing",
   processing: "ready",
   ready: "out_for_delivery",
-  out_for_delivery: "delivered",
 };
 
 export const VENDOR_ORDER_STATUS_LABELS: Record<VendorOrderStatus, string> = {

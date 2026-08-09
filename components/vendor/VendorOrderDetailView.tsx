@@ -27,17 +27,15 @@ import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -45,7 +43,7 @@ type VendorOrderDetailViewProps = {
   order: VendorOrder;
   isUpdating?: boolean;
   isAttachingPhoto?: boolean;
-  onAdvance: (deliveryCode?: string) => void;
+  onAdvance: () => void;
   onCancel: () => void;
   onAcknowledge: () => void;
   onNotifyDeparture: () => void;
@@ -96,8 +94,6 @@ export default function VendorOrderDetailView({
   const currentStep = timelineIndex(order.status);
   const slaTone = getVendorOrderSlaTone(order);
   const dialablePhone = normalizePhoneForDialer(order.customerPhone);
-  const [codeModalVisible, setCodeModalVisible] = useState(false);
-  const [enteredCode, setEnteredCode] = useState("");
 
   const confirmCancel = () => {
     Alert.alert(
@@ -108,24 +104,6 @@ export default function VendorOrderDetailView({
         { text: "Cancel order", style: "destructive", onPress: onCancel },
       ],
     );
-  };
-
-  const handleAdvancePress = () => {
-    if (nextStatus === "delivered") {
-      setEnteredCode("");
-      setCodeModalVisible(true);
-      return;
-    }
-    onAdvance();
-  };
-
-  const handleConfirmDeliveryCode = () => {
-    const trimmed = enteredCode.trim();
-    if (trimmed.length < 4) {
-      return;
-    }
-    setCodeModalVisible(false);
-    onAdvance(trimmed);
   };
 
   const handlePickDispatchPhoto = async () => {
@@ -392,20 +370,31 @@ export default function VendorOrderDetailView({
         </AccountListCard>
       ) : null}
 
-      {order.deliveryCode && order.status !== "delivered" && order.status !== "cancelled" ? (
-        <AccountListCard style={[styles.codeCard, { backgroundColor: colors.inverseSurface }]}>
-          <Ionicons name="key-outline" size={rMS(20)} color={colors.onInverseSurface} />
+      {order.status === "out_for_delivery" && order.deliveryStatus === "customer_problem" ? (
+        <AccountListCard style={[styles.codeCard, { backgroundColor: colors.dangerSoft }]}>
+          <Ionicons name="alert-circle-outline" size={rMS(20)} color={colors.dangerText} />
           <View style={styles.codeCopy}>
-            <Text style={[styles.codeLabel, { color: colors.mutedOnInverse }]}>
-              Delivery code on file
+            <Text style={[styles.codeLabel, { color: colors.dangerText }]}>
+              Customer reported a delivery problem
             </Text>
-            <Text style={[styles.codeHelper, { color: colors.onInverseSurface }]}>
-              Ask the customer for this code before marking the order delivered.
+            <Text style={[styles.codeHelper, { color: colors.dangerText }]}>
+              {order.deliveryProblemReason || "The customer flagged an issue with this delivery."}{" "}
+              ODOS support is looking into it — settlement is on hold until it&apos;s resolved.
             </Text>
           </View>
-          <Text style={[styles.codeValue, { color: colors.onInverseSurface }]}>
-            {order.deliveryCode}
-          </Text>
+        </AccountListCard>
+      ) : order.status === "out_for_delivery" ? (
+        <AccountListCard style={[styles.codeCard, { backgroundColor: colors.inverseSurface }]}>
+          <Ionicons name="hourglass-outline" size={rMS(20)} color={colors.onInverseSurface} />
+          <View style={styles.codeCopy}>
+            <Text style={[styles.codeLabel, { color: colors.mutedOnInverse }]}>
+              Waiting on the customer
+            </Text>
+            <Text style={[styles.codeHelper, { color: colors.onInverseSurface }]}>
+              The customer confirms delivery from their own app once it arrives — no code
+              needed from you. It&apos;ll auto-complete if they don&apos;t respond within 48h.
+            </Text>
+          </View>
         </AccountListCard>
       ) : null}
 
@@ -459,7 +448,7 @@ export default function VendorOrderDetailView({
           <AccountActionButton
             label={isUpdating ? "Updating..." : nextAction}
             variant="primary"
-            onPress={handleAdvancePress}
+            onPress={onAdvance}
             disabled={isUpdating}
             style={styles.fulfillmentButton}
           />
@@ -475,56 +464,6 @@ export default function VendorOrderDetailView({
           />
         ) : null}
       </View>
-
-      <Modal
-        visible={codeModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCodeModalVisible(false)}
-      >
-        <Pressable
-          style={[styles.backdrop, { backgroundColor: colors.backdrop }]}
-          onPress={() => setCodeModalVisible(false)}
-        >
-          <Pressable
-            style={[styles.codeModalSheet, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-            onPress={(event) => event.stopPropagation()}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Confirm delivery</Text>
-            <Text style={[styles.codeModalHelper, { color: colors.textSecondary }]}>
-              Ask the customer for their delivery code and enter it below to confirm the handoff.
-            </Text>
-            <TextInput
-              value={enteredCode}
-              onChangeText={setEnteredCode}
-              placeholder="Enter code"
-              placeholderTextColor={colors.placeholder}
-              keyboardType="number-pad"
-              maxLength={8}
-              autoFocus
-              style={[
-                styles.codeInput,
-                { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
-              ]}
-            />
-            <View style={styles.codeModalActions}>
-              <AccountActionButton
-                label="Cancel"
-                variant="secondary"
-                onPress={() => setCodeModalVisible(false)}
-                style={styles.codeModalButton}
-              />
-              <AccountActionButton
-                label={isUpdating ? "Confirming..." : "Confirm delivery"}
-                variant="primary"
-                onPress={handleConfirmDeliveryCode}
-                disabled={isUpdating || enteredCode.trim().length < 4}
-                style={styles.codeModalButton}
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </ScrollView>
   );
 }
@@ -768,11 +707,6 @@ const styles = StyleSheet.create({
     fontSize: rMS(12),
     lineHeight: rMS(17),
   },
-  codeValue: {
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(22),
-    letterSpacing: rMS(2),
-  },
   timeline: {
     gap: rV(10),
   },
@@ -801,43 +735,6 @@ const styles = StyleSheet.create({
   timelineTimestamp: {
     fontFamily: Fonts.text,
     fontSize: rMS(11),
-  },
-  backdrop: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: rS(20),
-  },
-  codeModalSheet: {
-    width: "100%",
-    borderRadius: rMS(20),
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: rS(20),
-    gap: rV(10),
-  },
-  codeModalHelper: {
-    fontFamily: Fonts.text,
-    fontSize: rMS(13),
-    lineHeight: rMS(19),
-  },
-  codeInput: {
-    marginTop: rV(6),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: rMS(14),
-    paddingHorizontal: rS(16),
-    paddingVertical: rV(12),
-    fontFamily: Fonts.titleBold,
-    fontSize: rMS(20),
-    letterSpacing: rMS(2),
-    textAlign: "center",
-  },
-  codeModalActions: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(8),
-  },
-  codeModalButton: {
-    flex: 1,
   },
   actionsBlock: {
     gap: rV(14),

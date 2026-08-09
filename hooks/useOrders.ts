@@ -150,10 +150,23 @@ export type Order = {
   progress: number | null;
   tracking_eta: string | null;
   cancellation_reason: string | null;
-  delivery_code: string | null;
   delivery_instructions: string | null;
   delivery_rating: number | null;
   delivery_rated_at: string | null;
+  delivery_status:
+    | "not_dispatched"
+    | "out_for_delivery"
+    | "rescheduled"
+    | "customer_problem"
+    | "delivered"
+    | "failed"
+    | string;
+  dispatched_at: string | null;
+  confirmation_method: "customer" | "auto_release" | "admin_override" | null;
+  delivery_problem_reason: string | null;
+  delivery_problem_reported_at: string | null;
+  auto_release_at: string | null;
+  settlement_status: "not_eligible" | "eligible" | "settled" | "held" | string;
   reschedule_requested_at: string | null;
   reschedule_note: string | null;
   dispatch_photo_url: string | null;
@@ -629,6 +642,45 @@ export function useOrders() {
     [accessToken],
   );
 
+  const reportDeliveryProblem = useCallback(
+    async (orderId: string, reason: string, details?: string) => {
+      const token = await getAccessToken(accessToken);
+      if (!token) {
+        throw new Error("Please sign in again to manage this order.");
+      }
+
+      setIsMutatingOrder(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/delivery-problem`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ reason, details: details || undefined }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(await parseErrorMessage(response));
+        }
+
+        const updatedOrder = await enrichOrderWithProductImages(
+          (await response.json()) as Order,
+        );
+        setOrders((current) =>
+          current.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      } finally {
+        setIsMutatingOrder(false);
+      }
+    },
+    [accessToken],
+  );
+
   const submitDeliveryRating = useCallback(
     async (orderId: string, rating: number) => {
       const token = await getAccessToken(accessToken);
@@ -762,6 +814,7 @@ export function useOrders() {
     ordersError,
     cancelOrder,
     confirmDelivery,
+    reportDeliveryProblem,
     createReturnRequest,
     submitDeliveryRating,
     requestReschedule,

@@ -140,7 +140,8 @@ export type VendorOrder = {
   isSettled?: boolean;
   currency?: string;
   status: VendorOrderStatus;
-  deliveryCode?: string | null;
+  deliveryStatus?: string;
+  deliveryProblemReason?: string | null;
   deliveryInstructions?: string | null;
   rescheduleRequestedAt?: string | null;
   rescheduleNote?: string | null;

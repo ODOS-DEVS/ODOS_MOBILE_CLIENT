@@ -2,6 +2,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import CommerceImage from "@/components/media/CommerceImage";
 import DeliveryCelebration from "@/components/orders/DeliveryCelebration";
 import DeliveryFeedbackPrompt from "@/components/orders/DeliveryFeedbackPrompt";
+import DeliveryProblemSheet from "@/components/orders/DeliveryProblemSheet";
 import RescheduleRequestSheet from "@/components/orders/RescheduleRequestSheet";
 import {
   AccountActionButton,
@@ -164,6 +165,7 @@ export default function OrderDetailScreen() {
   const {
     cancelOrder,
     confirmDelivery,
+    reportDeliveryProblem,
     createReturnRequest,
     removeOrder,
     submitDeliveryRating,
@@ -195,6 +197,8 @@ export default function OrderDetailScreen() {
   const [showDeliveryCelebration, setShowDeliveryCelebration] = React.useState(false);
   const [showRescheduleSheet, setShowRescheduleSheet] = React.useState(false);
   const [isSubmittingReschedule, setIsSubmittingReschedule] = React.useState(false);
+  const [showProblemSheet, setShowProblemSheet] = React.useState(false);
+  const [isSubmittingProblem, setIsSubmittingProblem] = React.useState(false);
   const prevOrderStatusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -247,6 +251,24 @@ export default function OrderDetailScreen() {
       );
     } finally {
       setIsSubmittingReschedule(false);
+    }
+  };
+
+  const handleReportProblem = async (reason: string, details: string) => {
+    if (!order) {
+      return;
+    }
+    setIsSubmittingProblem(true);
+    try {
+      await reportDeliveryProblem(order.id, reason, details || undefined);
+      setShowProblemSheet(false);
+      showToast("We're looking into this — you'll hear from us shortly.");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "We couldn't send that just now.",
+      );
+    } finally {
+      setIsSubmittingProblem(false);
     }
   };
 
@@ -514,19 +536,29 @@ export default function OrderDetailScreen() {
           ) : null}
         </AccountListCard>
 
-        {order.delivery_code && order.status !== "delivered" && order.status !== "cancelled" ? (
-          <View style={styles.deliveryCodeCard}>
-            <View style={styles.deliveryCodeCopy}>
-              <Text style={styles.deliveryCodeLabel}>Your delivery code</Text>
-              <Text style={styles.deliveryCodeHelper}>
-                Share this with the seller when your order arrives so they can confirm the handoff.
+        {order.delivery_status === "out_for_delivery" ? (
+          <View style={styles.deliveryConfirmCard}>
+            <View style={styles.deliveryConfirmCopy}>
+              <Text style={styles.deliveryConfirmLabel}>Your order is on the way</Text>
+              <Text style={styles.deliveryConfirmHelper}>
+                Once it&apos;s physically in your hands, confirm delivery below. We&apos;ll
+                automatically mark it delivered after 48 hours if we don&apos;t hear from you.
               </Text>
             </View>
-            <Text style={styles.deliveryCodeValue}>{order.delivery_code}</Text>
           </View>
         ) : null}
 
-        {order.vendor_status === "out_for_delivery" ? (
+        {order.delivery_status === "customer_problem" ? (
+          <View style={styles.problemNotice}>
+            <Ionicons name="alert-circle-outline" size={rMS(16)} color={colors.dangerText} />
+            <Text style={styles.problemNoticeText}>
+              We&apos;re looking into the delivery problem you reported. This order is on hold
+              until it&apos;s resolved.
+            </Text>
+          </View>
+        ) : null}
+
+        {order.delivery_status === "out_for_delivery" ? (
           <TouchableOpacity
             style={styles.notHomeButton}
             activeOpacity={0.85}
@@ -537,7 +569,7 @@ export default function OrderDetailScreen() {
           </TouchableOpacity>
         ) : null}
 
-        {order.reschedule_requested_at ? (
+        {order.delivery_status === "rescheduled" ? (
           <View style={styles.rescheduleNotice}>
             <Ionicons name="checkmark-circle-outline" size={rMS(16)} color={colors.infoText} />
             <Text style={styles.rescheduleNoticeText}>
@@ -867,7 +899,41 @@ export default function OrderDetailScreen() {
       {footerActionRows > 0 ? (
         <View style={styles.stickyFooterShell} pointerEvents="box-none">
           <OrderScreenFooter>
-        {order.status === "processing" ? (
+        {order.status === "processing" &&
+        (order.delivery_status === "out_for_delivery" || order.delivery_status === "customer_problem") ? (
+          <AccountActionRow>
+            {order.delivery_status === "out_for_delivery" ? (
+              <AccountActionButton
+                label={isMutatingOrder ? "Updating..." : "I haven't received it"}
+                variant="secondary"
+                disabled={isMutatingOrder}
+                onPress={() => setShowProblemSheet(true)}
+              />
+            ) : null}
+            <AccountActionButton
+              label={isMutatingOrder ? "Updating..." : "Yes, I received my order"}
+              variant="primary"
+              disabled={isMutatingOrder}
+              onPress={() =>
+                Alert.alert(
+                  "Have you physically received this order?",
+                  "Only confirm once the package is actually in your hands.",
+                  [
+                    { text: "Not yet", style: "cancel" },
+                    {
+                      text: "Confirm",
+                      onPress: () => {
+                        void handleConfirmDelivery();
+                      },
+                    },
+                  ],
+                )
+              }
+            />
+          </AccountActionRow>
+        ) : null}
+
+        {order.status === "processing" && order.delivery_status === "not_dispatched" ? (
           <AccountActionRow>
             <AccountActionButton
               label={isMutatingOrder ? "Updating..." : "Cancel Order"}
@@ -884,26 +950,6 @@ export default function OrderDetailScreen() {
                       style: "destructive",
                       onPress: () => {
                         void handleCancelOrder();
-                      },
-                    },
-                  ],
-                )
-              }
-            />
-            <AccountActionButton
-              label={isMutatingOrder ? "Updating..." : "Confirm Delivery"}
-              variant="primary"
-              disabled={isMutatingOrder}
-              onPress={() =>
-                Alert.alert(
-                  "Confirm delivery?",
-                  "Use this when the package has arrived and everything looks right.",
-                  [
-                    { text: "Not yet", style: "cancel" },
-                    {
-                      text: "Confirm",
-                      onPress: () => {
-                        void handleConfirmDelivery();
                       },
                     },
                   ],
@@ -1131,6 +1177,12 @@ export default function OrderDetailScreen() {
         onClose={() => setShowRescheduleSheet(false)}
         onSubmit={(note) => void handleSubmitReschedule(note)}
       />
+      <DeliveryProblemSheet
+        visible={showProblemSheet}
+        isSubmitting={isSubmittingProblem}
+        onClose={() => setShowProblemSheet(false)}
+        onSubmit={(reason, details) => void handleReportProblem(reason, details)}
+      />
     </View>
   );
 }
@@ -1195,7 +1247,7 @@ function createStyles(colors: ThemeColors) {
       fontFamily: Fonts.textBold,
       color: colors.text,
     },
-    deliveryCodeCard: {
+    deliveryConfirmCard: {
       backgroundColor: colors.inverseSurface,
       borderRadius: rMS(20),
       padding: rS(16),
@@ -1204,28 +1256,22 @@ function createStyles(colors: ThemeColors) {
       alignItems: "center",
       gap: rS(12),
     },
-    deliveryCodeCopy: {
+    deliveryConfirmCopy: {
       flex: 1,
     },
-    deliveryCodeLabel: {
+    deliveryConfirmLabel: {
       fontSize: rMS(11),
       fontFamily: Fonts.titleBold,
       color: colors.mutedOnInverse,
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
-    deliveryCodeHelper: {
+    deliveryConfirmHelper: {
       marginTop: rV(4),
       fontSize: rMS(12),
       fontFamily: Fonts.text,
       color: colors.onInverseSurface,
       lineHeight: rMS(17),
-    },
-    deliveryCodeValue: {
-      fontSize: rMS(26),
-      fontFamily: Fonts.titleBold,
-      color: colors.onInverseSurface,
-      letterSpacing: rMS(3),
     },
     notHomeButton: {
       flexDirection: "row",
@@ -1257,6 +1303,23 @@ function createStyles(colors: ThemeColors) {
       fontSize: rMS(12.5),
       fontFamily: Fonts.text,
       color: colors.infoText,
+      lineHeight: rMS(17),
+    },
+    problemNotice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      backgroundColor: colors.dangerSoft,
+      borderRadius: rMS(16),
+      paddingVertical: rV(10),
+      paddingHorizontal: rS(14),
+      marginBottom: rV(12),
+    },
+    problemNoticeText: {
+      flex: 1,
+      fontSize: rMS(12.5),
+      fontFamily: Fonts.text,
+      color: colors.dangerText,
       lineHeight: rMS(17),
     },
     trackBar: {

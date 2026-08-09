@@ -29,7 +29,10 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 
 **Delivery**
 
-- End-to-end delivery timeline with a 4‑digit proof-of-delivery code (SMS + in-app), a delivery celebration moment, and post-delivery quick feedback
+- **Customer-confirmed delivery**: once the vendor dispatches, only the customer can confirm receipt in their own app ("Yes, I received my order" / "I haven't received it") — a vendor can never mark their own order delivered
+- **"I haven't received it"** problem reporting with a reason picker (rider no-show, not available, wrong delivery, order issue, other) — freezes the order and holds the vendor's payout until support resolves it
+- **48-hour auto-release**: if the customer never confirms and hasn't flagged a problem, the order auto-completes (with a reminder at 36h) so vendors aren't left waiting on an inattentive customer forever
+- End-to-end delivery timeline, a delivery celebration moment, and post-delivery quick feedback
 - Delivery instructions at checkout, "not home" reschedule flow, and vendor dispatch photo + "on my way" heads-up
 - Resilient order tracking that distinguishes real network failures from a genuinely missing order
 
@@ -60,6 +63,7 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 - Customers, reviews (with seller replies), analytics periods, campaigns, vacation mode
 - Wallet / payouts with a visible commission rate and per-order commission breakdown
 - Flash sale nominations (with stock-cap performance stats), merchandising campaign opt-ins (with sales-since-approval stats), order alerts, and dual-role vendor access
+- Order fulfillment stops at **dispatch** — there's no "mark delivered" action; payout is triggered by the customer's own confirmation (or auto-release)
 
 ## Requirements
 

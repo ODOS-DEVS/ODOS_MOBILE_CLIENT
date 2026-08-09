@@ -62,7 +62,7 @@ export default function VendorOrderDetailScreen() {
     void loadOrder();
   }, [loadOrder]);
 
-  const handleAdvance = async (deliveryCode?: string) => {
+  const handleAdvance = async () => {
     if (!order) {
       return;
     }
@@ -72,7 +72,7 @@ export default function VendorOrderDetailScreen() {
     }
 
     try {
-      await updateOrderStatus(session, order.id, nextStatus, deliveryCode);
+      await updateOrderStatus(session, order.id, nextStatus);
       showToast(`Order moved to ${nextStatus.replace(/_/g, " ")}.`);
     } catch (error) {
       showToast(
@@ -216,7 +216,7 @@ export default function VendorOrderDetailScreen() {
           order={order}
           isUpdating={isUpdating}
           isAttachingPhoto={isAttachingPhoto}
-          onAdvance={(deliveryCode) => void handleAdvance(deliveryCode)}
+          onAdvance={() => void handleAdvance()}
           onCancel={() => void handleCancel()}
           onAcknowledge={() => void handleAcknowledge()}
           onNotifyDeparture={() => void handleNotifyDeparture()}
