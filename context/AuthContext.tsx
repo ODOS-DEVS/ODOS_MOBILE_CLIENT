@@ -1081,6 +1081,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await SecureStore.setItemAsync(
           ACCESS_TOKEN_STORAGE_KEY,
           payload.access_token,
+          { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
         );
 
         setAccessToken(payload.access_token);
@@ -1131,6 +1132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await SecureStore.setItemAsync(
         ACCESS_TOKEN_STORAGE_KEY,
         payload.access_token,
+        { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
       );
 
       setAccessToken(payload.access_token);
@@ -1191,6 +1193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await SecureStore.setItemAsync(
             ACCESS_TOKEN_STORAGE_KEY,
             payload.access_token,
+            { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
           );
 
           setAccessToken(payload.access_token);

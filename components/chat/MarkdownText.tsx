@@ -135,11 +135,15 @@ function InlineRun({
           );
         }
         if (token.type === "link") {
+          const isSafeLink = /^(https?:|mailto:|tel:)/i.test(token.url.trim());
           return (
             <Text
               key={index}
               style={{ color: linkColor, textDecorationLine: "underline" }}
               onPress={() => {
+                if (!isSafeLink) {
+                  return;
+                }
                 void Linking.openURL(token.url).catch(() => {});
               }}
             >

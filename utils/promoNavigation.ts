@@ -153,7 +153,7 @@ export function navigateFromPromoBanner(
       }
       break;
     case "external":
-      if (target) {
+      if (target && (target.startsWith("http://") || target.startsWith("https://"))) {
         void Linking.openURL(target);
         return;
       }
