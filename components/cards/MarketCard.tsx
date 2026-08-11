@@ -37,13 +37,18 @@ const MarketCard: React.FC<MarketCardProps> = ({
   return (
     <TouchableOpacity
       onPress={() =>
-        router.push({
-          pathname: "/screens/market" as any,
-          params: {
-            activeMarket: title,
-            activeMarketSlug: slug,
-          },
-        })
+        slug
+          ? router.push({
+              pathname: "/screens/markets/[slug]" as any,
+              params: { slug, title },
+            })
+          : router.push({
+              pathname: "/screens/market" as any,
+              params: {
+                activeMarket: title,
+                activeMarketSlug: slug,
+              },
+            })
       }
     >
       <View
