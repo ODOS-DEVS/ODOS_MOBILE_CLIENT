@@ -35,21 +35,24 @@ export function useVoiceNoteRecorder() {
   }, [recorder]);
 
   const stopRecording = useCallback(async () => {
-    if (!recorderState.isRecording && !recorderState.canRecord) {
+    if (!recorderState.isRecording) {
       return null;
     }
 
+    // Read the duration BEFORE stopping — `currentTime` resets to 0 the
+    // instant `.stop()` is called, so reading it after always looked like a
+    // sub-1-second (i.e. discarded) recording no matter how long you held.
+    const durationSeconds = Math.round(recorder.currentTime);
     await recorder.stop();
     await setAudioModeAsync({ allowsRecording: false });
     const uri = recorder.uri;
-    const durationSeconds = Math.round(recorder.currentTime);
 
     if (!uri || durationSeconds < 1) {
       return null;
     }
 
     return { uri, durationSeconds };
-  }, [recorder, recorderState.canRecord, recorderState.isRecording]);
+  }, [recorder, recorderState.isRecording]);
 
   const discardRecording = useCallback(async () => {
     if (recorderState.isRecording) {

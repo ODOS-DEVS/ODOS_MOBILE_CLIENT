@@ -739,6 +739,10 @@ export function ChatComposer({
           }
           void handleStopToPreview();
         },
+        // Without this, a parent ScrollView/FlatList can steal the gesture
+        // the moment a finger drifts even slightly, firing Terminate instead
+        // of Release — which silently discarded the recording.
+        onPanResponderTerminationRequest: () => false,
         onPanResponderTerminate: () => {
           if (!isLockedRef.current) {
             void handleDiscard();
@@ -857,9 +861,9 @@ export function ChatComposer({
               onPress={onAttachPress}
               disabled={disabled || isSending}
               style={[chatStyles.sendButton, chatStyles.sendButtonDisabled, { marginRight: rS(8) }]}
-              accessibilityLabel="Add attachment"
+              accessibilityLabel="Add photo"
             >
-              <Ionicons name="add" size={rMS(20)} color={colors.text} />
+              <Ionicons name="image-outline" size={rMS(19)} color={colors.text} />
             </Pressable>
           ) : null}
           {voiceSupported && onVoicePress ? (

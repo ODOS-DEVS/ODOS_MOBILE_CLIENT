@@ -12,7 +12,6 @@ import {
   renderChatMessageItem,
   useChatStyles,
 } from "@/components/chat/ChatUi";
-import ChatAttachmentSheet from "@/components/chat/ChatAttachmentSheet";
 import CommerceImage from "@/components/media/CommerceImage";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
@@ -20,7 +19,6 @@ import { useRealtime } from "@/context/RealtimeContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { rMS } from "@/styles/responsive";
-import { pickChatDocument } from "@/utils/chatAttachments";
 import { pickChatImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
 import { goBackOr } from "@/utils/navigation";
@@ -79,7 +77,6 @@ export default function VendorChatScreen() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
@@ -296,26 +293,6 @@ export default function VendorChatScreen() {
     }
   };
 
-  const handlePickDocument = async () => {
-    const result = await pickChatDocument();
-    if (result.tooLarge) {
-      showToast("That file is too large. Files must be 15MB or smaller.");
-      return;
-    }
-    if (!result.asset || !resolvedThreadId) {
-      return;
-    }
-    try {
-      await sendMessage(resolvedThreadId, "", {
-        uri: result.asset.uri,
-        name: result.asset.name,
-        type: result.asset.mimeType,
-      });
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "We couldn't send that file.");
-    }
-  };
-
   const handleSendVoiceNote = async (uri: string, durationSeconds: number) => {
     if (!resolvedThreadId) {
       return;
@@ -497,19 +474,11 @@ export default function VendorChatScreen() {
         disabled={!resolvedThreadId || isBootstrapping}
         isSending={isSending}
         attachmentSupported
-        onAttachPress={() => setIsAttachmentSheetOpen(true)}
-        onSendVoiceNote={handleSendVoiceNote}
-        onVoiceNoteError={showToast}
-      />
-      <ChatAttachmentSheet
-        visible={isAttachmentSheetOpen}
-        onClose={() => setIsAttachmentSheetOpen(false)}
-        onPickPhoto={() => {
+        onAttachPress={() => {
           void handlePickPhoto();
         }}
-        onPickDocument={() => {
-          void handlePickDocument();
-        }}
+        onSendVoiceNote={handleSendVoiceNote}
+        onVoiceNoteError={showToast}
       />
       <ChatCopyFeedback visible={copyFeedbackVisible} />
     </ChatScreenShell>
