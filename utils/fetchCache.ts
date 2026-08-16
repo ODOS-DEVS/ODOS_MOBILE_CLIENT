@@ -190,6 +190,7 @@ export function buildCatalogProductsUrl({
   subcategory,
   storeId,
   flashEvent,
+  maxAgeDays,
   limit,
   offset,
 }: {
@@ -200,6 +201,7 @@ export function buildCatalogProductsUrl({
   subcategory?: string;
   storeId?: string;
   flashEvent?: string;
+  maxAgeDays?: number;
   limit?: number;
   offset?: number;
 }) {
@@ -224,6 +226,9 @@ export function buildCatalogProductsUrl({
   }
   if (flashEvent) {
     query.set("flash_event", flashEvent);
+  }
+  if (typeof maxAgeDays === "number") {
+    query.set("max_age_days", String(maxAgeDays));
   }
   if (typeof limit === "number") {
     query.set("limit", String(limit));

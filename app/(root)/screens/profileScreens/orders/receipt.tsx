@@ -22,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -30,6 +31,7 @@ export default function OrderReceiptScreen() {
   const accountStyles = useAccountStyles();
   const orderStyles = useOrderStyles();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
@@ -178,7 +180,7 @@ export default function OrderReceiptScreen() {
         </View>
       </ScrollView>
 
-      <View style={orderStyles.stickyFooter}>
+      <View style={[orderStyles.stickyFooter, { paddingBottom: insets.bottom + rV(12) }]}>
         <AccountActionButton
           label="Back to Order Details"
           variant="primary"

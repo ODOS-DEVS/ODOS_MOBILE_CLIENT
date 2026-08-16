@@ -6,19 +6,24 @@ import {
 import CommerceImage from "@/components/media/CommerceImage";
 import { lightTheme, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import { useVoiceNoteRecorder } from "@/hooks/useVoiceNoteRecorder";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useChatStyles } from "@/styles/themedChatStyles";
 import type { ChatMessage, ChatThread, SupportChatStatus } from "@/types/chat";
 import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
+  Linking,
+  Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -382,6 +387,7 @@ export function ChatMessageBubble({
 }: ChatMessageBubbleProps) {
   const chatStyles = useChatStyles();
   const { colors } = useTheme();
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
 
   const handleLongPress = useCallback(() => {
     const text = message.text?.trim();
@@ -393,6 +399,13 @@ export function ChatMessageBubble({
       onCopied?.();
     });
   }, [message.text, onCopied]);
+
+  const handleOpenFile = useCallback(() => {
+    const url = message.attachmentUrl?.trim();
+    if (url && /^https?:/i.test(url)) {
+      void Linking.openURL(url);
+    }
+  }, [message.attachmentUrl]);
 
   return (
     <AnimatedChatMessageWrap isMine={isMine}>
@@ -408,17 +421,105 @@ export function ChatMessageBubble({
           style={({ pressed }) => [
             chatStyles.bubble,
             isMine ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
+            message.attachmentType === "image" ? chatStyles.bubbleImagePadding : null,
             pressed ? { opacity: 0.9 } : null,
           ]}
         >
-          <Text
-            style={[
-              chatStyles.bubbleText,
-              { color: isMine ? colors.onPrimary : colors.text },
-            ]}
-          >
-            {message.text}
-          </Text>
+          {message.attachmentType === "image" && message.attachmentUrl ? (
+            <>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setIsImageViewerOpen(true)}
+                style={chatStyles.attachmentImageWrap}
+              >
+                <CommerceImage
+                  source={{ uri: message.attachmentUrl }}
+                  style={chatStyles.attachmentImage}
+                  trackingId={`chat-image-${message.id}`}
+                  recyclingKey={message.attachmentUrl}
+                />
+              </TouchableOpacity>
+              <Modal
+                visible={isImageViewerOpen}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsImageViewerOpen(false)}
+              >
+                <Pressable
+                  style={chatStyles.imageViewerBackdrop}
+                  onPress={() => setIsImageViewerOpen(false)}
+                >
+                  <CommerceImage
+                    source={{ uri: message.attachmentUrl }}
+                    style={chatStyles.imageViewerImage}
+                    contentFit="contain"
+                    trackingId={`chat-image-full-${message.id}`}
+                  />
+                  <Pressable
+                    style={chatStyles.imageViewerCloseButton}
+                    onPress={() => setIsImageViewerOpen(false)}
+                  >
+                    <Ionicons name="close" size={rMS(22)} color="#FFFFFF" />
+                  </Pressable>
+                </Pressable>
+              </Modal>
+            </>
+          ) : null}
+
+          {message.attachmentType === "audio" && message.attachmentUrl ? (
+            <VoiceNoteBubbleContent
+              url={message.attachmentUrl}
+              durationSeconds={message.attachmentDurationSeconds ?? 0}
+              isMine={isMine}
+            />
+          ) : null}
+
+          {message.attachmentType === "file" && message.attachmentUrl ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleOpenFile}
+              style={chatStyles.attachmentFileRow}
+            >
+              <View
+                style={[
+                  chatStyles.attachmentFileIconShell,
+                  { backgroundColor: isMine ? "rgba(255,255,255,0.18)" : colors.surfaceMuted },
+                ]}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={rMS(18)}
+                  color={isMine ? colors.onPrimary : colors.text}
+                />
+              </View>
+              <Text
+                style={[
+                  chatStyles.attachmentFileName,
+                  { color: isMine ? colors.onPrimary : colors.text },
+                ]}
+                numberOfLines={1}
+              >
+                {message.attachmentName ?? "File"}
+              </Text>
+              <Ionicons
+                name="download-outline"
+                size={rMS(16)}
+                color={isMine ? colors.onPrimary : colors.textMuted}
+              />
+            </TouchableOpacity>
+          ) : null}
+
+          {message.text?.trim() ? (
+            <Text
+              style={[
+                chatStyles.bubbleText,
+                message.attachmentType ? { marginTop: rV(6) } : null,
+                { color: isMine ? colors.onPrimary : colors.text },
+              ]}
+            >
+              {message.text}
+            </Text>
+          ) : null}
           {showMeta ? (
             <Text
               style={[
@@ -440,6 +541,69 @@ export function ChatMessageBubble({
   );
 }
 
+function formatVoiceNoteDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function VoiceNoteBubbleContent({
+  url,
+  durationSeconds,
+  isMine,
+}: {
+  url: string;
+  durationSeconds: number;
+  isMine: boolean;
+}) {
+  const chatStyles = useChatStyles();
+  const { colors } = useTheme();
+  const player = useAudioPlayer({ uri: url });
+  const status = useAudioPlayerStatus(player);
+
+  useEffect(() => {
+    if (status.didJustFinish) {
+      player.seekTo(0);
+    }
+  }, [player, status.didJustFinish]);
+
+  const handleToggle = useCallback(() => {
+    if (status.playing) {
+      player.pause();
+    } else {
+      if (status.didJustFinish) {
+        player.seekTo(0);
+      }
+      player.play();
+    }
+  }, [player, status.didJustFinish, status.playing]);
+
+  const tint = isMine ? colors.onPrimary : colors.text;
+  const displaySeconds =
+    status.playing || status.currentTime > 0 ? Math.floor(status.currentTime) : durationSeconds;
+
+  return (
+    <View style={chatStyles.voiceNoteRow}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={handleToggle}
+        style={[
+          chatStyles.voiceNotePlayButton,
+          { backgroundColor: isMine ? "rgba(255,255,255,0.2)" : colors.surfaceMuted },
+        ]}
+      >
+        <Ionicons name={status.playing ? "pause" : "play"} size={rMS(16)} color={tint} />
+      </TouchableOpacity>
+      <View style={chatStyles.voiceNoteWave}>
+        <View style={[chatStyles.voiceNoteWaveTrack, { backgroundColor: tint, opacity: 0.35 }]} />
+      </View>
+      <Text style={[chatStyles.voiceNoteDuration, { color: tint }]}>
+        {formatVoiceNoteDuration(displaySeconds)}
+      </Text>
+    </View>
+  );
+}
+
 type ChatComposerProps = {
   hint?: string;
   placeholder: string;
@@ -451,7 +615,16 @@ type ChatComposerProps = {
   onVoicePress?: () => void;
   isListening?: boolean;
   voiceSupported?: boolean;
+  onAttachPress?: () => void;
+  attachmentSupported?: boolean;
+  /** Presence of this callback enables the whole press-and-hold voice note
+   * flow. Called only once the user has explicitly reviewed and sent the
+   * recording from the preview step — never on release alone. */
+  onSendVoiceNote?: (uri: string, durationSeconds: number) => void | Promise<void>;
+  onVoiceNoteError?: (message: string) => void;
 };
+
+const VOICE_LOCK_THRESHOLD_PX = 70;
 
 export function ChatComposer({
   hint,
@@ -464,12 +637,28 @@ export function ChatComposer({
   onVoicePress,
   isListening = false,
   voiceSupported = false,
+  onAttachPress,
+  attachmentSupported = false,
+  onSendVoiceNote,
+  onVoiceNoteError,
 }: ChatComposerProps) {
   const chatStyles = useChatStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const canSend = Boolean(value.trim()) && !disabled && !isSending;
+  const voiceNoteSupported = Boolean(onSendVoiceNote);
+  const showVoiceNoteButton = voiceNoteSupported && !value.trim();
   const sendScale = useRef(new Animated.Value(1)).current;
+
+  const recorder = useVoiceNoteRecorder();
+  const [voicePhase, setVoicePhase] = useState<"idle" | "recording" | "locked" | "preview">(
+    "idle",
+  );
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewDuration, setPreviewDuration] = useState(0);
+  const isLockedRef = useRef(false);
+  const previewPlayer = useAudioPlayer(previewUri ? { uri: previewUri } : undefined);
+  const previewStatus = useAudioPlayerStatus(previewPlayer);
 
   useEffect(() => {
     Animated.spring(sendScale, {
@@ -480,6 +669,91 @@ export function ChatComposer({
     }).start();
   }, [canSend, sendScale]);
 
+  const resetVoiceState = useCallback(() => {
+    isLockedRef.current = false;
+    setVoicePhase("idle");
+    setPreviewUri(null);
+    setPreviewDuration(0);
+  }, []);
+
+  const handleStartRecording = useCallback(async () => {
+    isLockedRef.current = false;
+    setVoicePhase("recording");
+    const result = await recorder.startRecording();
+    if (!result.granted) {
+      resetVoiceState();
+      onVoiceNoteError?.("Allow microphone access to record a voice note.");
+    }
+  }, [recorder, resetVoiceState, onVoiceNoteError]);
+
+  const handleStopToPreview = useCallback(async () => {
+    const result = await recorder.stopRecording();
+    if (!result) {
+      resetVoiceState();
+      return;
+    }
+    setPreviewUri(result.uri);
+    setPreviewDuration(result.durationSeconds);
+    setVoicePhase("preview");
+  }, [recorder, resetVoiceState]);
+
+  const handleDiscard = useCallback(async () => {
+    previewPlayer.pause();
+    await recorder.discardRecording();
+    resetVoiceState();
+  }, [previewPlayer, recorder, resetVoiceState]);
+
+  const handleSendPreview = useCallback(async () => {
+    if (!previewUri || !onSendVoiceNote) {
+      return;
+    }
+    previewPlayer.pause();
+    const uri = previewUri;
+    const duration = previewDuration;
+    resetVoiceState();
+    await onSendVoiceNote(uri, duration);
+  }, [onSendVoiceNote, previewDuration, previewPlayer, previewUri, resetVoiceState]);
+
+  const canRecordVoiceNote = voiceNoteSupported && !disabled && !isSending;
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => canRecordVoiceNote,
+        onMoveShouldSetPanResponder: () => canRecordVoiceNote,
+        onPanResponderGrant: () => {
+          void handleStartRecording();
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          if (isLockedRef.current) {
+            return;
+          }
+          if (gestureState.dy <= -VOICE_LOCK_THRESHOLD_PX) {
+            isLockedRef.current = true;
+            setVoicePhase("locked");
+          }
+        },
+        onPanResponderRelease: () => {
+          if (isLockedRef.current) {
+            return;
+          }
+          void handleStopToPreview();
+        },
+        onPanResponderTerminate: () => {
+          if (!isLockedRef.current) {
+            void handleDiscard();
+          }
+        },
+      }),
+    [canRecordVoiceNote, handleStartRecording, handleStopToPreview, handleDiscard],
+  );
+
+  const isVoiceFlowActive = voicePhase !== "idle";
+  const previewDisplaySeconds =
+    previewStatus.playing || previewStatus.currentTime > 0
+      ? Math.floor(previewStatus.currentTime)
+      : previewDuration;
+
   return (
     <View
       style={[
@@ -487,63 +761,173 @@ export function ChatComposer({
         { paddingBottom: Math.max(insets.bottom, rV(12)) },
       ]}
     >
-      {hint ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
-      <View style={chatStyles.composerRow}>
-        {voiceSupported && onVoicePress ? (
+      {hint && !isVoiceFlowActive ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
+
+      {voicePhase === "recording" || voicePhase === "locked" ? (
+        <View style={chatStyles.composerRow}>
           <Pressable
-            onPress={onVoicePress}
-            disabled={disabled || isSending}
-            style={[
-              chatStyles.sendButton,
-              isListening
-                ? chatStyles.sendButtonActive
-                : chatStyles.sendButtonDisabled,
-              {
-                marginRight: rS(8),
-                backgroundColor: isListening ? colors.dangerText : colors.textMuted,
-              },
-            ]}
-            accessibilityLabel={
-              isListening ? "Stop voice input" : "Start voice input"
-            }
+            onPress={() => void handleDiscard()}
+            style={[chatStyles.sendButton, chatStyles.sendButtonDisabled]}
+            accessibilityLabel="Cancel recording"
           >
-            <Ionicons
-              name={isListening ? "stop" : "mic"}
-              size={rMS(16)}
-              color={colors.onPrimary}
-            />
+            <Ionicons name="trash-outline" size={rMS(16)} color={colors.dangerText} />
           </Pressable>
-        ) : null}
-        <View style={chatStyles.composerInputWrap}>
-          <TextInput
-            placeholder={placeholder}
-            placeholderTextColor={colors.placeholder}
-            value={value}
-            onChangeText={onChangeText}
-            style={chatStyles.composerInput}
-            multiline
-            editable={!disabled && !isSending}
-          />
-        </View>
-        <Animated.View style={{ transform: [{ scale: sendScale }] }}>
-          <Pressable
-            onPress={onSend}
-            disabled={!canSend}
-            style={[
-              chatStyles.sendButton,
-              canSend
-                ? chatStyles.sendButtonActive
-                : chatStyles.sendButtonDisabled,
-            ]}
-          >
-            {isSending ? (
-              <TypingDots color={colors.onPrimary} dotSize={rS(5)} />
+          <View style={[chatStyles.composerInputWrap, chatStyles.recordingRow]}>
+            <View style={[chatStyles.recordingDot, { backgroundColor: colors.dangerText }]} />
+            <Text style={[chatStyles.composerInput, { color: colors.text }]}>
+              {formatVoiceNoteDuration(recorder.elapsedSeconds)}
+            </Text>
+            {voicePhase === "recording" ? (
+              <Text style={chatStyles.recordingLockHint}>↑ Slide up to lock</Text>
             ) : (
-              <Ionicons name="send" size={rMS(16)} color={colors.onPrimary} />
+              <Ionicons name="lock-closed" size={rMS(14)} color={colors.textMuted} />
             )}
+          </View>
+          {voicePhase === "locked" ? (
+            <Pressable
+              onPress={() => void handleStopToPreview()}
+              style={[chatStyles.sendButton, chatStyles.sendButtonActive]}
+              accessibilityLabel="Stop recording"
+            >
+              <Ionicons name="stop" size={rMS(16)} color={colors.onPrimary} />
+            </Pressable>
+          ) : (
+            <View
+              {...panResponder.panHandlers}
+              style={[chatStyles.sendButton, chatStyles.sendButtonActive]}
+            >
+              <Ionicons name="mic" size={rMS(18)} color={colors.onPrimary} />
+            </View>
+          )}
+        </View>
+      ) : voicePhase === "preview" ? (
+        <View style={chatStyles.composerRow}>
+          <Pressable
+            onPress={() => void handleDiscard()}
+            style={[chatStyles.sendButton, chatStyles.sendButtonDisabled]}
+            accessibilityLabel="Discard voice note"
+          >
+            <Ionicons name="trash-outline" size={rMS(16)} color={colors.dangerText} />
           </Pressable>
-        </Animated.View>
-      </View>
+          <View style={[chatStyles.composerInputWrap, chatStyles.voiceNoteRow]}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                if (previewStatus.playing) {
+                  previewPlayer.pause();
+                } else {
+                  if (previewStatus.didJustFinish) {
+                    previewPlayer.seekTo(0);
+                  }
+                  previewPlayer.play();
+                }
+              }}
+              style={[chatStyles.voiceNotePlayButton, { backgroundColor: colors.surfaceMuted }]}
+            >
+              <Ionicons
+                name={previewStatus.playing ? "pause" : "play"}
+                size={rMS(15)}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+            <View style={chatStyles.voiceNoteWave}>
+              <View
+                style={[
+                  chatStyles.voiceNoteWaveTrack,
+                  { backgroundColor: colors.text, opacity: 0.3 },
+                ]}
+              />
+            </View>
+            <Text style={[chatStyles.voiceNoteDuration, { color: colors.text }]}>
+              {formatVoiceNoteDuration(previewDisplaySeconds)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => void handleSendPreview()}
+            style={[chatStyles.sendButton, chatStyles.sendButtonActive]}
+            accessibilityLabel="Send voice note"
+          >
+            <Ionicons name="send" size={rMS(16)} color={colors.onPrimary} />
+          </Pressable>
+        </View>
+      ) : (
+        <View style={chatStyles.composerRow}>
+          {attachmentSupported && onAttachPress ? (
+            <Pressable
+              onPress={onAttachPress}
+              disabled={disabled || isSending}
+              style={[chatStyles.sendButton, chatStyles.sendButtonDisabled, { marginRight: rS(8) }]}
+              accessibilityLabel="Add attachment"
+            >
+              <Ionicons name="add" size={rMS(20)} color={colors.text} />
+            </Pressable>
+          ) : null}
+          {voiceSupported && onVoicePress ? (
+            <Pressable
+              onPress={onVoicePress}
+              disabled={disabled || isSending}
+              style={[
+                chatStyles.sendButton,
+                isListening
+                  ? chatStyles.sendButtonActive
+                  : chatStyles.sendButtonDisabled,
+                {
+                  marginRight: rS(8),
+                  backgroundColor: isListening ? colors.dangerText : colors.textMuted,
+                },
+              ]}
+              accessibilityLabel={
+                isListening ? "Stop voice input" : "Start voice input"
+              }
+            >
+              <Ionicons
+                name={isListening ? "stop" : "mic"}
+                size={rMS(16)}
+                color={colors.onPrimary}
+              />
+            </Pressable>
+          ) : null}
+          <View style={chatStyles.composerInputWrap}>
+            <TextInput
+              placeholder={placeholder}
+              placeholderTextColor={colors.placeholder}
+              value={value}
+              onChangeText={onChangeText}
+              style={chatStyles.composerInput}
+              multiline
+              editable={!disabled && !isSending}
+            />
+          </View>
+          {showVoiceNoteButton ? (
+            <View
+              {...panResponder.panHandlers}
+              style={[chatStyles.sendButton, chatStyles.sendButtonDisabled]}
+              accessibilityLabel="Hold to record a voice note"
+            >
+              <Ionicons name="mic-outline" size={rMS(18)} color={colors.text} />
+            </View>
+          ) : (
+            <Animated.View style={{ transform: [{ scale: sendScale }] }}>
+              <Pressable
+                onPress={onSend}
+                disabled={!canSend}
+                style={[
+                  chatStyles.sendButton,
+                  canSend
+                    ? chatStyles.sendButtonActive
+                    : chatStyles.sendButtonDisabled,
+                ]}
+              >
+                {isSending ? (
+                  <TypingDots color={colors.onPrimary} dotSize={rS(5)} />
+                ) : (
+                  <Ionicons name="send" size={rMS(16)} color={colors.onPrimary} />
+                )}
+              </Pressable>
+            </Animated.View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -563,7 +947,7 @@ export function ChatScreenShell({
   return (
     <KeyboardAvoidingView
       style={chatStyles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <LinearGradient
         colors={

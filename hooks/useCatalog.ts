@@ -349,6 +349,7 @@ export function useCatalogProducts({
   flashEvent,
   subcategory,
   storeId,
+  maxAgeDays,
 }: {
   audience?: string;
   category?: string;
@@ -357,6 +358,7 @@ export function useCatalogProducts({
   flashEvent?: string;
   subcategory?: string;
   storeId?: string;
+  maxAgeDays?: number;
 }) {
   const productsUrl = useMemo(
     () =>
@@ -368,8 +370,9 @@ export function useCatalogProducts({
         flashEvent,
         subcategory,
         storeId,
+        maxAgeDays,
       }),
-    [audience, category, flashEvent, placement, section, storeId, subcategory],
+    [audience, category, flashEvent, maxAgeDays, placement, section, storeId, subcategory],
   );
   const staleTimeMs = useMemo(
     () => productsStaleTimeMs({ section, placement }),

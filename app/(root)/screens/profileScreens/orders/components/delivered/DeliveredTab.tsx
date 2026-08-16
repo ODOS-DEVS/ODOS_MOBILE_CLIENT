@@ -9,12 +9,15 @@ import {
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { Order } from "@/hooks/useOrders";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { rMS } from "@/styles/responsive";
 import { useTheme } from "@/context/ThemeContext";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+const ORDERS_PAGE_SIZE = 10;
 
 function formatDeliveredText(order: Order) {
   const value = order.delivered_at ?? order.placed_at;
@@ -24,6 +27,8 @@ function formatDeliveredText(order: Order) {
 export default function DeliveredTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
   const { colors } = useTheme();
+  const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const visibleOrders = orders.slice(0, visibleCount);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
@@ -34,7 +39,7 @@ export default function DeliveredTab({ orders }: { orders: Order[] }) {
           message="Once orders are completed, their receipts and delivery details will show up here."
         />
       ) : (
-        orders.map((order) => {
+        visibleOrders.map((order) => {
           const item = getOrderPrimaryItem(order);
 
           return (
@@ -70,6 +75,12 @@ export default function DeliveredTab({ orders }: { orders: Order[] }) {
           );
         })
       )}
+      {orders.length > visibleCount ? (
+        <ShowMoreButton
+          remainingCount={orders.length - visibleCount}
+          onPress={() => setVisibleCount((current) => current + ORDERS_PAGE_SIZE)}
+        />
+      ) : null}
     </ScrollView>
   );
 }

@@ -6,6 +6,7 @@ import {
   ensureSupportChatThread,
   fetchChatMessages,
   fetchChatThreads,
+  type ChatAttachmentUpload,
 } from "@/services/chatService";
 import type {
   ChatMessage,
@@ -43,7 +44,11 @@ type ChatContextType = {
     threadId: string,
     options?: { silent?: boolean },
   ) => Promise<ChatMessage[]>;
-  sendMessage: (threadId: string, text: string) => Promise<ChatMessage>;
+  sendMessage: (
+    threadId: string,
+    text: string,
+    attachment?: ChatAttachmentUpload,
+  ) => Promise<ChatMessage>;
   getThreadById: (threadId: string | undefined | null) => ChatThread | undefined;
 };
 
@@ -432,22 +437,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMessage = useCallback(
-    async (threadId: string, text: string) => {
+    async (threadId: string, text: string, attachment?: ChatAttachmentUpload) => {
       const trimmed = text.trim();
-      if (!threadId || !trimmed) {
-        throw new Error("Message text is required.");
+      if (!threadId || (!trimmed && !attachment)) {
+        throw new Error("Add a message or an attachment before sending.");
       }
 
       setSendingThreadId(threadId);
       try {
-        const message = await createChatMessage(threadId, trimmed, accessToken);
+        const message = await createChatMessage(threadId, trimmed, accessToken, attachment);
         setMessagesByThread((current) => ({
           ...current,
           [threadId]: upsertMessage(current[threadId] ?? [], message),
         }));
         const previewUpdate = (thread: ChatThread) => ({
           ...thread,
-          lastMessageText: message.text,
+          lastMessageText:
+            message.text ||
+            (message.attachmentType === "image"
+              ? "📷 Photo"
+              : message.attachmentType === "audio"
+                ? "🎤 Voice message"
+                : message.attachmentType === "file"
+                  ? `📎 ${message.attachmentName ?? "File"}`
+                  : ""),
           lastMessageAt: message.time,
         });
         setCustomerThreads((current) => updateThreadPreview(current, threadId, previewUpdate));

@@ -12,11 +12,14 @@ import {
   OrderTrackingPreview,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import { useToast } from "@/context/ToastContext";
 import { Order } from "@/hooks/useOrders";
 import { router } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { Alert, ScrollView, Text, View } from "react-native";
+
+const ORDERS_PAGE_SIZE = 10;
 
 export default function ProcessingTab({
   orders,
@@ -29,6 +32,8 @@ export default function ProcessingTab({
 }) {
   const orderStyles = useOrderStyles();
   const { showErrorToast } = useToast();
+  const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const visibleOrders = orders.slice(0, visibleCount);
 
   const handleCancel = useCallback(
     (orderId: string) => {
@@ -52,7 +57,7 @@ export default function ProcessingTab({
           message="Orders you place will show up here while they're being prepared and delivered."
         />
       ) : (
-        orders.map((order) => {
+        visibleOrders.map((order) => {
           const item = getOrderPrimaryItem(order);
           const status = getOrderStatusPresentation(order);
 
@@ -112,6 +117,12 @@ export default function ProcessingTab({
           );
         })
       )}
+      {orders.length > visibleCount ? (
+        <ShowMoreButton
+          remainingCount={orders.length - visibleCount}
+          onPress={() => setVisibleCount((current) => current + ORDERS_PAGE_SIZE)}
+        />
+      ) : null}
     </ScrollView>
   );
 }

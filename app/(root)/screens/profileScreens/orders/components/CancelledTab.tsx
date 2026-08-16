@@ -9,13 +9,16 @@ import {
   OrderThumbnail,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import { Order } from "@/hooks/useOrders";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { rMS } from "@/styles/responsive";
 import { useTheme } from "@/context/ThemeContext";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+
+const ORDERS_PAGE_SIZE = 10;
 
 function formatCancelledDate(order: Order) {
   const value = order.cancelled_at ?? order.updated_at;
@@ -25,6 +28,8 @@ function formatCancelledDate(order: Order) {
 export default function CancelledTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
   const { colors } = useTheme();
+  const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const visibleOrders = orders.slice(0, visibleCount);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
@@ -35,7 +40,7 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
           message="If an order is ever cancelled, the reason and total will appear here."
         />
       ) : (
-        orders.map((order) => {
+        visibleOrders.map((order) => {
           const item = getOrderPrimaryItem(order);
 
           return (
@@ -78,6 +83,12 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
           );
         })
       )}
+      {orders.length > visibleCount ? (
+        <ShowMoreButton
+          remainingCount={orders.length - visibleCount}
+          onPress={() => setVisibleCount((current) => current + ORDERS_PAGE_SIZE)}
+        />
+      ) : null}
     </ScrollView>
   );
 }

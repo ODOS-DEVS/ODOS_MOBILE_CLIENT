@@ -11,6 +11,7 @@ import {
   vendorStyles,
 } from "@/components/vendor/VendorUi";
 import { VendorEmptyState } from "@/components/vendor/VendorEmptyState";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import Fonts from "@/constants/Fonts";
 import type { ThemeColors } from "@/constants/theme";
 import { useRealtime } from "@/context/RealtimeContext";
@@ -43,6 +44,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const WALLET_LIST_PAGE_SIZE = 5;
 
 const PAYOUT_METHOD_OPTIONS: Array<{
   value: VendorPayoutDetailsInput["payoutMethodType"];
@@ -145,6 +148,8 @@ export default function VendorWalletScreen() {
   const [institutionSearch, setInstitutionSearch] = useState("");
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [withdrawalNote, setWithdrawalNote] = useState("");
+  const [visibleWithdrawalCount, setVisibleWithdrawalCount] = useState(WALLET_LIST_PAGE_SIZE);
+  const [visibleTransactionCount, setVisibleTransactionCount] = useState(WALLET_LIST_PAGE_SIZE);
 
   const loadWallet = useCallback(async () => {
     if (!hasVendorAccess) {
@@ -643,7 +648,7 @@ export default function VendorWalletScreen() {
               payout, or rejection.
             </Text>
             {wallet?.withdrawalRequests.length ? (
-              wallet.withdrawalRequests.map((request) => {
+              wallet.withdrawalRequests.slice(0, visibleWithdrawalCount).map((request) => {
                 const tone = statusTone(request.status, colors);
                 return (
                   <View key={request.id} style={styles.listCard}>
@@ -730,6 +735,14 @@ export default function VendorWalletScreen() {
                 message="Your payout requests will appear here with status updates from the ODOS admin team."
               />
             )}
+            {wallet && wallet.withdrawalRequests.length > visibleWithdrawalCount ? (
+              <ShowMoreButton
+                remainingCount={wallet.withdrawalRequests.length - visibleWithdrawalCount}
+                onPress={() =>
+                  setVisibleWithdrawalCount((current) => current + WALLET_LIST_PAGE_SIZE)
+                }
+              />
+            ) : null}
           </View>
 
           <View style={styles.sectionCard}>
@@ -740,7 +753,7 @@ export default function VendorWalletScreen() {
               refunds or withdrawal holds affect your balance.
             </Text>
             {wallet?.recentTransactions.length ? (
-              wallet.recentTransactions.map((transaction) => {
+              wallet.recentTransactions.slice(0, visibleTransactionCount).map((transaction) => {
                 const isPositive = transaction.amount >= 0;
                 return (
                   <View key={transaction.id} style={styles.listCard}>
@@ -797,6 +810,14 @@ export default function VendorWalletScreen() {
                 message="Once delivered orders settle, your earnings and payout activity will start showing here."
               />
             )}
+            {wallet && wallet.recentTransactions.length > visibleTransactionCount ? (
+              <ShowMoreButton
+                remainingCount={wallet.recentTransactions.length - visibleTransactionCount}
+                onPress={() =>
+                  setVisibleTransactionCount((current) => current + WALLET_LIST_PAGE_SIZE)
+                }
+              />
+            ) : null}
           </View>
 
           <View style={styles.supportCard}>

@@ -108,6 +108,7 @@ export type InfiniteCatalogFilters = {
   flashEvent?: string;
   subcategory?: string;
   storeId?: string;
+  maxAgeDays?: number;
 };
 
 export function useInfiniteCatalogProducts({
@@ -118,6 +119,7 @@ export function useInfiniteCatalogProducts({
   flashEvent,
   subcategory,
   storeId,
+  maxAgeDays,
   pageSize = CATALOG_PAGE_SIZE,
   enabled = true,
 }: InfiniteCatalogFilters & {
@@ -133,8 +135,9 @@ export function useInfiniteCatalogProducts({
       flashEvent,
       subcategory,
       storeId,
+      maxAgeDays,
     }),
-    [audience, category, flashEvent, placement, section, storeId, subcategory],
+    [audience, category, flashEvent, maxAgeDays, placement, section, storeId, subcategory],
   );
 
   const filterKey = useMemo(() => JSON.stringify(filters), [filters]);

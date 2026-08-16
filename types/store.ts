@@ -112,6 +112,8 @@ export type VendorOrderItem = {
   quantity: number;
   unitPrice: number;
   imageUrl?: string | null;
+  selectedColor?: string | null;
+  selectedSize?: string | null;
 };
 
 export type VendorOrderStatusEvent = {

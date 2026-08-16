@@ -313,6 +313,11 @@ export default function VendorOrderDetailView({
                   <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
                     Qty {item.quantity} · GHS {item.unitPrice.toFixed(2)} each
                   </Text>
+                  {item.selectedColor || item.selectedSize ? (
+                    <Text style={[styles.itemMeta, { color: colors.textMuted }]}>
+                      {[item.selectedColor, item.selectedSize].filter(Boolean).join(" · ")}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text style={[styles.itemTotal, { color: colors.text }]}>
                   GHS {(item.quantity * item.unitPrice).toFixed(2)}

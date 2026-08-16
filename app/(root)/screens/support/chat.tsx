@@ -14,6 +14,7 @@ import {
   renderChatMessageItem,
   useChatStyles,
 } from "@/components/chat/ChatUi";
+import ChatAttachmentSheet from "@/components/chat/ChatAttachmentSheet";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
@@ -23,6 +24,8 @@ import { useToast } from "@/context/ToastContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { updateSupportThreadStatus } from "@/services/chatService";
 import { rMS } from "@/styles/responsive";
+import { pickChatDocument } from "@/utils/chatAttachments";
+import { pickChatImage } from "@/utils/imagePicker";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -84,6 +87,7 @@ export default function SupportChatScreen() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
@@ -281,6 +285,66 @@ export default function SupportChatScreen() {
           ? error.message
           : "We couldn't send that message.",
       );
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    const result = await pickChatImage();
+    if (!result.granted) {
+      showToast("Allow photo access to share images in chat.");
+      return;
+    }
+    if (result.tooLarge) {
+      showToast("That photo is too large. Try a smaller image.");
+      return;
+    }
+    if (!result.asset || !resolvedThreadId) {
+      return;
+    }
+    try {
+      await sendMessage(resolvedThreadId, "", {
+        uri: result.asset.uri,
+        name: result.asset.fileName ?? "photo.jpg",
+        type: result.asset.mimeType,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "We couldn't send that photo.");
+    }
+  };
+
+  const handlePickDocument = async () => {
+    const result = await pickChatDocument();
+    if (result.tooLarge) {
+      showToast("That file is too large. Files must be 15MB or smaller.");
+      return;
+    }
+    if (!result.asset || !resolvedThreadId) {
+      return;
+    }
+    try {
+      await sendMessage(resolvedThreadId, "", {
+        uri: result.asset.uri,
+        name: result.asset.name,
+        type: result.asset.mimeType,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "We couldn't send that file.");
+    }
+  };
+
+  const handleSendVoiceNote = async (uri: string, durationSeconds: number) => {
+    if (!resolvedThreadId) {
+      return;
+    }
+    try {
+      await sendMessage(resolvedThreadId, "", {
+        uri,
+        name: "voice-note.m4a",
+        type: "audio/m4a",
+        durationSeconds,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "We couldn't send that voice note.");
     }
   };
 
@@ -486,6 +550,20 @@ export default function SupportChatScreen() {
         }}
         disabled={!resolvedThreadId || showBootstrapLoader}
         isSending={isSending}
+        attachmentSupported
+        onAttachPress={() => setIsAttachmentSheetOpen(true)}
+        onSendVoiceNote={handleSendVoiceNote}
+        onVoiceNoteError={showToast}
+      />
+      <ChatAttachmentSheet
+        visible={isAttachmentSheetOpen}
+        onClose={() => setIsAttachmentSheetOpen(false)}
+        onPickPhoto={() => {
+          void handlePickPhoto();
+        }}
+        onPickDocument={() => {
+          void handlePickDocument();
+        }}
       />
       <ChatCopyFeedback visible={copyFeedbackVisible} />
     </ChatScreenShell>

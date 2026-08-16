@@ -51,3 +51,54 @@ export async function pickCroppedImage(aspect?: CropAspect, quality = 0.85) {
     uri: asset.uri,
   };
 }
+
+/** Chat photo picker — no forced crop, since a shopper/vendor sharing a
+ * photo in a conversation expects it sent as-is, not cropped to a fixed
+ * shape the way a profile/product image would be. */
+export async function pickChatImage(quality = 0.85) {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    return {
+      granted: false as const,
+      canceled: false as const,
+      tooLarge: false as const,
+      asset: null,
+    };
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: false,
+    quality,
+  });
+
+  if (result.canceled || !result.assets.length) {
+    return {
+      granted: true as const,
+      canceled: true as const,
+      tooLarge: false as const,
+      asset: null,
+    };
+  }
+
+  const asset = result.assets[0];
+  if (typeof asset.fileSize === "number" && asset.fileSize > MAX_IMAGE_BYTES) {
+    return {
+      granted: true as const,
+      canceled: false as const,
+      tooLarge: true as const,
+      asset: null,
+    };
+  }
+
+  return {
+    granted: true as const,
+    canceled: false as const,
+    tooLarge: false as const,
+    asset: {
+      uri: asset.uri,
+      mimeType: asset.mimeType ?? "image/jpeg",
+      fileName: asset.fileName ?? undefined,
+    },
+  };
+}

@@ -40,7 +40,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
   Alert,
+  Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -48,9 +51,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { pickCroppedImage } from "@/utils/imagePicker";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
+
+const MAX_RETURN_EVIDENCE_IMAGES = 4;
 
 function getStatusTone(order: Order): "success" | "danger" | "warning" | "info" {
   if (order.status === "pending_payment") {
@@ -186,6 +192,8 @@ export default function OrderDetailScreen() {
   const [returnQuantity, setReturnQuantity] = React.useState(1);
   const [returnReason, setReturnReason] = React.useState("");
   const [returnDetails, setReturnDetails] = React.useState("");
+  const [returnEvidenceImages, setReturnEvidenceImages] = React.useState<string[]>([]);
+  const [isPickingReturnEvidence, setIsPickingReturnEvidence] = React.useState(false);
   const [isSubmittingReturn, setIsSubmittingReturn] = React.useState(false);
   const {
     visible: reviewPromptVisible,
@@ -332,6 +340,7 @@ export default function OrderDetailScreen() {
     setReturnQuantity(1);
     setReturnReason("");
     setReturnDetails("");
+    setReturnEvidenceImages([]);
   };
 
   const openReturnModal = (item: OrderItem) => {
@@ -340,6 +349,35 @@ export default function OrderDetailScreen() {
     setReturnQuantity(1);
     setReturnReason("");
     setReturnDetails("");
+    setReturnEvidenceImages([]);
+  };
+
+  const handleAddReturnEvidence = async () => {
+    if (returnEvidenceImages.length >= MAX_RETURN_EVIDENCE_IMAGES || isPickingReturnEvidence) {
+      return;
+    }
+
+    setIsPickingReturnEvidence(true);
+    try {
+      const result = await pickCroppedImage();
+      if (!result.granted) {
+        handleError("Allow photo access to attach pictures of the item.");
+        return;
+      }
+      if (result.tooLarge) {
+        handleError("That photo is too large. Try a smaller image.");
+        return;
+      }
+      if (result.uri) {
+        setReturnEvidenceImages((current) => [...current, result.uri as string]);
+      }
+    } finally {
+      setIsPickingReturnEvidence(false);
+    }
+  };
+
+  const handleRemoveReturnEvidence = (uri: string) => {
+    setReturnEvidenceImages((current) => current.filter((item) => item !== uri));
   };
 
   const handleConfirmDelivery = async () => {
@@ -450,6 +488,7 @@ export default function OrderDetailScreen() {
         quantity: returnQuantity,
         reason: trimmedReason,
         details: trimmedDetails || null,
+        evidence_images: returnEvidenceImages.length > 0 ? returnEvidenceImages : null,
       });
       await refreshOrder();
       closeReturnModal(true);
@@ -1036,12 +1075,13 @@ export default function OrderDetailScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => closeReturnModal()}
       >
-        <View style={styles.modalScreen}>
+        <View style={[styles.modalScreen, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => closeReturnModal()}
               disabled={isSubmittingReturn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.modalHeaderAction}>Cancel</Text>
             </TouchableOpacity>
@@ -1052,6 +1092,7 @@ export default function OrderDetailScreen() {
                 void handleSubmitReturnRequest();
               }}
               disabled={isSubmittingReturn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.modalHeaderAction}>
                 {isSubmittingReturn ? "Sending..." : "Submit"}
@@ -1059,10 +1100,19 @@ export default function OrderDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalContent}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
           >
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.modalContent,
+                { paddingBottom: insets.bottom + rV(28) },
+              ]}
+              keyboardShouldPersistTaps="handled"
+            >
             {returnTargetItem ? (
               <>
                 <View style={styles.modalCard}>
@@ -1071,6 +1121,13 @@ export default function OrderDetailScreen() {
                   <Text style={styles.modalProductMeta}>
                     Qty delivered {returnTargetItem.quantity} · ₵{returnTargetItem.line_total.toFixed(2)}
                   </Text>
+                  {returnTargetItem.selected_color || returnTargetItem.selected_size ? (
+                    <Text style={styles.modalProductMeta}>
+                      {[returnTargetItem.selected_color, returnTargetItem.selected_size]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.modalCard}>
@@ -1155,9 +1212,45 @@ export default function OrderDetailScreen() {
                     helperText="Optional, but helpful for support and refund decisions."
                   />
                 </View>
+
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalSectionTitle}>Photos (optional)</Text>
+                  <Text style={styles.quantityHint}>
+                    Add pictures of the item so we can review it faster.
+                  </Text>
+                  <View style={styles.evidenceRow}>
+                    {returnEvidenceImages.map((uri) => (
+                      <View key={uri} style={styles.evidenceThumbWrap}>
+                        <Image source={{ uri }} style={styles.evidenceThumb} />
+                        <TouchableOpacity
+                          style={styles.evidenceRemoveButton}
+                          activeOpacity={0.85}
+                          onPress={() => handleRemoveReturnEvidence(uri)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons name="close" size={rMS(12)} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {returnEvidenceImages.length < MAX_RETURN_EVIDENCE_IMAGES ? (
+                      <TouchableOpacity
+                        style={styles.evidenceAddButton}
+                        activeOpacity={0.85}
+                        onPress={() => void handleAddReturnEvidence()}
+                        disabled={isPickingReturnEvidence}
+                      >
+                        <Ionicons name="camera-outline" size={rMS(20)} color={colors.textMuted} />
+                        <Text style={styles.evidenceAddText}>
+                          {isPickingReturnEvidence ? "Adding…" : "Add photo"}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
               </>
             ) : null}
-          </ScrollView>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <AppReviewPrompt
@@ -1887,6 +1980,50 @@ function createStyles(colors: ThemeColors) {
       fontSize: rMS(14),
       fontFamily: Fonts.titleBold,
       color: colors.text,
+    },
+    evidenceRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: rS(10),
+      marginTop: rV(10),
+    },
+    evidenceThumbWrap: {
+      width: rMS(64),
+      height: rMS(64),
+      borderRadius: rMS(12),
+      overflow: "hidden",
+    },
+    evidenceThumb: {
+      width: "100%",
+      height: "100%",
+    },
+    evidenceRemoveButton: {
+      position: "absolute",
+      top: rS(4),
+      right: rS(4),
+      width: rMS(18),
+      height: rMS(18),
+      borderRadius: rMS(9),
+      backgroundColor: "rgba(17, 24, 39, 0.75)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    evidenceAddButton: {
+      width: rMS(64),
+      height: rMS(64),
+      borderRadius: rMS(12),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rV(2),
+    },
+    evidenceAddText: {
+      fontSize: rMS(9),
+      fontFamily: Fonts.text,
+      color: colors.textMuted,
+      textAlign: "center",
     },
   });
 }

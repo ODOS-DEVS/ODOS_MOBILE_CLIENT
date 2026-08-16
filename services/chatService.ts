@@ -52,6 +52,10 @@ type ChatMessageApi = {
   recipient_user_id: string;
   sender_role: "customer" | "vendor" | "admin";
   body: string;
+  attachment_url?: string | null;
+  attachment_type?: "image" | "audio" | "file" | null;
+  attachment_name?: string | null;
+  attachment_duration_seconds?: number | null;
   is_read: boolean;
   read_at?: string | null;
   created_at: string;
@@ -131,6 +135,10 @@ function mapMessage(payload: ChatMessageApi): ChatMessage {
     recipientUserId: payload.recipient_user_id,
     senderRole: payload.sender_role,
     text: payload.body,
+    attachmentUrl: resolveApiMediaUrl(payload.attachment_url) ?? payload.attachment_url ?? undefined,
+    attachmentType: payload.attachment_type ?? undefined,
+    attachmentName: payload.attachment_name ?? undefined,
+    attachmentDurationSeconds: payload.attachment_duration_seconds ?? undefined,
     isRead: payload.is_read,
     readAt: payload.read_at ?? undefined,
     time: payload.created_at,
@@ -232,21 +240,47 @@ export async function fetchChatMessages(
   return payload.map(mapMessage);
 }
 
+export type ChatAttachmentUpload = {
+  uri: string;
+  name: string;
+  type: string;
+  durationSeconds?: number;
+};
+
 export async function createChatMessage(
   threadId: string,
   body: string,
   accessToken?: string | null,
+  attachment?: ChatAttachmentUpload,
 ) {
   const token = await requireAccessToken(accessToken);
+  const formData = new FormData();
+  const trimmedBody = body.trim();
+  if (trimmedBody) {
+    formData.append("body", trimmedBody);
+  }
+  if (attachment) {
+    formData.append("attachment", {
+      uri: attachment.uri,
+      name: attachment.name,
+      type: attachment.type,
+    } as any);
+    if (typeof attachment.durationSeconds === "number") {
+      formData.append(
+        "attachment_duration_seconds",
+        String(Math.round(attachment.durationSeconds)),
+      );
+    }
+  }
+
   const response = await fetch(
     `${API_BASE_URL}/chat/threads/${encodeURIComponent(threadId)}/messages`,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ body }),
+      body: formData,
     },
   );
 

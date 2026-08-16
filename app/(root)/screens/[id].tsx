@@ -379,6 +379,13 @@ export default function ProductDetail() {
     router.push(buildReviewComposerRoute(reviewTarget));
   }, [requireAuth, reviewTarget, showToast]);
 
+  const handleViewAllReviews = useCallback(() => {
+    router.push({
+      pathname: "/(root)/screens/profileScreens/Account/Reviews" as any,
+      params: { productId: product.id },
+    });
+  }, [product.id]);
+
   const productColorOptions = useMemo(
     () => buildColorOptions(product.colorOptions),
     [product.colorOptions],
@@ -1073,6 +1080,7 @@ export default function ProductDetail() {
                   reviews={productReviews}
                   onWriteReviewPress={handleOpenProductReview}
                   writeReviewLabel={reviewTarget?.mode === "edit" ? "Edit review" : "Write review"}
+                  onViewAllPress={handleViewAllReviews}
                 />
               </View>
 

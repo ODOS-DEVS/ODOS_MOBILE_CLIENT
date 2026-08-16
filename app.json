@@ -62,6 +62,12 @@
         {
           "locationWhenInUsePermission": "ODOS uses your location to pin your store on the map and show directions to shoppers."
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ODOS uses your microphone to record voice notes you send in chat."
+        }
       ]
     ],
     "experiments": {

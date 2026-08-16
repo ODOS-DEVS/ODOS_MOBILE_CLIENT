@@ -433,6 +433,7 @@ type ProductReviewsPanelProps = {
   reviews: ProductReviewPreview[];
   onWriteReviewPress: () => void;
   writeReviewLabel?: string;
+  onViewAllPress?: () => void;
 };
 
 export function ProductReviewsPanel({
@@ -442,6 +443,7 @@ export function ProductReviewsPanel({
   reviews,
   onWriteReviewPress,
   writeReviewLabel = "Write review",
+  onViewAllPress,
 }: ProductReviewsPanelProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -498,7 +500,14 @@ export function ProductReviewsPanel({
             </View>
           ))}
           {reviewCount > 3 ? (
-            <Text style={styles.moreReviewsText}>+{reviewCount - 3} more in My Reviews</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              disabled={!onViewAllPress}
+              onPress={onViewAllPress}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.moreReviewsText}>+{reviewCount - 3} more in My Reviews</Text>
+            </TouchableOpacity>
           ) : null}
         </View>
       ) : null}

@@ -22,6 +22,7 @@ import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBar
 import { useTheme } from "@/context/ThemeContext";
 import { useMarkets, useStores } from "@/hooks/useCommerce";
 import { useCatalogProducts } from "@/hooks/useCatalog";
+import { useNewProducts } from "@/hooks/useNewProducts";
 import { useForYouRecommendations } from "@/hooks/useRecommendations";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { usePromoBanners } from "@/hooks/usePromoBanners";
@@ -176,6 +177,12 @@ const HomeScreen = () => {
     section: "popular",
   });
   const {
+    products: newProducts,
+    isLoading: isLoadingNewProducts,
+    error: newProductsError,
+    refresh: refreshNewProducts,
+  } = useNewProducts();
+  const {
     markets: marketItems,
     isLoading: isLoadingMarkets,
     error: marketsError,
@@ -223,6 +230,7 @@ const HomeScreen = () => {
         refreshCampaigns(),
         refreshFlashSales(),
         refreshPopular(),
+        refreshNewProducts(),
         refreshMarkets(),
         refreshStores(),
       ]);
@@ -233,6 +241,7 @@ const HomeScreen = () => {
     refreshCampaigns,
     refreshFlashSales,
     refreshMarkets,
+    refreshNewProducts,
     refreshPopular,
     refreshPromoBanners,
     refreshRecommendations,
@@ -601,6 +610,31 @@ const HomeScreen = () => {
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => <ProductCard {...item} sourceScreen="home_popular" />}
+                    contentContainerStyle={{
+                      paddingRight: horizontalPadding,
+                    }}
+                  />
+                </View>
+              </HomeSection>
+
+              <HomeSection
+                title="New products"
+                onSeeAll={() => router.push("../screens/new-products")}
+                isLoading={isLoadingNewProducts}
+                isEmpty={newProducts.length === 0}
+                error={newProductsError}
+                onRetry={() => void refreshNewProducts()}
+                skeleton={<SectionSkeleton variant="strip" />}
+                sectionSpacing={sectionSpacing}
+                horizontalPadding={horizontalPadding}
+              >
+                <View style={{ paddingHorizontal: horizontalPadding }}>
+                  <FlatList
+                    data={newProducts}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => <ProductCard {...item} sourceScreen="home_new" />}
                     contentContainerStyle={{
                       paddingRight: horizontalPadding,
                     }}

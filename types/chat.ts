@@ -47,6 +47,8 @@ export type ChatThread = {
   updatedAt: string;
 };
 
+export type ChatAttachmentType = "image" | "audio" | "file";
+
 export type ChatMessage = {
   id: string;
   threadId: string;
@@ -54,6 +56,10 @@ export type ChatMessage = {
   recipientUserId: string;
   senderRole: ChatParticipantRole;
   text: string;
+  attachmentUrl?: string | null;
+  attachmentType?: ChatAttachmentType | null;
+  attachmentName?: string | null;
+  attachmentDurationSeconds?: number | null;
   isRead: boolean;
   readAt?: string | null;
   time: string;

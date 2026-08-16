@@ -108,6 +108,8 @@ type VendorOrderApi = {
     quantity?: number;
     unit_price?: number;
     image_url?: string | null;
+    selected_color?: string | null;
+    selected_size?: string | null;
   }>;
   timeline?: Array<{
     id: string;
@@ -289,6 +291,8 @@ function mapOrder(payload: VendorOrderApi): VendorOrder {
         quantity: item.quantity ?? 0,
         unitPrice: item.unit_price ?? 0,
         imageUrl: resolveApiMediaUrl(item.image_url) ?? item.image_url ?? undefined,
+        selectedColor: item.selected_color ?? undefined,
+        selectedSize: item.selected_size ?? undefined,
       })) ?? [],
     timeline:
       payload.timeline?.map((event) => ({
