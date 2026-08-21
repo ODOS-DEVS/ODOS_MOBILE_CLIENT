@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import { useVendorSession } from "@/hooks/useVendorSession";
+import { useLoyalty } from "@/hooks/useLoyalty";
 import { useVendorStore } from "@/stores/vendorStore";
 import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const [workspaceSwitcherVisible, setWorkspaceSwitcherVisible] = useState(false);
   const { isLoading, hasLoadedVendorState, refreshVendorState, vendorApplication, vendorStatus } =
     useVendorStore();
+  const { account: loyaltyAccount } = useLoyalty();
   const hasRefreshedThisFocusRef = useRef(false);
   const authUserSnapshot = useMemo(
     () =>
@@ -513,6 +515,39 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             ) : null}
           </View>
+
+          {workspaceMode !== "sell_only" && loyaltyAccount && (
+            <>
+              <Text style={styles.sectionTitle}>Loyalty</Text>
+              <View style={styles.vendorCard}>
+                <View style={styles.vendorCardHeader}>
+                  <View style={[styles.vendorIconWrap, { backgroundColor: "#FFF5E6" }]}>
+                    <Ionicons
+                      name="star-outline"
+                      size={rMS(18)}
+                      color="#FFB800"
+                    />
+                  </View>
+                  <View style={styles.vendorTextWrap}>
+                    <Text style={styles.vendorTitle}>{loyaltyAccount.tier_level} Member</Text>
+                    <Text style={styles.vendorBody}>
+                      {loyaltyAccount.total_points.toLocaleString()} points · GHS {(loyaltyAccount.total_points / 100).toFixed(2)} value
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.vendorButton}
+                  onPress={() => router.push("../screens/loyalty" as any)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.vendorButtonLabel}>
+                    View Loyalty Details
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           <Text style={styles.sectionTitle}>
             {workspaceMode === "sell_only" ? "Business" : "Account"}
