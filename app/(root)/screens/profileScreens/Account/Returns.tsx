@@ -22,6 +22,7 @@ import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
+import { getReturnStatusMeta, isOpenReturnStatus } from "@/utils/returns";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import {
@@ -41,27 +42,6 @@ type ReturnTarget = {
   order: Order;
   item: OrderItem;
 };
-
-const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
-
-function getReturnStatusMeta(status: ReturnRequest["status"], colors: ThemeColors) {
-  switch (status) {
-    case "requested":
-      return { label: "Requested", bg: colors.warningSoft, color: colors.warningText };
-    case "under_review":
-      return { label: "Under Review", bg: colors.infoSoft, color: colors.infoText };
-    case "approved":
-      return { label: "Approved", bg: colors.successSoft, color: colors.successText };
-    case "rejected":
-      return { label: "Declined", bg: colors.dangerSoft, color: colors.dangerText };
-    case "refunded":
-      return { label: "Refunded", bg: colors.successSoft, color: colors.successText };
-    case "exchanged":
-      return { label: "Exchanged", bg: colors.infoSoft, color: colors.infoText };
-    default:
-      return { label: status.replace(/_/g, " "), bg: colors.surfaceMuted, color: colors.textSecondary };
-  }
-}
 
 function formatFriendlyDate(value?: string | null) {
   if (!value) {
@@ -282,7 +262,7 @@ export default function ReturnsScreen() {
             eligibleItems.map(({ order, item, latestRequest }) => {
               const imageSource = resolveImageSource(item.image_url, item.image_key);
               const hasOpenRequest = latestRequest
-                ? OPEN_RETURN_STATUSES.has(latestRequest.status)
+                ? isOpenReturnStatus(latestRequest.status)
                 : false;
               const statusMeta = latestRequest
                 ? getReturnStatusMeta(latestRequest.status, colors)

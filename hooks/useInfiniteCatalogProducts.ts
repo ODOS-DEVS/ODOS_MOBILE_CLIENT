@@ -3,8 +3,10 @@ import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
 import {
   buildCatalogProductsUrl,
+  classifyFetchError,
   fetchJsonCached,
   productsStaleTimeMs,
+  type FetchErrorKind,
 } from "@/utils/fetchCache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -151,6 +153,7 @@ export function useInfiniteCatalogProducts({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
 
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -201,10 +204,11 @@ export function useInfiniteCatalogProducts({
 
     try {
       await fetchPage({ offset: 0, append: false });
-    } catch {
+    } catch (caughtError) {
       if (isMountedRef.current) {
         setProducts([]);
         setError("We couldn't load products right now.");
+        setErrorKind(classifyFetchError(caughtError));
       }
     } finally {
       if (isMountedRef.current) {
@@ -230,9 +234,10 @@ export function useInfiniteCatalogProducts({
 
     try {
       await fetchPage({ offset: offsetRef.current, append: true });
-    } catch {
+    } catch (caughtError) {
       if (isMountedRef.current) {
         setError("We couldn't load more products.");
+        setErrorKind(classifyFetchError(caughtError));
       }
     } finally {
       if (isMountedRef.current) {
@@ -281,6 +286,7 @@ export function useInfiniteCatalogProducts({
     isLoadingMore,
     hasMore,
     error,
+    errorKind,
     loadMore,
     refresh,
   };

@@ -61,16 +61,38 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
+const NETWORK_ERROR_PATTERN =
+  /network request failed|failed to fetch|timed out|timeout|aborted/i;
+
 function isRetryableFetchError(error: unknown): boolean {
   if (error instanceof CachedFetchError) {
     return error.status >= 500;
   }
   if (error instanceof Error) {
-    return /network request failed|failed to fetch|timed out|timeout|aborted/i.test(
-      error.message,
-    );
+    return NETWORK_ERROR_PATTERN.test(error.message);
   }
   return false;
+}
+
+export type FetchErrorKind = "network" | "server" | "unknown";
+
+/**
+ * Best-effort classification of a failed request, without any device-level
+ * connectivity check (this app has no NetInfo/expo-network dependency): a
+ * request that never got an HTTP response (timed out, aborted, DNS/connect
+ * failure) reads as "network" — can't reach ODOS, which covers both "you're
+ * offline" and "the backend is down" since we can't tell those apart from
+ * here. A request that got a 5xx (or other non-2xx) response reads as
+ * "server" — we reached ODOS and it had a problem.
+ */
+export function classifyFetchError(error: unknown): FetchErrorKind {
+  if (error instanceof CachedFetchError) {
+    return error.status >= 500 ? "server" : "unknown";
+  }
+  if (error instanceof Error && NETWORK_ERROR_PATTERN.test(error.message)) {
+    return "network";
+  }
+  return "unknown";
 }
 
 async function fetchOnce<T>(url: string, init?: RequestInit): Promise<T> {

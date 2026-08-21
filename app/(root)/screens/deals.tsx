@@ -10,6 +10,7 @@ import {
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import CommerceImage from "@/components/media/CommerceImage";
 import { useAuth } from "@/context/AuthContext";
@@ -45,7 +46,7 @@ export default function DealsScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { showToast } = useToast();
-  const { data, isLoading, error, refresh } = useDealsHub();
+  const { data, isLoading, error, errorKind, refresh } = useDealsHub();
   const { claimVoucher, vouchers } = useVouchers();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -214,11 +215,7 @@ export default function DealsScreen() {
           {isLoading && !data ? (
             <HomeContentSkeleton />
           ) : error ? (
-            <CommerceSeeAllEmptyState
-              icon="alert-circle-outline"
-              title="Couldn't load deals"
-              subtitle={error}
-            />
+            <NetworkErrorState kind={errorKind} title="Couldn't load deals" onRetry={() => void refresh()} />
           ) : (
             <>
               {hasCustomBanners ? (

@@ -291,6 +291,26 @@ export async function createChatMessage(
   return mapMessage((await response.json()) as ChatMessageApi);
 }
 
+export async function deleteChatMessage(
+  messageId: string,
+  accessToken?: string | null,
+) {
+  const token = await requireAccessToken(accessToken);
+  const response = await fetch(
+    `${API_BASE_URL}/chat/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+}
+
 export async function updateSupportThreadStatus(
   threadId: string,
   status: "resolved" | "waiting_on_admin" | "waiting_on_customer",

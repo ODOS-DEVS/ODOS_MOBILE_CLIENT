@@ -5,7 +5,12 @@ import {
   mapProduct,
   type ProductApiItem,
 } from "@/hooks/useCatalog";
-import { buildCatalogProductsUrl, fetchJsonCached } from "@/utils/fetchCache";
+import {
+  buildCatalogProductsUrl,
+  classifyFetchError,
+  fetchJsonCached,
+  type FetchErrorKind,
+} from "@/utils/fetchCache";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -78,6 +83,7 @@ export function useForYouRecommendations({ limit = 12 }: { limit?: number } = {}
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const hasLoadedOnceRef = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -131,6 +137,7 @@ export function useForYouRecommendations({ limit = 12 }: { limit?: number } = {}
         hasLoadedOnceRef.current = true;
       } else {
         setError(loadError instanceof Error ? loadError.message : "We couldn't load recommendations.");
+        setErrorKind(classifyFetchError(loadError));
         setFeed({
           title: "Popular on ODOS",
           subtitle: undefined,
@@ -152,6 +159,7 @@ export function useForYouRecommendations({ limit = 12 }: { limit?: number } = {}
     products: feed.products,
     isLoading,
     error,
+    errorKind,
     refresh,
   };
 }

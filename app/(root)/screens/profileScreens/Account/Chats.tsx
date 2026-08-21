@@ -6,6 +6,7 @@ import {
   useAccountStyles,
   ChatThreadRow,
 } from "@/components/chat/ChatUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useChat } from "@/context/ChatContext";
 import { router, useFocusEffect } from "expo-router";
@@ -14,7 +15,13 @@ import { FlatList, View } from "react-native";
 
 export default function ChatsScreen() {
   const accountStyles = useAccountStyles();
-  const { customerThreads, isLoadingCustomerThreads, loadCustomerThreads } = useChat();
+  const {
+    customerThreads,
+    isLoadingCustomerThreads,
+    threadsLoadError,
+    threadsLoadErrorKind,
+    loadCustomerThreads,
+  } = useChat();
 
   useFocusEffect(
     useCallback(() => {
@@ -68,6 +75,11 @@ export default function ChatsScreen() {
         />
       ) : isLoadingCustomerThreads ? (
         <ScreenLoader label="Loading your conversations..." />
+      ) : threadsLoadError ? (
+        <NetworkErrorState
+          kind={threadsLoadErrorKind}
+          onRetry={() => void loadCustomerThreads()}
+        />
       ) : (
         <AccountEmptyState
           icon="chatbubbles-outline"

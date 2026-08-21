@@ -1,7 +1,7 @@
 import type { CatalogProductItem } from "@/hooks/useCatalog";
 import { API_BASE_URL } from "@/constants/auth";
 import { resolveApiMediaUrl, resolveImageSource } from "@/utils/media";
-import { buildDealProductsUrl } from "@/utils/fetchCache";
+import { buildDealProductsUrl, classifyFetchError, type FetchErrorKind } from "@/utils/fetchCache";
 import { useCallback, useEffect, useState } from "react";
 
 type ProductApiItem = {
@@ -87,6 +87,7 @@ export function useDealProducts({
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const [hasMore, setHasMore] = useState(true);
 
   const loadPage = useCallback(
@@ -122,6 +123,7 @@ export function useDealProducts({
       setProducts([]);
       setHasMore(false);
       setError(loadError instanceof Error ? loadError.message : "Unable to load deals.");
+      setErrorKind(classifyFetchError(loadError));
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +153,7 @@ export function useDealProducts({
     isLoading,
     isLoadingMore,
     error,
+    errorKind,
     hasMore,
     refresh,
     loadMore,

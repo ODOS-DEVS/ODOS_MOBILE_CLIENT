@@ -1,6 +1,7 @@
 import { CategoryCollectionTile } from "@/components/category/CategoryUi";
 import { CategoryListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AccountEmptyState } from "@/components/account/AccountUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import Fonts from "@/constants/Fonts";
@@ -23,7 +24,7 @@ const CategoryScreen = () => {
   const gridGap = productCardGapX();
   const cardWidth = gridCardWidth(NUM_COLUMNS, gridGap);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { categories: catalogCategories, isLoading, error, refresh } =
+  const { categories: catalogCategories, isLoading, error, errorKind, refresh } =
     useCatalogCategories();
 
   useFocusEffect(
@@ -102,18 +103,16 @@ const CategoryScreen = () => {
             <View style={{ paddingHorizontal: horizontalPadding }}>
               <CategoryListSkeleton />
             </View>
+          ) : error ? (
+            <View style={{ paddingHorizontal: horizontalPadding }}>
+              <NetworkErrorState kind={errorKind} onRetry={() => void refresh()} />
+            </View>
           ) : (
             <View style={{ paddingHorizontal: horizontalPadding }}>
               <AccountEmptyState
                 icon="grid-outline"
-                title={error ? "Couldn't load categories" : "No categories yet"}
-                message={
-                  error
-                    ? "Pull down to refresh and confirm the ODOS backend is reachable."
-                    : "Categories you enable in admin will show up here automatically."
-                }
-                actionLabel={error ? "Try again" : undefined}
-                onAction={error ? () => void refresh() : undefined}
+                title="No categories yet"
+                message="Categories you enable in admin will show up here automatically."
               />
             </View>
           )

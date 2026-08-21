@@ -7,12 +7,14 @@ import {
   buildCatalogProductsUrl,
   CACHE_STALE,
   CachedFetchError,
+  classifyFetchError,
   fetchJsonCached,
   hasCachedJson,
   invalidateCachedUrl,
   peekCachedJson,
   productsStaleTimeMs,
   subscribeCacheUpdates,
+  type FetchErrorKind,
 } from "@/utils/fetchCache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -259,6 +261,7 @@ export function useCatalogCategories() {
   });
   const [isLoading, setIsLoading] = useState(() => !hasCachedJson(categoriesUrl));
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
@@ -291,9 +294,10 @@ export function useCatalogCategories() {
         if (isMountedRef.current && !background) {
           setError(null);
         }
-      } catch {
+      } catch (caughtError) {
         if (isMountedRef.current && !background && !hasCachedJson(categoriesUrl)) {
           setError("We couldn't load categories right now.");
+          setErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -338,7 +342,7 @@ export function useCatalogCategories() {
     });
   }, [categoriesUrl, loadCategories, subscribe]);
 
-  return { categories, isLoading, error, refresh: loadCategories };
+  return { categories, isLoading, error, errorKind, refresh: loadCategories };
 }
 
 export function useCatalogProducts({
@@ -384,6 +388,7 @@ export function useCatalogProducts({
   });
   const [isLoading, setIsLoading] = useState(() => !hasCachedJson(productsUrl));
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -424,9 +429,10 @@ export function useCatalogProducts({
         if (isMountedRef.current && !background) {
           setError(null);
         }
-      } catch {
+      } catch (caughtError) {
         if (isMountedRef.current && !background && !hasCachedJson(productsUrl)) {
           setError("We couldn't load products right now.");
+          setErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -489,6 +495,7 @@ export function useCatalogProducts({
     products,
     isLoading,
     error,
+    errorKind,
     sortOptions,
     refresh: loadProducts,
   };

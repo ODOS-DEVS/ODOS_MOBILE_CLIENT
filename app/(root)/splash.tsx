@@ -1,17 +1,44 @@
+import { LaunchBackdrop, OdosMark, OdosWordmark } from "@/components/launch/OdosLaunchChrome";
+import { useAuth } from "@/context/AuthContext";
+import { rS, rV } from "@/styles/responsive";
 import {
   AUTH_ONBOARDING_HREF,
   exitAuthToHome,
 } from "@/utils/authNavigation";
 import { hasCompletedOnboarding } from "@/utils/onboardingStorage";
 import { router, SplashScreen as ExpoSplashScreen } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
-import { useAuth } from "@/context/AuthContext";
+import { AccessibilityInfo } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+
+// Long enough for the mark and wordmark to finish fading in before we leave.
+const MIN_VISIBLE_MS = 1100;
+const REDUCED_MOTION_MIN_VISIBLE_MS = 500;
+const EXIT_DURATION_MS = 220;
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
 
 export default function SplashScreen() {
   const { isHydrating, user } = useAuth();
   const [launchTarget, setLaunchTarget] = useState<"tabs" | "onboarding" | null>(null);
+  const hasHiddenNativeSplashRef = useRef(false);
   const hasNavigatedRef = useRef(false);
+  const contentOpacity = useSharedValue(1);
+  const contentScale = useSharedValue(1);
+
+  // Hide the native splash immediately: this screen's first frame is the same flat
+  // black canvas the native splash used, so the handoff is invisible — the mark then
+  // fades in on top of it instead of sitting hidden behind a static image.
+  useEffect(() => {
+    if (hasHiddenNativeSplashRef.current) {
+      return;
+    }
+    hasHiddenNativeSplashRef.current = true;
+    void ExpoSplashScreen.hideAsync();
+  }, []);
 
   useEffect(() => {
     if (isHydrating) {
@@ -21,7 +48,11 @@ export default function SplashScreen() {
     let cancelled = false;
 
     void (async () => {
-      const completed = await hasCompletedOnboarding();
+      const reducedMotion = await AccessibilityInfo.isReduceMotionEnabled();
+      const [completed] = await Promise.all([
+        hasCompletedOnboarding(),
+        wait(reducedMotion ? REDUCED_MOTION_MIN_VISIBLE_MS : MIN_VISIBLE_MS),
+      ]);
       if (!cancelled) {
         setLaunchTarget(completed ? "tabs" : "onboarding");
       }
@@ -33,23 +64,43 @@ export default function SplashScreen() {
   }, [isHydrating]);
 
   useEffect(() => {
-    if (isHydrating || !launchTarget || hasNavigatedRef.current) {
+    if (!launchTarget || hasNavigatedRef.current) {
       return;
     }
 
     hasNavigatedRef.current = true;
+    contentOpacity.value = withTiming(0, { duration: EXIT_DURATION_MS });
+    contentScale.value = withTiming(0.96, { duration: EXIT_DURATION_MS });
 
-    void (async () => {
+    const timeout = setTimeout(() => {
       if (launchTarget === "onboarding") {
         router.replace(AUTH_ONBOARDING_HREF);
       } else {
         exitAuthToHome(router, user);
       }
+    }, EXIT_DURATION_MS);
 
-      await ExpoSplashScreen.hideAsync();
-    })();
-  }, [isHydrating, launchTarget, user]);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launchTarget, user]);
 
-  // Keep the native launch splash visible; match its black background if anything peeks through.
-  return <View style={{ flex: 1, backgroundColor: "#000000" }} />;
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ scale: contentScale.value }],
+  }));
+
+  return (
+    <LaunchBackdrop>
+      <StatusBar style="light" />
+      <Animated.View
+        style={[
+          { flex: 1, alignItems: "center", justifyContent: "center", gap: rV(20) },
+          contentStyle,
+        ]}
+      >
+        <OdosMark size={rS(112)} />
+        <OdosWordmark delayMs={260} />
+      </Animated.View>
+    </LaunchBackdrop>
+  );
 }

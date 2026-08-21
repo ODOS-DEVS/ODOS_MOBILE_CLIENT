@@ -1,9 +1,8 @@
 import type { VendorReturnQueueTab, VendorReturnRequest } from "@/types/store";
-
-const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
+import { isOpenReturnStatus } from "@/utils/returns";
 
 export function isOpenVendorReturn(status: string) {
-  return OPEN_RETURN_STATUSES.has(status);
+  return isOpenReturnStatus(status);
 }
 
 export function filterVendorReturnsByTab(

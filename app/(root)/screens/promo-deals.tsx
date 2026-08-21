@@ -7,6 +7,7 @@ import {
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppColors } from "@/constants/Colors";
 import { useDealProducts } from "@/hooks/useDealProducts";
@@ -47,6 +48,7 @@ export default function PromoDealsScreen() {
     isLoading,
     isLoadingMore,
     error,
+    errorKind,
     hasMore,
     refresh,
     loadMore,
@@ -121,11 +123,7 @@ export default function PromoDealsScreen() {
         <View
           style={{ paddingHorizontal: horizontalPadding, paddingTop: rV(12) }}
         >
-          <CommerceSeeAllEmptyState
-            icon="alert-circle-outline"
-            title="Couldn't load deals"
-            subtitle={error}
-          />
+          <NetworkErrorState kind={errorKind} title="Couldn't load deals" onRetry={() => void refresh()} />
         </View>
       ) : (
         <FlatList

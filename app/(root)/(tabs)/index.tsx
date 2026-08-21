@@ -14,7 +14,7 @@ import { ViewAllButton } from "@/components/browse/ViewAllButton";
 import { OffersCountBadge } from "@/components/deals/OffersCountBadge";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import EmptySection from "@/components/empty/EmptySection";
-import { AccountEmptyState } from "@/components/account/AccountUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import SearchLauncher from "@/components/search/SearchLauncher";
 import StoreCard from "@/components/cards/StoreCard";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -30,7 +30,8 @@ import { useMerchandisingCampaigns } from "@/hooks/useMerchandisingCampaigns";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
 import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import { navigateToMerchandisingCampaign } from "@/utils/promoNavigation";
-import { productCardGapY, rMS, rS, rV, useResponsive } from "@/styles/responsive";
+import { productCardGapY, rS, rV, useResponsive } from "@/styles/responsive";
+import type { FetchErrorKind } from "@/utils/fetchCache";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
@@ -43,7 +44,10 @@ type HomeSectionProps = {
   isLoading: boolean;
   isEmpty: boolean;
   error?: string | null;
+  errorKind?: FetchErrorKind;
   onRetry?: () => void;
+  /** The screen already shows one full-page error state — don't repeat it per-section. */
+  hideErrorRow?: boolean;
   skeleton: React.ReactNode;
   children: React.ReactNode;
   sectionSpacing: number;
@@ -57,17 +61,18 @@ function HomeSection({
   isLoading,
   isEmpty,
   error,
+  errorKind,
   onRetry,
+  hideErrorRow,
   skeleton,
   children,
   sectionSpacing,
   horizontalPadding,
 }: HomeSectionProps) {
-  const { colors } = useTheme();
-
   // A section that failed to load looks identical to "genuinely nothing here" once
-  // hidden — only skip rendering when it's empty for real, not because its fetch failed.
-  if (!isLoading && isEmpty && !error) {
+  // hidden — only skip rendering when it's empty for real, not because its fetch
+  // failed — unless a full-page error is already covering that message.
+  if (!isLoading && isEmpty && (!error || hideErrorRow)) {
     return null;
   }
 
@@ -110,27 +115,8 @@ function HomeSection({
           {skeleton}
         </View>
       ) : error && isEmpty ? (
-        <View
-          style={{
-            paddingHorizontal: horizontalPadding,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: rS(8),
-          }}
-        >
-          <Text style={{ color: colors.textMuted, fontSize: rMS(12.5), flexShrink: 1 }}>
-            Couldn&apos;t load this section.
-          </Text>
-          {onRetry ? (
-            <TouchableOpacity onPress={onRetry} accessibilityRole="button">
-              <Text
-                className="font-montserrat-bold"
-                style={{ color: colors.primary, fontSize: rMS(12.5) }}
-              >
-                Retry
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+        <View style={{ paddingHorizontal: horizontalPadding }}>
+          <NetworkErrorState compact kind={errorKind} onRetry={onRetry} />
         </View>
       ) : (
         children
@@ -147,6 +133,7 @@ const HomeScreen = () => {
     products: flashSaleProducts,
     isLoading: isLoadingFlashSales,
     error: flashSalesError,
+    errorKind: flashSalesErrorKind,
     refresh: refreshFlashSales,
   } = useCatalogProducts({
     placement: "flash-sale",
@@ -172,6 +159,7 @@ const HomeScreen = () => {
     products: popularProducts,
     isLoading: isLoadingPopular,
     error: popularError,
+    errorKind: popularErrorKind,
     refresh: refreshPopular,
   } = useCatalogProducts({
     section: "popular",
@@ -180,18 +168,21 @@ const HomeScreen = () => {
     products: newProducts,
     isLoading: isLoadingNewProducts,
     error: newProductsError,
+    errorKind: newProductsErrorKind,
     refresh: refreshNewProducts,
   } = useNewProducts();
   const {
     markets: marketItems,
     isLoading: isLoadingMarkets,
     error: marketsError,
+    errorKind: marketsErrorKind,
     refresh: refreshMarkets,
   } = useMarkets();
   const {
     stores: storeItems,
     isLoading: isLoadingStores,
     error: storesError,
+    errorKind: storesErrorKind,
     refresh: refreshStores,
   } = useStores({});
 
@@ -272,6 +263,15 @@ const HomeScreen = () => {
 
   const catalogLoadError =
     flashSalesError || popularError || marketsError || storesError || null;
+  const catalogErrorKind: FetchErrorKind = flashSalesError
+    ? flashSalesErrorKind
+    : popularError
+      ? popularErrorKind
+      : marketsError
+        ? marketsErrorKind
+        : storesError
+          ? storesErrorKind
+          : "unknown";
 
   const isCatalogEmpty =
     !isBootstrapping &&
@@ -351,12 +351,12 @@ const HomeScreen = () => {
               {isCatalogEmpty ? (
                 <View style={{ paddingHorizontal: horizontalPadding, marginTop: sectionSpacing }}>
                   {catalogLoadError ? (
-                    <AccountEmptyState
-                      icon="cloud-offline-outline"
+                    <NetworkErrorState
+                      kind={catalogErrorKind}
                       title="Couldn't load the catalog"
-                      message="Pull down to refresh, or try again once the ODOS backend is reachable."
-                      actionLabel="Try again"
-                      onAction={() => void handleRefreshHome()}
+                      message="Pull down to refresh, or tap try again."
+                      onRetry={() => void handleRefreshHome()}
+                      isRetrying={isRefreshingHome}
                     />
                   ) : (
                     <EmptySection
@@ -384,6 +384,8 @@ const HomeScreen = () => {
                 isLoading={isLoadingFlashSales}
                 isEmpty={flashSaleProducts.length === 0}
                 error={flashSalesError}
+                errorKind={flashSalesErrorKind}
+                hideErrorRow={isCatalogEmpty}
                 onRetry={() => void refreshFlashSales()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
@@ -576,6 +578,8 @@ const HomeScreen = () => {
                 isLoading={isLoadingStores}
                 isEmpty={storeItems.length === 0}
                 error={storesError}
+                errorKind={storesErrorKind}
+                hideErrorRow={isCatalogEmpty}
                 onRetry={() => void refreshStores()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
@@ -598,6 +602,8 @@ const HomeScreen = () => {
                 isLoading={isLoadingPopular}
                 isEmpty={popularProducts.length === 0}
                 error={popularError}
+                errorKind={popularErrorKind}
+                hideErrorRow={isCatalogEmpty}
                 onRetry={() => void refreshPopular()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
@@ -623,6 +629,8 @@ const HomeScreen = () => {
                 isLoading={isLoadingNewProducts}
                 isEmpty={newProducts.length === 0}
                 error={newProductsError}
+                errorKind={newProductsErrorKind}
+                hideErrorRow={isCatalogEmpty}
                 onRetry={() => void refreshNewProducts()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}
@@ -648,6 +656,8 @@ const HomeScreen = () => {
                 isLoading={isLoadingMarkets}
                 isEmpty={marketItems.length === 0}
                 error={marketsError}
+                errorKind={marketsErrorKind}
+                hideErrorRow={isCatalogEmpty}
                 onRetry={() => void refreshMarkets()}
                 skeleton={<SectionSkeleton variant="strip" />}
                 sectionSpacing={sectionSpacing}

@@ -32,6 +32,7 @@ import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/us
 import { getDeliveryMethodLabel } from "@/utils/delivery";
 import { formatOrderTimelineDate, getOrderTimelineSteps } from "@/utils/orderTracking";
 import { buildReviewComposerRoute } from "@/utils/reviewNavigation";
+import { getReturnStatusMeta, isOpenReturnStatus } from "@/utils/returns";
 import { useReviews } from "@/hooks/useReviews";
 import { useAppReview } from "@/hooks/useAppReview";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -112,54 +113,6 @@ function getStatusMeta(order: Order, colors: ThemeColors) {
   };
 }
 
-const OPEN_RETURN_STATUSES = new Set(["requested", "under_review", "approved"]);
-
-function getReturnStatusMeta(status: ReturnRequest["status"], colors: ThemeColors) {
-  switch (status) {
-    case "requested":
-      return {
-        label: "Requested",
-        backgroundColor: colors.warningSoft,
-        textColor: colors.warningText,
-      };
-    case "under_review":
-      return {
-        label: "Under Review",
-        backgroundColor: colors.infoSoft,
-        textColor: colors.infoText,
-      };
-    case "approved":
-      return {
-        label: "Approved",
-        backgroundColor: colors.successSoft,
-        textColor: colors.successText,
-      };
-    case "rejected":
-      return {
-        label: "Declined",
-        backgroundColor: colors.dangerSoft,
-        textColor: colors.dangerText,
-      };
-    case "refunded":
-      return {
-        label: "Refunded",
-        backgroundColor: colors.successSoft,
-        textColor: colors.successText,
-      };
-    case "exchanged":
-      return {
-        label: "Exchanged",
-        backgroundColor: colors.infoSoft,
-        textColor: colors.infoText,
-      };
-    default:
-      return {
-        label: status.replace(/_/g, " "),
-        backgroundColor: colors.surfaceMuted,
-        textColor: colors.textSecondary,
-      };
-  }
-}
 
 export default function OrderDetailScreen() {
   const accountStyles = useAccountStyles();
@@ -661,7 +614,7 @@ export default function OrderDetailScreen() {
             const itemImage = getOrderLineItemImage(item);
             const latestRequest = latestReturnRequestsByItem.get(item.id);
             const hasOpenRequest = latestRequest
-              ? OPEN_RETURN_STATUSES.has(latestRequest.status)
+              ? isOpenReturnStatus(latestRequest.status)
               : false;
             const latestRequestMeta = latestRequest
               ? getReturnStatusMeta(latestRequest.status, colors)

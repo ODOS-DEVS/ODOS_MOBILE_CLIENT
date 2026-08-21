@@ -7,6 +7,7 @@ import {
   BEHAVIOR_EVENT_TYPES,
   trackBehaviorEvent,
 } from "@/services/behaviorTracking";
+import { classifyFetchError, type FetchErrorKind } from "@/utils/fetchCache";
 import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
@@ -37,6 +38,8 @@ type CartContextType = {
   cart: CartItem[];
   isSyncingCart: boolean;
   cartItemCount: number;
+  cartLoadError: string | null;
+  cartLoadErrorKind: FetchErrorKind;
   getItemQuantity: (productId: string) => number;
   addToCart: (product: Omit<CartItem, "quantity">) => Promise<void>;
   addItemsToCart: (products: CartItemInput[]) => Promise<void>;
@@ -144,7 +147,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const { showErrorToast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSyncingCart, setIsSyncingCart] = useState(false);
+  const [cartLoadError, setCartLoadError] = useState<string | null>(null);
+  const [cartLoadErrorKind, setCartLoadErrorKind] = useState<FetchErrorKind>("unknown");
   const guestCartRef = useRef<CartItem[]>([]);
+  const cartRef = useRef<CartItem[]>([]);
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
 
   const refreshCart = useCallback(async () => {
     if (!user) {
@@ -171,8 +180,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       const payload = (await response.json()) as CartApiItem[];
       setCart(payload.map(mapCartApiItem));
-    } catch {
-      // Keep current local cart state if sync fails.
+      setCartLoadError(null);
+    } catch (error) {
+      // Keep current local cart state if sync fails — only surface an error
+      // when we have nothing to show, so a background sync failure with a
+      // populated cart stays invisible.
+      if (cartRef.current.length === 0) {
+        setCartLoadError("We couldn't load your cart right now.");
+        setCartLoadErrorKind(classifyFetchError(error));
+      }
     } finally {
       setIsSyncingCart(false);
     }
@@ -516,6 +532,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       cart,
       isSyncingCart,
       cartItemCount,
+      cartLoadError,
+      cartLoadErrorKind,
       getItemQuantity,
       addToCart,
       addItemsToCart,
@@ -530,6 +548,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       addItemsToCart,
       cart,
       cartItemCount,
+      cartLoadError,
+      cartLoadErrorKind,
       clearCart,
       decreaseQty,
       getItemQuantity,

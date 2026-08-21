@@ -1,5 +1,5 @@
 import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
-import RecommendationCard from "@/components/cards/RecommendationCard";
+import FlashSaleCard from "@/components/cards/FlashSaleCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { computeSavingsPercent, isDealProduct } from "@/utils/deals";
@@ -41,7 +42,9 @@ export default function FlashSalesScreen() {
     isLoading,
     isLoadingMore,
     error,
+    errorKind,
     loadMore,
+    refresh,
   } = useInfiniteCatalogProducts({
     placement: "flash-sale",
     flashEvent: flashSaleEvent?.productCount ? flashSaleEvent.slug : undefined,
@@ -198,15 +201,19 @@ export default function FlashSalesScreen() {
             paddingBottom: sectionSpacing,
           }}
           ListEmptyComponent={
-            <CommerceSeeAllEmptyState
-              icon="flash-outline"
-              title={error ? "We couldn't load flash sales" : "No flash sales yet"}
-              subtitle={
-                error
-                  ? "The live flash sale feed is unavailable right now. Try again shortly."
-                  : "Check back soon for limited-time offers from ODOS vendors."
-              }
-            />
+            error ? (
+              <NetworkErrorState
+                kind={errorKind}
+                title="We couldn't load flash sales"
+                onRetry={() => void refresh()}
+              />
+            ) : (
+              <CommerceSeeAllEmptyState
+                icon="flash-outline"
+                title="No flash sales yet"
+                subtitle="Check back soon for limited-time offers from ODOS vendors."
+              />
+            )
           }
         />
       ) : (
@@ -241,9 +248,12 @@ export default function FlashSalesScreen() {
             }
             ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
             renderItem={({ item }) => (
-              <RecommendationCard
+              <FlashSaleCard
                 {...item}
                 reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
+                flashSaleEndsAt={item.flashSaleEndsAt}
+                flashSaleStockLimit={item.flashSaleStockLimit}
+                flashSaleUnitsRemaining={item.flashSaleUnitsRemaining}
               />
             )}
             contentContainerStyle={{

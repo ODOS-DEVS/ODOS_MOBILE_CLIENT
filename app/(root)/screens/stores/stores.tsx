@@ -8,6 +8,7 @@ import {
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import { useStores } from "@/hooks/useCommerce";
@@ -33,7 +34,7 @@ const StoreScreen = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const [isSearching, setIsSearching] = useState(false);
   const [sortMode, setSortMode] = useState<"default" | "near_me">("default");
-  const { stores: storeItems, isLoading } = useStores({});
+  const { stores: storeItems, isLoading, error, errorKind, refresh } = useStores({});
   const { coords, isLoading: isLoadingLocation, refresh: refreshLocation } =
     useDeviceLocation(sortMode === "near_me");
   const [searchResults, setSearchResults] = useState(storeItems);
@@ -180,6 +181,8 @@ const StoreScreen = () => {
 
           {isLoading && storeItems.length === 0 ? (
             <StoreGridSkeleton />
+          ) : error && storeItems.length === 0 ? (
+            <NetworkErrorState kind={errorKind} onRetry={() => void refresh()} />
           ) : displayedStores.length === 0 ? (
             <CommerceSeeAllEmptyState
               icon="storefront-outline"

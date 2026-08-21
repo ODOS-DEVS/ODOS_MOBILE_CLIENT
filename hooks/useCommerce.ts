@@ -5,11 +5,13 @@ import { resolveApiMediaUrl } from "@/utils/media";
 import {
   buildCatalogStoresUrl,
   CACHE_STALE,
+  classifyFetchError,
   fetchJsonCached,
   hasCachedJson,
   invalidateCachedUrl,
   peekCachedJson,
   subscribeCacheUpdates,
+  type FetchErrorKind,
 } from "@/utils/fetchCache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -211,6 +213,7 @@ export function useMarkets() {
   });
   const [isLoading, setIsLoading] = useState(() => !hasCachedJson(marketsUrl));
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
@@ -240,9 +243,10 @@ export function useMarkets() {
         setMarkets((current) =>
           areMarketsEqual(current, nextMarkets) ? current : nextMarkets,
         );
-      } catch {
+      } catch (caughtError) {
         if (isMountedRef.current && !background && !hasCachedJson(marketsUrl)) {
           setError("We couldn't load markets right now.");
+          setErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -287,7 +291,7 @@ export function useMarkets() {
     });
   }, [loadMarkets, marketsUrl, subscribe]);
 
-  return { markets, isLoading, error, refresh: loadMarkets };
+  return { markets, isLoading, error, errorKind, refresh: loadMarkets };
 }
 
 export function useStores({
@@ -307,6 +311,7 @@ export function useStores({
   });
   const [isLoading, setIsLoading] = useState(() => !hasCachedJson(storesUrl));
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -344,9 +349,10 @@ export function useStores({
         setStores((current) =>
           areStoresEqual(current, nextStores) ? current : nextStores,
         );
-      } catch {
+      } catch (caughtError) {
         if (isMountedRef.current && !background && !hasCachedJson(storesUrl)) {
           setError("We couldn't load stores right now.");
+          setErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -389,7 +395,7 @@ export function useStores({
     });
   }, [loadStores, storesUrl, subscribe]);
 
-  return { stores, isLoading, error, refresh: loadStores };
+  return { stores, isLoading, error, errorKind, refresh: loadStores };
 }
 
 export function useStore({
@@ -414,6 +420,7 @@ export function useStore({
     () => Boolean(storeId) && !hasCachedJson(storeUrl),
   );
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
   const { subscribe } = useRealtime();
   const isMountedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -444,9 +451,10 @@ export function useStore({
         setStore((current) =>
           current && isSameStore(current, nextStore) ? current : nextStore,
         );
-      } catch {
+      } catch (caughtError) {
         if (isMountedRef.current && !background && !hasCachedJson(storeUrl)) {
           setError("We couldn't load this store right now.");
+          setErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (isMountedRef.current && !background) {
@@ -507,7 +515,7 @@ export function useStore({
     });
   }, [loadStore, storeId, storeUrl, subscribe]);
 
-  return { store, isLoading, error, refresh: loadStore };
+  return { store, isLoading, error, errorKind, refresh: loadStore };
 }
 
 export function useMarketLookup(markets: MarketItem[]) {

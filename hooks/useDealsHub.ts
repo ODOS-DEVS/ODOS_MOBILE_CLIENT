@@ -5,7 +5,7 @@ import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import type { FlashSaleEventItem } from "@/hooks/useFlashSaleEvents";
 import type { MerchandisingCampaignItem } from "@/hooks/useMerchandisingCampaigns";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
-import { buildCatalogProductsUrl } from "@/utils/fetchCache";
+import { buildCatalogProductsUrl, classifyFetchError, type FetchErrorKind } from "@/utils/fetchCache";
 import { useCallback, useEffect, useState } from "react";
 
 export type DealsHubSection = {
@@ -250,6 +250,7 @@ export function useDealsHub() {
   const [data, setData] = useState<DealsHubPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FetchErrorKind>("unknown");
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -274,6 +275,7 @@ export function useDealsHub() {
               ? loadError.message
               : "Unable to load deals right now.",
         );
+        setErrorKind(classifyFetchError(fallbackError));
       }
     } finally {
       setIsLoading(false);
@@ -284,5 +286,5 @@ export function useDealsHub() {
     void refresh();
   }, [refresh]);
 
-  return { data, isLoading, error, refresh };
+  return { data, isLoading, error, errorKind, refresh };
 }

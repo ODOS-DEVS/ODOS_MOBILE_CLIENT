@@ -9,6 +9,7 @@ import {
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { type CatalogProductItem } from "@/hooks/useCatalog";
 import { useForYouRecommendations } from "@/hooks/useRecommendations";
@@ -86,6 +87,7 @@ export default function RecommendationScreen() {
     products: recommendationProducts,
     isLoading,
     error,
+    errorKind,
     refresh,
   } = useForYouRecommendations({ limit: 48 });
 
@@ -307,17 +309,23 @@ export default function RecommendationScreen() {
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={false}
             ListEmptyComponent={
-              <CommerceSeeAllEmptyState
-                icon="sparkles-outline"
-                title={error ? "We couldn't load recommendations" : "Nothing here yet"}
-                subtitle={
-                  error
-                    ? "Pull to refresh, or open search to browse the full catalog."
-                    : isSearching
+              error ? (
+                <NetworkErrorState
+                  kind={errorKind}
+                  title="We couldn't load recommendations"
+                  onRetry={() => void refresh()}
+                />
+              ) : (
+                <CommerceSeeAllEmptyState
+                  icon="sparkles-outline"
+                  title="Nothing here yet"
+                  subtitle={
+                    isSearching
                       ? "Try a broader search or switch to another recommendation view."
                       : "Shop, save, and buy more on ODOS to sharpen these picks."
-                }
-              />
+                  }
+                />
+              )
             }
           />
         </ImageReadyScreenGate>

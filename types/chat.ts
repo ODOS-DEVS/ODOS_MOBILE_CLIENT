@@ -63,6 +63,8 @@ export type ChatMessage = {
   isRead: boolean;
   readAt?: string | null;
   time: string;
+  /** Present only on the client's optimistic copy of a just-sent message; absent for anything the server returned. */
+  status?: "sending" | "failed";
 };
 
 export type EnsureChatThreadInput = {

@@ -23,6 +23,7 @@ import { useToast } from "@/context/ToastContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { updateSupportThreadStatus } from "@/services/chatService";
 import { rMS } from "@/styles/responsive";
+import type { ChatAttachmentUpload } from "@/services/chatService";
 import { pickChatImage } from "@/utils/imagePicker";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -85,6 +86,7 @@ export default function SupportChatScreen() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [copyFeedbackVisible, setCopyFeedbackVisible] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [pendingImage, setPendingImage] = useState<ChatAttachmentUpload | null>(null);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listRef = useRef<FlatList>(null);
@@ -269,13 +271,17 @@ export default function SupportChatScreen() {
   }, []);
 
   const onSend = async () => {
-    if (!resolvedThreadId || !input.trim()) {
+    if (!resolvedThreadId || (!input.trim() && !pendingImage)) {
       return;
     }
 
+    const textToSend = input.trim();
+    const attachmentToSend = pendingImage ?? undefined;
+    setInput("");
+    setPendingImage(null);
+
     try {
-      await sendMessage(resolvedThreadId, input.trim());
-      setInput("");
+      await sendMessage(resolvedThreadId, textToSend, attachmentToSend);
     } catch (error) {
       showToast(
         error instanceof Error
@@ -295,18 +301,14 @@ export default function SupportChatScreen() {
       showToast("That photo is too large. Try a smaller image.");
       return;
     }
-    if (!result.asset || !resolvedThreadId) {
+    if (!result.asset) {
       return;
     }
-    try {
-      await sendMessage(resolvedThreadId, "", {
-        uri: result.asset.uri,
-        name: result.asset.fileName ?? "photo.jpg",
-        type: result.asset.mimeType,
-      });
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "We couldn't send that photo.");
-    }
+    setPendingImage({
+      uri: result.asset.uri,
+      name: result.asset.fileName ?? "photo.jpg",
+      type: result.asset.mimeType,
+    });
   };
 
   const handleSendVoiceNote = async (uri: string, durationSeconds: number) => {
@@ -484,13 +486,6 @@ export default function SupportChatScreen() {
                 onCopied: showCopyFeedback,
               })
             }
-            ListFooterComponent={
-              <ChatTypingIndicator
-                visible={isSending}
-                variant="outgoing"
-                label="Sending"
-              />
-            }
             ListEmptyComponent={
               isLoadingMessages ? (
                 <View style={chatStyles.loadingWrap}>
@@ -531,6 +526,8 @@ export default function SupportChatScreen() {
         onAttachPress={() => {
           void handlePickPhoto();
         }}
+        pendingImageUri={pendingImage?.uri}
+        onRemovePendingImage={() => setPendingImage(null)}
         onSendVoiceNote={handleSendVoiceNote}
         onVoiceNoteError={showToast}
       />

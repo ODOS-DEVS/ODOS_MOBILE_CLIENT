@@ -2,12 +2,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtime } from "@/context/RealtimeContext";
 import {
   createChatMessage,
+  deleteChatMessage,
   ensureStoreChatThread,
   ensureSupportChatThread,
   fetchChatMessages,
   fetchChatThreads,
   type ChatAttachmentUpload,
 } from "@/services/chatService";
+import { classifyFetchError, type FetchErrorKind } from "@/utils/fetchCache";
 import type {
   ChatMessage,
   ChatThread,
@@ -33,6 +35,8 @@ type ChatContextType = {
   isLoadingCustomerThreads: boolean;
   isLoadingVendorThreads: boolean;
   isLoadingSupportThreads: boolean;
+  threadsLoadError: string | null;
+  threadsLoadErrorKind: FetchErrorKind;
   loadingThreadId: string | null;
   sendingThreadId: string | null;
   loadCustomerThreads: (options?: { silent?: boolean }) => Promise<void>;
@@ -49,7 +53,13 @@ type ChatContextType = {
     text: string,
     attachment?: ChatAttachmentUpload,
   ) => Promise<ChatMessage>;
+  deleteMessage: (threadId: string, messageId: string) => Promise<void>;
   getThreadById: (threadId: string | undefined | null) => ChatThread | undefined;
+};
+
+type RealtimeChatMessageDeletedPayload = {
+  thread_id: string;
+  message_id: string;
 };
 
 type RealtimeChatThreadPayload = {
@@ -227,6 +237,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isLoadingCustomerThreads, setIsLoadingCustomerThreads] = useState(false);
   const [isLoadingVendorThreads, setIsLoadingVendorThreads] = useState(false);
   const [isLoadingSupportThreads, setIsLoadingSupportThreads] = useState(false);
+  const [threadsLoadError, setThreadsLoadError] = useState<string | null>(null);
+  const [threadsLoadErrorKind, setThreadsLoadErrorKind] = useState<FetchErrorKind>("unknown");
   const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null);
   const [sendingThreadId, setSendingThreadId] = useState<string | null>(null);
 
@@ -242,6 +254,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setIsLoadingCustomerThreads(false);
     setIsLoadingVendorThreads(false);
     setIsLoadingSupportThreads(false);
+    setThreadsLoadError(null);
     setLoadingThreadId(null);
     setSendingThreadId(null);
   }, [user]);
@@ -314,10 +327,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    const unsubscribeMessageDeleted = subscribe("chat.message.deleted", (event) => {
+      const payload = event.payload as RealtimeChatMessageDeletedPayload | undefined;
+      if (!payload?.thread_id || !payload.message_id) {
+        return;
+      }
+
+      setMessagesByThread((current) => {
+        const existing = current[payload.thread_id];
+        if (!existing?.length) {
+          return current;
+        }
+        return {
+          ...current,
+          [payload.thread_id]: existing.filter((message) => message.id !== payload.message_id),
+        };
+      });
+    });
+
     return () => {
       unsubscribeThread();
       unsubscribeMessage();
       unsubscribeRead();
+      unsubscribeMessageDeleted();
     };
   }, [subscribe, user]);
 
@@ -353,6 +385,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           setSupportThreads(threads);
         } else {
           setCustomerThreads(threads);
+        }
+        setThreadsLoadError(null);
+      } catch (caughtError) {
+        if (showLoading) {
+          setThreadsLoadError("We couldn't load your conversations right now.");
+          setThreadsLoadErrorKind(classifyFetchError(caughtError));
         }
       } finally {
         if (showLoading) {
@@ -442,14 +480,53 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!threadId || (!trimmed && !attachment)) {
         throw new Error("Add a message or an attachment before sending.");
       }
+      if (!user) {
+        throw new Error("You need to be signed in to send a message.");
+      }
+
+      // Render the message immediately using the local attachment URI, rather than
+      // waiting for the upload + API round trip — the pending bubble itself (with its
+      // own spinner) is the "sending" state, so no separate typing-dots placeholder needed.
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const optimisticMessage: ChatMessage = {
+        id: tempId,
+        threadId,
+        senderUserId: user.id,
+        recipientUserId: "",
+        senderRole: (user.role === "vendor" || user.role === "admin"
+          ? user.role
+          : "customer") as ChatMessage["senderRole"],
+        text: trimmed,
+        attachmentUrl: attachment?.uri ?? null,
+        attachmentType: attachment
+          ? typeof attachment.durationSeconds === "number"
+            ? "audio"
+            : attachment.type?.startsWith("image/")
+              ? "image"
+              : "file"
+          : null,
+        attachmentName: attachment?.name ?? null,
+        attachmentDurationSeconds: attachment?.durationSeconds ?? null,
+        isRead: false,
+        time: new Date().toISOString(),
+        status: "sending",
+      };
 
       setSendingThreadId(threadId);
+      setMessagesByThread((current) => ({
+        ...current,
+        [threadId]: upsertMessage(current[threadId] ?? [], optimisticMessage),
+      }));
+
       try {
         const message = await createChatMessage(threadId, trimmed, accessToken, attachment);
-        setMessagesByThread((current) => ({
-          ...current,
-          [threadId]: upsertMessage(current[threadId] ?? [], message),
-        }));
+        setMessagesByThread((current) => {
+          const withoutOptimistic = (current[threadId] ?? []).filter((m) => m.id !== tempId);
+          return {
+            ...current,
+            [threadId]: upsertMessage(withoutOptimistic, message),
+          };
+        });
         const previewUpdate = (thread: ChatThread) => ({
           ...thread,
           lastMessageText:
@@ -467,8 +544,50 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setVendorThreads((current) => updateThreadPreview(current, threadId, previewUpdate));
         setSupportThreads((current) => updateThreadPreview(current, threadId, previewUpdate));
         return message;
+      } catch (error) {
+        setMessagesByThread((current) => ({
+          ...current,
+          [threadId]: (current[threadId] ?? []).map((m) =>
+            m.id === tempId ? { ...m, status: "failed" as const } : m,
+          ),
+        }));
+        throw error;
       } finally {
         setSendingThreadId((current) => (current === threadId ? null : current));
+      }
+    },
+    [accessToken, user],
+  );
+
+  const deleteMessage = useCallback(
+    async (threadId: string, messageId: string) => {
+      const isLocalOnly = messageId.startsWith("temp-");
+      let removedMessage: ChatMessage | undefined;
+
+      setMessagesByThread((current) => {
+        const existing = current[threadId] ?? [];
+        removedMessage = existing.find((m) => m.id === messageId);
+        return {
+          ...current,
+          [threadId]: existing.filter((m) => m.id !== messageId),
+        };
+      });
+
+      // A message that never made it past the optimistic "sending"/"failed" state was
+      // never persisted server-side, so there's nothing to delete remotely.
+      if (isLocalOnly || !removedMessage) {
+        return;
+      }
+
+      try {
+        await deleteChatMessage(messageId, accessToken);
+      } catch (error) {
+        const messageToRestore = removedMessage;
+        setMessagesByThread((current) => ({
+          ...current,
+          [threadId]: upsertMessage(current[threadId] ?? [], messageToRestore),
+        }));
+        throw error;
       }
     },
     [accessToken],
@@ -491,6 +610,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       isLoadingCustomerThreads,
       isLoadingVendorThreads,
       isLoadingSupportThreads,
+      threadsLoadError,
+      threadsLoadErrorKind,
       loadingThreadId,
       sendingThreadId,
       loadCustomerThreads,
@@ -500,10 +621,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       ensureSupportThread,
       loadMessages,
       sendMessage,
+      deleteMessage,
       getThreadById,
     }),
     [
       customerThreads,
+      deleteMessage,
       ensureSupportThread,
       ensureThread,
       getThreadById,
@@ -519,6 +642,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       sendMessage,
       sendingThreadId,
       supportThreads,
+      threadsLoadError,
+      threadsLoadErrorKind,
       vendorThreads,
     ],
   );

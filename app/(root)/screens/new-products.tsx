@@ -9,6 +9,7 @@ import {
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { NEW_PRODUCTS_MAX_AGE_DAYS } from "@/hooks/useNewProducts";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
@@ -26,7 +27,9 @@ export default function NewProductsScreen() {
     isLoading,
     isLoadingMore,
     error,
+    errorKind,
     loadMore,
+    refresh,
   } = useInfiniteCatalogProducts({ maxAgeDays: NEW_PRODUCTS_MAX_AGE_DAYS });
   const [searchResults, setSearchResults] = useState(catalogProducts);
 
@@ -106,15 +109,19 @@ export default function NewProductsScreen() {
             paddingBottom: sectionSpacing,
           }}
           ListEmptyComponent={
-            <CommerceSeeAllEmptyState
-              icon="cube-outline"
-              title={error ? "We couldn't load new products" : "No new products yet"}
-              subtitle={
-                error
-                  ? "The live feed is unavailable right now. Try again shortly."
-                  : "Check back soon — new arrivals show up here for a week after they're added."
-              }
-            />
+            error ? (
+              <NetworkErrorState
+                kind={errorKind}
+                title="We couldn't load new products"
+                onRetry={() => void refresh()}
+              />
+            ) : (
+              <CommerceSeeAllEmptyState
+                icon="cube-outline"
+                title="No new products yet"
+                subtitle="Check back soon — new arrivals show up here for a week after they're added."
+              />
+            )
           }
         />
       ) : (

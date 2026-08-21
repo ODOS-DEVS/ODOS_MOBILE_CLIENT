@@ -9,6 +9,7 @@ import {
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { productCardGapY, rV, useResponsive } from "@/styles/responsive";
@@ -25,7 +26,9 @@ export default function PopularProductsScreen() {
     isLoading,
     isLoadingMore,
     error,
+    errorKind,
     loadMore,
+    refresh,
   } = useInfiniteCatalogProducts({ section: "popular" });
   const [searchResults, setSearchResults] = useState(catalogProducts);
 
@@ -127,15 +130,19 @@ export default function PopularProductsScreen() {
             paddingBottom: sectionSpacing,
           }}
           ListEmptyComponent={
-            <CommerceSeeAllEmptyState
-              icon="cube-outline"
-              title={error ? "We couldn't load popular products" : "No products found"}
-              subtitle={
-                error
-                  ? "The live popular feed is unavailable right now. Try again shortly."
-                  : "Adjust your search or check back when new products are added."
-              }
-            />
+            error ? (
+              <NetworkErrorState
+                kind={errorKind}
+                title="We couldn't load popular products"
+                onRetry={() => void refresh()}
+              />
+            ) : (
+              <CommerceSeeAllEmptyState
+                icon="cube-outline"
+                title="No products found"
+                subtitle="Adjust your search or check back when new products are added."
+              />
+            )
           }
         />
       ) : (

@@ -5,7 +5,9 @@ import {
 } from "@/components/chat/ChatAnimations";
 import CommerceImage from "@/components/media/CommerceImage";
 import { lightTheme, type ThemeColors } from "@/constants/theme";
+import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
 import { useVoiceNoteRecorder } from "@/hooks/useVoiceNoteRecorder";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useChatStyles } from "@/styles/themedChatStyles";
@@ -14,12 +16,16 @@ import { resolveImageSource } from "@/utils/media";
 import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
+import { File, Paths } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -32,9 +38,20 @@ import {
   TouchableOpacity,
   View,
   type ImageSourcePropType,
+  type TextStyle,
 } from "react-native";
-import { Pressable as GesturePressable } from "react-native-gesture-handler";
-import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { Gesture, GestureDetector, Pressable as GesturePressable } from "react-native-gesture-handler";
+import Reanimated, {
+  Extrapolation,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export {
@@ -379,6 +396,136 @@ type ChatMessageBubbleProps = {
   onCopied?: () => void;
 };
 
+const IMAGE_BUBBLE_MAX_WIDTH = rS(228);
+const IMAGE_BUBBLE_MAX_HEIGHT = rV(300);
+const IMAGE_BUBBLE_MIN_SIZE = rS(130);
+const IMAGE_BUBBLE_FALLBACK_SIZE = rS(220);
+const IMAGE_VIEWER_DISMISS_THRESHOLD = 120;
+
+type ChatImageViewerModalProps = {
+  visible: boolean;
+  uri?: string | null;
+  messageId: string;
+  isSharing: boolean;
+  onShare: () => void;
+  onClose: () => void;
+};
+
+/** Fullscreen tap-to-view image viewer with a WhatsApp-style drag-down-to-dismiss gesture. */
+function ChatImageViewerModal({
+  visible,
+  uri,
+  messageId,
+  isSharing,
+  onShare,
+  onClose,
+}: ChatImageViewerModalProps) {
+  const chatStyles = useChatStyles();
+  const translateY = useSharedValue(0);
+  const backdropOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    if (visible) {
+      translateY.value = 0;
+      backdropOpacity.value = 1;
+    }
+  }, [visible, translateY, backdropOpacity]);
+
+  const dismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetY(12)
+    .failOffsetX([-24, 24])
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+        backdropOpacity.value = interpolate(event.translationY, [0, 280], [1, 0.35]);
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > IMAGE_VIEWER_DISMISS_THRESHOLD || event.velocityY > 900) {
+        translateY.value = withTiming(420, { duration: 180 }, () => {
+          runOnJS(dismiss)();
+        });
+        backdropOpacity.value = withTiming(0, { duration: 180 });
+        return;
+      }
+
+      translateY.value = withSpring(0, { damping: 20, stiffness: 240 });
+      backdropOpacity.value = withSpring(1);
+    });
+
+  const imageStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: interpolate(translateY.value, [0, 280], [1, 0.72], Extrapolation.CLAMP),
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={chatStyles.imageViewerBackdrop}>
+        <Reanimated.View
+          pointerEvents="none"
+          style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#000000" }, backdropStyle]}
+        />
+        <GestureDetector gesture={panGesture}>
+          <Reanimated.View style={[{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }, imageStyle]}>
+            <CommerceImage
+              source={{ uri: uri ?? undefined }}
+              style={chatStyles.imageViewerImage}
+              contentFit="contain"
+              trackingId={`chat-image-full-${messageId}`}
+            />
+          </Reanimated.View>
+        </GestureDetector>
+        <View style={chatStyles.imageViewerToolbar}>
+          <Pressable
+            style={chatStyles.imageViewerActionButton}
+            onPress={onShare}
+            disabled={isSharing}
+            accessibilityLabel="Share photo"
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="share-outline" size={rMS(20)} color="#FFFFFF" />
+            )}
+          </Pressable>
+          <Pressable
+            style={chatStyles.imageViewerActionButton}
+            onPress={onClose}
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={rMS(22)} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function computeImageBubbleSize(naturalWidth: number, naturalHeight: number) {
+  if (!naturalWidth || !naturalHeight) {
+    return { width: IMAGE_BUBBLE_FALLBACK_SIZE, height: IMAGE_BUBBLE_FALLBACK_SIZE };
+  }
+  const aspectRatio = naturalWidth / naturalHeight;
+  let width = IMAGE_BUBBLE_MAX_WIDTH;
+  let height = width / aspectRatio;
+  if (height > IMAGE_BUBBLE_MAX_HEIGHT) {
+    height = IMAGE_BUBBLE_MAX_HEIGHT;
+    width = height * aspectRatio;
+  }
+  return {
+    width: Math.max(width, IMAGE_BUBBLE_MIN_SIZE),
+    height: Math.max(height, IMAGE_BUBBLE_MIN_SIZE),
+  };
+}
+
 export function ChatMessageBubble({
   message,
   isMine,
@@ -387,18 +534,91 @@ export function ChatMessageBubble({
 }: ChatMessageBubbleProps) {
   const chatStyles = useChatStyles();
   const { colors } = useTheme();
+  const { deleteMessage } = useChat();
+  const { showToast } = useToast();
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [isSharingImage, setIsSharingImage] = useState(false);
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
-  const handleLongPress = useCallback(() => {
+  const isImageMessage = message.attachmentType === "image" && Boolean(message.attachmentUrl);
+  const hasCaption = Boolean(message.text?.trim());
+
+  useEffect(() => {
+    if (!isImageMessage || !message.attachmentUrl) {
+      return;
+    }
+    let cancelled = false;
+    Image.getSize(
+      message.attachmentUrl,
+      (width, height) => {
+        if (!cancelled) {
+          setNaturalSize({ width, height });
+        }
+      },
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isImageMessage, message.attachmentUrl]);
+
+  const imageSize = naturalSize
+    ? computeImageBubbleSize(naturalSize.width, naturalSize.height)
+    : { width: IMAGE_BUBBLE_FALLBACK_SIZE, height: IMAGE_BUBBLE_FALLBACK_SIZE };
+
+  const copyText = useCallback(() => {
     const text = message.text?.trim();
     if (!text) {
       return;
     }
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     void Clipboard.setStringAsync(text).then(() => {
       onCopied?.();
     });
   }, [message.text, onCopied]);
+
+  const confirmDelete = useCallback(() => {
+    Alert.alert("Delete message?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void deleteMessage(message.threadId, message.id).catch((error: unknown) => {
+            showToast(
+              error instanceof Error ? error.message : "We couldn't delete that message.",
+            );
+          });
+        },
+      },
+    ]);
+  }, [deleteMessage, message.id, message.threadId, showToast]);
+
+  const handleLongPress = useCallback(() => {
+    const text = message.text?.trim();
+    const canCopy = Boolean(text);
+    const canDelete = isMine;
+    if (!canCopy && !canDelete) {
+      return;
+    }
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (canCopy && canDelete) {
+      Alert.alert("Message", undefined, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Copy", onPress: copyText },
+        { text: "Delete", style: "destructive", onPress: confirmDelete },
+      ]);
+      return;
+    }
+
+    if (canCopy) {
+      copyText();
+      return;
+    }
+
+    confirmDelete();
+  }, [confirmDelete, copyText, isMine, message.text]);
 
   const handleOpenFile = useCallback(() => {
     const url = message.attachmentUrl?.trim();
@@ -406,6 +626,46 @@ export function ChatMessageBubble({
       void Linking.openURL(url);
     }
   }, [message.attachmentUrl]);
+
+  const handleShareImage = useCallback(async () => {
+    if (!message.attachmentUrl || isSharingImage) {
+      return;
+    }
+    setIsSharingImage(true);
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        return;
+      }
+      const downloaded = await File.downloadFileAsync(message.attachmentUrl, Paths.cache);
+      await Sharing.shareAsync(downloaded.uri);
+    } catch {
+      // Sharing is best-effort — a failed download/share shouldn't disrupt the chat.
+    } finally {
+      setIsSharingImage(false);
+    }
+  }, [message.attachmentUrl, isSharingImage]);
+
+  const timeLabel = `${formatChatTime(message.time)}${isMine && message.isRead ? " · Seen" : ""}`;
+
+  const renderStatusOrTime = (textStyle: TextStyle, color: string) => {
+    if (message.status === "sending") {
+      return (
+        <View style={{ alignSelf: "flex-end" }}>
+          <Ionicons name="time-outline" size={rMS(11)} color={color} />
+        </View>
+      );
+    }
+    if (message.status === "failed") {
+      return (
+        <View style={chatStyles.failedRow}>
+          <Ionicons name="alert-circle" size={rMS(11)} color={colors.dangerText} />
+          <Text style={[textStyle, { color: colors.dangerText }]}>Not sent</Text>
+        </View>
+      );
+    }
+    return <Text style={[textStyle, { color }]}>{timeLabel}</Text>;
+  };
 
   return (
     <AnimatedChatMessageWrap isMine={isMine}>
@@ -421,16 +681,21 @@ export function ChatMessageBubble({
           style={({ pressed }) => [
             chatStyles.bubble,
             isMine ? chatStyles.bubbleMine : chatStyles.bubbleTheirs,
-            message.attachmentType === "image" ? chatStyles.bubbleImagePadding : null,
+            isImageMessage ? chatStyles.bubbleImageOnly : null,
+            message.status === "sending" ? { opacity: 0.72 } : null,
             pressed ? { opacity: 0.9 } : null,
           ]}
         >
-          {message.attachmentType === "image" && message.attachmentUrl ? (
+          {isImageMessage && message.attachmentUrl ? (
             <>
-              <TouchableOpacity
-                activeOpacity={0.9}
+              <GesturePressable
                 onPress={() => setIsImageViewerOpen(true)}
-                style={chatStyles.attachmentImageWrap}
+                onLongPress={handleLongPress}
+                delayLongPress={400}
+                style={({ pressed }) => [
+                  { width: imageSize.width, height: imageSize.height },
+                  pressed ? { opacity: 0.92 } : null,
+                ]}
               >
                 <CommerceImage
                   source={{ uri: message.attachmentUrl }}
@@ -438,31 +703,20 @@ export function ChatMessageBubble({
                   trackingId={`chat-image-${message.id}`}
                   recyclingKey={message.attachmentUrl}
                 />
-              </TouchableOpacity>
-              <Modal
+                {!hasCaption && showMeta ? (
+                  <View style={chatStyles.imageTimeOverlay}>
+                    {renderStatusOrTime(chatStyles.imageTimeOverlayText, "#FFFFFF")}
+                  </View>
+                ) : null}
+              </GesturePressable>
+              <ChatImageViewerModal
                 visible={isImageViewerOpen}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsImageViewerOpen(false)}
-              >
-                <Pressable
-                  style={chatStyles.imageViewerBackdrop}
-                  onPress={() => setIsImageViewerOpen(false)}
-                >
-                  <CommerceImage
-                    source={{ uri: message.attachmentUrl }}
-                    style={chatStyles.imageViewerImage}
-                    contentFit="contain"
-                    trackingId={`chat-image-full-${message.id}`}
-                  />
-                  <Pressable
-                    style={chatStyles.imageViewerCloseButton}
-                    onPress={() => setIsImageViewerOpen(false)}
-                  >
-                    <Ionicons name="close" size={rMS(22)} color="#FFFFFF" />
-                  </Pressable>
-                </Pressable>
-              </Modal>
+                uri={message.attachmentUrl}
+                messageId={message.id}
+                isSharing={isSharingImage}
+                onShare={() => void handleShareImage()}
+                onClose={() => setIsImageViewerOpen(false)}
+              />
             </>
           ) : null}
 
@@ -475,10 +729,12 @@ export function ChatMessageBubble({
           ) : null}
 
           {message.attachmentType === "file" && message.attachmentUrl ? (
-            <TouchableOpacity
-              activeOpacity={0.85}
+            <GesturePressable
               onPress={handleOpenFile}
-              style={chatStyles.attachmentFileRow}
+              style={({ pressed }) => [
+                chatStyles.attachmentFileRow,
+                pressed ? { opacity: 0.85 } : null,
+              ]}
             >
               <View
                 style={[
@@ -506,35 +762,46 @@ export function ChatMessageBubble({
                 size={rMS(16)}
                 color={isMine ? colors.onPrimary : colors.textMuted}
               />
-            </TouchableOpacity>
+            </GesturePressable>
           ) : null}
 
-          {message.text?.trim() ? (
-            <Text
-              style={[
-                chatStyles.bubbleText,
-                message.attachmentType ? { marginTop: rV(6) } : null,
-                { color: isMine ? colors.onPrimary : colors.text },
-              ]}
-            >
-              {message.text}
-            </Text>
-          ) : null}
-          {showMeta ? (
-            <Text
-              style={[
-                chatStyles.bubbleMeta,
-                {
-                  color: isMine
-                    ? "rgba(255,255,255,0.88)"
-                    : colors.textMuted,
-                },
-              ]}
-            >
-              {formatChatTime(message.time)}
-              {isMine && message.isRead ? " · Seen" : ""}
-            </Text>
-          ) : null}
+          {isImageMessage ? (
+            hasCaption ? (
+              <View style={chatStyles.captionBlock}>
+                <Text
+                  style={[chatStyles.bubbleText, { color: isMine ? colors.onPrimary : colors.text }]}
+                >
+                  {message.text}
+                </Text>
+                {showMeta
+                  ? renderStatusOrTime(
+                      chatStyles.bubbleMeta,
+                      isMine ? "rgba(255,255,255,0.88)" : colors.textMuted,
+                    )
+                  : null}
+              </View>
+            ) : null
+          ) : (
+            <>
+              {message.text?.trim() ? (
+                <Text
+                  style={[
+                    chatStyles.bubbleText,
+                    message.attachmentType ? { marginTop: rV(6) } : null,
+                    { color: isMine ? colors.onPrimary : colors.text },
+                  ]}
+                >
+                  {message.text}
+                </Text>
+              ) : null}
+              {showMeta
+                ? renderStatusOrTime(
+                    chatStyles.bubbleMeta,
+                    isMine ? "rgba(255,255,255,0.88)" : colors.textMuted,
+                  )
+                : null}
+            </>
+          )}
         </GesturePressable>
       </View>
     </AnimatedChatMessageWrap>
@@ -617,6 +884,11 @@ type ChatComposerProps = {
   voiceSupported?: boolean;
   onAttachPress?: () => void;
   attachmentSupported?: boolean;
+  /** A photo picked but not yet sent — shown as a preview above the text
+   * input so the sender can add a caption before sending, same as any
+   * normal chat app. Cleared by the parent once `onSend` has used it. */
+  pendingImageUri?: string | null;
+  onRemovePendingImage?: () => void;
   /** Presence of this callback enables the whole press-and-hold voice note
    * flow. Called only once the user has explicitly reviewed and sent the
    * recording from the preview step — never on release alone. */
@@ -639,15 +911,17 @@ export function ChatComposer({
   voiceSupported = false,
   onAttachPress,
   attachmentSupported = false,
+  pendingImageUri,
+  onRemovePendingImage,
   onSendVoiceNote,
   onVoiceNoteError,
 }: ChatComposerProps) {
   const chatStyles = useChatStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const canSend = Boolean(value.trim()) && !disabled && !isSending;
+  const canSend = (Boolean(value.trim()) || Boolean(pendingImageUri)) && !disabled && !isSending;
   const voiceNoteSupported = Boolean(onSendVoiceNote);
-  const showVoiceNoteButton = voiceNoteSupported && !value.trim();
+  const showVoiceNoteButton = voiceNoteSupported && !value.trim() && !pendingImageUri;
   const sendScale = useRef(new Animated.Value(1)).current;
 
   const recorder = useVoiceNoteRecorder();
@@ -766,6 +1040,27 @@ export function ChatComposer({
       ]}
     >
       {hint && !isVoiceFlowActive ? <Text style={chatStyles.composerHint}>{hint}</Text> : null}
+
+      {pendingImageUri && !isVoiceFlowActive ? (
+        <View style={chatStyles.pendingImageRow}>
+          <View style={chatStyles.pendingImageThumbWrap}>
+            <CommerceImage
+              source={{ uri: pendingImageUri }}
+              style={chatStyles.pendingImageThumb}
+              trackingId="chat-pending-image"
+              recyclingKey={pendingImageUri}
+            />
+            <Pressable
+              onPress={onRemovePendingImage}
+              style={chatStyles.pendingImageRemoveButton}
+              accessibilityLabel="Remove photo"
+            >
+              <Ionicons name="close" size={rMS(12)} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <Text style={chatStyles.pendingImageHint}>Add a caption (optional)</Text>
+        </View>
+      ) : null}
 
       {voicePhase === "recording" || voicePhase === "locked" ? (
         <View style={chatStyles.composerRow}>

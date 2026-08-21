@@ -1,5 +1,6 @@
 import CartItemCard from "@/components/cards/CartItemCard";
 import CommerceEmptyState from "@/components/empty/CommerceEmptyState";
+import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import { CartPageSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
@@ -26,8 +27,17 @@ import {
 const MyCart = () => {
   const { colors } = useTheme();
   const tabBarInset = useTabBarContentInsetFromContext();
-  const { cart, increaseQty, decreaseQty, removeItem, clearCart, isSyncingCart, refreshCart } =
-    useCart();
+  const {
+    cart,
+    increaseQty,
+    decreaseQty,
+    removeItem,
+    clearCart,
+    isSyncingCart,
+    refreshCart,
+    cartLoadError,
+    cartLoadErrorKind,
+  } = useCart();
   const { requireAuth } = useRequireAuth();
 
   const isEmpty = cart.length === 0;
@@ -234,15 +244,24 @@ const MyCart = () => {
             { paddingBottom: tabBarInset },
           ]}
         >
-          <CommerceEmptyState
-            icon="bag-handle-outline"
-            title="Your cart is empty"
-            message="Save items you love while browsing. They'll stay here until you're ready to check out."
-            primaryLabel="Start shopping"
-            onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
-            secondaryLabel="Browse categories"
-            onSecondaryPress={() => router.push("/(root)/(tabs)/category" as any)}
-          />
+          {cartLoadError ? (
+            <NetworkErrorState
+              kind={cartLoadErrorKind}
+              title="Couldn't load your cart"
+              onRetry={() => void refreshCart()}
+              isRetrying={isSyncingCart}
+            />
+          ) : (
+            <CommerceEmptyState
+              icon="bag-handle-outline"
+              title="Your cart is empty"
+              message="Save items you love while browsing. They'll stay here until you're ready to check out."
+              primaryLabel="Start shopping"
+              onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
+              secondaryLabel="Browse categories"
+              onSecondaryPress={() => router.push("/(root)/(tabs)/category" as any)}
+            />
+          )}
         </ScrollView>
       ) : (
         <>
