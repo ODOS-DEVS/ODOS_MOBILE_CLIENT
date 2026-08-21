@@ -18,6 +18,7 @@ import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageRe
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
+import { trackPromoImpression } from "@/services/promoTracking";
 
 type RecommendationFilter = "all" | "fresh" | "topRated" | "deals" | "budget";
 

@@ -21,6 +21,7 @@ import { productCardGapY, rV, useResponsive } from "@/styles/responsive";
 import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageReady";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
+import { trackPromoImpression } from "@/services/promoTracking";
 
 type FlashFilter = "all" | "deals" | "topRated";
 
@@ -32,6 +33,17 @@ function formatFlashStatCountdown(totalSeconds: number) {
 }
 
 export default function FlashSalesScreen() {
+  // Track flash event impression
+  useEffect(() => {
+    if (event) {
+      void trackPromoImpression({
+        entityType: "campaign",
+        entityId: event.id,
+        sourceScreen: "flash-sales",
+      });
+    }
+  }, [event?.id]);
+
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");

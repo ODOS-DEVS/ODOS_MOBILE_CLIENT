@@ -13,8 +13,9 @@ import { AppColors } from "@/constants/Colors";
 import { useDealProducts } from "@/hooks/useDealProducts";
 import { rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
+import { trackPromoImpression } from "@/services/promoTracking";
 
 function parseParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {

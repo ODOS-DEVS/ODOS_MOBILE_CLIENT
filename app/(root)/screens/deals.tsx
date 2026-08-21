@@ -23,7 +23,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { computeSavingsPercent } from "@/utils/deals";
 import { navigateToCampaignDeals, navigateToMerchandisingCampaign } from "@/utils/promoNavigation";
-import React, { useCallback, useMemo, useState } from "react";
+import { trackPromoImpression, trackPromoClick } from "@/services/promoTracking";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   NativeScrollEvent,
@@ -91,6 +92,32 @@ export default function DealsScreen() {
     [vouchers],
   );
 
+
+  // Track campaign impressions
+  useEffect(() => {
+    if (data?.campaigns && data.campaigns.length > 0) {
+      data.campaigns.forEach((campaign) => {
+        void trackPromoImpression({
+          entityType: "campaign",
+          entityId: campaign.id,
+          sourceScreen: "deals",
+        });
+      });
+    }
+  }, [data?.campaigns]);
+
+  // Track promo (voucher) impressions
+  useEffect(() => {
+    if (promotions && promotions.length > 0) {
+      promotions.forEach((promo) => {
+        void trackPromoImpression({
+          entityType: "voucher",
+          entityId: promo.id,
+          sourceScreen: "deals",
+        });
+      });
+    }
+  }, [promotions]);
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -236,9 +263,30 @@ export default function DealsScreen() {
                       <TouchableOpacity
                         key={campaign.id}
                         activeOpacity={0.9}
-                        onPress={() =>
-                          navigateToMerchandisingCampaign(campaign.slug, campaign.title)
-                        }
+                        onPress={() => {
+                          void trackPromoClick({
+                            entityType: "campaign",
+                            entityId: campaign.id,
+                            sourceScreen: "deals",
+                          });
+                          navigateToMerchandisingCampaign(campaign.slug, campaign.title);
+                        }}
+                        onPress={() => {
+                          void trackPromoClick({
+                            entityType: "campaign",
+                            entityId: campaign.id,
+                            sourceScreen: "deals",
+                          });
+                          navigateToMerchandisingCampaign(campaign.slug, campaign.title);
+                        }}
+                        onPress={() => {
+                          void trackPromoClick({
+                            entityType: "campaign",
+                            entityId: campaign.id,
+                            sourceScreen: "deals",
+                          });
+                          navigateToMerchandisingCampaign(campaign.slug, campaign.title);
+                        }}
                         style={{
                           width: 200,
                           marginRight: 10,
@@ -330,7 +378,14 @@ export default function DealsScreen() {
                     offer={promotions[0]}
                     fullWidth
                     isBusy={claimingId === promotions[0].id}
-                    onClaim={() => void handleClaimPromotion(promotions[0].id)}
+                    onClaim={() => {
+                            void trackPromoClick({
+                              entityType: "voucher",
+                              entityId: promotions[0].id,
+                              sourceScreen: "deals",
+                            });
+                            void handleClaimPromotion(promotions[0].id);
+                          }}
                     onUse={handleUsePromotion}
                   />
                 ) : (
@@ -358,7 +413,14 @@ export default function DealsScreen() {
                             offer={item}
                             fullWidth
                             isBusy={claimingId === item.id}
-                            onClaim={() => void handleClaimPromotion(item.id)}
+                            onClaim={() => {
+                            void trackPromoClick({
+                              entityType: "voucher",
+                              entityId: item.id,
+                              sourceScreen: "deals",
+                            });
+                            void handleClaimPromotion(item.id);
+                          }}
                             onUse={handleUsePromotion}
                           />
                         </View>

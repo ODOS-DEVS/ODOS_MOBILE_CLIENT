@@ -18,6 +18,7 @@ import { buildImageReadyResetKey, prefetchCommerceImages } from "@/utils/imageRe
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
+import { trackPromoImpression } from "@/services/promoTracking";
 
 function parseParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -27,6 +28,17 @@ function parseParam(value: string | string[] | undefined) {
 }
 
 export default function MerchandisingCampaignScreen() {
+  // Track campaign impression
+  useEffect(() => {
+    if (campaign) {
+      void trackPromoImpression({
+        entityType: "campaign",
+        entityId: campaign.id,
+        sourceScreen: "campaign-detail",
+      });
+    }
+  }, [campaign?.id]);
+
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { colors } = useTheme();
   const { horizontalPadding, sectionSpacing } = useResponsive();
