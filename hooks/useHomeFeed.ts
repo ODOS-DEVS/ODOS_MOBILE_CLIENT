@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../utils/api';
+import { apiClient } from '@/utils/apiClient';
 
 export interface FeedProduct {
   id: string;
@@ -36,7 +36,7 @@ export function useHomeFeed() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/home-feed', {
+      const response = await apiClient.get('/home-feed', {
         params: {
           full_products: fullProducts,
           limit_per_section: 12,
@@ -54,7 +54,7 @@ export function useHomeFeed() {
     async (sectionKey: string, limit = 30, offset = 0) => {
       try {
         setError(null);
-        const response = await api.get(`/home-feed/section/${sectionKey}`, {
+        const response = await apiClient.get(`/home-feed/section/${sectionKey}`, {
           params: { limit, offset },
         });
         setSectionProducts((prev) => ({

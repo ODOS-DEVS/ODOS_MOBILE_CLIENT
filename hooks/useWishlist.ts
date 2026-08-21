@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../utils/api';
+import { apiClient } from '@/utils/apiClient';
 
 export interface WishlistItem {
   id: string;
@@ -24,7 +24,7 @@ export function useWishlist() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/wishlist');
+      const response = await apiClient.get('/wishlist');
       setItems(response.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch wishlist');
@@ -38,7 +38,7 @@ export function useWishlist() {
     async (productData: Partial<WishlistItem>) => {
       try {
         setError(null);
-        const response = await api.post('/wishlist', productData);
+        const response = await apiClient.post('/wishlist', productData);
         setItems((prev) => [response.data, ...prev]);
         return true;
       } catch (err) {
@@ -52,7 +52,7 @@ export function useWishlist() {
   const removeFromWishlist = useCallback(async (productId: string) => {
     try {
       setError(null);
-      await api.delete(`/wishlist/${productId}`);
+      await apiClient.delete(`/wishlist/${productId}`);
       setItems((prev) => prev.filter((item) => item.product_id !== productId));
       return true;
     } catch (err) {

@@ -1,5 +1,5 @@
-import { generateSessionId } from '../utils/session';
-import { getAccessToken } from '../utils/auth';
+import { generateSessionId } from '@/utils/session';
+import { getAccessToken } from '@/utils/auth';
 
 interface PromoAnalyticsEvent {
   entity_type: 'campaign' | 'voucher' | 'banner';
