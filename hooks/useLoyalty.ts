@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../utils/api';
+import { apiClient } from '@/utils/apiClient';
 
 export interface LoyaltyAccount {
   account_id: string;
@@ -36,7 +36,7 @@ export function useLoyalty() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/loyalty/account');
+      const response = await apiClient.get('/loyalty/account');
       setAccount(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch loyalty account');
@@ -48,7 +48,7 @@ export function useLoyalty() {
   const fetchTransactionHistory = useCallback(async (limit = 20, offset = 0) => {
     try {
       setError(null);
-      const response = await api.get('/loyalty/history', {
+      const response = await apiClient.get('/loyalty/history', {
         params: { limit, offset },
       });
       setTransactions(response.data.transactions);
@@ -60,7 +60,7 @@ export function useLoyalty() {
   const redeemPoints = useCallback(async (points: number) => {
     try {
       setError(null);
-      const response = await api.post('/loyalty/redeem', null, {
+      const response = await apiClient.post('/loyalty/redeem', null, {
         params: { points },
       });
       if (response.data.success) {
