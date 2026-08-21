@@ -1,5 +1,5 @@
 import { generateSessionId } from '@/utils/session';
-import { getAccessToken } from '@/utils/auth';
+import { getAuthToken } from '@/utils/auth';
 
 interface PromoAnalyticsEvent {
   entity_type: 'campaign' | 'voucher' | 'banner';
@@ -50,7 +50,7 @@ async function flushPromoEvents() {
       events: eventsToSend,
     };
 
-    const token = shouldIncludeUserContext() ? await getAccessToken() : null;
+    const token = shouldIncludeUserContext() ? await getAuthToken() : null;
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
