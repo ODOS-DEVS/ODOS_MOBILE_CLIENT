@@ -11,8 +11,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
-import PrimaryButton from '@/components/buttons/PrimaryButton';
-import SecondaryButton from '@/components/buttons/SecondaryButton';
 
 interface Props {
   isVisible: boolean;
@@ -146,6 +144,31 @@ export function OTPVerificationScreen({
         },
         buttonContainer: {
           gap: 12,
+        },
+        verifyButton: {
+          paddingVertical: 14,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 8,
+        },
+        verifyButtonText: {
+          fontSize: 14,
+          fontWeight: '700',
+          color: '#fff',
+        },
+        cancelButton: {
+          paddingVertical: 14,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        cancelButtonText: {
+          fontSize: 14,
+          fontWeight: '700',
         },
         resendContainer: {
           alignItems: 'center',
@@ -334,17 +357,37 @@ export function OTPVerificationScreen({
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <PrimaryButton
-          label={verifying ? 'Verifying...' : 'Verify OTP'}
+        <TouchableOpacity
+          style={[
+            styles.verifyButton,
+            {
+              backgroundColor: colors.primary,
+              opacity: verifying || otp.length !== 6 ? 0.6 : 1,
+            }
+          ]}
           onPress={() => handleVerify()}
           disabled={verifying || otp.length !== 6}
-          loading={verifying}
-        />
-        <SecondaryButton
-          label="Cancel"
+        >
+          {verifying && <ActivityIndicator size="small" color="#fff" />}
+          <Text style={styles.verifyButtonText}>
+            {verifying ? 'Verifying...' : 'Verify OTP'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.cancelButton,
+            {
+              backgroundColor: colors.card,
+              opacity: verifying ? 0.6 : 1,
+            }
+          ]}
           onPress={onCancel}
           disabled={verifying}
-        />
+        >
+          <Text style={[styles.cancelButtonText, { color: colors.text }]}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Resend Option */}
