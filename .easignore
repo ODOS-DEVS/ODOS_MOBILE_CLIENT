@@ -1,0 +1,63 @@
+# What NOT to upload to EAS Build.
+#
+# IMPORTANT: when this file exists, EAS uses it INSTEAD of .gitignore — not in
+# addition to it. Everything .gitignore excludes has to be repeated here, or it
+# lands in the build archive. node_modules alone is ~560 MB.
+#
+# Keep this in sync with .gitignore when that changes.
+
+# --- dependencies (EAS installs these itself on the build worker) ---
+node_modules/
+
+# --- Expo / build output ---
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# --- generated native folders (EAS runs prebuild) ---
+/ios
+/android
+.kotlin/
+
+# --- signing material: must never leave this machine ---
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+*.orig.*
+
+# --- local env files ---
+.env
+.env.*
+.env*.local
+!.env.example
+
+# --- local tooling (this alone was ~55 MB: a vendored gh binary + its zip) ---
+.tools/
+.vscode/
+
+# --- debug logs ---
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# --- macOS noise ---
+.DS_Store
+
+# --- typescript build info ---
+*.tsbuildinfo
+
+app-example
+
+# --- repo history: never needed to build the app ---
+.git/
+
+# --- docs and planning notes: not build inputs ---
+*.md
+!README.md
+docs/
+scripts/test-*.ts
