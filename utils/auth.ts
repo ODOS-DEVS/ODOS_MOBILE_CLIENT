@@ -1,7 +1,19 @@
 import * as SecureStore from 'expo-secure-store';
 
-const AUTH_TOKEN_KEY = 'auth_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
+import { ACCESS_TOKEN_STORAGE_KEY } from '@/constants/auth';
+
+/**
+ * The one key the session is stored under.
+ *
+ * This module used to read 'auth_token', which nothing ever wrote — AuthContext
+ * persists the session under ACCESS_TOKEN_STORAGE_KEY ('odos_access_token').
+ * Every apiClient request therefore went out with no Authorization header, the
+ * API answered 401, and AuthContext's global 401 net treated that as a dead
+ * session and signed the user out. Opening Profile was enough to trigger it,
+ * because that screen mounts useLoyalty on render.
+ */
+const AUTH_TOKEN_KEY = ACCESS_TOKEN_STORAGE_KEY;
+const REFRESH_TOKEN_KEY = 'odos_refresh_token';
 
 /**
  * Get the stored authentication token.
