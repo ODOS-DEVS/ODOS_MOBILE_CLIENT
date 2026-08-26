@@ -26,6 +26,20 @@ export interface LoyaltyTransaction {
   created_at: string;
 }
 
+interface LoyaltyHistoryResponse {
+  transactions: LoyaltyTransaction[];
+  count: number;
+  limit: number;
+  offset: number;
+}
+
+interface RedeemResponse {
+  success: boolean;
+  message?: string;
+  account?: LoyaltyAccount;
+  discount_amount_ghs?: number;
+}
+
 export function useLoyalty() {
   const [account, setAccount] = useState<LoyaltyAccount | null>(null);
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
@@ -36,8 +50,8 @@ export function useLoyalty() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/loyalty/account');
-      setAccount(response.data);
+      const account = await apiClient.get<LoyaltyAccount>('/loyalty/account');
+      setAccount(account);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch loyalty account');
     } finally {
@@ -48,10 +62,11 @@ export function useLoyalty() {
   const fetchTransactionHistory = useCallback(async (limit = 20, offset = 0) => {
     try {
       setError(null);
-      const response = await apiClient.get('/loyalty/history', {
-        params: { limit, offset },
-      });
-      setTransactions(response.data.transactions);
+      const response = await apiClient.get<LoyaltyHistoryResponse>(
+        '/loyalty/history',
+        { params: { limit, offset } }
+      );
+      setTransactions(response.transactions ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch transaction history');
     }
@@ -60,19 +75,23 @@ export function useLoyalty() {
   const redeemPoints = useCallback(async (points: number) => {
     try {
       setError(null);
-      const response = await apiClient.post('/loyalty/redeem', null, {
-        params: { points },
-      });
-      if (response.data.success) {
-        setAccount(response.data.account);
+      // `points` is a QUERY parameter server-side (POST /api/loyalty/redeem),
+      // not a body field — sending it in the body returns 422.
+      const response = await apiClient.post<RedeemResponse>(
+        '/loyalty/redeem',
+        undefined,
+        { params: { points } }
+      );
+      if (response.success) {
+        if (response.account) setAccount(response.account);
         return {
           success: true,
-          discountAmount: response.data.discount_amount_ghs,
+          discountAmount: response.discount_amount_ghs,
         };
       } else {
         return {
           success: false,
-          error: response.data.message,
+          error: response.message,
         };
       }
     } catch (err) {

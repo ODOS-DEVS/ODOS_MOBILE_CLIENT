@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { ProgressBar } from 'react-native-paper';
 
 interface LimitInfo {
   used: number;
@@ -84,7 +83,7 @@ export function WithdrawalLimitDisplay({
           lineHeight: 18,
         },
         infoBox: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderRadius: 8,
           padding: 12,
           marginTop: 12,
@@ -98,6 +97,16 @@ export function WithdrawalLimitDisplay({
         infoValue: {
           fontSize: 13,
           color: colors.text,
+        },
+        progressTrack: {
+          height: 6,
+          borderRadius: 3,
+          overflow: 'hidden',
+          width: '100%',
+        },
+        progressFill: {
+          height: '100%',
+          borderRadius: 3,
         },
       }),
     [colors]
@@ -119,11 +128,21 @@ export function WithdrawalLimitDisplay({
         </Text>
       </View>
       <View style={styles.progressContainer}>
-        <ProgressBar
-          progress={Math.min(limit.percentage / 100, 1)}
-          color={getProgressColor(limit.percentage)}
-          style={{ height: 6, borderRadius: 3 }}
-        />
+        {/* Plain views rather than a UI-kit ProgressBar: this was the only
+            react-native-paper import in the app and the package was never in
+            package.json, so the screen could not resolve it at runtime. Matches
+            the bar in components/loyalty/LoyaltyCard.tsx. */}
+        <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.min(limit.percentage, 100)}%`,
+                backgroundColor: getProgressColor(limit.percentage),
+              },
+            ]}
+          />
+        </View>
       </View>
       <View style={styles.limitStats}>
         <Text style={styles.limitText}>Remaining</Text>
@@ -154,7 +173,7 @@ export function WithdrawalLimitDisplay({
       {daily.percentage > 80 && (
         <View style={styles.warningBox}>
           <Text style={styles.warningText}>
-            📊 You've used {daily.percentage.toFixed(0)}% of your daily withdrawal limit.
+            📊 You&apos;ve used {daily.percentage.toFixed(0)}% of your daily withdrawal limit.
             Additional withdrawals today may require additional verification.
           </Text>
         </View>

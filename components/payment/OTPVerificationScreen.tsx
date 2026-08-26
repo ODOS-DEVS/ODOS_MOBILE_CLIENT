@@ -76,7 +76,7 @@ export function OTPVerificationScreen({
           marginBottom: 20,
         },
         infoBox: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderRadius: 12,
           padding: 16,
           marginBottom: 24,
@@ -104,7 +104,7 @@ export function OTPVerificationScreen({
         },
         otpInput: {
           borderWidth: 2,
-          borderColor: error ? colors.danger : colors.border,
+          borderColor: error ? colors.dangerText : colors.border,
           borderRadius: 12,
           paddingHorizontal: 16,
           paddingVertical: 16,
@@ -393,7 +393,7 @@ export function OTPVerificationScreen({
       {/* Resend Option */}
       {onResendOTP && (
         <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>Didn't receive code?</Text>
+          <Text style={styles.resendText}>Didn&apos;t receive code?</Text>
           <TouchableOpacity
             onPress={handleResend}
             disabled={resendDisabled || resendLoading}

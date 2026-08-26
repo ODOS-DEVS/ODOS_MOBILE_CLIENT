@@ -68,7 +68,7 @@ Expo React Native shopper app for the ODOS marketplace — browse, buy, track or
 ## Requirements
 
 - Node.js 18+
-- ODOS backend running locally or on Render
+- ODOS backend running locally, or the hosted API
 - **Expo Go** works for most flows; **native builds** are required for Google Maps and production APK installs
 
 ## Local setup
@@ -83,10 +83,10 @@ Copy `.env.example` to `.env` and set at least:
 EXPO_PUBLIC_API_URL=http://YOUR-LAN-IP:8000/api
 ```
 
-For staging / device testing against Render:
+For staging / device testing against the hosted API:
 
 ```env
-EXPO_PUBLIC_API_URL=https://odos-backend.onrender.com/api
+EXPO_PUBLIC_API_URL=https://appbe.odos.market/api
 ```
 
 Start Metro:
@@ -179,7 +179,7 @@ npm install -g eas-cli
 eas login
 ```
 
-**Preview APK** (internal install link, points at Render API):
+**Preview APK** (internal install link, points at the hosted API):
 
 ```bash
 eas build --platform android --profile preview
@@ -212,8 +212,8 @@ Uses the `production` profile and EAS Submit (`ascAppId` in `eas.json`). Configu
 
 | Profile | Output | API | Maps |
 |---------|--------|-----|------|
-| `preview` | APK | Render staging | Off |
-| `preview-maps` | APK | Render staging | On |
+| `preview` | APK | Hosted staging | Off |
+| `preview-maps` | APK | Hosted staging | On |
 | `production` | AAB/APK | EAS env | Per secrets |
 
 ## Project structure (high level)

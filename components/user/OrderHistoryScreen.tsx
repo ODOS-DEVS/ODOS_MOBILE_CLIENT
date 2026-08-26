@@ -107,7 +107,7 @@ export function OrderHistoryScreen({
           paddingVertical: 12,
         },
         sectionHeader: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           paddingHorizontal: 12,
           paddingVertical: 8,
           borderRadius: 8,

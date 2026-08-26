@@ -28,17 +28,6 @@ function parseParam(value: string | string[] | undefined) {
 }
 
 export default function MerchandisingCampaignScreen() {
-  // Track campaign impression
-  useEffect(() => {
-    if (campaign) {
-      void trackPromoImpression({
-        entityType: "campaign",
-        entityId: campaign.id,
-        sourceScreen: "campaign-detail",
-      });
-    }
-  }, [campaign?.id]);
-
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { colors } = useTheme();
   const { horizontalPadding, sectionSpacing } = useResponsive();
@@ -55,6 +44,17 @@ export default function MerchandisingCampaignScreen() {
     refresh,
     loadMore,
   } = useMerchandisingCampaignDetail(slug);
+
+  // Track campaign impression
+  useEffect(() => {
+    if (campaign) {
+      void trackPromoImpression({
+        entityType: "campaign",
+        entityId: campaign.id,
+        sourceScreen: "campaign-detail",
+      });
+    }
+  }, [campaign?.id]);
 
   const imageReadyResetKey = useMemo(
     () => buildImageReadyResetKey(products, 6),

@@ -160,7 +160,7 @@ export function UserOrderCard({
           gap: 4,
         },
         trackButton: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderWidth: 1,
           borderColor: colors.border,
         },

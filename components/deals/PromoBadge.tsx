@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { useColorScheme } from '../../hooks/useColorScheme';
+import { useTheme } from '@/context/ThemeContext';
 
 type Tone = 'gold' | 'dark' | 'success' | 'muted';
 
@@ -16,31 +15,26 @@ const PromoBadge: React.FC<PromoBadgeProps> = ({
   tone = 'gold',
   small = false,
 }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const { colors } = useTheme();
 
   const getToneStyles = (t: Tone) => {
     switch (t) {
-      case 'gold':
-        return {
-          backgroundColor: '#FDB913',
-          textColor: '#1a1a1a',
-        };
       case 'dark':
         return {
-          backgroundColor: colors.darker,
-          textColor: colors.background,
+          backgroundColor: colors.inverseSurface,
+          textColor: colors.onInverseSurface,
         };
       case 'success':
         return {
-          backgroundColor: '#2ecc71',
-          textColor: '#fff',
+          backgroundColor: colors.successText,
+          textColor: colors.onPrimary,
         };
       case 'muted':
         return {
-          backgroundColor: colors.tabIconDefault,
-          textColor: colors.background,
+          backgroundColor: colors.surfaceMuted,
+          textColor: colors.textMuted,
         };
+      case 'gold':
       default:
         return {
           backgroundColor: '#FDB913',

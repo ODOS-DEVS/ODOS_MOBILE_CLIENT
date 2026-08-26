@@ -221,7 +221,7 @@ export function EnhancedVendorDashboard({
       <View style={styles.header}>
         <Text style={styles.greeting}>Welcome back!</Text>
         <Text style={styles.headerSubtitle}>
-          Here's what's happening with your store today
+          Here&apos;s what&apos;s happening with your store today
         </Text>
       </View>
 

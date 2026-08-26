@@ -33,22 +33,22 @@ function formatFlashStatCountdown(totalSeconds: number) {
 }
 
 export default function FlashSalesScreen() {
-  // Track flash event impression
-  useEffect(() => {
-    if (event) {
-      void trackPromoImpression({
-        entityType: "campaign",
-        entityId: event.id,
-        sourceScreen: "flash-sales",
-      });
-    }
-  }, [event?.id]);
-
   const screenStyles = useCommerceSeeAllScreenStyles();
   const { horizontalPadding, sectionSpacing } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
   const { primaryEvent: flashSaleEvent } = useFlashSaleEvents();
+
+  // Track flash event impression
+  useEffect(() => {
+    if (flashSaleEvent) {
+      void trackPromoImpression({
+        entityType: "campaign",
+        entityId: flashSaleEvent.id,
+        sourceScreen: "flash-sales",
+      });
+    }
+  }, [flashSaleEvent]);
   const {
     products,
     isLoading,

@@ -22,8 +22,8 @@ export function useEmailPreferences() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/account/email-preferences');
-      setPreferences(response);
+      const prefs = await apiClient.get<EmailPreferences>('/account/email-preferences');
+      setPreferences(prefs);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch preferences');
       // Return default preferences on error
@@ -46,8 +46,11 @@ export function useEmailPreferences() {
   const updatePreferences = useCallback(
     async (updates: Partial<EmailPreferences>) => {
       try {
-        const response = await apiClient.patch('/account/email-preferences', updates);
-        setPreferences(response);
+        const prefs = await apiClient.patch<EmailPreferences>(
+          '/account/email-preferences',
+          updates
+        );
+        setPreferences(prefs);
         return true;
       } catch (err) {
         console.error('Failed to update preferences:', err);

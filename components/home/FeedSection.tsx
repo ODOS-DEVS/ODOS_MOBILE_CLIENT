@@ -55,7 +55,17 @@ export function HomeFeedSection({ section, sectionKey }: Props) {
       >
         {section.products.map((product, index) => (
           <View key={product.id || index} style={styles.productWrapper}>
-            <RecommendationCard {...product} />
+            <RecommendationCard
+              id={product.id}
+              title={product.title}
+              price={product.price}
+              oldPrice={product.old_price}
+              imageUrl={product.image_url}
+              image={product.image_url ? { uri: product.image_url } : undefined}
+              rating={product.rating}
+              reviews={product.reviews}
+              sourceScreen="home-feed"
+            />
           </View>
         ))}
       </ScrollView>

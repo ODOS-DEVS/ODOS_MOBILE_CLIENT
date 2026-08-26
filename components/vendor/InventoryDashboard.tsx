@@ -66,7 +66,7 @@ export function InventoryDashboard({ storeId }: Props) {
     icon: string,
     color: string
   ) => (
-    <View style={[styles.statCard, { backgroundColor: colors.secondary }]}>
+    <View style={[styles.statCard, { backgroundColor: colors.surfaceMuted }]}>
       <View style={[styles.statIconBg, { backgroundColor: color }]}>
         <Ionicons name={icon as any} size={20} color="#fff" />
       </View>
@@ -143,7 +143,7 @@ export function InventoryDashboard({ storeId }: Props) {
               style={[
                 styles.alertCard,
                 {
-                  backgroundColor: colors.secondary,
+                  backgroundColor: colors.surfaceMuted,
                   borderLeftColor:
                     alert.status === 'critical' ? '#EF4444' : '#F59E0B',
                 },
@@ -186,7 +186,7 @@ export function InventoryDashboard({ storeId }: Props) {
 
       {/* Search and Filter */}
       <View style={styles.searchSection}>
-        <View style={[styles.searchBox, { backgroundColor: colors.secondary }]}>
+        <View style={[styles.searchBox, { backgroundColor: colors.surfaceMuted }]}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -210,7 +210,7 @@ export function InventoryDashboard({ storeId }: Props) {
                 styles.filterBtn,
                 {
                   backgroundColor:
-                    filterStatus === status ? colors.primary : colors.secondary,
+                    filterStatus === status ? colors.primary : colors.surfaceMuted,
                 },
               ]}
               onPress={() =>
@@ -244,7 +244,7 @@ export function InventoryDashboard({ storeId }: Props) {
             style={[
               styles.productCard,
               {
-                backgroundColor: colors.secondary,
+                backgroundColor: colors.surfaceMuted,
                 borderLeftColor: product.low_stock
                   ? '#F59E0B'
                   : colors.primary,

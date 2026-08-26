@@ -13,6 +13,33 @@ export class ApiClientError extends Error {
   }
 }
 
+/**
+ * Query string values. Numbers and booleans are accepted because most of the
+ * API's query parameters are typed that way server-side (`limit`, `offset`,
+ * `full_products`, `points`); they are stringified here so callers do not have
+ * to. `null`/`undefined` are dropped rather than sent as the string "null".
+ */
+export type QueryParams = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+
+export interface RequestOptions {
+  params?: QueryParams;
+  headers?: Record<string, string>;
+}
+
+function buildQueryString(params?: QueryParams): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) continue;
+    search.append(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -25,10 +52,11 @@ class ApiClient {
     path: string,
     options?: {
       body?: unknown;
+      params?: QueryParams;
       headers?: Record<string, string>;
     }
   ): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${this.baseUrl}${path}${buildQueryString(options?.params)}`;
     const token = await getAuthToken();
 
     const headers: Record<string, string> = {
@@ -67,24 +95,36 @@ class ApiClient {
     }
   }
 
-  async get<T = unknown>(path: string, options?: Record<string, string>): Promise<T> {
-    return this.request<T>("GET", path, { headers: options });
+  async get<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
+    return this.request<T>("GET", path, options);
   }
 
-  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("POST", path, { body });
+  async post<T = unknown>(
+    path: string,
+    body?: unknown,
+    options?: RequestOptions
+  ): Promise<T> {
+    return this.request<T>("POST", path, { ...options, body });
   }
 
-  async patch<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PATCH", path, { body });
+  async patch<T = unknown>(
+    path: string,
+    body?: unknown,
+    options?: RequestOptions
+  ): Promise<T> {
+    return this.request<T>("PATCH", path, { ...options, body });
   }
 
-  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PUT", path, { body });
+  async put<T = unknown>(
+    path: string,
+    body?: unknown,
+    options?: RequestOptions
+  ): Promise<T> {
+    return this.request<T>("PUT", path, { ...options, body });
   }
 
-  async delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  async delete<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
+    return this.request<T>("DELETE", path, options);
   }
 }
 

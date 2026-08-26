@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useEmailPreferences } from '@/hooks/useEmailPreferences';
+import type { EmailPreferences } from '@/hooks/useEmailPreferences';
 
 export function EmailPreferencesManager() {
   const { colors } = useTheme();
   const { preferences, loading, togglePreference } = useEmailPreferences();
 
-  const handleToggle = async (key: keyof typeof preferences, label: string) => {
-    const success = await togglePreference(key as any);
+  const handleToggle = async (key: keyof EmailPreferences, label: string) => {
+    const success = await togglePreference(key);
     if (!success) {
       Alert.alert('Error', `Failed to update ${label}`);
     }
@@ -91,7 +92,7 @@ export function EmailPreferencesManager() {
             style={[
               styles.preferenceRow,
               {
-                backgroundColor: colors.secondary,
+                backgroundColor: colors.surfaceMuted,
                 borderBottomColor: colors.border,
                 borderBottomWidth: index < preferences_list.length - 1 ? 1 : 0,
               },
@@ -114,7 +115,7 @@ export function EmailPreferencesManager() {
                 preferences[pref.key as keyof typeof preferences] as boolean
               }
               onValueChange={() =>
-                handleToggle(pref.key as any, pref.label)
+                handleToggle(pref.key as keyof EmailPreferences, pref.label)
               }
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.primary}
@@ -125,9 +126,9 @@ export function EmailPreferencesManager() {
 
       {/* Info Section */}
       <View style={styles.infoSection}>
-        <View style={[styles.infoBg, { backgroundColor: colors.secondary }]}>
+        <View style={[styles.infoBg, { backgroundColor: colors.surfaceMuted }]}>
           <Text style={[styles.infoText, { color: colors.textMuted }]}>
-            💡 We'll always send you important transactional emails like order
+            💡 We&apos;ll always send you important transactional emails like order
             confirmations and shipping updates, regardless of these settings.
           </Text>
         </View>

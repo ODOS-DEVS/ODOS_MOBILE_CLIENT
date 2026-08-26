@@ -26,6 +26,17 @@ export interface HomeFeed {
   generated_at: string;
 }
 
+export interface FeedSectionPage {
+  section: string;
+  title: string;
+  subtitle?: string;
+  products: FeedProduct[];
+  total_count: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}
+
 export function useHomeFeed() {
   const [feed, setFeed] = useState<HomeFeed | null>(null);
   const [sectionProducts, setSectionProducts] = useState<Record<string, FeedProduct[]>>({});
@@ -36,13 +47,15 @@ export function useHomeFeed() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/home-feed', {
+      // Trailing slash matches the server route (GET /api/home-feed/); without
+      // it the request takes a 307 redirect on every load.
+      const homeFeed = await apiClient.get<HomeFeed>('/home-feed/', {
         params: {
           full_products: fullProducts,
           limit_per_section: 12,
         },
       });
-      setFeed(response.data);
+      setFeed(homeFeed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch home feed');
     } finally {
@@ -54,14 +67,15 @@ export function useHomeFeed() {
     async (sectionKey: string, limit = 30, offset = 0) => {
       try {
         setError(null);
-        const response = await apiClient.get(`/home-feed/section/${sectionKey}`, {
-          params: { limit, offset },
-        });
+        const page = await apiClient.get<FeedSectionPage>(
+          `/home-feed/section/${sectionKey}`,
+          { params: { limit, offset } }
+        );
         setSectionProducts((prev) => ({
           ...prev,
-          [sectionKey]: response.data.products,
+          [sectionKey]: page.products ?? [],
         }));
-        return response.data;
+        return page;
       } catch (err) {
         setError(err instanceof Error ? err.message : `Failed to fetch ${sectionKey}`);
         return null;

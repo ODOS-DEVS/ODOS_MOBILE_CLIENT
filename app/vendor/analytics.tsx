@@ -1,5 +1,6 @@
 import { AccountEmptyState, AccountFilterChips } from "@/components/account/AccountUi";
 import VendorAnalyticsPanel from "@/components/vendor/VendorAnalyticsPanel";
+import VendorPromoPerformancePanel from "@/components/vendor/VendorPromoPerformancePanel";
 import {
   QuickActionCard,
   VendorScreenShell,
@@ -7,6 +8,7 @@ import {
 } from "@/components/vendor/VendorUi";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { useVendorAnalytics } from "@/hooks/useVendorAnalytics";
+import { useVendorPromoPerformance } from "@/hooks/useVendorPromoPerformance";
 import { useStoreStore } from "@/stores/storeStore";
 import { useVendorStore } from "@/stores/vendorStore";
 import type { VendorAnalyticsPeriod, VendorDashboardStats } from "@/types/vendor";
@@ -33,6 +35,12 @@ export default function VendorAnalyticsScreen() {
     session,
     hasVendorAccess,
   );
+  const {
+    overview: promoOverview,
+    isLoading: isLoadingPromo,
+    error: promoError,
+    refresh: refreshPromoPerformance,
+  } = useVendorPromoPerformance(session, hasVendorAccess, period);
 
   const resolvedDashboardStats = useMemo<VendorDashboardStats | null>(() => {
     if (vendorDashboardStats) {
@@ -108,7 +116,13 @@ export default function VendorAnalyticsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={() => void refreshAnalytics()} />
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={() => {
+              void refreshAnalytics();
+              void refreshPromoPerformance();
+            }}
+          />
         }
         contentContainerStyle={[
           vendorStyles.content,
@@ -128,6 +142,12 @@ export default function VendorAnalyticsScreen() {
           />
 
           <VendorAnalyticsPanel insights={insights} variant="full" />
+
+          <VendorPromoPerformancePanel
+            overview={promoOverview}
+            isLoading={isLoadingPromo}
+            error={promoError}
+          />
 
           {!hasData ? (
             <AccountEmptyState

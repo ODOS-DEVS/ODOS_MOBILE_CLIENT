@@ -822,3 +822,116 @@ export async function createVendorWithdrawal(
   }
   return mapWithdrawalRequest(payload);
 }
+
+// --- Promo performance -------------------------------------------------------
+// Backed by the same aggregation the admin promo dashboard uses, scoped
+// server-side to this vendor's store.
+
+export type VendorPromoEntityType = "campaign" | "voucher";
+
+export type VendorPromoChannel = {
+  entityType: string;
+  trackedEntities: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  clickThroughRate: number;
+  conversionRate: number;
+};
+
+export type VendorPromoPerformer = {
+  entityId: string;
+  entityLabel: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  clickThroughRate: number;
+  conversionRate: number;
+  redemptionCount: number;
+  uniqueUserCount: number;
+  totalDiscountAmount: number;
+};
+
+export type VendorPromoOverview = {
+  days: number;
+  channels: VendorPromoChannel[];
+  totalDiscountGiven: number;
+  totalRedemptions: number;
+  topPerformers: VendorPromoPerformer[];
+};
+
+type VendorPromoOverviewApi = {
+  days: number;
+  generated_at: string;
+  scope: string;
+  channels: Array<{
+    entity_type: string;
+    tracked_entities: number;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    click_through_rate: number;
+    conversion_rate: number;
+  }>;
+  total_discount_given: number;
+  total_redemptions: number;
+  top_performers: Array<{
+    entity_id: string;
+    entity_label: string;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    click_through_rate: number;
+    conversion_rate: number;
+    redemption_count: number;
+    unique_user_count: number;
+    total_discount_amount: number;
+  }>;
+};
+
+export async function fetchVendorPromoOverview(
+  session: VendorSessionContext,
+  days = 30,
+): Promise<VendorPromoOverview> {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/analytics/promotions/overview?days=${days}`,
+    { headers: buildHeaders(accessToken) },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorPromoOverviewApi>(response);
+  if (!payload) {
+    throw new Error("The promo performance response was empty.");
+  }
+
+  return {
+    days: payload.days,
+    channels: payload.channels.map((channel) => ({
+      entityType: channel.entity_type,
+      trackedEntities: channel.tracked_entities,
+      impressions: channel.impressions,
+      clicks: channel.clicks,
+      conversions: channel.conversions,
+      clickThroughRate: channel.click_through_rate,
+      conversionRate: channel.conversion_rate,
+    })),
+    totalDiscountGiven: payload.total_discount_given,
+    totalRedemptions: payload.total_redemptions,
+    topPerformers: payload.top_performers.map((performer) => ({
+      entityId: performer.entity_id,
+      entityLabel: performer.entity_label,
+      impressions: performer.impressions,
+      clicks: performer.clicks,
+      conversions: performer.conversions,
+      clickThroughRate: performer.click_through_rate,
+      conversionRate: performer.conversion_rate,
+      redemptionCount: performer.redemption_count,
+      uniqueUserCount: performer.unique_user_count,
+      totalDiscountAmount: performer.total_discount_amount,
+    })),
+  };
+}

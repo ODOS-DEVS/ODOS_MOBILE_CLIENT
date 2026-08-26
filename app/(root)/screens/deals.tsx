@@ -271,22 +271,6 @@ export default function DealsScreen() {
                           });
                           navigateToMerchandisingCampaign(campaign.slug, campaign.title);
                         }}
-                        onPress={() => {
-                          void trackPromoClick({
-                            entityType: "campaign",
-                            entityId: campaign.id,
-                            sourceScreen: "deals",
-                          });
-                          navigateToMerchandisingCampaign(campaign.slug, campaign.title);
-                        }}
-                        onPress={() => {
-                          void trackPromoClick({
-                            entityType: "campaign",
-                            entityId: campaign.id,
-                            sourceScreen: "deals",
-                          });
-                          navigateToMerchandisingCampaign(campaign.slug, campaign.title);
-                        }}
                         style={{
                           width: 200,
                           marginRight: 10,

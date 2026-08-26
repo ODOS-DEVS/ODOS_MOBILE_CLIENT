@@ -160,7 +160,7 @@ export function PaymentMethodManager({
           alignItems: 'center',
         },
         setDefaultButton: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
         },
         deleteButton: {
           backgroundColor: '#FEE2E2',

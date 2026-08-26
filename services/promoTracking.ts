@@ -19,7 +19,7 @@ const MAX_BATCH_SIZE = 50;
 const FLUSH_INTERVAL_MS = 30000; // 30 seconds
 
 let eventQueue: PromoAnalyticsEvent[] = [];
-let flushTimeout: NodeJS.Timeout | null = null;
+let flushTimeout: ReturnType<typeof setTimeout> | null = null;
 const sessionId = generateSessionId();
 let isEnabled = true;
 

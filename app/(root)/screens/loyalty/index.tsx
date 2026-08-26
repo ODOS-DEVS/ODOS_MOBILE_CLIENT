@@ -61,8 +61,8 @@ export default function LoyaltyScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Redeem',
-          onPress: async (value) => {
-            const points = parseInt(value, 10);
+          onPress: async (value?: string) => {
+            const points = parseInt(value ?? '', 10);
             if (isNaN(points) || points <= 0) {
               Alert.alert('Invalid amount', 'Please enter a valid number of points');
               return;
@@ -169,7 +169,7 @@ export default function LoyaltyScreen() {
         },
         benefitsSection: {
           marginTop: 16,
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderRadius: 12,
           padding: 12,
         },
@@ -221,7 +221,7 @@ export default function LoyaltyScreen() {
           fontWeight: '700',
         },
         secondaryButton: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderWidth: 1,
           borderColor: colors.border,
         },
@@ -415,14 +415,14 @@ export default function LoyaltyScreen() {
                 key={index}
                 style={[
                   styles.transactionItem,
-                  transaction.event_type === 'earn'
+                  transaction.type === 'earn'
                     ? styles.transactionEarn
                     : styles.transactionRedeem,
                 ]}
               >
                 <View style={styles.transactionInfo}>
                   <Text style={styles.transactionType}>
-                    {transaction.event_type === 'earn' ? '+ Earned' : '- Redeemed'}
+                    {transaction.type === 'earn' ? '+ Earned' : '- Redeemed'}
                   </Text>
                   <Text style={styles.transactionDate}>
                     {new Date(transaction.created_at).toLocaleDateString()}
@@ -430,9 +430,9 @@ export default function LoyaltyScreen() {
                 </View>
                 <Text style={[
                   styles.transactionPoints,
-                  { color: transaction.event_type === 'earn' ? '#10B981' : '#F59E0B' }
+                  { color: transaction.type === 'earn' ? '#10B981' : '#F59E0B' }
                 ]}>
-                  {transaction.event_type === 'earn' ? '+' : '-'}{transaction.points_amount}
+                  {transaction.type === 'earn' ? '+' : '-'}{transaction.points}
                 </Text>
               </View>
             ))}

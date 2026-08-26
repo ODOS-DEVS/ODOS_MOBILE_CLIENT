@@ -24,8 +24,8 @@ export function useWishlist() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/wishlist');
-      setItems(response.data || []);
+      const wishlist = await apiClient.get<WishlistItem[]>('/wishlist');
+      setItems(wishlist ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch wishlist');
       setItems([]);
@@ -38,8 +38,8 @@ export function useWishlist() {
     async (productData: Partial<WishlistItem>) => {
       try {
         setError(null);
-        const response = await apiClient.post('/wishlist', productData);
-        setItems((prev) => [response.data, ...prev]);
+        const created = await apiClient.post<WishlistItem>('/wishlist', productData);
+        setItems((prev) => [created, ...prev]);
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to add to wishlist');

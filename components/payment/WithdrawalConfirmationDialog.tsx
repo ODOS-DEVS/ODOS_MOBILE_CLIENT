@@ -139,7 +139,7 @@ export function WithdrawalConfirmationDialog({
           lineHeight: 18,
         },
         feeRow: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderRadius: 8,
           padding: 12,
           marginBottom: 20,
@@ -157,7 +157,7 @@ export function WithdrawalConfirmationDialog({
           color: colors.text,
         },
         totalRow: {
-          backgroundColor: colors.secondary,
+          backgroundColor: colors.surfaceMuted,
           borderRadius: 12,
           padding: 16,
           marginBottom: 20,

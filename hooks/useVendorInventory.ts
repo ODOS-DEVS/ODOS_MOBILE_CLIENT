@@ -58,9 +58,10 @@ export function useVendorInventory(storeId: string) {
         if (search) params.append('search', search);
         if (status) params.append('status', status);
 
-        const response = await apiClient.get(
-          `/vendor/inventory/?${params.toString()}`
-        );
+        const response = await apiClient.get<{
+          products?: InventoryProduct[];
+          total?: number;
+        }>(`/vendor/inventory/?${params.toString()}`);
 
         setProducts(response.products || []);
         setTotal(response.total || 0);
@@ -75,7 +76,7 @@ export function useVendorInventory(storeId: string) {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await apiClient.get(
+      const response = await apiClient.get<InventoryStats>(
         `/vendor/inventory/stats?store_id=${storeId}`
       );
       setStats(response);
@@ -87,7 +88,7 @@ export function useVendorInventory(storeId: string) {
   const fetchAlerts = useCallback(
     async (threshold = 10) => {
       try {
-        const response = await apiClient.get(
+        const response = await apiClient.get<{ alerts?: LowStockAlert[] }>(
           `/vendor/inventory/alerts/low-stock?store_id=${storeId}&threshold=${threshold}`
         );
         setAlerts(response.alerts || []);
