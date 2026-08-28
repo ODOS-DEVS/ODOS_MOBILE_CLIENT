@@ -16,6 +16,8 @@ type Props = {
   overview: VendorPromoOverview | null;
   isLoading?: boolean;
   error?: string | null;
+  /** Server does not have the promo endpoint yet — render nothing at all. */
+  isUnavailable?: boolean;
 };
 
 /** Rates arrive from the API already scaled to percent — never multiply again. */
@@ -34,9 +36,15 @@ export default function VendorPromoPerformancePanel({
   overview,
   isLoading = false,
   error = null,
+  isUnavailable = false,
 }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Nothing to show, and nothing the vendor could do about it.
+  if (isUnavailable) {
+    return null;
+  }
 
   const campaigns = overview?.channels.find((c) => c.entityType === "campaign");
   const vouchers = overview?.channels.find((c) => c.entityType === "voucher");

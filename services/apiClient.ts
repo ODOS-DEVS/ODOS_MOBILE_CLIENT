@@ -44,11 +44,18 @@ export async function parseApiErrorMessage(
   response: Response,
   fallback = "Request failed.",
 ): Promise<string> {
-  if (response.status === 405) {
-    return "This seller feature needs a backend update. Deploy the latest ODOS mobile backend, then try again.";
-  }
-  if (response.status === 404) {
-    return "This seller endpoint is missing on the server. Deploy the latest ODOS mobile backend to enable it.";
+  // 404/405 on a seller endpoint means the app is ahead of the server. That is
+  // a deploy problem, and the person reading this screen is a shop owner who
+  // cannot deploy anything — so they get a plain sentence, and the actionable
+  // detail goes to the console where a developer will actually see it.
+  if (response.status === 404 || response.status === 405) {
+    if (__DEV__) {
+      console.warn(
+        `[ODOS] ${response.status} on ${response.url} — the app expects an endpoint this ` +
+          "backend does not have. Deploy the latest ODOS mobile backend.",
+      );
+    }
+    return "This feature isn't available yet. Please try again later.";
   }
 
   try {
@@ -56,7 +63,7 @@ export async function parseApiErrorMessage(
     if (payload?.detail !== undefined) {
       const detail = formatApiDetail(payload.detail, fallback);
       if (/method not allowed/i.test(detail)) {
-        return "This seller feature needs a backend update. Deploy the latest ODOS mobile backend, then try again.";
+        return "This feature isn't available yet. Please try again later.";
       }
       return detail;
     }

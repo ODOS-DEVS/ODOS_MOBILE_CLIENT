@@ -39,6 +39,7 @@ export default function VendorAnalyticsScreen() {
     overview: promoOverview,
     isLoading: isLoadingPromo,
     error: promoError,
+    isUnavailable: isPromoUnavailable,
     refresh: refreshPromoPerformance,
   } = useVendorPromoPerformance(session, hasVendorAccess, period);
 
@@ -147,6 +148,7 @@ export default function VendorAnalyticsScreen() {
             overview={promoOverview}
             isLoading={isLoadingPromo}
             error={promoError}
+            isUnavailable={isPromoUnavailable}
           />
 
           {!hasData ? (
