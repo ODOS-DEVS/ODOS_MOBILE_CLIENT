@@ -29,13 +29,19 @@ export function useVendorPromoPerformance(
   const [overview, setOverview] = useState<VendorPromoOverview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The server predates this feature — distinct from a real failure.
+  const [isUnavailable, setIsUnavailable] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
     setError(null);
+    // Reset alongside the error: a stale `true` here would hide the panel and
+    // take a genuine failure down with it.
+    setIsUnavailable(false);
     try {
       const result = await fetchVendorPromoOverview(session, PERIOD_DAYS[period]);
+      setIsUnavailable(result === null);
       setOverview(result);
     } catch (err) {
       setError(
@@ -50,5 +56,5 @@ export function useVendorPromoPerformance(
     void refresh();
   }, [refresh]);
 
-  return { overview, isLoading, error, refresh };
+  return { overview, isLoading, error, isUnavailable, refresh };
 }

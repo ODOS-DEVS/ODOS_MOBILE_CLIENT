@@ -889,15 +889,26 @@ type VendorPromoOverviewApi = {
   }>;
 };
 
+/**
+ * Returns null when the server does not have this endpoint yet.
+ *
+ * Promo performance shipped in the app before the backend that serves it. A
+ * 404/405 there means "not deployed", which is not something a shop owner can
+ * act on, so the caller hides the section instead of showing them an error.
+ */
 export async function fetchVendorPromoOverview(
   session: VendorSessionContext,
   days = 30,
-): Promise<VendorPromoOverview> {
+): Promise<VendorPromoOverview | null> {
   const accessToken = requireAccessToken(session);
   const response = await fetch(
     `${API_BASE_URL}/vendor/analytics/promotions/overview?days=${days}`,
     { headers: buildHeaders(accessToken) },
   );
+
+  if (response.status === 404 || response.status === 405) {
+    return null;
+  }
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response));
@@ -905,7 +916,7 @@ export async function fetchVendorPromoOverview(
 
   const payload = await parseResponse<VendorPromoOverviewApi>(response);
   if (!payload) {
-    throw new Error("The promo performance response was empty.");
+    return null;
   }
 
   return {
