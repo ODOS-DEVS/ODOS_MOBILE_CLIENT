@@ -32,6 +32,11 @@ export default function SplashScreen() {
   // Hide the native splash immediately: this screen's first frame is the same flat
   // black canvas the native splash used, so the handoff is invisible — the mark then
   // fades in on top of it instead of sitting hidden behind a static image.
+  //
+  // This only holds because the expo-splash-screen plugin is configured with a
+  // background colour and no image. Give it an `image` again and the mark is
+  // drawn twice: once statically by the native splash, then again fading in from
+  // zero here, which reads as a flicker on launch.
   useEffect(() => {
     if (hasHiddenNativeSplashRef.current) {
       return;

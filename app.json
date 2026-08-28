@@ -35,9 +35,6 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
-          "imageWidth": 240,
-          "resizeMode": "contain",
           "backgroundColor": "#000000",
           "dark": {
             "backgroundColor": "#000000"
@@ -51,7 +48,9 @@
           "icon": "./assets/images/icon.png",
           "color": "#696969",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/vendor_order.wav"],
+          "sounds": [
+            "./assets/sounds/vendor_order.wav"
+          ],
           "enableBackgroundRemoteNotifications": true
         }
       ],
