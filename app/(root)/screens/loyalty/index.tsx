@@ -9,6 +9,7 @@ import {
   Alert,
   FlatList,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
@@ -16,7 +17,7 @@ import { useLoyalty } from '@/hooks/useLoyalty';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import { useTabBarContentInsetFromContext } from '@/components/navigation/TabBarMetricsContext';
 
-const getTierDetails = (tier: string) => {
+const getTierDetails = (tier: string | null | undefined) => {
   const details: Record<string, { color: string; emoji: string; benefits: string[] }> = {
     bronze: {
       color: '#CD7F32',
@@ -34,7 +35,9 @@ const getTierDetails = (tier: string) => {
       benefits: ['1.5x points multiplier', '10% discount', 'Free shipping on 30+ GHS', 'VIP support', 'Exclusive offers'],
     },
   };
-  return details[tier.toLowerCase()] || { color: '#999', emoji: '⭐', benefits: [] };
+  // Defensive: a missing tier must not throw during render.
+  const key = typeof tier === 'string' ? tier.toLowerCase() : '';
+  return details[key] || { color: '#999', emoji: '⭐', benefits: [] };
 };
 
 export default function LoyaltyScreen() {
@@ -54,6 +57,16 @@ export default function LoyaltyScreen() {
   const handleRedeemPoints = useCallback(() => {
     if (!account) return;
 
+    // Alert.prompt is iOS-only. On Android it is undefined, so calling it
+    // throws a TypeError and takes the screen down.
+    if (Platform.OS !== 'ios' || typeof Alert.prompt !== 'function') {
+      Alert.alert(
+        'Redeem points',
+        'Redeeming points is only available on iOS right now.',
+      );
+      return;
+    }
+
     Alert.prompt(
       'Redeem Points',
       `You have ${account.total_points} points available.\n\nHow many points would you like to redeem? (100 points = 1 GHS)`,
@@ -72,12 +85,15 @@ export default function LoyaltyScreen() {
               return;
             }
 
-            const success = await redeemPoints(points);
-            if (success) {
+            // redeemPoints resolves to { success, error } -- an object, which is
+            // always truthy. Testing it directly reported every failed
+            // redemption as a success.
+            const result = await redeemPoints(points);
+            if (result.success) {
               Alert.alert('Success', `Redeemed ${points} points for GHS ${(points / 100).toFixed(2)}`);
               await handleRefresh();
             } else {
-              Alert.alert('Error', 'Failed to redeem points');
+              Alert.alert('Error', result.error ?? 'Failed to redeem points');
             }
           },
         },
