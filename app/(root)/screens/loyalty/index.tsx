@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useLoyalty } from '@/hooks/useLoyalty';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import { useTabBarContentInsetFromContext } from '@/components/navigation/TabBarMetricsContext';
+import { useOptionalTabBarContentInset } from '@/components/navigation/TabBarMetricsContext';
 
 const getTierDetails = (tier: string | null | undefined) => {
   const details: Record<string, { color: string; emoji: string; benefits: string[] }> = {
@@ -42,7 +42,9 @@ const getTierDetails = (tier: string | null | undefined) => {
 
 export default function LoyaltyScreen() {
   const { colors } = useTheme();
-  const tabBarInset = useTabBarContentInsetFromContext();
+  // This screen is pushed above the tabs, so it renders outside
+  // TabBarMetricsProvider and must not demand it.
+  const tabBarInset = useOptionalTabBarContentInset();
   const { account, transactions, loading, error, fetchAccount, fetchTransactionHistory, redeemPoints } = useLoyalty();
 
   const tierDetails = useMemo(() => {

@@ -37,3 +37,16 @@ export function useTabBarMetricsContext(): TabBarMetrics {
 export function useTabBarContentInsetFromContext(): number {
   return useTabBarMetricsContext().contentBottomInset;
 }
+
+/**
+ * Content inset for screens that may render outside the tab navigator.
+ *
+ * The provider lives in app/(root)/(tabs)/_layout.tsx, so a screen pushed on
+ * top of the tabs -- anything under app/(root)/screens/ -- mounts without it.
+ * The accessor above throws in that case, which is correct for a tab screen
+ * (a missing provider there is a real bug) but fatal for a pushed screen that
+ * has no tab bar beneath it and nothing to inset for.
+ */
+export function useOptionalTabBarContentInset(): number {
+  return useContext(TabBarMetricsContext)?.contentBottomInset ?? 0;
+}
