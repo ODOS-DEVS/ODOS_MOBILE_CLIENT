@@ -17,6 +17,7 @@ import {
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
+import { useChatMessagePolling } from "@/hooks/useChatMessagePolling";
 import { useRealtime } from "@/context/RealtimeContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
@@ -237,6 +238,10 @@ export default function SupportChatScreen() {
       };
     }, [loadMessages, resolvedThreadId]),
   );
+
+  // Chat updates over the websocket; this only covers the gap when that
+  // connection is down, since the effect above runs once per visit.
+  useChatMessagePolling(resolvedThreadId, loadMessages);
 
   useEffect(() => {
     if (!messages.length && !isSending) {
