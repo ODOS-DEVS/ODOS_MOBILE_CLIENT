@@ -41,6 +41,7 @@ export default function OrderSuccessScreen() {
       <ProfileHeader title="Order Confirmed" showBackButton={false} />
 
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[accountStyles.content, styles.scrollContent]}
         showsVerticalScrollIndicator={false}
       >
@@ -112,8 +113,15 @@ export default function OrderSuccessScreen() {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    // flex:1 bounds the ScrollView to the space left over after the header
+    // and footer. Without it the ScrollView sizes to its content, grows past
+    // the screen, and pushes the sticky footer off the bottom -- which is how
+    // "Continue Shopping" ended up half cut off.
+    scroll: {
+      flex: 1,
+    },
     scrollContent: {
-      paddingBottom: rV(150),
+      paddingBottom: rV(24),
     },
     hero: {
       alignItems: "center",

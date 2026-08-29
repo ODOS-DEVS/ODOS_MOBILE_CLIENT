@@ -73,7 +73,11 @@ export default function OrderReceiptScreen() {
     <View style={accountStyles.screen}>
       <ProfileHeader title="Receipt" />
 
-      <ScrollView contentContainerStyle={accountStyles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={accountStyles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <AccountListCard>
           <View style={styles.heroRow}>
             <AccountIconShell icon="receipt-outline" />
@@ -198,6 +202,10 @@ export default function OrderReceiptScreen() {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    // Bounds the ScrollView so the sticky footer cannot be pushed off-screen.
+    scroll: {
+      flex: 1,
+    },
     emptyWrap: {
       flex: 1,
       justifyContent: "center",
