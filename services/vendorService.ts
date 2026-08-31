@@ -1069,3 +1069,70 @@ export async function reorderStoreSections(
   const payload = await parseResponse<StoreSectionApi[]>(response);
   return (payload ?? []).map(mapStoreSection);
 }
+
+/**
+ * Put products on a shelf.
+ *
+ * Re-sending one that is already there is a no-op server-side, so the picker
+ * can submit its whole selection without first working out the difference.
+ */
+export async function addProductsToSection(
+  session: VendorSessionContext,
+  sectionId: string,
+  productIds: string[],
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/${encodeURIComponent(sectionId)}/products`,
+    {
+      method: "POST",
+      headers: { ...buildHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ product_ids: productIds }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi>(response);
+  if (!payload) {
+    throw new Error("The section could not be updated.");
+  }
+  return mapStoreSection(payload);
+}
+
+export async function removeProductFromSection(
+  session: VendorSessionContext,
+  sectionId: string,
+  productId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/${encodeURIComponent(sectionId)}/products/${encodeURIComponent(productId)}`,
+    { method: "DELETE", headers: buildHeaders(accessToken) },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi>(response);
+  if (!payload) {
+    throw new Error("The section could not be updated.");
+  }
+  return mapStoreSection(payload);
+}
+
+/** Product ids already on a shelf, so the picker can show them ticked. */
+export async function fetchSectionProductIds(
+  session: VendorSessionContext,
+  sectionId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/${encodeURIComponent(sectionId)}/products`,
+    { headers: buildHeaders(accessToken) },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<string[]>(response);
+  return payload ?? [];
+}
