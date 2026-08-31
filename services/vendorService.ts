@@ -16,6 +16,7 @@ import type {
   VendorWalletTransaction,
   VendorWithdrawalInput,
   VendorWithdrawalRequest,
+  StoreSection,
 } from "@/types/vendor";
 
 type VendorApplicationApi = {
@@ -945,4 +946,126 @@ export async function fetchVendorPromoOverview(
       totalDiscountAmount: performer.total_discount_amount,
     })),
   };
+}
+
+type StoreSectionApi = {
+  id: string;
+  title: string;
+  slug: string;
+  sort_order: number;
+  is_active: boolean;
+  product_count: number;
+};
+
+function mapStoreSection(item: StoreSectionApi): StoreSection {
+  return {
+    id: item.id,
+    title: item.title,
+    slug: item.slug,
+    sortOrder: item.sort_order ?? 0,
+    isActive: item.is_active ?? true,
+    productCount: item.product_count ?? 0,
+  };
+}
+
+export async function fetchStoreSections(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/store/sections`, {
+    headers: buildHeaders(accessToken),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi[]>(response);
+  return (payload ?? []).map(mapStoreSection);
+}
+
+/** Shelves to offer a vendor whose sections screen is empty. */
+export async function fetchStoreSectionSuggestions(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/starter-suggestions`,
+    { headers: buildHeaders(accessToken) },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<{ titles: string[] }>(response);
+  return payload?.titles ?? [];
+}
+
+export async function createStoreSection(
+  session: VendorSessionContext,
+  title: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/store/sections`, {
+    method: "POST",
+    headers: { ...buildHeaders(accessToken), "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi>(response);
+  if (!payload) {
+    throw new Error("The section could not be created.");
+  }
+  return mapStoreSection(payload);
+}
+
+export async function renameStoreSection(
+  session: VendorSessionContext,
+  sectionId: string,
+  title: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/${encodeURIComponent(sectionId)}`,
+    {
+      method: "PATCH",
+      headers: { ...buildHeaders(accessToken), "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi>(response);
+  if (!payload) {
+    throw new Error("The section could not be renamed.");
+  }
+  return mapStoreSection(payload);
+}
+
+export async function deleteStoreSection(
+  session: VendorSessionContext,
+  sectionId: string,
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/store/sections/${encodeURIComponent(sectionId)}`,
+    { method: "DELETE", headers: buildHeaders(accessToken) },
+  );
+  // 204 has no body, so parseResponse is not used here.
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+}
+
+export async function reorderStoreSections(
+  session: VendorSessionContext,
+  sectionIds: string[],
+) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/store/sections/reorder`, {
+    method: "POST",
+    headers: { ...buildHeaders(accessToken), "Content-Type": "application/json" },
+    body: JSON.stringify({ section_ids: sectionIds }),
+  });
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const payload = await parseResponse<StoreSectionApi[]>(response);
+  return (payload ?? []).map(mapStoreSection);
 }

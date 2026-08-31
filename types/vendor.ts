@@ -331,3 +331,12 @@ export function canAccessVendorDashboard(
 ) {
   return hasRole(roles, "vendor") && vendorStatus === "approved";
 }
+
+export type StoreSection = {
+  id: string;
+  title: string;
+  slug: string;
+  sortOrder: number;
+  isActive: boolean;
+  productCount: number;
+};

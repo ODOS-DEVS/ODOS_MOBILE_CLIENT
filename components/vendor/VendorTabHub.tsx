@@ -537,6 +537,12 @@ export default function VendorTabHub({
         onPress: () => router.push("/vendor/analytics" as any),
       },
       {
+        key: "sections",
+        icon: "albums-outline" as const,
+        label: "Sections",
+        onPress: () => router.push("/vendor/sections" as any),
+      },
+      {
         key: "reviews",
         icon: "star-outline" as const,
         label: "Reviews",
