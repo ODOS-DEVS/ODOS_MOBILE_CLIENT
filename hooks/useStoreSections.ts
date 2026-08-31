@@ -1,5 +1,9 @@
 import { API_BASE_URL } from "@/constants/auth";
-import type { CatalogProductItem } from "@/hooks/useCatalog";
+import {
+  mapProduct,
+  type CatalogProductItem,
+  type ProductApiItem,
+} from "@/hooks/useCatalog";
 import { useCallback, useEffect, useState } from "react";
 
 export type StoreSectionWithProducts = {
@@ -15,7 +19,10 @@ type StoreSectionApi = {
   title: string;
   slug: string;
   sort_order: number;
-  products: CatalogProductItem[];
+  // The API speaks snake_case; CatalogProductItem is camelCase. Typing this as
+  // the latter would compile and then render blank cards, because every field
+  // ProductCard reads would be undefined.
+  products: ProductApiItem[];
 };
 
 /**
@@ -51,7 +58,7 @@ export function useStoreSections(storeId: string | undefined) {
           title: item.title,
           slug: item.slug,
           sortOrder: item.sort_order ?? 0,
-          products: item.products ?? [],
+          products: (item.products ?? []).map(mapProduct),
         })),
       );
     } catch {

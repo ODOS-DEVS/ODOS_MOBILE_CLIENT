@@ -45,6 +45,8 @@ export default function VendorSectionsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const sectionsCountRef = useRef(0);
   sectionsCountRef.current = sections.length;
@@ -105,42 +107,43 @@ export default function VendorSectionsScreen() {
     [session],
   );
 
-  const rename = useCallback(
-    (section: StoreSection) => {
-      Alert.prompt?.(
-        "Rename section",
-        "What should this section be called?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Save",
-            onPress: async (value?: string) => {
-              const trimmed = (value ?? "").trim();
-              if (!trimmed || trimmed === section.title) return;
-              setBusyId(section.id);
-              try {
-                const updated = await renameStoreSection(session, section.id, trimmed);
-                setSections((current) =>
-                  current.map((item) => (item.id === updated.id ? updated : item)),
-                );
-              } catch (renameError) {
-                Alert.alert(
-                  "Couldn't rename",
-                  renameError instanceof Error
-                    ? renameError.message
-                    : "Please try again.",
-                );
-              } finally {
-                setBusyId(null);
-              }
-            },
-          },
-        ],
-        "plain-text",
-        section.title,
-      );
+  // Renaming edits the row in place rather than opening a system prompt.
+  // Alert.prompt is iOS-only: on Android it is undefined, so a prompt-based
+  // rename would leave the button doing nothing at all with no error.
+  const beginRename = useCallback((section: StoreSection) => {
+    setEditingId(section.id);
+    setEditingTitle(section.title);
+  }, []);
+
+  const cancelRename = useCallback(() => {
+    setEditingId(null);
+    setEditingTitle("");
+  }, []);
+
+  const commitRename = useCallback(
+    async (section: StoreSection) => {
+      const trimmed = editingTitle.trim();
+      if (!trimmed || trimmed === section.title) {
+        cancelRename();
+        return;
+      }
+      setBusyId(section.id);
+      try {
+        const updated = await renameStoreSection(session, section.id, trimmed);
+        setSections((current) =>
+          current.map((item) => (item.id === updated.id ? updated : item)),
+        );
+        cancelRename();
+      } catch (renameError) {
+        Alert.alert(
+          "Couldn't rename",
+          renameError instanceof Error ? renameError.message : "Please try again.",
+        );
+      } finally {
+        setBusyId(null);
+      }
     },
-    [session],
+    [cancelRename, editingTitle, session],
   );
 
   const remove = useCallback(
@@ -311,12 +314,29 @@ export default function VendorSectionsScreen() {
                 </View>
 
                 <View style={styles.details}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.meta}>
-                    {item.productCount === 0
-                      ? "No products yet — shoppers won't see this section"
-                      : `${item.productCount} product${item.productCount === 1 ? "" : "s"}`}
-                  </Text>
+                  {editingId === item.id ? (
+                    <TextInput
+                      value={editingTitle}
+                      onChangeText={setEditingTitle}
+                      style={styles.renameInput}
+                      autoFocus
+                      selectTextOnFocus
+                      maxLength={80}
+                      returnKeyType="done"
+                      onSubmitEditing={() => void commitRename(item)}
+                      onBlur={() => void commitRename(item)}
+                      accessibilityLabel={`Rename ${item.title}`}
+                    />
+                  ) : (
+                    <>
+                      <Text style={styles.title}>{item.title}</Text>
+                      <Text style={styles.meta}>
+                        {item.productCount === 0
+                          ? "No products yet — shoppers won't see this section"
+                          : `${item.productCount} product${item.productCount === 1 ? "" : "s"}`}
+                      </Text>
+                    </>
+                  )}
                 </View>
 
                 {busyId === item.id ? (
@@ -325,12 +345,22 @@ export default function VendorSectionsScreen() {
                   <View style={styles.actions}>
                     <TouchableOpacity
                       accessibilityRole="button"
-                      accessibilityLabel={`Rename ${item.title}`}
-                      onPress={() => rename(item)}
+                      accessibilityLabel={
+                        editingId === item.id
+                          ? `Save ${item.title}`
+                          : `Rename ${item.title}`
+                      }
+                      onPress={() =>
+                        editingId === item.id
+                          ? void commitRename(item)
+                          : beginRename(item)
+                      }
                       style={styles.action}
                     >
                       <Ionicons
-                        name="create-outline"
+                        name={
+                          editingId === item.id ? "checkmark" : "create-outline"
+                        }
                         size={rMS(18)}
                         color={colors.text}
                       />
@@ -435,6 +465,14 @@ function createStyles(colors: ReturnType<typeof useTheme>["colors"]) {
       justifyContent: "center",
     },
     details: { flex: 1 },
+    renameInput: {
+      fontFamily: Fonts.textBold,
+      fontSize: rMS(15),
+      color: colors.text,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.primary,
+      paddingVertical: rV(2),
+    },
     title: {
       fontFamily: Fonts.textBold,
       fontSize: rMS(15),
