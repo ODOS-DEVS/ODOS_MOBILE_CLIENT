@@ -32,6 +32,15 @@ export type StoreBrowseFilters = {
   audienceSlug: string;
   priceRange: StoreProductPriceRange;
   sort: StoreProductSortMode;
+  /**
+   * Product ids on the shop's currently selected shelf, or null for no section
+   * filter.
+   *
+   * Ids rather than a section id because sections are per-store and carry no
+   * meaning in the product records themselves — the shelf is the authority on
+   * what is in it, so the caller resolves membership and passes the result.
+   */
+  sectionProductIds?: string[] | null;
 };
 
 export type StoreBrowseFilterOption = {
@@ -111,8 +120,16 @@ export function filterStoreProducts(
 ) {
   const scoped = restrictProductsToStore(products, filters.storeId);
   const normalizedQuery = normalizeSearchText(filters.query);
+  // Set lookup: a shop can have many shelves and a long catalogue, and this
+  // runs on every keystroke in the search field.
+  const sectionIds = filters.sectionProductIds
+    ? new Set(filters.sectionProductIds)
+    : null;
 
   return scoped.filter((product) => {
+    if (sectionIds && !sectionIds.has(product.id)) {
+      return false;
+    }
     if (filters.mode === "flash-sale" && !isFlashSaleProduct(product)) {
       return false;
     }
@@ -335,9 +352,10 @@ export function countActiveStoreBrowseFilters(
   filters: Pick<
     StoreBrowseFilters,
     "mode" | "categorySlug" | "subcategorySlug" | "audienceSlug" | "priceRange" | "sort"
-  >,
+  > & { sectionProductIds?: string[] | null },
 ) {
   return [
+    filters.sectionProductIds ? "section" : "",
     filters.mode !== "all" ? filters.mode : "",
     filters.categorySlug,
     filters.subcategorySlug,

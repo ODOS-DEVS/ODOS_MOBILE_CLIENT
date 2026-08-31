@@ -11,6 +11,7 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useStore } from "@/hooks/useCommerce";
+import { useStoreSections } from "@/hooks/useStoreSections";
 import { productCardGapX, productCardGapY, rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import {
   browseStoreProducts,
@@ -66,6 +67,7 @@ export default function StoreProductsBrowseScreen({
   const [categorySlug, setCategorySlug] = useState("");
   const [subcategorySlug, setSubcategorySlug] = useState("");
   const [audienceSlug, setAudienceSlug] = useState("");
+  const [sectionId, setSectionId] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const fallbackStore = useMemo(
@@ -110,6 +112,16 @@ export default function StoreProductsBrowseScreen({
     [products, storeId],
   );
 
+  // The shop's own shelves. Empty for a store that has not made any, in which
+  // case the chip row below renders nothing at all.
+  const { sections: storeSections } = useStoreSections(storeId);
+
+  const sectionProductIds = useMemo(() => {
+    if (!sectionId) return null;
+    const match = storeSections.find((section) => section.id === sectionId);
+    return match ? match.products.map((product) => product.id) : null;
+  }, [sectionId, storeSections]);
+
   const subcategoryOptions = useMemo(
     () => buildStoreProductSubcategoryOptions(products, storeId, categorySlug),
     [categorySlug, products, storeId],
@@ -132,6 +144,7 @@ export default function StoreProductsBrowseScreen({
           subcategorySlug,
           audienceSlug,
           priceRange,
+          sectionProductIds,
           sort,
         },
         store?.title,
@@ -141,6 +154,7 @@ export default function StoreProductsBrowseScreen({
       categorySlug,
       mode,
       priceRange,
+      sectionProductIds,
       products,
       query,
       sort,
@@ -157,6 +171,7 @@ export default function StoreProductsBrowseScreen({
     audienceSlug,
     priceRange,
     sort,
+    sectionProductIds,
   });
 
   const sortLabel =
@@ -183,6 +198,9 @@ export default function StoreProductsBrowseScreen({
     setCategorySlug("");
     setSubcategorySlug("");
     setAudienceSlug("");
+    // Included, or "clear filters" leaves the shelf chip active and the result
+    // count unexplained.
+    setSectionId("");
   };
 
   const styles = useMemo(
@@ -304,6 +322,37 @@ export default function StoreProductsBrowseScreen({
           />
         ))}
       </ScrollView>
+
+      {/*
+        The shop's own shelves, above the platform segments. A vendor's own
+        grouping is the one a shopper standing in that shop is most likely to
+        think in — "trousers", not "gents".
+      */}
+      {storeSections.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickModeRow}
+        >
+          <DiscoveryFilterChip
+            label="All products"
+            active={!sectionId}
+            onPress={() => setSectionId("")}
+          />
+          {storeSections.map((section) => (
+            <DiscoveryFilterChip
+              key={section.id}
+              label={section.title}
+              active={sectionId === section.id}
+              onPress={() =>
+                setSectionId((current) =>
+                  current === section.id ? "" : section.id,
+                )
+              }
+            />
+          ))}
+        </ScrollView>
+      ) : null}
 
       {audienceSegmentOptions.length > 0 ? (
         <ScrollView
