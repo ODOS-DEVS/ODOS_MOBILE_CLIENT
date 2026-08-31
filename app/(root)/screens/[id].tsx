@@ -380,11 +380,14 @@ export default function ProductDetail() {
   }, [requireAuth, reviewTarget, showToast]);
 
   const handleViewAllReviews = useCallback(() => {
+    // This used to open Account/Reviews — the reviews *you* wrote. From a
+    // product page "see all reviews" means everyone's reviews of this product,
+    // which is a different screen and a different endpoint.
     router.push({
-      pathname: "/(root)/screens/profileScreens/Account/Reviews" as any,
-      params: { productId: product.id },
+      pathname: "/(root)/screens/product-reviews/[productId]" as any,
+      params: { productId: product.id, title: product.title },
     });
-  }, [product.id]);
+  }, [product.id, product.title]);
 
   const productColorOptions = useMemo(
     () => buildColorOptions(product.colorOptions),

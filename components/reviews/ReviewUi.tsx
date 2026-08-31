@@ -506,7 +506,9 @@ export function ProductReviewsPanel({
               onPress={onViewAllPress}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.moreReviewsText}>+{reviewCount - 3} more in My Reviews</Text>
+              <Text style={styles.moreReviewsText}>
+                See all {reviewCount} reviews
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
