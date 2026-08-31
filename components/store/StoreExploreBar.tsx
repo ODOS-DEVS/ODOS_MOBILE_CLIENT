@@ -58,11 +58,18 @@ export default function StoreExploreBar({
             {sublabel}
           </Text>
         ) : null}
+        {/*
+          Paired inverse tokens, not text-on-onPrimary. The previous pairing put
+          colors.onPrimary (#FFFFFF) on colors.text, which is near-white in dark
+          mode — 1.08:1, a white label on a white button. inverseSurface and
+          onInverseSurface are defined to contrast with each other in both
+          themes: 17.1:1 light, 12.3:1 dark.
+        */}
         <TouchableOpacity
           style={[
             styles.button,
             {
-              backgroundColor: disabled ? colors.pill : colors.text,
+              backgroundColor: disabled ? colors.surfaceMuted : colors.inverseSurface,
               opacity: disabled ? 0.72 : 1,
             },
           ]}
@@ -71,16 +78,21 @@ export default function StoreExploreBar({
           disabled={loading || disabled}
         >
           {loading ? (
-            <ActivityIndicator color={colors.onPrimary} />
+            <ActivityIndicator color={disabled ? colors.textMuted : colors.onInverseSurface} />
           ) : (
             <>
-              <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+              <Text
+                style={[
+                  styles.buttonText,
+                  { color: disabled ? colors.textMuted : colors.onInverseSurface },
+                ]}
+              >
                 {label}
               </Text>
               <Ionicons
                 name="arrow-forward"
                 size={rMS(18)}
-                color={colors.onPrimary}
+                color={disabled ? colors.textMuted : colors.onInverseSurface}
               />
             </>
           )}

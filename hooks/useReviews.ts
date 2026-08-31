@@ -14,6 +14,8 @@ export type ProductReview = {
   userDisplayName: string;
   createdAt: string;
   updatedAt: string;
+  vendorReply: string | null;
+  vendorRepliedAt: string | null;
 };
 
 export type StoredReview = {
@@ -51,6 +53,8 @@ type ProductReviewApiItem = {
   user_display_name: string;
   created_at: string;
   updated_at: string;
+  vendor_reply?: string | null;
+  vendor_replied_at?: string | null;
 };
 
 type UserReviewApiItem = {
@@ -111,6 +115,8 @@ function mapProductReview(item: ProductReviewApiItem): ProductReview {
     userDisplayName: item.user_display_name,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
+    vendorReply: item.vendor_reply ?? null,
+    vendorRepliedAt: item.vendor_replied_at ?? null,
   };
 }
 
@@ -248,7 +254,7 @@ export function useReviews() {
   };
 }
 
-export function useProductReviews(productId?: string) {
+export function useProductReviews(productId?: string, limit?: number) {
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [isLoadingProductReviews, setIsLoadingProductReviews] = useState(
     Boolean(productId),
@@ -264,7 +270,8 @@ export function useProductReviews(productId?: string) {
     setIsLoadingProductReviews(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/reviews/products/${encodeURIComponent(productId)}`,
+        `${API_BASE_URL}/reviews/products/${encodeURIComponent(productId)}` +
+          (limit ? `?limit=${limit}` : ""),
       );
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
@@ -277,7 +284,7 @@ export function useProductReviews(productId?: string) {
     } finally {
       setIsLoadingProductReviews(false);
     }
-  }, [productId]);
+  }, [limit, productId]);
 
   useEffect(() => {
     void refreshProductReviews();
