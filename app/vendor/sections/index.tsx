@@ -18,7 +18,7 @@ import {
 import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { StoreSection } from "@/types/vendor";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -235,7 +235,7 @@ export default function VendorSectionsScreen() {
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <VendorPageIntro
               title="Organise your shop"
-              subtitle="Group your products the way your shop is laid out. Shoppers see these as rows on your store page."
+              subtitle="Add a section, then tap it to choose which products go in it. Shoppers see these as rows on your store page."
               stats={[
                 { value: sections.length, label: "Sections" },
                 {
@@ -328,14 +328,24 @@ export default function VendorSectionsScreen() {
                       accessibilityLabel={`Rename ${item.title}`}
                     />
                   ) : (
-                    <>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Choose products for ${item.title}`}
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/vendor/sections/[sectionId]" as any,
+                          params: { sectionId: item.id, title: item.title },
+                        })
+                      }
+                    >
                       <Text style={styles.title}>{item.title}</Text>
                       <Text style={styles.meta}>
                         {item.productCount === 0
-                          ? "No products yet — shoppers won't see this section"
-                          : `${item.productCount} product${item.productCount === 1 ? "" : "s"}`}
+                          ? "Tap to add products — empty sections stay hidden"
+                          : `${item.productCount} product${item.productCount === 1 ? "" : "s"} · tap to edit`}
                       </Text>
-                    </>
+                    </TouchableOpacity>
                   )}
                 </View>
 
