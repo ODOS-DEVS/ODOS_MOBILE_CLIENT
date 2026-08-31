@@ -2,6 +2,7 @@ import VerifiedSeal from "@/components/badges/VerifiedSeal";
 import CommerceImage from "@/components/media/CommerceImage";
 import { StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreDealsShowcase from "@/components/store/StoreDealsShowcase";
+import StoreSectionsShowcase from "@/components/store/StoreSectionsShowcase";
 import StoreExploreBar from "@/components/store/StoreExploreBar";
 import StoreFeaturedShowcase from "@/components/store/StoreFeaturedShowcase";
 import StoreInfoPanel from "@/components/store/StoreInfoPanel";
@@ -14,6 +15,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
+import { useStoreSections } from "@/hooks/useStoreSections";
 import { useStore } from "@/hooks/useCommerce";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { rS, rV, useResponsive } from "@/styles/responsive";
@@ -117,6 +119,10 @@ const StoreLandingScreen = () => {
       storeId,
       enabled: Boolean(storeId),
     });
+
+  // The shop's own shelves. Returns an empty list for a store that has never
+  // created one, so this is invisible on existing stores.
+  const { sections: storeSections } = useStoreSections(storeId);
 
   const insets = useSafeAreaInsets();
   const { horizontalPadding, width } = useResponsive();
@@ -360,6 +366,12 @@ const StoreLandingScreen = () => {
               }}
             />
           </View>
+
+          <StoreSectionsShowcase
+            sections={storeSections}
+            storeId={storeId}
+            horizontalPadding={horizontalPadding}
+          />
 
           <StoreFeaturedShowcase
             products={storeProducts}
