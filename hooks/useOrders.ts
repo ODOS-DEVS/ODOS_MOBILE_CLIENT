@@ -1,4 +1,5 @@
 import { ACCESS_TOKEN_STORAGE_KEY, API_BASE_URL } from "@/constants/auth";
+import { CHECKOUT_PATH } from "@/constants/payments";
 import { formatApiDetail } from "@/services/apiClient";
 import { enrichOrderWithProductImages, enrichOrdersWithProductImages } from "@/utils/orderImages";
 import { useAuth } from "@/context/AuthContext";
@@ -304,7 +305,10 @@ export async function createCheckoutSessionRequest(
   accessToken: string,
   payload: CheckoutSessionPayload,
 ) {
-  const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
+  // CHECKOUT_PATH selects the live collector. The response shape is identical
+  // either way, so nothing downstream -- including verify, which dispatches on
+  // the provider stored against the payment -- needs to know which ran.
+  const response = await fetch(`${API_BASE_URL}${CHECKOUT_PATH}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

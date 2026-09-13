@@ -543,7 +543,7 @@ export default function CheckoutScreen() {
       }
 
       setIsPlacingOrder(true);
-      setProcessingMode("paystack");
+      setProcessingMode("gateway");
 
       const callbackUrl = Linking.createURL("/payments/return");
       const checkoutSession = await createCheckoutSessionRequest(accessToken, {

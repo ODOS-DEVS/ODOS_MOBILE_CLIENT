@@ -9,7 +9,8 @@ import React, { useMemo } from "react";
 import { Modal, StyleSheet, Text, View } from "react-native";
 import Reanimated from "react-native-reanimated";
 
-export type CheckoutProcessingMode = "wallet" | "paystack";
+// "gateway" is any hosted checkout -- iPay today, Paystack if rolled back.
+export type CheckoutProcessingMode = "wallet" | "gateway";
 
 type CheckoutProcessingOverlayProps = {
   visible: boolean;
