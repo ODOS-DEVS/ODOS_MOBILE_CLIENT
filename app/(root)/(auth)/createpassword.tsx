@@ -19,8 +19,8 @@ import {
   loadPasswordResetToken,
 } from "@/utils/passwordResetSession";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function CreatePasswordScreen() {
   const { colors } = useTheme();
@@ -62,6 +62,8 @@ export default function CreatePasswordScreen() {
     clearPasswordResetSession();
     openForgotPassword(router, routeEmail, { replace: true });
   };
+
+  const confirmPasswordRef = useRef<TextInput>(null);
 
   const handleSubmit = async () => {
     setPasswordError("");
@@ -169,8 +171,14 @@ export default function CreatePasswordScreen() {
           errorMessage={passwordError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => confirmPasswordRef.current?.focus()}
         />
         <TextInputField
+          ref={confirmPasswordRef}
           label="Confirm password"
           icon="shield-checkmark-outline"
           placeholder="Re-enter your password"
@@ -184,6 +192,10 @@ export default function CreatePasswordScreen() {
           errorMessage={confirmPasswordError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSubmit()}
         />
 
         <AuthErrorBanner message={generalError} />

@@ -19,8 +19,8 @@ import {
   openForgotPassword,
 } from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,6 +30,8 @@ export default function SignInScreen() {
   const { isSigningIn, signIn } = useAuth();
   useAuthScreenRedirect();
   useBlockBackNavigation(true);
+
+  const passwordRef = useRef<TextInput>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -101,8 +103,16 @@ export default function SignInScreen() {
           errorMessage={emailError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="username"
+          autoComplete="email"
+          returnKeyType="next"
+          // Keeps the keyboard up through the handoff; without it the keyboard
+          // dismisses and springs back, which reads as a flicker.
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
         />
         <TextInputField
+          ref={passwordRef}
           label="Password"
           icon="lock-closed-outline"
           placeholder="Enter your password"
@@ -116,14 +126,19 @@ export default function SignInScreen() {
           errorMessage={passwordError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="password"
+          autoComplete="current-password"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSignIn()}
         />
 
         <AuthErrorBanner message={generalError} />
 
         <View style={styles.row}>
-          <View />
           <TouchableOpacity
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Reset your password"
             onPress={() => openForgotPassword(router, email.trim() || undefined)}
           >
             <Text style={[styles.rowLinkBold, { color: colors.primary }]}>
@@ -145,7 +160,11 @@ export default function SignInScreen() {
         <Text style={[styles.switchMuted, { color: colors.textMuted }]}>
           {"Don't have an account? "}
         </Text>
-        <TouchableOpacity onPress={() => goToSignUp(router)}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Create an ODOS account"
+          onPress={() => goToSignUp(router)}
+        >
           <Text style={[styles.switchAction, { color: colors.primary }]}>Sign up</Text>
         </TouchableOpacity>
       </View>
@@ -156,6 +175,8 @@ export default function SignInScreen() {
       <TouchableOpacity
         onPress={() => exitAuthToHome(router)}
         style={styles.browseLink}
+        accessibilityRole="button"
+        accessibilityLabel="Browse ODOS without signing in"
       >
         <Text style={[styles.browseText, { color: colors.primary }]}>
           Browse without signing in
@@ -168,7 +189,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginBottom: rV(4),
     paddingHorizontal: rMS(2),

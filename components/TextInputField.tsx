@@ -2,49 +2,48 @@ import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { forwardRef, useState } from "react";
 import {
-  KeyboardTypeOptions,
   StyleSheet,
   Text,
   TextInput,
+  TextInputProps,
   TouchableOpacity,
   View,
 } from "react-native";
 
-interface TextInputFieldProps {
+// Extends TextInputProps rather than naming a fixed list, so a screen can reach
+// the platform behaviour it needs without editing this file. The closed list
+// this replaced made two things impossible everywhere the component is used:
+// password managers (textContentType / autoComplete), so iOS Keychain and
+// Android Autofill never offered saved credentials and iOS never prompted to
+// save one; and keyboard submission (returnKeyType / onSubmitEditing plus a ref
+// to move focus), so every form had to be submitted by dismissing the keyboard
+// and reaching for the button.
+type TextInputFieldProps = Omit<TextInputProps, "style"> & {
   label: string;
   icon?: keyof typeof Ionicons.glyphMap;
-  placeholder?: string;
-  value?: string;
-  onChangeText?: (text: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: KeyboardTypeOptions;
   errorMessage?: string;
   helperText?: string;
-  autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  autoCorrect?: boolean;
-  editable?: boolean;
-  multiline?: boolean;
-  numberOfLines?: number;
-}
+};
 
-const TextInputField: React.FC<TextInputFieldProps> = ({
-  label,
-  icon,
-  placeholder,
-  value,
-  onChangeText,
-  keyboardType,
-  secureTextEntry = false,
-  errorMessage,
-  helperText,
-  autoCapitalize = "sentences",
-  autoCorrect = true,
-  editable = true,
-  multiline = false,
-  numberOfLines = 1,
-}) => {
+const TextInputField = forwardRef<TextInput, TextInputFieldProps>(function TextInputField(
+  {
+    label,
+    icon,
+    secureTextEntry = false,
+    errorMessage,
+    helperText,
+    autoCapitalize = "sentences",
+    autoCorrect = true,
+    editable = true,
+    multiline = false,
+    numberOfLines = 1,
+    accessibilityLabel,
+    ...rest
+  },
+  ref,
+) {
   const { colors } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
 
@@ -71,17 +70,15 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
         ) : null}
 
         <TextInput
-          placeholder={placeholder}
+          {...rest}
+          ref={ref}
           placeholderTextColor={colors.placeholder}
-          value={value}
-          onChangeText={onChangeText}
           style={[
             styles.input,
             { color: colors.text },
             multiline ? styles.inputMultiline : null,
           ]}
           secureTextEntry={secureTextEntry && !isVisible}
-          keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
           editable={editable}
@@ -89,12 +86,18 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
           numberOfLines={numberOfLines}
           textAlignVertical={multiline ? "top" : "center"}
           selectionColor={colors.primary}
+          // The visible label sits in a sibling Text, which a screen reader
+          // reads separately from the field it belongs to.
+          accessibilityLabel={accessibilityLabel ?? label}
         />
 
         {secureTextEntry ? (
           <TouchableOpacity
             onPress={() => setIsVisible(!isVisible)}
             disabled={!editable}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={isVisible ? "Hide password" : "Show password"}
           >
             <Ionicons
               name={isVisible ? "eye" : "eye-off"}
@@ -106,7 +109,10 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
       </View>
 
       {errorMessage ? (
-        <Text style={[styles.errorText, { color: colors.dangerText }]}>
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[styles.errorText, { color: colors.dangerText }]}
+        >
           {errorMessage}
         </Text>
       ) : null}
@@ -117,7 +123,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
       ) : null}
     </View>
   );
-};
+});
 
 export default TextInputField;
 

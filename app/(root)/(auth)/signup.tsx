@@ -15,8 +15,8 @@ import { rMS, rV } from "@/styles/responsive";
 import { goToEmailVerification, goToSignIn } from "@/utils/authNavigation";
 import { buildFullName, validateNameParts } from "@/utils/fullName";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,6 +49,12 @@ export default function SignUpScreen() {
     password.length > 0 &&
     confirmPassword.length > 0 &&
     hasConsented;
+
+  const lastNameRef = useRef<TextInput>(null);
+  const otherNamesRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
 
   const handleSignUp = async () => {
     let hasError = false;
@@ -141,8 +147,14 @@ export default function SignUpScreen() {
           }}
           errorMessage={firstNameError}
           autoCapitalize="words"
+          textContentType="givenName"
+          autoComplete="given-name"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => lastNameRef.current?.focus()}
         />
         <TextInputField
+          ref={lastNameRef}
           label="Last name"
           icon="person-outline"
           placeholder="Last name"
@@ -154,8 +166,14 @@ export default function SignUpScreen() {
           }}
           errorMessage={lastNameError}
           autoCapitalize="words"
+          textContentType="familyName"
+          autoComplete="family-name"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => otherNamesRef.current?.focus()}
         />
         <TextInputField
+          ref={otherNamesRef}
           label="Other names (optional)"
           icon="person-outline"
           placeholder="Middle or other names"
@@ -165,8 +183,13 @@ export default function SignUpScreen() {
             if (generalError) setGeneralError("");
           }}
           autoCapitalize="words"
+          textContentType="middleName"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => emailRef.current?.focus()}
         />
         <TextInputField
+          ref={emailRef}
           label="Email"
           icon="mail-outline"
           placeholder="you@example.com"
@@ -180,8 +203,14 @@ export default function SignUpScreen() {
           errorMessage={emailError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="username"
+          autoComplete="email"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
         />
         <TextInputField
+          ref={passwordRef}
           label="Password"
           icon="lock-closed-outline"
           placeholder="At least 8 characters"
@@ -197,8 +226,14 @@ export default function SignUpScreen() {
           helperText="Use 8+ characters with a mix you will remember."
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => confirmPasswordRef.current?.focus()}
         />
         <TextInputField
+          ref={confirmPasswordRef}
           label="Confirm password"
           icon="shield-checkmark-outline"
           placeholder="Re-enter your password"
@@ -212,6 +247,10 @@ export default function SignUpScreen() {
           errorMessage={confirmPasswordError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSignUp()}
         />
 
         <AuthConsentCheckbox

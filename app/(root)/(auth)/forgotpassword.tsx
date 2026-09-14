@@ -84,6 +84,10 @@ export default function ForgotPasswordScreen() {
           errorMessage={emailError}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="username"
+          autoComplete="email"
+          returnKeyType="send"
+          onSubmitEditing={() => void handleNext()}
         />
 
         <AuthErrorBanner message={generalError} />
