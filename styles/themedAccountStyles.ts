@@ -393,7 +393,7 @@ function buildSheetStyles(c: ThemeColors) {
       backgroundColor: c.backdrop,
     },
     backdropTap: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     sheet: {
       width: "100%",
@@ -475,7 +475,7 @@ function buildSheetStyles(c: ThemeColors) {
     },
     // Nested pickers (region/city) render inside the form modal — iOS blocks second Modals.
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: c.card,
       zIndex: 20,
       paddingTop: rV(8),
@@ -625,7 +625,7 @@ function buildProfileHeroStyles(c: ThemeColors) {
 function buildChoiceSheetStyles(c: ThemeColors) {
   return StyleSheet.create({
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: c.backdrop,
     },
     sheet: {

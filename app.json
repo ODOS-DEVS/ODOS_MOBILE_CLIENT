@@ -7,7 +7,6 @@
     "scheme": "odosmobileexpo",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.paul.odos",
@@ -18,7 +17,6 @@
     },
     "android": {
       "package": "com.paul.odos",
-      "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {

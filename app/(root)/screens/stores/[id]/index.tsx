@@ -299,7 +299,7 @@ const StoreLandingScreen = () => {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
-      <StatusBar style="light" translucent />
+      <StatusBar style="light" />
       <AnimatedScrollView
         contentContainerStyle={{
           paddingBottom: insets.bottom + EXPLORE_BAR_SPACE,

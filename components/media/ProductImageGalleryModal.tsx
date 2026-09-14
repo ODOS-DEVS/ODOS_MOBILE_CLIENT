@@ -233,7 +233,7 @@ export default function ProductImageGalleryModal({
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: colors.shadow,
     },
     fullscreenModal: {

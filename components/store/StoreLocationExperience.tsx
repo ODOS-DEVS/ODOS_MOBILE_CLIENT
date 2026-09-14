@@ -262,7 +262,7 @@ export default function StoreLocationExperience({
         <MapView
           ref={mapRef}
           {...odosGoogleMapProps}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           initialRegion={mapRegion}
           showsUserLocation
           showsCompass={false}
@@ -292,7 +292,7 @@ export default function StoreLocationExperience({
         <View style={styles.fallbackCanvas}>
           <LinearGradient
             colors={[colors.infoSoft, colors.screen, colors.successSoft]}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={styles.fallbackWater} />
           <View style={styles.fallbackGrid}>
@@ -313,7 +313,7 @@ export default function StoreLocationExperience({
       <Animated.View pointerEvents="none" style={[styles.topScrim, topScrimOpacity]}>
         <LinearGradient
           colors={["rgba(255,255,255,0.92)", "rgba(255,255,255,0.45)", "transparent"]}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       </Animated.View>
 
@@ -612,7 +612,7 @@ function createStyles(colors: ThemeColors) {
     backgroundColor: colors.screen,
   },
   fallbackCanvas: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: "hidden",
     backgroundColor: colors.screen,
   },
@@ -626,7 +626,7 @@ function createStyles(colors: ThemeColors) {
     backgroundColor: "rgba(162, 218, 242, 0.55)",
   },
   fallbackGrid: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.08,
     justifyContent: "space-evenly",
     paddingHorizontal: rS(8),
@@ -644,13 +644,13 @@ function createStyles(colors: ThemeColors) {
     borderColor: colors.border,
   },
   fallbackPin: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     paddingBottom: rV(120),
   },
   topScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   topChrome: {
     position: "absolute",
@@ -800,7 +800,7 @@ function createStyles(colors: ThemeColors) {
     height: "100%",
   },
   bannerFade: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   detailBlock: {
     gap: rV(10),

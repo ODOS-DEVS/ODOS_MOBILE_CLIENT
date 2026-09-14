@@ -214,7 +214,7 @@ export function StoreMapSkeleton() {
           backgroundColor: colors.screen,
         },
         mapCanvas: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: colors.imagePlaceholder,
         },
         topChrome: {

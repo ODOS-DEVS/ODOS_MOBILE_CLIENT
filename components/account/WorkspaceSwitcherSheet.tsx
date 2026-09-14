@@ -71,7 +71,7 @@ export default function WorkspaceSwitcherSheet({
           justifyContent: "flex-end",
         },
         backdrop: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: colors.backdrop,
         },
         sheet: {

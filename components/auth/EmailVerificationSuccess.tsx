@@ -54,7 +54,7 @@ export default function EmailVerificationSuccess({
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
-      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
 
       <Animated.View
         style={[

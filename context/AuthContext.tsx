@@ -955,14 +955,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearLocalSession, syncCurrentUser]);
 
   useEffect(() => {
-    const originalFetch = global.fetch.bind(global);
+    const originalFetch = globalThis.fetch.bind(globalThis);
     const REQUEST_TIMEOUT_MS = 30_000;
     // Image/file uploads (product photos, return evidence, avatars) are also plain
     // fetch() calls but can legitimately take longer than a JSON API call on a slow
     // connection — give them more room instead of cutting off a real-but-slow upload.
     const UPLOAD_TIMEOUT_MS = 120_000;
 
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       // Plain fetch() never times out on its own — on a slow/dead connection a request
       // (and whatever "Processing..." overlay is waiting on it) could hang indefinitely.
       // Respect a caller-supplied signal rather than fighting code that already manages
@@ -1035,7 +1035,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return () => {
-      global.fetch = originalFetch;
+      globalThis.fetch = originalFetch;
     };
   }, [clearLocalSession, showErrorToast]);
 

@@ -107,7 +107,7 @@ const defaultStyles = StyleSheet.create({
     position: "relative",
   },
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.02,
     fontSize: 1,
   },
@@ -139,7 +139,7 @@ const compactStyles = StyleSheet.create({
     minHeight: rV(40),
   },
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.02,
     fontSize: 1,
   },

@@ -141,7 +141,7 @@ export default function ProductShareSheet({
           <View style={styles.previewCard}>
             <LinearGradient
               colors={[colors.surfaceSubtle, colors.card]}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
             {imageSource ? (
               <CommerceImage

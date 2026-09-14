@@ -2,7 +2,7 @@ import TabBarButton from "@/components/navigation/TabBarButton";
 import { useToast } from "@/context/ToastContext";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import { toggleWorkspaceMode } from "@/utils/workspaceNavigation";
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarButtonProps } from "expo-router/build/react-navigation/bottom-tabs/types";
 import * as Haptics from "expo-haptics";
 import React, { useRef } from "react";
 

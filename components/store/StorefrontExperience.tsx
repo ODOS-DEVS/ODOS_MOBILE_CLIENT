@@ -145,7 +145,7 @@ export function StorefrontHero({
         <LinearGradient
           colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.78)"]}
           locations={[0.2, 0.72, 1]}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         <View style={[styles.topBar, { top: headerButtonTop }]}>
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   coverMotion: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   coverImage: {
     width: "100%",

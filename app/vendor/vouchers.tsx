@@ -1087,7 +1087,7 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.screen,
     },
     inlinePickerOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: "center",
       backgroundColor: "rgba(15, 23, 42, 0.45)",
       paddingHorizontal: rS(18),

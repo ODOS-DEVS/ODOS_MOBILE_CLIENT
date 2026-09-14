@@ -11,7 +11,11 @@ import CartTabIcon from "@/components/navigation/CartTabIcon";
 import { useVendorQuickAccess } from "@/hooks/useVendorQuickAccess";
 import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
 import Fonts from "@/constants/Fonts";
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+// expo-router 57 passes its own BottomTabBarButtonProps, not the one from
+// @react-navigation/bottom-tabs -- they differ (pressColor is ColorValue here,
+// string there). Taking the type from the library that actually supplies the
+// props is what keeps the tabBarButton signature honest.
+import type { BottomTabBarButtonProps } from "expo-router/build/react-navigation/bottom-tabs/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React, { useMemo } from "react";

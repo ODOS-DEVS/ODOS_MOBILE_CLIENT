@@ -52,7 +52,7 @@ export default function SplashScreen() {
   const [bootBudgetExpired, setBootBudgetExpired] = useState(false);
   const [showSlowHint, setShowSlowHint] = useState(false);
 
-  const mountedAtRef = useRef(Date.now());
+  const mountedAtRef = useRef(0);
   const hasHiddenNativeSplashRef = useRef(false);
   const hasNavigatedRef = useRef(false);
   const contentOpacity = useSharedValue(1);
@@ -67,6 +67,11 @@ export default function SplashScreen() {
   // drawn twice: once statically by the native splash, then again fading in from
   // zero here, which reads as a flicker on launch.
   useEffect(() => {
+    // Declared first so the timers below can measure from it. Reading the clock
+    // during render is impure -- it re-evaluates on every render while only the
+    // first value is ever used.
+    mountedAtRef.current = Date.now();
+
     if (hasHiddenNativeSplashRef.current) {
       return;
     }

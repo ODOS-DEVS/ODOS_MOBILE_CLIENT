@@ -10,7 +10,7 @@ export default function TabBarBackground() {
     () =>
       StyleSheet.create({
         shell: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           borderTopLeftRadius: rMS(18),
           borderTopRightRadius: rMS(18),
           overflow: "hidden",

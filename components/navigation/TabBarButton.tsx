@@ -1,4 +1,4 @@
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarButtonProps } from "expo-router/build/react-navigation/bottom-tabs/types";
 import { PlatformPressable } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
 import React from "react";
@@ -9,7 +9,13 @@ export default function TabBarButton(props: BottomTabBarButtonProps) {
 
   return (
     <PlatformPressable
-      {...rest}
+      // expo-router declares these props more widely than PlatformPressable
+      // accepts -- ColorValue rather than string for pressColor and
+      // hoverEffect.color. expo-router's own default tab button spreads this
+      // exact object into this exact component, so the values are ones
+      // PlatformPressable already handles; the disagreement is between the two
+      // declarations, not in the data.
+      {...(rest as React.ComponentProps<typeof PlatformPressable>)}
       style={[style, styles.pressable]}
       onPressIn={(event) => {
         if (Platform.OS === "ios") {

@@ -129,7 +129,7 @@ export function SkeletonBlock({
     >
       <Animated.View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFillObject, { transform: [{ translateX }] }]}
+        style={[StyleSheet.absoluteFill, { transform: [{ translateX }] }]}
       >
         <LinearGradient
           colors={shimmerColors}

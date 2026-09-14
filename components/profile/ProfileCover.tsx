@@ -48,7 +48,7 @@ export function ProfileCover({
           left: compact ? rS(12) : rS(18),
         },
         watermarkWrap: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           alignItems: "center",
           justifyContent: "center",
         },
@@ -70,7 +70,7 @@ export function ProfileCover({
         colors={[...palette.gradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View style={styles.orbLarge} />
       <View style={styles.orbSmall} />

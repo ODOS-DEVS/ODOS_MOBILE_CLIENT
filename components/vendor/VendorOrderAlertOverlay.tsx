@@ -139,7 +139,7 @@ export default function VendorOrderAlertOverlay({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
 
         <Animated.View
           style={[
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     gap: rV(12),
   },
   pulseRing: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: rMS(22),
   },
   headerRow: {
