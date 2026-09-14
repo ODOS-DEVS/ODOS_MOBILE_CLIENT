@@ -29,11 +29,16 @@ export function useReducedMotion() {
 
   useEffect(() => {
     let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
-      if (mounted) {
-        setReduced(value);
-      }
-    });
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => {
+        if (mounted) {
+          setReduced(value);
+        }
+      })
+      // A rejection here must stay silent and leave `reduced` at its default.
+      // Callers gate launch on this hook, and an unhandled rejection during
+      // boot is the kind of thing that takes a screen down with it.
+      .catch(() => undefined);
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduced);
     return () => {
       mounted = false;
