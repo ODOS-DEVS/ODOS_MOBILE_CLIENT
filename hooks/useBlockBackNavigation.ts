@@ -29,9 +29,17 @@ export function useBlockBackNavigation(enabled = true) {
         },
       );
 
+      // Swallow the press only when there is something to pop -- that is the
+      // case this hook exists for, and beforeRemove above already refuses it.
+      //
+      // When there is nothing to pop, returning true would not protect anything:
+      // these screens are reached by replace(), so the only default behaviour
+      // left to suppress is Android exiting the app. Doing that traps the user
+      // on the first screen they see, where back is the first thing many people
+      // press, and an app that ignores it reads as frozen.
       const hardwareBackListener = BackHandler.addEventListener(
         "hardwareBackPress",
-        () => true,
+        () => navigation.canGoBack(),
       );
 
       return () => {

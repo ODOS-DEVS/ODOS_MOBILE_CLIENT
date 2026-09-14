@@ -10,11 +10,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, {
   FadeOut,
+  runOnJS,
   useAnimatedScrollHandler,
+  useDerivedValue,
   useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -38,17 +40,40 @@ export default function OnboardingScreen() {
     scrollX.value = event.contentOffset.x;
   });
 
-  const handleMomentumScrollEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-      setActiveIndex(index);
-    },
-    [pageWidth],
-  );
+  // Derived from scroll position rather than onMomentumScrollEnd. That callback
+  // is the flakiest part of RN paging -- when it fails to fire, activeIndex is
+  // left behind and the tour chrome (Skip, dots, Next) renders on top of the
+  // final call-to-action page while the brand mark never animates in. Position
+  // is always true, so the failure mode does not exist.
+  const reportedIndex = useSharedValue(0);
+  const commitIndex = useCallback((index: number) => {
+    setActiveIndex((current) => (current === index ? current : index));
+  }, []);
+
+  useDerivedValue(() => {
+    if (pageWidth <= 0) {
+      return;
+    }
+    const index = Math.round(scrollX.value / pageWidth);
+    if (index !== reportedIndex.value) {
+      reportedIndex.value = index;
+      runOnJS(commitIndex)(index);
+    }
+  }, [pageWidth, commitIndex]);
+
+  // Fires for swipes as well as button taps -- previously only the buttons gave
+  // feedback, so the same page change felt different depending on how you made it.
+  const hapticIndexRef = useRef(0);
+  useEffect(() => {
+    if (hapticIndexRef.current === activeIndex) {
+      return;
+    }
+    hapticIndexRef.current = activeIndex;
+    void Haptics.selectionAsync();
+  }, [activeIndex]);
 
   const goToPage = useCallback(
     (index: number) => {
-      void Haptics.selectionAsync();
       scrollRef.current?.scrollTo({ x: index * pageWidth, animated: true });
     },
     [pageWidth],
@@ -112,7 +137,6 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={scrollHandler}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
         scrollEventThrottle={16}
         style={styles.pager}
       >
