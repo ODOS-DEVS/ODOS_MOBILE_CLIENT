@@ -120,23 +120,29 @@ const CustomerProfile = () => {
     user?.avatar_url,
   ]);
 
-  const profileCompletion = useMemo(() => {
-    const fields = [
-      firstName,
-      lastName,
-      phoneVerification.isVerified ? phoneNumber : "",
-      gender,
-      city,
-      region,
-      dateOfBirth,
+  // Every field that counts toward completeness, paired with the label the
+  // card uses to name it when it is still missing. A bare percentage with no
+  // explanation is why "why am I stuck at 57%?" was unanswerable from the
+  // screen itself.
+  //
+  // The phone only counts once verified, and that is deliberate: an
+  // unverified number is never written to the account, so counting it would
+  // push the figure to 100% and then drop it again on the next load -- the
+  // exact non-permanence this is meant to end.
+  const profileChecklist = useMemo(() => {
+    const entries: { label: string; done: boolean }[] = [
+      { label: "first name", done: firstName.trim().length > 0 },
+      { label: "last name", done: lastName.trim().length > 0 },
+      { label: "date of birth", done: dateOfBirth instanceof Date },
+      { label: "gender", done: gender.trim().length > 0 },
+      { label: "region", done: region.trim().length > 0 },
+      { label: "town or city", done: city.trim().length > 0 },
+      {
+        label: phoneNumber.trim() ? "phone verification" : "phone number",
+        done: phoneVerification.isVerified && phoneNumber.trim().length > 0,
+      },
     ];
-    const filled = fields.filter((value) => {
-      if (value instanceof Date) {
-        return true;
-      }
-      return String(value ?? "").trim().length > 0;
-    }).length;
-    return Math.round((filled / fields.length) * 100);
+    return entries;
   }, [
     city,
     dateOfBirth,
@@ -147,6 +153,36 @@ const CustomerProfile = () => {
     phoneVerification.isVerified,
     region,
   ]);
+
+  const missingProfileFields = useMemo(
+    () => profileChecklist.filter((entry) => !entry.done).map((entry) => entry.label),
+    [profileChecklist],
+  );
+
+  const profileCompletion = useMemo(() => {
+    const filled = profileChecklist.filter((entry) => entry.done).length;
+    const total = profileChecklist.length;
+    if (filled === total) {
+      return 100;
+    }
+    // Floor rather than round, so a profile one field short can never display
+    // as 100%. Rounding 6/7 gives 86, but a longer list would eventually round
+    // up and claim completeness that isn't there.
+    return Math.min(99, Math.floor((filled / total) * 100));
+  }, [profileChecklist]);
+
+  const profileCompletionHint = useMemo(() => {
+    if (missingProfileFields.length === 0) {
+      return "Your profile is complete — everything is saved to your account.";
+    }
+    const list =
+      missingProfileFields.length === 1
+        ? missingProfileFields[0]
+        : `${missingProfileFields.slice(0, -1).join(", ")} and ${
+            missingProfileFields[missingProfileFields.length - 1]
+          }`;
+    return `${missingProfileFields.length} to go — add your ${list}, then tap Save.`;
+  }, [missingProfileFields]);
 
   const clearGeneralError = () => {
     if (generalError) {
@@ -188,8 +224,12 @@ const CustomerProfile = () => {
       setPhoneNumberError(phoneValidationMessage);
       hasError = true;
     } else if (trimmedPhoneNumber && !phoneVerification.isVerified) {
-      setPhoneNumberError("Verify your phone number before saving.");
-      hasError = true;
+      // Guidance, not a blocker. The phone is deliberately left out of the
+      // request below unless it is being cleared -- it is saved by the OTP
+      // flow instead -- so refusing the whole save over it meant an
+      // unverified number loaded from the server silently rejected every
+      // attempt to save gender, city, region and date of birth along with it.
+      setPhoneNumberError("Verify your phone number to save it to your profile.");
     }
 
     if (trimmedGender && trimmedGender.length < 2) {
@@ -307,11 +347,25 @@ const CustomerProfile = () => {
 
         <AccountInsightCard
           title="Profile completeness"
-          subtitle="A complete profile helps checkout, delivery, and support move faster when you need help."
+          // Names the remaining fields instead of leaving the number to be
+          // guessed at. "57%" told you nothing about which three were missing.
+          subtitle={profileCompletionHint}
           stats={[
             { value: `${profileCompletion}%`, label: "Complete" },
-            { value: city ? "Set" : "—", label: "City" },
-            { value: phoneNumber ? "Set" : "—", label: "Phone" },
+            {
+              value: `${profileChecklist.length - missingProfileFields.length}/${profileChecklist.length}`,
+              label: "Details saved",
+            },
+            {
+              // The phone is the one field the Save button cannot finish on
+              // its own, so it gets called out separately.
+              value: phoneVerification.isVerified
+                ? "Verified"
+                : phoneNumber.trim()
+                  ? "Unverified"
+                  : "—",
+              label: "Phone",
+            },
           ]}
         />
 

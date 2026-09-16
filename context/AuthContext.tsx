@@ -1475,7 +1475,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const updatedUser = await updateProfileRequest(accessToken, {
           fullName: fullName?.trim(),
-          phoneNumber: phoneNumber?.trim() || undefined,
+          // `undefined` means "leave the phone alone"; an empty string means
+          // "clear it". Collapsing both to undefined -- which `|| undefined`
+          // did -- made JSON.stringify drop the key, so the backend's
+          // exclude_unset never saw the clear and the number stayed put.
+          phoneNumber: phoneNumber === undefined ? undefined : phoneNumber.trim(),
           dateOfBirth,
           gender: gender?.trim() || null,
           city: city?.trim() || null,
