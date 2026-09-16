@@ -14,7 +14,14 @@ import {
   type StoreCoordinates,
 } from "@/utils/location";
 import MapUnavailablePlaceholder from "@/components/location/MapUnavailablePlaceholder";
-import { isGoogleMapsEnabled, odosGoogleMapProps } from "@/utils/mapViewConfig";
+import {
+  fromMapboxPosition,
+  getMapbox,
+  isMapboxEnabled,
+  ODOS_MAP_STYLE_URL,
+  toMapboxPosition,
+  zoomFromDelta,
+} from "@/utils/mapboxConfig";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,7 +33,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, type MapPressEvent } from "react-native-maps";
 
 export type StoreLocationValue = {
   address: string;
@@ -64,6 +70,28 @@ export default function StoreLocationPicker({
 
   const hasPin = hasStoreCoordinates(value.latitude, value.longitude);
 
+  // Lazily resolved -- see the note in utils/mapboxConfig. Null here means the
+  // native module is unavailable (Expo Go, or an un-rebuilt dev build) and the
+  // placeholder below takes over instead of the screen crashing.
+  const Mapbox = getMapbox();
+
+  // Camera inputs, in Mapbox's terms. `buildMapRegion` still owns the region
+  // maths; these only translate its output into the [lng, lat] + zoom pair
+  // Mapbox expects, so the two map screens stay consistent with each other.
+  const pinPosition = useMemo(
+    () => toMapboxPosition(value.latitude, value.longitude),
+    [value.latitude, value.longitude],
+  );
+  const defaultPosition = useMemo(
+    () => toMapboxPosition(DEFAULT_MAP_REGION.latitude, DEFAULT_MAP_REGION.longitude),
+    [],
+  );
+  const pinZoom = useMemo(() => zoomFromDelta(mapRegion.longitudeDelta), [mapRegion]);
+  const defaultZoom = useMemo(
+    () => zoomFromDelta(DEFAULT_MAP_REGION.longitudeDelta),
+    [],
+  );
+
   const refreshPlaceLabel = useCallback(async (coords: StoreCoordinates) => {
     const label = await reverseGeocodeStoreLocation(coords.latitude, coords.longitude);
     setPlaceLabel(label);
@@ -88,8 +116,18 @@ export default function StoreLocationPicker({
     })();
   }, []);
 
-  const handleMapPress = async (event: MapPressEvent) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
+  const handleMapPress = async (feature: GeoJSON.Feature<GeoJSON.Point>) => {
+    // Mapbox reports the tap as a GeoJSON point, whose coordinates are
+    // [longitude, latitude] -- the reverse of what react-native-maps gave us.
+    // Reading them in written order would pin the store at a real but wrong
+    // place on Earth with no error to reveal it, so the unpacking (and the
+    // range check that catches a malformed event) lives in one helper.
+    const coords = fromMapboxPosition(feature?.geometry?.coordinates);
+    if (!coords) {
+      return;
+    }
+
+    const { latitude, longitude } = coords;
     onChange({
       ...value,
       latitude,
@@ -251,7 +289,7 @@ export default function StoreLocationPicker({
         </View>
       ) : null}
 
-      {Platform.OS === "web" || !isGoogleMapsEnabled ? (
+      {Platform.OS === "web" || !isMapboxEnabled || !Mapbox ? (
         Platform.OS === "web" ? (
           <View style={styles.webMapFallback}>
             <Ionicons name="phone-portrait-outline" size={rS(28)} color={colors.primary} />
@@ -266,26 +304,41 @@ export default function StoreLocationPicker({
         )
       ) : (
         <View style={styles.mapShell}>
-          <MapView
-            {...odosGoogleMapProps}
+          <Mapbox.MapView
             style={styles.map}
-            initialRegion={hasPin ? mapRegion : DEFAULT_MAP_REGION}
-            region={hasPin ? mapRegion : undefined}
+            styleURL={ODOS_MAP_STYLE_URL}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            scaleBarEnabled={false}
+            compassEnabled={false}
+            // Mapbox requires its attribution and logo to stay visible; this
+            // is a term of their licence rather than a style choice.
+            attributionEnabled
+            logoEnabled
             onPress={(event) => void handleMapPress(event)}
-            showsUserLocation={canShowUserLocation}
-            showsMyLocationButton={false}
           >
-            {hasPin ? (
-              <Marker
-                coordinate={{
-                  latitude: value.latitude!,
-                  longitude: value.longitude!,
-                }}
-                title="Your store"
-                description={placeLabel || value.address || "Store location"}
-              />
+            <Mapbox.Camera
+              // `centerCoordinate` follows the pin, so dropping one re-centres
+              // the map on it. Before a pin exists the camera sits on the
+              // default region and the vendor is free to pan around looking
+              // for their shop.
+              centerCoordinate={pinPosition ?? defaultPosition ?? undefined}
+              zoomLevel={hasPin ? pinZoom : defaultZoom}
+              animationDuration={hasPin ? 450 : 0}
+            />
+            {canShowUserLocation ? <Mapbox.UserLocation visible /> : null}
+            {pinPosition ? (
+              <Mapbox.MarkerView
+                coordinate={pinPosition}
+                anchor={{ x: 0.5, y: 1 }}
+                allowOverlap
+              >
+                <View style={styles.pinMarker}>
+                  <Ionicons name="location" size={rS(30)} color={colors.primary} />
+                </View>
+              </Mapbox.MarkerView>
             ) : null}
-          </MapView>
+          </Mapbox.MapView>
           {!hasPin ? (
             <View style={styles.mapHint} pointerEvents="none">
               <Text style={styles.mapHintText}>Or tap anywhere on the map to drop your pin</Text>
@@ -388,8 +441,15 @@ function createStyles(colors: ThemeColors) {
       width: "100%",
       height: "100%",
     },
+    // Mapbox's MarkerView renders whatever children it is given, so the pin is
+    // an ordinary view rather than a native annotation. react-native-maps'
+    // Marker supplied its own default graphic; this replaces it.
+    pinMarker: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
     // The map hint pill sits directly on top of the (always-light, real-world)
-    // Google Maps tiles, not the app background, so it intentionally stays a
+    // map tiles, not the app background, so it intentionally stays a
     // fixed light/dark-text pair regardless of the app theme.
     mapHint: {
       position: "absolute",

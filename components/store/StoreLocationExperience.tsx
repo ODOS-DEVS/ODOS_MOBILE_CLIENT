@@ -8,7 +8,14 @@ import {
   formatStoreAddress,
   hasStoreCoordinates,
 } from "@/utils/location";
-import { isGoogleMapsEnabled, odosGoogleMapProps } from "@/utils/mapViewConfig";
+import type { Camera as MapboxCamera } from "@rnmapbox/maps";
+import {
+  getMapbox,
+  isMapboxEnabled,
+  ODOS_MAP_STYLE_URL,
+  toMapboxPosition,
+  zoomFromDelta,
+} from "@/utils/mapboxConfig";
 import { resolveImageSource } from "@/utils/media";
 import CommerceImage from "@/components/media/CommerceImage";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +35,6 @@ import {
   View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import MapView, { Marker } from "react-native-maps";
 import Animated, {
   Extrapolation,
   cancelAnimation,
@@ -146,7 +152,7 @@ export default function StoreLocationExperience({
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<MapboxCamera>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
 
   const fullAddress = useMemo(
@@ -156,10 +162,28 @@ export default function StoreLocationExperience({
 
   const hasLiveMap = hasStoreCoordinates(store?.latitude, store?.longitude);
   const mapRegion = buildMapRegion(store?.latitude, store?.longitude, 0.012);
+  // Mapbox wants [longitude, latitude] and a zoom level, where
+  // react-native-maps wanted {latitude, longitude} and deltas. Both
+  // conversions live in utils/mapboxConfig so no screen has to remember the
+  // reversed coordinate order.
+  const mapCenter = toMapboxPosition(store?.latitude, store?.longitude);
+  const mapZoom = zoomFromDelta(mapRegion.longitudeDelta);
   const mapsUrl = buildMapsSearchUrl(fullAddress, store?.latitude, store?.longitude);
   const storeTitle = store?.title || fallbackTitle;
+  // Resolved lazily: importing @rnmapbox/maps at module scope throws wherever
+  // its native code is missing (Expo Go, or a dev build predating the
+  // package), which would crash this screen rather than merely lose the map.
+  const Mapbox = getMapbox();
+
+  // Previously gated on `isGoogleMapsEnabled`, a flag that was never set in
+  // any environment -- so this screen has been showing the illustrated
+  // fallback instead of a real map on every device, not just Android.
   const showNativeMap =
-    Platform.OS !== "web" && hasLiveMap && isGoogleMapsEnabled;
+    Platform.OS !== "web" &&
+    hasLiveMap &&
+    isMapboxEnabled &&
+    Mapbox !== null &&
+    mapCenter !== null;
 
   const logoSource =
     store?.image != null || store?.imageUrl || store?.imageKey
@@ -225,13 +249,17 @@ export default function StoreLocationExperience({
   }));
 
   const focusStore = useCallback(() => {
-    if (!hasLiveMap || !mapRef.current) {
+    if (!hasLiveMap || !cameraRef.current || !mapCenter) {
       return;
     }
 
-    mapRef.current.animateToRegion(mapRegion, 520);
+    cameraRef.current.setCamera({
+      centerCoordinate: mapCenter,
+      zoomLevel: mapZoom,
+      animationDuration: 520,
+    });
     void Haptics.selectionAsync();
-  }, [hasLiveMap, mapRegion]);
+  }, [hasLiveMap, mapCenter, mapZoom]);
 
   useEffect(() => {
     if (showNativeMap) {
@@ -259,35 +287,42 @@ export default function StoreLocationExperience({
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
       {showNativeMap ? (
-        <MapView
-          ref={mapRef}
-          {...odosGoogleMapProps}
+        <Mapbox.MapView
           style={StyleSheet.absoluteFill}
-          initialRegion={mapRegion}
-          showsUserLocation
-          showsCompass={false}
-          showsScale={false}
-          toolbarEnabled={false}
+          styleURL={ODOS_MAP_STYLE_URL}
           rotateEnabled={false}
           pitchEnabled={false}
-          mapPadding={{
-            top: insets.top + rV(72),
-            right: rS(16),
-            bottom: mapBottomPadding,
-            left: rS(16),
-          }}
+          scaleBarEnabled={false}
+          compassEnabled={false}
+          // Mapbox's own attribution must stay visible -- it is a condition of
+          // their terms of service, not decoration. The logo is repositioned
+          // rather than hidden so the bottom sheet does not cover it.
+          attributionEnabled
+          logoEnabled
         >
-          <Marker
-            coordinate={{
-              latitude: store!.latitude!,
-              longitude: store!.longitude!,
+          <Mapbox.Camera
+            ref={cameraRef}
+            defaultSettings={{ centerCoordinate: mapCenter!, zoomLevel: mapZoom }}
+            // Was MapView's `mapPadding` on react-native-maps; on Mapbox the
+            // viewport inset belongs to the camera, which is what keeps the
+            // pin centred in the space *above* the bottom sheet rather than
+            // behind it.
+            padding={{
+              paddingTop: insets.top + rV(72),
+              paddingRight: rS(16),
+              paddingBottom: mapBottomPadding,
+              paddingLeft: rS(16),
             }}
+          />
+          <Mapbox.UserLocation visible />
+          <Mapbox.MarkerView
+            coordinate={mapCenter!}
             anchor={{ x: 0.5, y: 1 }}
-            tracksViewChanges={false}
+            allowOverlap
           >
             <StoreMapPin logoSource={logoSource} title={storeTitle} />
-          </Marker>
-        </MapView>
+          </Mapbox.MarkerView>
+        </Mapbox.MapView>
       ) : (
         <View style={styles.fallbackCanvas}>
           <LinearGradient

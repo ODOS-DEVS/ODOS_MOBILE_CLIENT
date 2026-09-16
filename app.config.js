@@ -10,15 +10,14 @@ function getGoogleIosUrlScheme(iosClientId) {
   return prefix ? `com.googleusercontent.apps.${prefix}` : null;
 }
 
-const enableGoogleMaps = process.env.EXPO_PUBLIC_ENABLE_GOOGLE_MAPS === "true";
+// Google Sign-In only. The Google *Maps* keys that used to live here went with
+// the switch to Mapbox -- the map SDK now authenticates with
+// EXPO_PUBLIC_MAPBOX_TOKEN at runtime, and nothing native needs a key.
+// This scheme is unrelated to maps and must stay: it is the OAuth redirect
+// target, without which Google sign-in never comes back to the app.
 const googleIosUrlScheme = getGoogleIosUrlScheme(
   process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
 );
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-const iosGoogleMapsApiKey =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY || googleMapsApiKey;
-const androidGoogleMapsApiKey =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY || googleMapsApiKey;
 
 const iosInfoPlist = {
   ...(appJson.expo.ios?.infoPlist ?? {}),
@@ -36,21 +35,10 @@ const iosInfoPlist = {
 
 const iosConfig = {
   ...(appJson.expo.ios?.config ?? {}),
-  ...(enableGoogleMaps && iosGoogleMapsApiKey
-    ? { googleMapsApiKey: iosGoogleMapsApiKey }
-    : {}),
 };
 
 const androidConfig = {
   ...(appJson.expo.android?.config ?? {}),
-  ...(enableGoogleMaps && androidGoogleMapsApiKey
-    ? {
-        googleMaps: {
-          ...(appJson.expo.android?.config?.googleMaps ?? {}),
-          apiKey: androidGoogleMapsApiKey,
-        },
-      }
-    : {}),
 };
 
 const androidIntentFilters = [

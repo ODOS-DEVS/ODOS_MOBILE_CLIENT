@@ -70,7 +70,8 @@
         {
           "microphonePermission": "ODOS uses your microphone to record voice notes you send in chat."
         }
-      ]
+      ],
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": true

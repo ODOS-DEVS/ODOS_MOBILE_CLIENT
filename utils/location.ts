@@ -1,5 +1,21 @@
 import * as Location from "expo-location";
-import type { Region } from "react-native-maps";
+
+/**
+ * The viewport shape this module has always produced. Previously imported as
+ * `Region` from react-native-maps; declared locally now that Mapbox is the map
+ * engine, so dropping that package doesn't drag geometry types out with it.
+ *
+ * Deliberately kept in delta form rather than converted to a Mapbox zoom
+ * level: every existing caller of `buildMapRegion` speaks deltas, and
+ * `mapboxConfig.zoomFromDelta` does the translation at the one place it is
+ * needed -- the camera.
+ */
+export type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 
 export const DEFAULT_MAP_REGION = {
   latitude: 5.6037,
