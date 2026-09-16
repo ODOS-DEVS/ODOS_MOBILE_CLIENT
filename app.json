@@ -71,6 +71,13 @@
           "microphonePermission": "ODOS uses your microphone to record voice notes you send in chat."
         }
       ],
+      [
+        "expo-speech-recognition",
+        {
+          "speechRecognitionPermission": "ODOS uses speech recognition so you can talk to the shopping assistant instead of typing.",
+          "microphonePermission": "ODOS uses your microphone for voice notes in chat and to talk to the shopping assistant."
+        }
+      ],
       "@rnmapbox/maps"
     ],
     "experiments": {
