@@ -68,17 +68,44 @@ export function StorefrontHero({
     websiteUrl: store.websiteUrl,
   });
 
+  // --- Stretchy cover -----------------------------------------------------
+  //
+  // Pulling down past the top pushes the whole scroll content down by `d`
+  // pixels, which used to expose the screen background above the cover. The
+  // photo now grows by exactly `d` and stays pinned to the top of the screen
+  // instead, so the gap is always cover art -- the bounce Bolt Food and iOS
+  // Photos use.
+  //
+  // Geometry, with H = coverHeight and d = -scrollY while pulling:
+  //
+  //   scale      = (H + d) / H   grows the photo by exactly the size of the gap
+  //   translateY = -d / 2        scaling is centre-anchored, so half the growth
+  //                              happens downwards; pushing back up by half of
+  //                              it keeps the *bottom* edge exactly where the
+  //                              content below begins. Without this the photo
+  //                              would creep down over the store name as it
+  //                              stretched.
+  //
+  // Both are transforms rather than a height change, because the scroll
+  // handler runs on the native driver and layout props can't cross that
+  // boundary -- animating `height` here would silently do nothing.
   const coverScale = scrollY.interpolate({
-    inputRange: [-80, 0],
-    outputRange: [1.12, 1],
+    // At d = H the photo is twice its height, which is the (H + d) / H above.
+    inputRange: [-coverHeight, 0],
+    outputRange: [2, 1],
+    // "extend" so a hard fling keeps stretching instead of snapping to a
+    // ceiling mid-pull; "clamp" so scrolling *down* never zooms the photo.
     extrapolateLeft: "extend",
     extrapolateRight: "clamp",
   });
 
   const coverTranslateY = scrollY.interpolate({
-    inputRange: [0, coverHeight],
-    outputRange: [0, -coverHeight * 0.22],
-    extrapolate: "clamp",
+    // Left of 0 is the stretch anchor (-d/2); right of 0 is the parallax drift
+    // the cover already had as it scrolls away.
+    inputRange: [-coverHeight, 0, coverHeight],
+    outputRange: [-coverHeight / 2, 0, -coverHeight * 0.22],
+    extrapolateLeft: "extend",
+    extrapolateRight: "clamp",
   });
 
   const trustLine = useMemo(() => {
@@ -111,9 +138,12 @@ export function StorefrontHero({
           style={[
             styles.coverMotion,
             {
+              // Translate before scale, so the translation stays in unscaled
+              // screen pixels. Reversed, React Native multiplies it by the
+              // scale factor and the photo drifts as it stretches.
               transform: [
-                { scale: coverScale },
                 { translateY: coverTranslateY },
+                { scale: coverScale },
               ],
             },
           ]}
@@ -342,10 +372,13 @@ export function StorefrontSectionTitle({
 
 const styles = StyleSheet.create({
   wrap: {
-    overflow: "hidden",
+    // Deliberately not clipped: the cover has to be free to grow *above* its
+    // own box when the user pulls down. The ScrollView's own frame still clips
+    // anything that travels off the top of the screen.
+    overflow: "visible",
   },
   coverShell: {
-    overflow: "hidden",
+    overflow: "visible",
   },
   coverMotion: {
     ...StyleSheet.absoluteFill,
