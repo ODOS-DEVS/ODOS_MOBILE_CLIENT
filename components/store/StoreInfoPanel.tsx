@@ -89,8 +89,24 @@ export default function StoreInfoPanel({
       Boolean(store.address || store.city));
 
   const hasPhone = Boolean(store.phone?.trim());
+  // What this shop charges to deliver. Shown on the store page because it is
+  // a real reason to buy here rather than next door — and because the shop,
+  // not ODOS, sets it and receives it.
+  const deliveryLine = useMemo(() => {
+    if (store.deliveryBadge) {
+      return store.deliveryBadge;
+    }
+    if (typeof store.deliveryFeeFrom === "number") {
+      return store.deliveryFeeFrom <= 0
+        ? "Free delivery"
+        : `Delivery from GH₵${store.deliveryFeeFrom.toFixed(2)}`;
+    }
+    return null;
+  }, [store.deliveryBadge, store.deliveryFeeFrom]);
+  const deliversFree = Boolean(store.deliveryBadge === "Free delivery" || store.deliveryFeeFrom === 0);
+
   const hasContent = Boolean(
-    locationLine || hasPhone || tags.length || openStatus || store.isOnVacation,
+    locationLine || hasPhone || tags.length || openStatus || store.isOnVacation || deliveryLine,
   );
 
   if (!hasContent) {
@@ -197,6 +213,38 @@ export default function StoreInfoPanel({
     <View style={[styles.wrap, { paddingHorizontal: horizontalPadding }]}>
       <Text style={styles.eyebrow}>About this store</Text>
       <View style={styles.card}>
+        {deliveryLine ? (
+          <>
+            <View style={styles.row}>
+              <View
+                style={[
+                  styles.rowIcon,
+                  deliversFree ? { backgroundColor: colors.successSoft } : null,
+                ]}
+              >
+                <Ionicons
+                  name="bicycle-outline"
+                  size={rMS(18)}
+                  color={deliversFree ? colors.successText : colors.text}
+                />
+              </View>
+              <View style={styles.rowCopy}>
+                <Text
+                  style={[
+                    styles.rowTitle,
+                    deliversFree ? { color: colors.successText } : null,
+                  ]}
+                >
+                  {deliveryLine}
+                </Text>
+                <Text style={styles.rowSubtitle} numberOfLines={2}>
+                  This store delivers your order itself.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+          </>
+        ) : null}
         {store.isOnVacation ? (
           <>
             <View style={styles.row}>

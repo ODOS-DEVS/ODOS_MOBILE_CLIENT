@@ -3,6 +3,7 @@ import CommerceImage from "@/components/media/CommerceImage";
 import DeliveryCelebration from "@/components/orders/DeliveryCelebration";
 import DeliveryFeedbackPrompt from "@/components/orders/DeliveryFeedbackPrompt";
 import DeliveryProblemSheet from "@/components/orders/DeliveryProblemSheet";
+import OrderPackagesCard from "@/components/orders/OrderPackagesCard";
 import RescheduleRequestSheet from "@/components/orders/RescheduleRequestSheet";
 import {
   AccountActionButton,
@@ -160,6 +161,10 @@ export default function OrderDetailScreen() {
   const [isSubmittingReschedule, setIsSubmittingReschedule] = React.useState(false);
   const [showProblemSheet, setShowProblemSheet] = React.useState(false);
   const [isSubmittingProblem, setIsSubmittingProblem] = React.useState(false);
+  // Which shop's bag an action is about. Null means the whole order, which is
+  // what every action meant before orders could span several shops.
+  const [activePackageId, setActivePackageId] = React.useState<string | null>(null);
+  const [confirmingPackageId, setConfirmingPackageId] = React.useState<string | null>(null);
   const prevOrderStatusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -221,8 +226,14 @@ export default function OrderDetailScreen() {
     }
     setIsSubmittingProblem(true);
     try {
-      await reportDeliveryProblem(order.id, reason, details || undefined);
+      await reportDeliveryProblem(
+        order.id,
+        reason,
+        details || undefined,
+        activePackageId ?? undefined,
+      );
       setShowProblemSheet(false);
+      setActivePackageId(null);
       showToast("We're looking into this — you'll hear from us shortly.");
     } catch (error) {
       showToast(
@@ -353,6 +364,42 @@ export default function OrderDetailScreen() {
           : "We couldn't update the delivery status right now.",
       );
     }
+  };
+
+  const handleConfirmPackage = async (packageId: string) => {
+    if (!order) {
+      return;
+    }
+    setConfirmingPackageId(packageId);
+    try {
+      const updated = await confirmDelivery(order.id, packageId);
+      await refreshOrder();
+      // The review prompt belongs to the order arriving, not to one bag of it.
+      const stillComing = (updated?.packages ?? []).some(
+        (pkg) => pkg.vendor_status !== "cancelled" && pkg.delivery_status !== "delivered",
+      );
+      if (!stillComing) {
+        void maybePromptAfterDelivery(order.id);
+      }
+      showToast(
+        stillComing
+          ? "Confirmed. We'll keep tracking the rest of your order."
+          : "Thanks for confirming — that's your whole order received.",
+      );
+    } catch (error) {
+      handleError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't update the delivery status right now.",
+      );
+    } finally {
+      setConfirmingPackageId(null);
+    }
+  };
+
+  const handleReportPackageProblem = (packageId: string) => {
+    setActivePackageId(packageId);
+    setShowProblemSheet(true);
   };
 
   const handleCancelOrder = async () => {
@@ -527,6 +574,17 @@ export default function OrderDetailScreen() {
             <OrderProgressBar progress={order.progress ?? 0.18} eta={order.tracking_eta} />
           ) : null}
         </AccountListCard>
+
+        {/* Renders only when the order ships from more than one shop. Each
+            shop's bag has its own rider, its own arrival and its own
+            confirmation, so showing one shared status would be the interface
+            telling the customer something that isn't true. */}
+        <OrderPackagesCard
+          order={order}
+          onConfirmPackage={handleConfirmPackage}
+          onReportProblem={handleReportPackageProblem}
+          busyPackageId={confirmingPackageId}
+        />
 
         {order.delivery_status === "out_for_delivery" ? (
           <View style={styles.deliveryConfirmCard}>
@@ -1226,7 +1284,12 @@ export default function OrderDetailScreen() {
       <DeliveryProblemSheet
         visible={showProblemSheet}
         isSubmitting={isSubmittingProblem}
-        onClose={() => setShowProblemSheet(false)}
+        onClose={() => {
+          setShowProblemSheet(false);
+          // Cleared on close so a sheet opened next from the order-level
+          // button doesn't silently inherit the last package targeted.
+          setActivePackageId(null);
+        }}
         onSubmit={(reason, details) => void handleReportProblem(reason, details)}
       />
     </View>

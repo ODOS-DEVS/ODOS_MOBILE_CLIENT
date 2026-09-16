@@ -119,6 +119,65 @@ export type OrderStatusEvent = {
   occurred_at: string;
 };
 
+/**
+ * One shop's bag within an order.
+ *
+ * A cart that spans three shops is fulfilled by three different people with
+ * three different riders, so each carries its own stage, its own delivery fee
+ * and its own confirmation. The order above it is the commercial fact — one
+ * number, one receipt, one payment — and its status fields are a summary of
+ * these.
+ */
+export type OrderPackage = {
+  id: string;
+  order_id: string;
+  vendor_user_id: string | null;
+  store_id: string | null;
+  store_name: string | null;
+  package_number: number;
+  vendor_status:
+    | "pending"
+    | "confirmed"
+    | "processing"
+    | "ready"
+    | "out_for_delivery"
+    | "delivered"
+    | "cancelled"
+    | string;
+  delivery_status:
+    | "not_dispatched"
+    | "out_for_delivery"
+    | "rescheduled"
+    | "customer_problem"
+    | "delivered"
+    | "failed"
+    | string;
+  items_subtotal: number;
+  discount_share: number;
+  delivery_fee: number;
+  /** Free because this basket cleared the shop's threshold, not because the
+   *  shop never charges — the two read differently on a receipt. */
+  delivery_fee_waived: boolean;
+  settlement_status: string;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  confirmation_method: "customer" | "auto_release" | "admin_override" | null;
+  auto_release_at: string | null;
+  delivery_problem_reason: string | null;
+  delivery_problem_reported_at: string | null;
+  reschedule_requested_at: string | null;
+  reschedule_note: string | null;
+  dispatch_photo_url: string | null;
+  departure_notified_at: string | null;
+  tracking_eta: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Which of the order's items are in this bag. */
+  item_ids: string[];
+};
+
 export type Order = {
   id: string;
   order_number: string;
@@ -194,6 +253,11 @@ export type Order = {
   items: OrderItem[];
   return_requests: ReturnRequest[];
   timeline: OrderStatusEvent[];
+  /**
+   * One per shop. Single-shop orders — most of them — carry exactly one, and
+   * the UI collapses to the familiar single-status view.
+   */
+  packages: OrderPackage[];
 };
 
 export type CheckoutSession = {
@@ -609,17 +673,28 @@ export function useOrders() {
     [accessToken],
   );
 
+  /**
+   * Confirm receipt. With `packageId`, confirms just that shop's bag — which
+   * is what a customer does when the dress arrives on Monday and the sneakers
+   * are still coming. Without it, confirms everything still outstanding.
+   */
   const confirmDelivery = useCallback(
-    async (orderId: string) => {
+    async (orderId: string, packageId?: string) => {
       const token = await getAccessToken(accessToken);
       if (!token) {
         throw new Error("Please sign in again to manage this order.");
       }
 
+      const path = packageId
+        ? `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/packages/${encodeURIComponent(
+            packageId,
+          )}/deliver`
+        : `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/deliver`;
+
       setIsMutatingOrder(true);
       try {
         const response = await fetch(
-          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/deliver`,
+          path,
           {
             method: "PATCH",
             headers: {
@@ -647,7 +722,7 @@ export function useOrders() {
   );
 
   const reportDeliveryProblem = useCallback(
-    async (orderId: string, reason: string, details?: string) => {
+    async (orderId: string, reason: string, details?: string, packageId?: string) => {
       const token = await getAccessToken(accessToken);
       if (!token) {
         throw new Error("Please sign in again to manage this order.");
@@ -663,7 +738,14 @@ export function useOrders() {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ reason, details: details || undefined }),
+            // Scoping the problem to a package also scopes the settlement
+            // hold: reporting that the sneakers never arrived must not freeze
+            // money owed to the shop whose dress turned up on time.
+            body: JSON.stringify({
+              reason,
+              details: details || undefined,
+              package_id: packageId,
+            }),
           },
         );
 

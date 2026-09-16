@@ -1136,3 +1136,120 @@ export async function fetchSectionProductIds(
   const payload = await parseResponse<string[]>(response);
   return payload ?? [];
 }
+
+// --- Delivery pricing ------------------------------------------------------
+//
+// The shop sets its own delivery price because the shop pays the rider. Null
+// on any field means "not set — use the ODOS default", which is how every
+// store starts and how every store that never opens this screen stays.
+
+export type VendorDeliverySettings = {
+  economyFee: number | null;
+  expressFee: number | null;
+  sameDayFee: number | null;
+  freeDeliveryThreshold: number | null;
+  expressEnabled: boolean;
+  sameDayEnabled: boolean;
+  /** Platform fallbacks, shown as placeholders in the empty fields. */
+  defaultEconomyFee: number;
+  defaultExpressFee: number;
+  defaultSameDayFee: number;
+  defaultFreeDeliveryThreshold: number;
+  /** What shoppers currently see on this store's card. */
+  badge: string | null;
+  maxFee: number;
+  maxFreeDeliveryThreshold: number;
+  isCustom: boolean;
+};
+
+type VendorDeliverySettingsApi = {
+  economy_fee: number | null;
+  express_fee: number | null;
+  same_day_fee: number | null;
+  free_delivery_threshold: number | null;
+  express_enabled: boolean;
+  same_day_enabled: boolean;
+  default_economy_fee: number;
+  default_express_fee: number;
+  default_same_day_fee: number;
+  default_free_delivery_threshold: number;
+  badge: string | null;
+  max_fee: number;
+  max_free_delivery_threshold: number;
+  is_custom: boolean;
+};
+
+function mapDeliverySettings(
+  payload: VendorDeliverySettingsApi,
+): VendorDeliverySettings {
+  return {
+    economyFee: payload.economy_fee,
+    expressFee: payload.express_fee,
+    sameDayFee: payload.same_day_fee,
+    freeDeliveryThreshold: payload.free_delivery_threshold,
+    expressEnabled: payload.express_enabled,
+    sameDayEnabled: payload.same_day_enabled,
+    defaultEconomyFee: payload.default_economy_fee,
+    defaultExpressFee: payload.default_express_fee,
+    defaultSameDayFee: payload.default_same_day_fee,
+    defaultFreeDeliveryThreshold: payload.default_free_delivery_threshold,
+    badge: payload.badge,
+    maxFee: payload.max_fee,
+    maxFreeDeliveryThreshold: payload.max_free_delivery_threshold,
+    isCustom: payload.is_custom,
+  };
+}
+
+export async function fetchVendorDeliverySettings(session: VendorSessionContext) {
+  const accessToken = requireAccessToken(session);
+  const response = await fetch(`${API_BASE_URL}/vendor/delivery-settings`, {
+    headers: buildHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorDeliverySettingsApi>(response);
+  return payload ? mapDeliverySettings(payload) : null;
+}
+
+export async function updateVendorDeliverySettings(
+  session: VendorSessionContext,
+  input: {
+    economyFee?: number | null;
+    expressFee?: number | null;
+    sameDayFee?: number | null;
+    freeDeliveryThreshold?: number | null;
+    expressEnabled?: boolean;
+    sameDayEnabled?: boolean;
+  },
+) {
+  const accessToken = requireAccessToken(session);
+
+  // Only keys the caller actually set are sent. The server treats a present
+  // null as "clear this override" and an absent key as "leave it alone", so
+  // sending the whole object would wipe fields the form never rendered.
+  const body: Record<string, unknown> = {};
+  if ("economyFee" in input) body.economy_fee = input.economyFee;
+  if ("expressFee" in input) body.express_fee = input.expressFee;
+  if ("sameDayFee" in input) body.same_day_fee = input.sameDayFee;
+  if ("freeDeliveryThreshold" in input) {
+    body.free_delivery_threshold = input.freeDeliveryThreshold;
+  }
+  if ("expressEnabled" in input) body.express_enabled = input.expressEnabled;
+  if ("sameDayEnabled" in input) body.same_day_enabled = input.sameDayEnabled;
+
+  const response = await fetch(`${API_BASE_URL}/vendor/delivery-settings`, {
+    method: "PATCH",
+    headers: buildHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorDeliverySettingsApi>(response);
+  return payload ? mapDeliverySettings(payload) : null;
+}

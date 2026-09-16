@@ -56,6 +56,14 @@ export type StoreItem = {
   isOnVacation?: boolean;
   vacationMessage?: string;
   businessHours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
+  /**
+   * "Free delivery" or "Free over GH₵X", computed server-side from this
+   * shop's own delivery pricing. Undefined when the shop charges an ordinary
+   * fee — a badge announcing that a shop charges money is worse than none.
+   */
+  deliveryBadge?: string;
+  /** Standard delivery fee for this shop, after platform fallback. */
+  deliveryFeeFrom?: number;
 };
 
 type MarketApiItem = {
@@ -98,6 +106,8 @@ type StoreApiItem = {
   is_on_vacation?: boolean;
   vacation_message?: string | null;
   business_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
+  delivery_badge?: string | null;
+  delivery_fee_from?: number | null;
 };
 
 type CatalogStoreChangedEvent = {
@@ -152,6 +162,8 @@ function mapStore(item: StoreApiItem): StoreItem {
     isOnVacation: item.is_on_vacation ?? undefined,
     vacationMessage: item.vacation_message ?? undefined,
     businessHours: item.business_hours ?? undefined,
+    deliveryBadge: item.delivery_badge ?? undefined,
+    deliveryFeeFrom: item.delivery_fee_from ?? undefined,
   };
 }
 

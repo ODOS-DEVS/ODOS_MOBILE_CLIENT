@@ -13,6 +13,31 @@ export type DeliveryOption = {
   unavailableReason?: string;
 };
 
+/**
+ * One shop's line in the delivery breakdown.
+ *
+ * An order that spans three shops is three real journeys by three different
+ * riders, so it carries three delivery fees. The breakdown exists so the
+ * customer can see which three shops those fees are for — a single larger
+ * number with no explanation reads as arbitrary, and the honest version reads
+ * as a list.
+ */
+export type DeliveryPackageQuote = {
+  storeId?: string;
+  storeName?: string;
+  itemsSubtotal: number;
+  deliveryFee: number;
+  /**
+   * Free because this basket cleared the shop's threshold, as opposed to free
+   * because the shop never charges. "Free delivery" and "Free over GH₵299"
+   * are different promises and should not render the same.
+   */
+  feeWaived: boolean;
+  freeThreshold: number;
+  /** How much more with this shop would make its delivery free. */
+  amountToFreeDelivery?: number;
+};
+
 // Local-estimate default only — the authoritative value comes from the server delivery
 // quote (see hooks/useDeliveryQuote.ts) and overwrites this the moment it loads. Exported
 // so nothing else has to hardcode a second copy of this number.

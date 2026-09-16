@@ -7,6 +7,7 @@ import CheckoutProcessingOverlay, {
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import CommerceImage from "@/components/media/CommerceImage";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
+import DeliveryPackageBreakdown from "@/components/delivery/DeliveryPackageBreakdown";
 import {
   AccountEmptyState,
   AccountListCard,
@@ -231,6 +232,7 @@ export default function CheckoutScreen() {
     options: deliveryOptions,
     selectedMethod: resolvedDeliveryMethodId,
     shippingAmount: shipping,
+    packages: deliveryPackages,
     isLoading: isLoadingDelivery,
     error: deliveryQuoteError,
   } = useDeliveryQuote({
@@ -238,6 +240,9 @@ export default function CheckoutScreen() {
     region: selectedAddress?.region,
     city: selectedAddress?.city,
     selectedMethod: selectedMethodId,
+    // Delivery is priced per shop, so the quote needs the cart itself — the
+    // same GH₵300 costs one delivery from one shop and three from three.
+    items: checkoutItems,
   });
 
   useEffect(() => {
@@ -908,6 +913,10 @@ export default function CheckoutScreen() {
                 statusMessage={deliveryQuoteError}
                 variant="inline"
               />
+              {/* Renders only when the cart spans more than one shop. The
+                  customer sees which shops the fees are for before paying,
+                  rather than discovering a larger number with no explanation. */}
+              <DeliveryPackageBreakdown packages={deliveryPackages} />
             </AccountSectionCard>
 
             <AccountSectionCard title="Payment">

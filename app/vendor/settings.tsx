@@ -202,6 +202,11 @@ export default function VendorSettingsScreen() {
               label="Inventory"
               subtitle="On hand, reserved, available, and stock history."
               onPress={() => router.push("/vendor/inventory" as any)}
+            />
+            <VendorNavRow
+              label="Delivery pricing"
+              subtitle="What you charge to deliver — and keep. Set free delivery."
+              onPress={() => router.push("/vendor/delivery" as any)}
               isLast
             />
           </AccountListCard>
