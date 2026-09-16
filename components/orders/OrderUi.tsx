@@ -259,6 +259,11 @@ function useOrderFooterShellStyles() {
           paddingHorizontal: rS(16),
           paddingTop: rV(12),
           paddingBottom: getOrderFooterBottomPadding(insets.bottom),
+          // A footer must never be the thing that gives way when the screen
+          // runs out of room. Without this, a tall enough body can compress
+          // the footer until its last button is clipped by the screen edge --
+          // which is exactly how "Continue Shopping" ended up half visible.
+          flexShrink: 0,
           gap: rV(10),
           shadowColor: colors.shadow,
           shadowOpacity: 0.08,

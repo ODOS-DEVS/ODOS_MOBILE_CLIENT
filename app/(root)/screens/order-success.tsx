@@ -4,8 +4,8 @@ import {
   AccountSectionCard,
   useAccountStyles,
   formatOrderMoney,
+  OrderScreenFooter,
   OrderSummaryRow,
-  useOrderStyles,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import Fonts from "@/constants/Fonts";
@@ -16,7 +16,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { ThemeColors } from "@/constants/theme";
 
 const getParam = (value: string | string[] | undefined) =>
@@ -24,10 +23,8 @@ const getParam = (value: string | string[] | undefined) =>
 
 export default function OrderSuccessScreen() {
   const accountStyles = useAccountStyles();
-  const orderStyles = useOrderStyles();
   const params = useLocalSearchParams();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   useBlockBackNavigation(true);
   const orderNumber = getParam(params.orderNumber) ?? "ORD-000000";
@@ -90,7 +87,12 @@ export default function OrderSuccessScreen() {
         </AccountSectionCard>
       </ScrollView>
 
-      <View style={[orderStyles.stickyFooter, { paddingBottom: insets.bottom + rV(12) }]}>
+      {/* The shared order footer, so this screen, the receipt and the order
+          detail all sit at the same height with the same safe-area handling.
+          The local version used `insets.bottom + rV(12)`, which on a device
+          reporting a small inset left less room than the footer needed and
+          pushed the second button under the screen edge. */}
+      <OrderScreenFooter>
         <AccountActionButton
           label="Track Order"
           variant="primary"
@@ -106,7 +108,7 @@ export default function OrderSuccessScreen() {
           variant="secondary"
           onPress={() => router.replace("/(root)/(tabs)")}
         />
-      </View>
+      </OrderScreenFooter>
     </View>
   );
 }

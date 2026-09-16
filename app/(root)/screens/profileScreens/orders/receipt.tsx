@@ -9,7 +9,7 @@ import {
   formatOrderDateTime,
   formatOrderMoney,
   OrderSummaryRow,
-  useOrderStyles,
+  OrderScreenFooter,
 } from "@/components/orders/OrderUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import type { ThemeColors } from "@/constants/theme";
@@ -22,16 +22,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default function OrderReceiptScreen() {
   const accountStyles = useAccountStyles();
-  const orderStyles = useOrderStyles();
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams();
   const orderId = getParam(params.orderId) ?? "";
@@ -184,7 +181,9 @@ export default function OrderReceiptScreen() {
         </View>
       </ScrollView>
 
-      <View style={[orderStyles.stickyFooter, { paddingBottom: insets.bottom + rV(12) }]}>
+      {/* Same shared footer as the order-success and order-detail screens, so
+          all three sit at one height with one safe-area rule. */}
+      <OrderScreenFooter>
         <AccountActionButton
           label="Back to Order Details"
           variant="primary"
@@ -195,7 +194,7 @@ export default function OrderReceiptScreen() {
             })
           }
         />
-      </View>
+      </OrderScreenFooter>
     </View>
   );
 }
