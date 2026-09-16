@@ -14,6 +14,7 @@ import {
   type StoreCoordinates,
 } from "@/utils/location";
 import MapUnavailablePlaceholder from "@/components/location/MapUnavailablePlaceholder";
+import type { Camera as MapboxCamera } from "@rnmapbox/maps";
 import {
   fromMapboxPosition,
   getMapbox,
@@ -24,7 +25,7 @@ import {
 } from "@/utils/mapboxConfig";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -74,6 +75,36 @@ export default function StoreLocationPicker({
   // native module is unavailable (Expo Go, or an un-rebuilt dev build) and the
   // placeholder below takes over instead of the screen crashing.
   const Mapbox = getMapbox();
+
+  const cameraRef = useRef<MapboxCamera>(null);
+
+  /**
+   * Move the camera, deliberately.
+   *
+   * The camera is otherwise left uncontrolled. Passing `centerCoordinate` as a
+   * prop re-asserts it on every render, so panning or pinching was undone the
+   * moment anything re-rendered -- the map kept springing back to the pin and
+   * could not be explored at all.
+   *
+   * Tapping the map is not a reason to move: the vendor tapped a point they
+   * could already see, and yanking the view from under them is exactly the
+   * behaviour being fixed. Only the two actions that place a pin somewhere
+   * off-screen -- GPS and address lookup -- move the camera.
+   */
+  const focusCamera = useCallback(
+    (latitude?: number | null, longitude?: number | null) => {
+      const position = toMapboxPosition(latitude, longitude);
+      if (!position || !cameraRef.current) {
+        return;
+      }
+      cameraRef.current.setCamera({
+        centerCoordinate: position,
+        zoomLevel: zoomFromDelta(0.012),
+        animationDuration: 600,
+      });
+    },
+    [],
+  );
 
   // Camera inputs, in Mapbox's terms. `buildMapRegion` still owns the region
   // maths; these only translate its output into the [lng, lat] + zoom pair
@@ -171,6 +202,9 @@ export default function StoreLocationPicker({
       });
       setPlaceLabel(resolvedAddress);
       setLocationError(null);
+      // The vendor's real position is almost certainly off-screen, so this is
+      // one of the two cases where moving the camera is what they asked for.
+      focusCamera(coords.latitude, coords.longitude);
     } catch {
       setLocationError(
         "We couldn't read your GPS right now. Paste your GhanaPost code or tap the map instead.",
@@ -206,6 +240,7 @@ export default function StoreLocationPicker({
         latitude: coords.latitude,
         longitude: coords.longitude,
       });
+      focusCamera(coords.latitude, coords.longitude);
       await refreshPlaceLabel(coords);
     } catch (lookupError) {
       setLocationError(
@@ -318,13 +353,14 @@ export default function StoreLocationPicker({
             onPress={(event) => void handleMapPress(event)}
           >
             <Mapbox.Camera
-              // `centerCoordinate` follows the pin, so dropping one re-centres
-              // the map on it. Before a pin exists the camera sits on the
-              // default region and the vendor is free to pan around looking
-              // for their shop.
-              centerCoordinate={pinPosition ?? defaultPosition ?? undefined}
-              zoomLevel={hasPin ? pinZoom : defaultZoom}
-              animationDuration={hasPin ? 450 : 0}
+              ref={cameraRef}
+              // `defaultSettings` seeds the opening view and then lets go, so
+              // pan and pinch stick. A controlled `centerCoordinate` here is
+              // what made the map snap back to the pin on every render.
+              defaultSettings={{
+                centerCoordinate: (pinPosition ?? defaultPosition)!,
+                zoomLevel: hasPin ? pinZoom : defaultZoom,
+              }}
             />
             {canShowUserLocation ? <Mapbox.UserLocation visible /> : null}
             {pinPosition ? (

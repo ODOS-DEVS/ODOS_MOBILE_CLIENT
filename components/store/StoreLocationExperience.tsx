@@ -166,8 +166,18 @@ export default function StoreLocationExperience({
   // react-native-maps wanted {latitude, longitude} and deltas. Both
   // conversions live in utils/mapboxConfig so no screen has to remember the
   // reversed coordinate order.
-  const mapCenter = toMapboxPosition(store?.latitude, store?.longitude);
-  const mapZoom = zoomFromDelta(mapRegion.longitudeDelta);
+  // Memoised because these feed `focusStore`'s dependency list. Unmemoised,
+  // toMapboxPosition returns a fresh [lng, lat] array on every render, which
+  // gave focusStore a new identity, re-fired the effect below, and re-centred
+  // the camera 350ms later -- so any pan or pinch was dragged back to the pin.
+  const mapCenter = useMemo(
+    () => toMapboxPosition(store?.latitude, store?.longitude),
+    [store?.latitude, store?.longitude],
+  );
+  const mapZoom = useMemo(
+    () => zoomFromDelta(mapRegion.longitudeDelta),
+    [mapRegion.longitudeDelta],
+  );
   const mapsUrl = buildMapsSearchUrl(fullAddress, store?.latitude, store?.longitude);
   const storeTitle = store?.title || fallbackTitle;
   // Resolved lazily: importing @rnmapbox/maps at module scope throws wherever
@@ -261,11 +271,19 @@ export default function StoreLocationExperience({
     void Haptics.selectionAsync();
   }, [hasLiveMap, mapCenter, mapZoom]);
 
+  // Centre on the store once, when the map first appears. Guarded by a ref
+  // rather than by the dependency list alone: this must be an opening gesture,
+  // not something that can re-run and steal the camera back from the reader
+  // after they have panned somewhere else. The locate button still calls
+  // focusStore directly whenever they actually want to come back.
+  const hasAutoFocusedRef = useRef(false);
   useEffect(() => {
-    if (showNativeMap) {
-      const timer = setTimeout(focusStore, 350);
-      return () => clearTimeout(timer);
+    if (!showNativeMap || hasAutoFocusedRef.current) {
+      return;
     }
+    hasAutoFocusedRef.current = true;
+    const timer = setTimeout(focusStore, 350);
+    return () => clearTimeout(timer);
   }, [focusStore, showNativeMap]);
 
   const openExternalMaps = () => {
