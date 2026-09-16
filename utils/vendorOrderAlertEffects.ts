@@ -1,16 +1,21 @@
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
-import Constants from "expo-constants";
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { AppState, Platform, Vibration } from "react-native";
 
-const isExpoGo = Constants.appOwnership === "expo";
-let soundInstance: Audio.Sound | null = null;
+// Was expo-av, which Expo dropped from the SDK at 57 — it is no longer in
+// Expo Go, and importing it there fails before any runtime guard can help.
+// expo-audio is the maintained replacement and is already used by the chat
+// voice notes (see hooks/useVoiceNoteRecorder.ts).
+//
+// The old Expo Go guard is gone with it: this alert now works in Expo Go the
+// same as anywhere else, which is the point of being able to test there.
+let soundInstance: AudioPlayer | null = null;
 let soundLoading: Promise<void> | null = null;
 let effectsChain: Promise<void> = Promise.resolve();
 let pendingHapticTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function ensureSoundLoaded() {
-  if (isExpoGo || Platform.OS === "web") {
+  if (Platform.OS === "web") {
     return;
   }
 
@@ -25,17 +30,16 @@ async function ensureSoundLoaded() {
 
   soundLoading = (async () => {
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        // A new-order chime should cut through whatever the vendor is
+        // listening to, then hand the audio session straight back.
+        interruptionMode: "doNotMix",
+        shouldRouteThroughEarpiece: false,
       });
-      const { sound } = await Audio.Sound.createAsync(
-        require("@/assets/sounds/vendor_order.wav"),
-        { shouldPlay: false, volume: 1 },
-      );
-      soundInstance = sound;
+      const player = createAudioPlayer(require("@/assets/sounds/vendor_order.wav"));
+      player.volume = 1;
+      soundInstance = player;
     } catch {
       soundInstance = null;
     } finally {
@@ -52,16 +56,13 @@ async function stopSoundIfPlaying() {
   }
 
   try {
-    const status = await soundInstance.getStatusAsync();
-    if (!status.isLoaded) {
-      return;
+    if (soundInstance.playing) {
+      soundInstance.pause();
     }
-
-    if (status.isPlaying) {
-      await soundInstance.stopAsync();
-    }
-
-    await soundInstance.setPositionAsync(0);
+    // Rewound rather than recreated: a second order arriving while the first
+    // chime is still ringing should restart the sound, not stack a second
+    // player on top of it.
+    await soundInstance.seekTo(0);
   } catch {
     // Ignore stop/seek failures before the next play attempt.
   }
@@ -84,7 +85,7 @@ export async function playVendorOrderAlertSound() {
 
   try {
     await stopSoundIfPlaying();
-    await soundInstance.playAsync();
+    soundInstance.play();
   } catch {
     // Best-effort custom alert sound.
   }
@@ -143,7 +144,7 @@ export async function unloadVendorOrderAlertSound() {
   }
 
   try {
-    await soundInstance.unloadAsync();
+    soundInstance.remove();
   } catch {
     // Ignore unload failures.
   } finally {

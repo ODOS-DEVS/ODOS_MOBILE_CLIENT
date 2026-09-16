@@ -1,5 +1,6 @@
-import { useNavigation } from "@react-navigation/native";
-import { useFocusEffect } from "expo-router";
+// Both come from expo-router: as of SDK 56 expo-router vendors its own copy of
+// react-navigation and refuses to run alongside the standalone packages.
+import { useFocusEffect, useNavigation } from "expo-router";
 import { useCallback } from "react";
 import { BackHandler } from "react-native";
 
