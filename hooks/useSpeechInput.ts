@@ -36,7 +36,16 @@ function getSpeechModule(): SpeechModule | null {
   }
 
   try {
-    speechModule = require("expo-speech-recognition") as SpeechModule;
+    // The methods live on the `ExpoSpeechRecognitionModule` export, not on the
+    // module namespace. Reading them off the namespace -- as this did -- left
+    // `start` and friends undefined, so voice input silently did nothing and
+    // the try/catch below made it look like an unsupported device.
+    //
+    // `ExpoSpeechRecognitionModuleType` extends Expo's `NativeModule`, which is
+    // where `addListener` comes from. Falling back to the namespace keeps an
+    // older layout working rather than hard-failing on it.
+    const imported = require("expo-speech-recognition");
+    speechModule = (imported?.ExpoSpeechRecognitionModule ?? imported) as SpeechModule;
   } catch {
     speechModule = null;
   }
