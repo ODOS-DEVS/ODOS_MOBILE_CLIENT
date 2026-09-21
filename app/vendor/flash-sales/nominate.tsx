@@ -1,4 +1,6 @@
 import TextInputField from "@/components/TextInputField";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
+import { useVisibleCount } from "@/hooks/useVisibleCount";
 import { AccountEmptyState } from "@/components/account/AccountUi";
 import {
   AccountActionButton,
@@ -11,7 +13,6 @@ import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import { createVendorFlashSaleNomination } from "@/services/vendorFlashSaleService";
 import { useStoreStore } from "@/stores/storeStore";
-import { rV, useResponsive } from "@/styles/responsive";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -24,7 +25,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
-import { rMS } from "@/styles/responsive";
+import { rMS, rV, useResponsive } from "@/styles/responsive";
+
+const NOMINATE_PAGE_SIZE = 12;
 
 export default function VendorFlashSaleNominateScreen() {
   const insets = useSafeAreaInsets();
@@ -56,6 +59,13 @@ export default function VendorFlashSaleNominateScreen() {
     () => products.filter((product) => product.status === "active"),
     [products],
   );
+
+  const {
+    visibleCount: visibleProductCount,
+    showMore: showMoreProducts,
+    remaining: remainingProducts,
+    hasMore: hasMoreProducts,
+  } = useVisibleCount(liveProducts.length, NOMINATE_PAGE_SIZE);
 
   const selectedProduct = liveProducts.find((product) => product.id === selectedProductId) ?? null;
 
@@ -137,7 +147,7 @@ export default function VendorFlashSaleNominateScreen() {
               <AccountListCard>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose product</Text>
                 <View style={styles.optionList}>
-                  {liveProducts.map((product) => {
+                  {liveProducts.slice(0, visibleProductCount).map((product) => {
                     const selected = selectedProductId === product.id;
                     return (
                       <TouchableOpacity
@@ -161,6 +171,11 @@ export default function VendorFlashSaleNominateScreen() {
                       </TouchableOpacity>
                     );
                   })}
+                  {/* A vendor nominating for a flash sale may have a long catalogue;
+                      rendering all of it made this picker slow to open. */}
+                  {hasMoreProducts ? (
+                    <ShowMoreButton remainingCount={remainingProducts} onPress={showMoreProducts} />
+                  ) : null}
                 </View>
               </AccountListCard>
 

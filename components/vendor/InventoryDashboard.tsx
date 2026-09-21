@@ -11,12 +11,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { ShowMoreButton } from '@/components/ui/ShowMoreButton';
+import { useVisibleCount } from '@/hooks/useVisibleCount';
 import { useVendorInventory } from '@/hooks/useVendorInventory';
 import type { InventoryProduct, LowStockAlert } from '@/hooks/useVendorInventory';
 
 interface Props {
   storeId: string;
 }
+
+/** Vendors can list hundreds of products; this keeps the first screenful
+ *  cheap and lets the rest be pulled in deliberately. */
+const INVENTORY_PAGE_SIZE = 12;
 
 export function InventoryDashboard({ storeId }: Props) {
   const { colors } = useTheme();
@@ -29,7 +35,14 @@ export function InventoryDashboard({ storeId }: Props) {
     fetchAlerts,
     updateStock,
   } = useVendorInventory(storeId);
-  const [searchQuery, setSearchQuery] = useState('');
+
+
+  const {
+    visibleCount: visibleProductCount,
+    showMore: showMoreProducts,
+    remaining: remainingProducts,
+    hasMore: hasMoreProducts,
+  } = useVisibleCount(products.length, INVENTORY_PAGE_SIZE);  const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingStock, setEditingStock] = useState('');
@@ -238,7 +251,7 @@ export function InventoryDashboard({ storeId }: Props) {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Products
         </Text>
-        {products.map((product) => (
+        {products.slice(0, visibleProductCount).map((product) => (
           <View
             key={product.id}
             style={[
@@ -342,6 +355,12 @@ export function InventoryDashboard({ storeId }: Props) {
             )}
           </View>
         ))}
+        {/* A vendor's catalogue has no natural ceiling, and this rendered
+            every row of it into a ScrollView -- the one list here that
+            could genuinely be scrolled until you gave up. */}
+        {hasMoreProducts ? (
+          <ShowMoreButton remainingCount={remainingProducts} onPress={showMoreProducts} />
+        ) : null}
       </View>
 
       <View style={styles.bottomPadding} />

@@ -12,6 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ShowMoreButton } from '@/components/ui/ShowMoreButton';
+import { useVisibleCount } from '@/hooks/useVisibleCount';
 import { useTheme } from '@/context/ThemeContext';
 import { useLoyalty } from '@/hooks/useLoyalty';
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -40,12 +42,21 @@ const getTierDetails = (tier: string | null | undefined) => {
   return details[key] || { color: '#999', emoji: '⭐', benefits: [] };
 };
 
+const LOYALTY_HISTORY_PAGE_SIZE = 10;
+
 export default function LoyaltyScreen() {
   const { colors } = useTheme();
   // This screen is pushed above the tabs, so it renders outside
   // TabBarMetricsProvider and must not demand it.
   const tabBarInset = useOptionalTabBarContentInset();
   const { account, transactions, loading, error, fetchAccount, fetchTransactionHistory, redeemPoints } = useLoyalty();
+
+  const {
+    visibleCount: visibleHistoryCount,
+    showMore: showMoreHistory,
+    remaining: remainingHistory,
+    hasMore: hasMoreHistory,
+  } = useVisibleCount(transactions?.length ?? 0, LOYALTY_HISTORY_PAGE_SIZE);
 
   const tierDetails = useMemo(() => {
     if (!account) return getTierDetails('bronze');
@@ -428,7 +439,7 @@ export default function LoyaltyScreen() {
         {transactions && transactions.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            {transactions.slice(0, 10).map((transaction, index) => (
+            {transactions.slice(0, visibleHistoryCount).map((transaction, index) => (
               <View
                 key={index}
                 style={[
@@ -454,6 +465,11 @@ export default function LoyaltyScreen() {
                 </Text>
               </View>
             ))}
+            {/* Was a bare slice(0, 10): the eleventh entry onward was
+                unreachable rather than merely collapsed. */}
+            {hasMoreHistory ? (
+              <ShowMoreButton remainingCount={remainingHistory} onPress={showMoreHistory} />
+            ) : null}
           </>
         )}
 

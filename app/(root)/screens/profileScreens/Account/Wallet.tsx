@@ -1,4 +1,6 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
+import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
+import { useVisibleCount } from "@/hooks/useVisibleCount";
 import {
   AccountEmptyState,
   AccountFab,
@@ -48,6 +50,10 @@ import { Alert, ScrollView, Text, View } from "react-native";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
+
+/** The server caps this response at 25 transactions, so this reveals the
+ *  whole of what it sends in three taps rather than hiding most of it. */
+const WALLET_ACTIVITY_PAGE_SIZE = 10;
 const getParam = (p: string | string[] | undefined) =>
   Array.isArray(p) ? p[0] : p;
 
@@ -212,6 +218,12 @@ export default function WalletScreen() {
   const cardCount = paymentMethods.filter((item) => item.type === "card").length;
   const momoCount = paymentMethods.filter((item) => item.type === "momo").length;
   const walletTx = customerWallet?.recent_transactions ?? [];
+  const {
+    visibleCount: visibleTxCount,
+    showMore: showMoreTx,
+    remaining: remainingTx,
+    hasMore: hasMoreTx,
+  } = useVisibleCount(walletTx.length, WALLET_ACTIVITY_PAGE_SIZE);
   const topupMethods = paymentMethods.filter((method) => method.type === topupPaymentType);
   const selectedTopupMethod =
     topupMethods.find((method) => method.id === selectedTopupMethodId) ??
@@ -386,9 +398,17 @@ export default function WalletScreen() {
               {walletTx.length === 0 ? (
                 <Text style={accountStyles.cardSubtitle}>No wallet transactions yet.</Text>
               ) : (
-                walletTx.slice(0, 10).map((tx, index) => (
-                  <WalletTransactionItem key={tx.id} tx={tx} index={index} />
-                ))
+                <>
+                  {walletTx.slice(0, visibleTxCount).map((tx, index) => (
+                    <WalletTransactionItem key={tx.id} tx={tx} index={index} />
+                  ))}
+                  {/* Previously a bare `.slice(0, 10)` with nothing after it,
+                      so the eleventh transaction onwards simply could not be
+                      reached -- not a long list, an invisible one. */}
+                  {hasMoreTx ? (
+                    <ShowMoreButton remainingCount={remainingTx} onPress={showMoreTx} />
+                  ) : null}
+                </>
               )}
             </WalletSectionCard>
           </>
