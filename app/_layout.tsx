@@ -1,5 +1,8 @@
+// MUST be the first import: this module initialises Sentry as an import side
+// effect, and imports evaluate in order. Anything above it would be evaluated
+// with no crash handler armed.
+import "@/utils/sentryConfig";
 import { CartProvider } from "@/context/CartContext";
-import { initSentry } from "@/utils/sentryConfig";
 import { ChatProvider } from "@/context/ChatContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ActivityFeedProvider } from "@/context/ActivityFeedContext";
@@ -169,11 +172,6 @@ function ThemedAppShell({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
   return <View style={{ flex: 1, backgroundColor: colors.screen }}>{children}</View>;
 }
-
-// Called at module scope rather than inside an effect: the crash being chased
-// happens ~2s after launch, and an effect would not have run in time to catch
-// anything thrown during provider construction or the first render.
-initSentry();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
