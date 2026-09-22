@@ -20,7 +20,8 @@ const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? "";
  * leave Sentry initialised against nothing, reporting silently into a void
  * while looking configured.
  */
-export const isSentryEnabled = DSN.startsWith("https://") && DSN.includes("ingest");
+export const isSentryEnabled =
+  DSN.startsWith("https://") && DSN.includes("ingest");
 
 let initialised = false;
 
@@ -77,6 +78,27 @@ export function initSentry() {
     // If initialisation itself fails, the app carries on without reporting.
     // Losing crash reports is bad; losing the app because of the crash
     // reporter would be worse.
+  }
+}
+
+/**
+ * Reports a caught error, and is a no-op when Sentry is not configured.
+ *
+ * Exists so callers -- chiefly the root error boundary -- never have to know
+ * whether reporting is switched on, and never have to guard a call themselves.
+ */
+export function captureError(
+  error: unknown,
+  context?: Record<string, unknown>,
+) {
+  if (!isSentryEnabled) {
+    return;
+  }
+
+  try {
+    Sentry.captureException(error, context ? { extra: context } : undefined);
+  } catch {
+    // Same reasoning as initSentry: reporting a crash must not cause one.
   }
 }
 

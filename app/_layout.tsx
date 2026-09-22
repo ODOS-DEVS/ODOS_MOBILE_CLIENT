@@ -2,6 +2,7 @@
 // effect, and imports evaluate in order. Anything above it would be evaluated
 // with no crash handler armed.
 import "@/utils/sentryConfig";
+import RootErrorBoundary from "@/components/RootErrorBoundary";
 import { CartProvider } from "@/context/CartContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -24,9 +25,7 @@ import {
   triggerVendorOrderAlert,
 } from "@/context/VendorOrderAlertProvider";
 import { mapRealtimeVendorOrderPayload } from "@/services/storeService";
-import {
-  vendorOrderAlertFromRealtimePayload,
-} from "@/utils/vendorOrderAlertBus";
+import { vendorOrderAlertFromRealtimePayload } from "@/utils/vendorOrderAlertBus";
 import { useFonts } from "expo-font";
 import { SplashScreen as ExpoSplashScreen, Stack } from "expo-router";
 import { AppState, InteractionManager, View } from "react-native";
@@ -44,7 +43,9 @@ function VendorStateBridge() {
   const { accessToken, user } = useAuth();
   const clearStoreState = useStoreStore((state) => state.clearStoreState);
   const clearVendorState = useVendorStore((state) => state.clearVendorState);
-  const hydrateFromSession = useVendorStore((state) => state.hydrateFromSession);
+  const hydrateFromSession = useVendorStore(
+    (state) => state.hydrateFromSession,
+  );
 
   const session = useMemo(
     () => ({
@@ -80,10 +81,14 @@ function VendorRealtimeBridge() {
   const orders = useStoreStore((state) => state.orders);
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
-  const upsertRealtimeOrder = useStoreStore((state) => state.upsertRealtimeOrder);
+  const upsertRealtimeOrder = useStoreStore(
+    (state) => state.upsertRealtimeOrder,
+  );
   const fetchOrders = useStoreStore((state) => state.fetchOrders);
   const fetchProducts = useStoreStore((state) => state.fetchProducts);
-  const fetchVendorDashboard = useVendorStore((state) => state.fetchVendorDashboard);
+  const fetchVendorDashboard = useVendorStore(
+    (state) => state.fetchVendorDashboard,
+  );
   const setRealtimeVendorDashboard = useVendorStore(
     (state) => state.setRealtimeVendorDashboard,
   );
@@ -104,14 +109,23 @@ function VendorRealtimeBridge() {
       );
       const alertPayload = vendorOrderAlertFromRealtimePayload(payload);
       const status = String(payload.status ?? "");
-      const isActionableStatus = ["pending", "confirmed", "processing"].includes(status);
+      const isActionableStatus = [
+        "pending",
+        "confirmed",
+        "processing",
+      ].includes(status);
       const createdAtMs = Date.parse(String(payload.created_at ?? ""));
       const isRecentOrder =
-        Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 10 * 60 * 1000;
+        Number.isFinite(createdAtMs) &&
+        Date.now() - createdAtMs < 10 * 60 * 1000;
       const isNewOrder = !existingOrder && isActionableStatus && isRecentOrder;
-      const isStillActive = ["pending", "confirmed", "processing", "ready", "out_for_delivery"].includes(
-        status,
-      );
+      const isStillActive = [
+        "pending",
+        "confirmed",
+        "processing",
+        "ready",
+        "out_for_delivery",
+      ].includes(status);
 
       if (!isStillActive && alertPayload) {
         InteractionManager.runAfterInteractions(() => {
@@ -141,13 +155,16 @@ function VendorRealtimeBridge() {
       void fetchVendorDashboard(session);
     });
 
-    const unsubscribeDashboard = subscribe("vendor.dashboard.updated", (event) => {
-      if (!event.payload || typeof event.payload !== "object") {
-        return;
-      }
+    const unsubscribeDashboard = subscribe(
+      "vendor.dashboard.updated",
+      (event) => {
+        if (!event.payload || typeof event.payload !== "object") {
+          return;
+        }
 
-      setRealtimeVendorDashboard(event.payload as any);
-    });
+        setRealtimeVendorDashboard(event.payload as any);
+      },
+    );
 
     return () => {
       unsubscribeOrder();
@@ -170,7 +187,9 @@ function VendorRealtimeBridge() {
 
 function ThemedAppShell({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
-  return <View style={{ flex: 1, backgroundColor: colors.screen }}>{children}</View>;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.screen }}>{children}</View>
+  );
 }
 
 export default function RootLayout() {
@@ -189,43 +208,45 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <VendorStateBridge />
-            <WorkspaceModeHydrator />
-            <RealtimeProvider>
-              <ActivityFeedProvider>
-                <PushNotificationsProvider>
-                  <VendorOrderAlertProvider>
-                    <VendorRealtimeBridge />
-                    <ChatProvider>
-                    <ProfileProvider>
-                      <BehaviorTrackingProvider>
-                        <CartProvider>
-                          <WishlistProvider>
-                            <ThemedAppShell>
-                              <Stack
-                                screenOptions={{
-                                  headerShown: false,
-                                  freezeOnBlur: false,
-                                  // Avoid snapshot/detach races with Reanimated during stack pop.
-                                  fullScreenGestureEnabled: false,
-                                }}
-                              />
-                            </ThemedAppShell>
-                          </WishlistProvider>
-                        </CartProvider>
-                      </BehaviorTrackingProvider>
-                    </ProfileProvider>
-                  </ChatProvider>
-                  </VendorOrderAlertProvider>
-                </PushNotificationsProvider>
-              </ActivityFeedProvider>
-            </RealtimeProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <RootErrorBoundary>
+        <ThemeProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <VendorStateBridge />
+              <WorkspaceModeHydrator />
+              <RealtimeProvider>
+                <ActivityFeedProvider>
+                  <PushNotificationsProvider>
+                    <VendorOrderAlertProvider>
+                      <VendorRealtimeBridge />
+                      <ChatProvider>
+                        <ProfileProvider>
+                          <BehaviorTrackingProvider>
+                            <CartProvider>
+                              <WishlistProvider>
+                                <ThemedAppShell>
+                                  <Stack
+                                    screenOptions={{
+                                      headerShown: false,
+                                      freezeOnBlur: false,
+                                      // Avoid snapshot/detach races with Reanimated during stack pop.
+                                      fullScreenGestureEnabled: false,
+                                    }}
+                                  />
+                                </ThemedAppShell>
+                              </WishlistProvider>
+                            </CartProvider>
+                          </BehaviorTrackingProvider>
+                        </ProfileProvider>
+                      </ChatProvider>
+                    </VendorOrderAlertProvider>
+                  </PushNotificationsProvider>
+                </ActivityFeedProvider>
+              </RealtimeProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </RootErrorBoundary>
     </GestureHandlerRootView>
   );
 }
