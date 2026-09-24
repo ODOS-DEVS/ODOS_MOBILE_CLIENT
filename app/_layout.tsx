@@ -1,4 +1,5 @@
 import RootErrorBoundary from "@/components/RootErrorBoundary";
+import { installWorkletCrashGuard } from "@/utils/workletCrashGuard";
 import { CartProvider } from "@/context/CartContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -29,6 +30,12 @@ import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { enableFreeze } from "react-native-screens";
 import "./global.css";
+
+// Installed before anything can animate. Reanimated runs every animation step
+// inside a UI-runtime requestAnimationFrame callback that worklets invokes from
+// C++ with no try/catch, so an error in one aborts the process outright -- the
+// TestFlight crash, 1.66s after launch, with no message anywhere.
+installWorkletCrashGuard();
 
 ExpoSplashScreen.preventAutoHideAsync();
 // Freeze + Reanimated + Fabric stack pops caused TestFlight SIGSEGV/SIGBUS
