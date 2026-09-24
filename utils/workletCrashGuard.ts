@@ -28,13 +28,20 @@ import { runOnJS, runOnUI } from "react-native-reanimated";
  * Wrapping the callback restores the missing handler. The animation that threw
  * stops, the app keeps running, and the message is surfaced instead of lost.
  *
- * Two entry points need it, not one. `executeQueue` runs frame callbacks, then
- * microtasks, then finalizers -- all unprotected. Layout animations (FadeIn,
- * FadeOut) are scheduled through `requestAnimationFrameFinalizer` rather than
- * `requestAnimationFrame`, and this app uses them on both the splash and
- * onboarding screens, so guarding only the frame callbacks would have left the
- * launch path half covered. Microtasks are dispatched from native code and
- * cannot be wrapped from here.
+ * The guard is applied at the run loop itself, not at the individual callbacks.
+ *
+ * An earlier version wrapped only `requestAnimationFrame` callbacks and still
+ * crashed. Symbolicating that build against its own binary settled why: the
+ * offsets were a constant shift of the previous crash, so it was failing at
+ * exactly the same place. `executeQueue` runs three things in one frame --
+ * frame callbacks, then `callMicrotasks()`, then finalizers -- and a throwing
+ * microtask produces an identical stack while being dispatched from native
+ * code, out of reach of any per-callback wrapper.
+ *
+ * `nativeFlushQueue` is the outermost JavaScript function in the frame, so
+ * wrapping what schedules it covers all three at once. It re-registers itself
+ * on its final line, which means a throw would otherwise stop the animation
+ * loop permanently -- so the handler re-arms it explicitly.
  */
 
 let reported = false;
@@ -65,6 +72,7 @@ export function installWorkletCrashGuard() {
         __odosFrameGuardInstalled?: boolean;
         requestAnimationFrame?: (cb: (timestamp: number) => void) => number;
         requestAnimationFrameFinalizer?: (cb: () => void) => void;
+        __nativeRequestAnimationFrame?: (cb: (timestamp: number) => void) => void;
       };
 
       // runOnUI may be invoked more than once across reloads; wrapping a
@@ -74,7 +82,9 @@ export function installWorkletCrashGuard() {
       }
 
       const original = scope.requestAnimationFrame;
-      if (typeof original !== "function") {
+      const originalNative = scope.__nativeRequestAnimationFrame;
+
+      if (typeof original !== "function" && typeof originalNative !== "function") {
         // Nothing to protect: the UI runtime has not installed its run loop.
         return;
       }
@@ -89,6 +99,33 @@ export function installWorkletCrashGuard() {
           String(err?.stack ?? ""),
         );
       };
+
+      // The outer guard: covers everything a frame runs, microtasks included.
+      // worklets re-registers the flush every frame, so wrapping the scheduler
+      // takes effect from the next frame onward even though the run loop was
+      // started long before this code could run.
+      if (typeof originalNative === "function") {
+        const rearm = (flush: (timestamp: number) => void) => {
+          "worklet";
+          originalNative((timestamp: number) => {
+            try {
+              flush(timestamp);
+            } catch (error) {
+              describe(error);
+              // flush re-registers itself on its last line, which the throw
+              // skipped. Without this the loop stops and the UI freezes for
+              // good -- a worse outcome than the crash.
+              rearm(flush);
+            }
+          });
+        };
+
+        scope.__nativeRequestAnimationFrame = rearm;
+      }
+
+      if (typeof original !== "function") {
+        return;
+      }
 
       scope.requestAnimationFrame = (callback: (timestamp: number) => void) =>
         original((timestamp: number) => {
