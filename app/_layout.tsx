@@ -1,7 +1,3 @@
-// MUST be the first import: this module initialises Sentry as an import side
-// effect, and imports evaluate in order. Anything above it would be evaluated
-// with no crash handler armed.
-import "@/utils/sentryConfig";
 import RootErrorBoundary from "@/components/RootErrorBoundary";
 import { CartProvider } from "@/context/CartContext";
 import { ChatProvider } from "@/context/ChatContext";

@@ -1,4 +1,4 @@
-import { captureError } from "@/utils/sentryConfig";
+import { captureError } from "@/utils/errorReporting";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -37,7 +37,8 @@ export default class RootErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // The component stack is the part Apple's crash reports never carry, and
-    // the reason four separate theories about this crash could not be settled.
+    // the reason several theories about this crash could not be settled. It is
+    // shown on screen by the fallback below, which is now the only channel.
     captureError(error, { componentStack: info.componentStack });
   }
 
