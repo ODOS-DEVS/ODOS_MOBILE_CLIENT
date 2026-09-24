@@ -20,8 +20,19 @@ const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? "";
  * leave Sentry initialised against nothing, reporting silently into a void
  * while looking configured.
  */
+/**
+ * A separate, plain-text switch rather than an empty DSN.
+ *
+ * Overriding the DSN from a build profile does not work: it is stored as an
+ * EAS secret, and secrets take precedence over a profile's `env` block. An
+ * attempt to build a Sentry-free control that way produced two effectively
+ * identical APKs, both carrying the real DSN -- confirmed by finding the org
+ * id in both bundles. This variable is not a secret, so a profile can set it.
+ */
+const DISABLED = process.env.EXPO_PUBLIC_DISABLE_SENTRY === "1";
+
 export const isSentryEnabled =
-  DSN.startsWith("https://") && DSN.includes("ingest");
+  !DISABLED && DSN.startsWith("https://") && DSN.includes("ingest");
 
 let initialised = false;
 
