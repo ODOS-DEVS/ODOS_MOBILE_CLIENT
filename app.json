@@ -78,7 +78,8 @@
           "microphonePermission": "ODOS uses your microphone for voice notes in chat and to talk to the shopping assistant."
         }
       ],
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

@@ -20,7 +20,15 @@
  * screenshot instead of a toolchain.
  */
 
-import { AppRegistry, Platform, ScrollView, Text, View } from "react-native";
+import { AppRegistry, ScrollView, Text, View } from "react-native";
+import { captureError, initErrorReporting } from "@/utils/errorReporting";
+
+// Armed here rather than in app/_layout.tsx because this is the earliest point
+// that exists: ES imports all evaluate before any statement in the importing
+// file, so initialising from the layout means every context and provider module
+// has already run. An error thrown while evaluating one of those would happen
+// with nothing listening.
+initErrorReporting();
 
 function renderStartupFailure(error) {
   const message = error?.message ?? String(error);
@@ -65,6 +73,12 @@ try {
 } catch (error) {
   // Deliberately not rethrown: rethrowing restores exactly the silent abort
   // this exists to replace.
+  try {
+    captureError(error, { phase: "startup", source: "index.js entry guard" });
+  } catch {
+    // Reporting must not be what stops the fallback screen rendering.
+  }
+
   try {
     renderStartupFailure(error);
   } catch {

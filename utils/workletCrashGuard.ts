@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import { runOnJS, runOnUI } from "react-native-reanimated";
+import { captureWorkletError } from "@/utils/errorReporting";
 
 /**
  * Stops a JavaScript error inside an animation frame from killing the app.
@@ -44,23 +45,39 @@ import { runOnJS, runOnUI } from "react-native-reanimated";
  * loop permanently -- so the handler re-arms it explicitly.
  */
 
-let reported = false;
+/**
+ * A failing animation fails on every frame, and the guard deliberately re-arms
+ * the loop afterwards -- so without a limit this would report sixty times a
+ * second, exhaust a Sentry quota in under a minute, and cost real frame time.
+ *
+ * Deduplicating by message keeps one report per distinct fault, which is the
+ * useful unit: the same animation throwing repeatedly is one bug, not
+ * thousands.
+ */
+const seenMessages = new Set<string>();
+const MAX_DISTINCT_REPORTS = 5;
+
+let alerted = false;
 
 function reportWorkletError(message: string, stack: string) {
-  if (reported) {
-    // One animation failing tends to fail on every frame. Showing the first is
-    // informative; showing sixty a second is unusable.
+  if (!seenMessages.has(message) && seenMessages.size < MAX_DISTINCT_REPORTS) {
+    seenMessages.add(message);
+    captureWorkletError(message, stack);
+  }
+
+  // The alert is a development affordance, not a product surface. It existed to
+  // get a crash message out of a tester's hands by screenshot, which is no
+  // longer the only channel now that these reach Sentry -- and a release user
+  // should never be shown a stack trace. The app is not in danger either way:
+  // the animation stops, the loop re-arms, and everything else keeps running.
+  if (!__DEV__ || alerted) {
     return;
   }
-  reported = true;
+  alerted = true;
 
-  console.error("[odos] worklet animation error", message, stack);
-
-  Alert.alert(
-    "Animation error (please screenshot)",
-    `${message}\n\n${stack.slice(0, 700)}`,
-    [{ text: "OK" }],
-  );
+  Alert.alert("Animation error", `${message}\n\n${stack.slice(0, 700)}`, [
+    { text: "OK" },
+  ]);
 }
 
 export function installWorkletCrashGuard() {
