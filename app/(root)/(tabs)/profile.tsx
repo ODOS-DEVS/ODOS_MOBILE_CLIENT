@@ -777,6 +777,20 @@ export default function ProfileScreen() {
             onPress={handleLogout}
             textColor={colors.dangerText}
           />
+          {/*
+            Required by App Store Guideline 5.1.1(v): an app that creates
+            accounts must offer deletion from inside it. Placed under Log out
+            because both end a session, and separated onto its own screen
+            because this one cannot be undone.
+          */}
+          <MenuItem
+            icon="trash-outline"
+            label="Delete account"
+            onPress={() =>
+              router.push("/(root)/screens/profileScreens/Account/DeleteAccount")
+            }
+            textColor={colors.dangerText}
+          />
         </AccountListCard>
       ) : null}
       </ScrollView>
