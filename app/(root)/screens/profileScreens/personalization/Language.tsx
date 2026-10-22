@@ -13,17 +13,11 @@ import { ScrollView, View } from "react-native";
 type LanguageOption = {
   id: string;
   label: string;
-  available: boolean;
 };
 
-const LANGUAGES: LanguageOption[] = [
-  { id: "en-us", label: "English (US)", available: true },
-  { id: "en-gb", label: "English (UK)", available: false },
-  { id: "fr", label: "French", available: false },
-  { id: "tw", label: "Twi", available: false },
-  { id: "zh", label: "Mandarin", available: false },
-  { id: "ar", label: "Arabic", available: false },
-];
+// Only what the app actually ships. Listing unbuilt languages as "coming
+// soon" promises a date nobody owns.
+const LANGUAGES: LanguageOption[] = [{ id: "en-us", label: "English (US)" }];
 
 export default function LanguageScreen() {
   const accountStyles = useAccountStyles();
@@ -39,41 +33,29 @@ export default function LanguageScreen() {
       >
         <AccountInsightCard
           title="App language"
-          subtitle="ODOS currently ships in English. More regional languages will unlock in a future update."
+          subtitle="ODOS is available in English. Your device region still controls currency, dates, and number formatting."
           stats={[
             {
               value: LANGUAGES.find((lang) => lang.id === selectedId)?.label ?? "English",
               label: "Selected",
             },
-            { value: 1, label: "Available" },
+            { value: LANGUAGES.length, label: "Available" },
           ]}
         />
 
         <AccountTipBanner
-          title="English is live today"
-          message="There is nothing to save yet — English is the only supported language in this build."
-          icon="language-outline"
+          title="Prices always show in cedis"
+          message="Order totals, receipts, and wallet balances are in GHS wherever you shop from."
+          icon="cash-outline"
         />
 
-        <AccountSettingsGroup title="Available now">
-          {LANGUAGES.filter((lang) => lang.available).map((lang) => (
+        <AccountSettingsGroup title="App language">
+          {LANGUAGES.map((lang) => (
             <AccountRadioRow
               key={lang.id}
               label={lang.label}
               selected={selectedId === lang.id}
               onPress={() => undefined}
-            />
-          ))}
-        </AccountSettingsGroup>
-
-        <AccountSettingsGroup title="Coming soon">
-          {LANGUAGES.filter((lang) => !lang.available).map((lang) => (
-            <AccountRadioRow
-              key={lang.id}
-              label={lang.label}
-              selected={false}
-              onPress={() => undefined}
-              disabled
             />
           ))}
         </AccountSettingsGroup>

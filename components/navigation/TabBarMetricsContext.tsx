@@ -7,15 +7,18 @@ const TabBarMetricsContext = createContext<TabBarMetrics | null>(null);
 type TabBarMetricsProviderProps = {
   tabCount: number;
   bottomInset?: number;
+  /** See `computeTabBarMetrics` — drives the bar's top padding. */
+  pillIcons?: boolean;
   children: ReactNode;
 };
 
 export function TabBarMetricsProvider({
   tabCount,
   bottomInset = 0,
+  pillIcons = false,
   children,
 }: TabBarMetricsProviderProps) {
-  const metrics = useTabBarMetrics(tabCount, bottomInset);
+  const metrics = useTabBarMetrics(tabCount, bottomInset, pillIcons);
 
   return (
     <TabBarMetricsContext.Provider value={metrics}>

@@ -1,6 +1,7 @@
 import {
   AccountEmptyState,
   AccountFilterChips,
+  AccountShowMore,
   AccountInsightCard,
   useAccountStyles,
 } from "@/components/account/AccountUi";
@@ -14,6 +15,7 @@ import {
 } from "@/components/reviews/ReviewUi";
 import { useToast } from "@/context/ToastContext";
 import { Order, useOrders } from "@/hooks/useOrders";
+import { usePagedList } from "@/hooks/usePagedList";
 import {
   type ReviewDraft,
   type StoredReview,
@@ -330,6 +332,8 @@ export default function ReviewsScreen() {
     showToast,
   ]);
 
+  const pagedReviews = usePagedList(filteredData, { key: activeFilter });
+
   if (isLoading) {
     return (
       <View style={accountStyles.screen}>
@@ -374,13 +378,25 @@ export default function ReviewsScreen() {
             message="Delivered orders will create review prompts here, and your published ratings will stay in this space."
           />
         ) : (
-          filteredData.map((item) => (
-            <ReviewListCard
-              key={item.id}
-              item={toListCardData(item)}
-              onWritePress={() => openComposer(item)}
+          <>
+            {pagedReviews.items.map((item) => (
+              <ReviewListCard
+                key={item.id}
+                item={toListCardData(item)}
+                onWritePress={() => openComposer(item)}
+              />
+            ))}
+            <AccountShowMore
+              remaining={pagedReviews.remaining}
+              total={pagedReviews.total}
+              nextPageSize={pagedReviews.nextPageSize}
+              isExpanded={pagedReviews.isExpanded}
+              onShowMore={pagedReviews.showMore}
+              onShowAll={pagedReviews.showAll}
+              onCollapse={pagedReviews.collapse}
+              noun="review"
             />
-          ))
+          </>
         )}
       </ScrollView>
 

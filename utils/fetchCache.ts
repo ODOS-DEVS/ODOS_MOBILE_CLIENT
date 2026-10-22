@@ -22,6 +22,9 @@ export const CACHE_STALE = {
   productsFlash: 30 * 1000,
   stores: 2 * 60 * 1000,
   detail: 60 * 1000,
+  // Help content changes when an admin publishes, not on a schedule — a long
+  // window keeps the resource center instant on repeat opens.
+  guideVideos: 10 * 60 * 1000,
 } as const;
 
 const memoryCache = new Map<string, CacheEntry<unknown>>();
@@ -153,6 +156,20 @@ export function hasCachedJson(url: string): boolean {
 
 export function invalidateCachedUrl(url: string) {
   memoryCache.delete(url);
+}
+
+/**
+ * Drop every cached response.
+ *
+ * Called on sign-out. The cache is keyed by URL alone, so without this a
+ * second person signing in on the same device could be served the previous
+ * account's authenticated responses from memory before their own request
+ * lands. Public catalog data is harmless either way; anything per-user is not.
+ */
+export function clearFetchCache() {
+  memoryCache.clear();
+  inflightRequests.clear();
+  backgroundRefreshes.clear();
 }
 
 export async function fetchJsonCached<T>(

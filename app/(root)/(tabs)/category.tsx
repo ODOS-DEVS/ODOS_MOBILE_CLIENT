@@ -6,6 +6,7 @@ import SearchLauncher from "@/components/search/SearchLauncher";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import Fonts from "@/constants/Fonts";
 import { useCatalogCategories } from "@/hooks/useCatalog";
+import { useFocusRevalidate } from "@/hooks/useLiveRefresh";
 import { buildCategoryRouteParams } from "@/utils/catalogLanes";
 import { useTheme } from "@/context/ThemeContext";
 import { productCardGapX, rMS, rV, useResponsive } from "@/styles/responsive";
@@ -27,11 +28,10 @@ const CategoryScreen = () => {
   const { categories: catalogCategories, isLoading, error, errorKind, refresh } =
     useCatalogCategories();
 
-  useFocusEffect(
-    useCallback(() => {
-      void refresh({ background: true });
-    }, [refresh]),
+  const revalidateCategories = useFocusRevalidate(
+    useCallback(() => refresh({ background: true }), [refresh]),
   );
+  useFocusEffect(revalidateCategories);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);

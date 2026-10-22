@@ -6,7 +6,10 @@ import { productCardGapX, rMS, rS, rV, useResponsive } from "@/styles/responsive
 import { browseStoreProducts } from "@/utils/storeProductBrowse";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+/** Matches STORE_SHELF_TILE_LIMIT, so every rail on the storefront previews alike. */
+const DEALS_RAIL_LIMIT = 5;
 
 type StoreDealsShowcaseProps = {
   products: CatalogProductItem[];
@@ -24,7 +27,9 @@ export default function StoreDealsShowcase({
   const { colors } = useTheme();
   const { gridCardWidth } = useResponsive();
   const gridGap = productCardGapX();
-  const cardWidth = gridCardWidth(2, gridGap);
+  // Slightly narrower than a two-up grid cell, so the next card peeks in and
+  // the rail reads as scrollable without a hint or an arrow.
+  const cardWidth = gridCardWidth(2, gridGap) * 0.92;
 
   const deals = useMemo(
     () =>
@@ -40,9 +45,22 @@ export default function StoreDealsShowcase({
           priceRange: "all",
           sort: "rating",
         },
-      ).slice(0, 4),
+      ),
     [products, storeId],
   );
+
+  /**
+   * A rail of five, not a wrapped grid of four.
+   *
+   * The grid was two rows deep and fixed at four, which made the shop's
+   * discounts look like a complete set when they were a silent truncation —
+   * a shop running thirty deals showed four and said nothing about the rest.
+   * A rail carries the same preview in half the vertical space, matches the
+   * category and shelf rails above it, and "See all" now only appears when
+   * there genuinely is more, so it stops being decoration.
+   */
+  const visibleDeals = deals.slice(0, DEALS_RAIL_LIMIT);
+  const hasMoreDeals = deals.length > visibleDeals.length;
 
   if (!deals.length) {
     return null;
@@ -55,15 +73,19 @@ export default function StoreDealsShowcase({
           <Text style={[styles.eyebrow, { color: colors.textMuted }]}>Deals</Text>
           <Text style={[styles.title, { color: colors.text }]}>On sale now</Text>
         </View>
-        {onBrowseAll ? (
+        {onBrowseAll && hasMoreDeals ? (
           <TouchableOpacity style={styles.linkButton} onPress={onBrowseAll} activeOpacity={0.86}>
             <Text style={[styles.linkText, { color: colors.text }]}>See all</Text>
             <Ionicons name="arrow-forward" size={rMS(14)} color={colors.text} />
           </TouchableOpacity>
         ) : null}
       </View>
-      <View style={[styles.grid, { gap: gridGap }]}>
-        {deals.map((product) => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.rail, { gap: gridGap }]}
+      >
+        {visibleDeals.map((product) => (
           <ProductCard
             key={product.id}
             {...product}
@@ -73,7 +95,7 @@ export default function StoreDealsShowcase({
             storeId={storeId}
           />
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -114,9 +136,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.textBold,
     fontSize: rMS(13),
   },
-  grid: {
+  rail: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    paddingVertical: rV(2),
   },
 });

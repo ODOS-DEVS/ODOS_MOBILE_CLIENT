@@ -8,6 +8,7 @@ export type TabBarMetrics = {
   barInnerPaddingH: number;
   barContentHeight: number;
   barTotalHeight: number;
+  barPaddingTop: number;
   barPaddingBottom: number;
   barBottomOffset: number;
   contentBottomInset: number;
@@ -19,8 +20,6 @@ export type TabBarMetrics = {
   labelLineHeight: number;
   labelGap: number;
   labelWidth: number;
-  pillPaddingHorizontal: number;
-  pillPaddingVertical: number;
   pillBorderRadius: number;
   isCompact: boolean;
   showLabels: boolean;
@@ -41,10 +40,32 @@ function pickLabelFontSize(slotWidth: number, isCompact: boolean) {
   return rMS(10);
 }
 
+/**
+ * The bar is sized from the icon surface outwards, not from a fixed height.
+ *
+ * Reference points: a native iOS tab bar gives its content 49pt and Material's
+ * bottom navigation uses 56-64dp. The earlier numbers here (a 44pt icon
+ * surface with 12pt of padding above and below) produced 73-98pt of content
+ * depending on device — half again as tall as either platform's own bar, which
+ * is what made it read as long and heavy. These land at 55-70pt.
+ *
+ * Label text size is deliberately left alone: shrinking type to reclaim height
+ * trades legibility for a number, and the padding had plenty to give.
+ * Each slot still clears Apple's 44pt minimum touch target.
+ */
 export function computeTabBarMetrics(
   tabCount: number,
   screenWidth: number,
   bottomInset = 0,
+  /**
+   * Whether the icons are the pill-wrapped kind.
+   *
+   * The shopper tabs render `TabBarIconShell`, whose pill fills its slot and
+   * so sits flush against the bar's top edge. The seller tabs render a bare
+   * icon with react-navigation's own label, which already carries its own
+   * spacing. Only the former needs the bar opened up at the top.
+   */
+  pillIcons = false,
 ): TabBarMetrics {
   const safeTabCount = Math.max(tabCount, 1);
   const isCompact = screenWidth < 390 || safeTabCount >= 6;
@@ -57,21 +78,23 @@ export function computeTabBarMetrics(
   const slotWidth = trackWidth / safeTabCount;
   const pillWidth = Math.max(rS(38), slotWidth - pillGap);
 
-  const pillPaddingHorizontal = slotWidth >= 54 ? rS(6) : rS(3);
-  const pillPaddingVertical = isDense ? rV(5) : isCompact ? rV(6) : rV(7);
   const labelFontSize = pickLabelFontSize(slotWidth, isCompact || isDense);
   const labelLineHeight = Math.round(labelFontSize * 1.24);
-  const labelGap = rV(4);
-  const iconSize = isDense ? rMS(23) : isCompact ? rMS(24) : rMS(26);
-  const iconSurfaceSize = isDense ? rMS(38) : isCompact ? rMS(40) : rMS(44);
+  const labelGap = rV(3);
+  const iconSize = isDense ? rMS(19) : isCompact ? rMS(20) : rMS(21);
+  const iconSurfaceSize = isDense ? rMS(30) : isCompact ? rMS(32) : rMS(34);
   const showLabels = safeTabCount === 5 || slotWidth >= 44;
 
-  const itemVerticalPad = rV(isDense ? 10 : 12);
+  const itemVerticalPad = rV(isDense ? 5 : 6);
   const iconStackHeight =
     iconSurfaceSize + (showLabels ? labelGap + labelLineHeight : 0);
   const barContentHeight = iconStackHeight + itemVerticalPad * 2;
   const barPaddingBottom = Math.max(bottomInset, rV(8));
-  const barTotalHeight = barContentHeight + barPaddingBottom;
+  // The bottom padding absorbs the home-indicator inset, so content already
+  // has room beneath it; without a matching pad above, the pills read as
+  // pinned to the top edge rather than sitting in the bar.
+  const barPaddingTop = pillIcons ? rV(7) : 0;
+  const barTotalHeight = barPaddingTop + barContentHeight + barPaddingBottom;
   const contentBottomInset = barTotalHeight + rV(8);
 
   return {
@@ -79,6 +102,7 @@ export function computeTabBarMetrics(
     barInnerPaddingH,
     barContentHeight,
     barTotalHeight,
+    barPaddingTop,
     barPaddingBottom,
     barBottomOffset: 0,
     contentBottomInset,
@@ -90,20 +114,25 @@ export function computeTabBarMetrics(
     labelLineHeight,
     labelGap,
     labelWidth: pillWidth,
-    pillPaddingHorizontal,
-    pillPaddingVertical,
-    pillBorderRadius: rMS(isDense ? 14 : isCompact ? 15 : 16),
+    // Kept proportional to the smaller surface (was 16 on a 44pt pill); left
+    // at the old values it would round to a full circle rather than the
+    // squircle the design uses.
+    pillBorderRadius: rMS(isDense ? 10 : isCompact ? 11 : 12),
     isCompact: isCompact || isDense,
     showLabels,
     itemVerticalPad,
   };
 }
 
-export function useTabBarMetrics(tabCount: number, bottomInset = 0): TabBarMetrics {
+export function useTabBarMetrics(
+  tabCount: number,
+  bottomInset = 0,
+  pillIcons = false,
+): TabBarMetrics {
   const { width } = useWindowDimensions();
 
   return useMemo(
-    () => computeTabBarMetrics(tabCount, width, bottomInset),
-    [bottomInset, tabCount, width],
+    () => computeTabBarMetrics(tabCount, width, bottomInset, pillIcons),
+    [bottomInset, pillIcons, tabCount, width],
   );
 }

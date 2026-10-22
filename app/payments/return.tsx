@@ -75,7 +75,7 @@ export default function PaymentReturnScreen() {
   }, []);
 
   // Block back navigation only while a verification request is actually in flight —
-  // a gesture/hardware back mid-check could strand the app between "paid Paystack"
+  // a gesture/hardware back mid-check could strand the app between "paid the gateway"
   // and "order confirmed here," inviting a confusing duplicate checkout attempt.
   useBlockBackNavigation(verificationState === "verifying");
 
@@ -96,7 +96,11 @@ export default function PaymentReturnScreen() {
     if (verificationState === "pending") {
       return {
         title: "Payment still processing",
-        body: verification?.message || "We’re still waiting for Paystack to finish confirming this payment.",
+        // Provider-neutral: KutanaPay collects these now, and naming the wrong
+        // gateway to a customer is both confusing and wrong.
+        body:
+          verification?.message ||
+          "We’re still waiting for the payment provider to finish confirming this payment.",
       };
     }
     if (verificationState === "failed") {

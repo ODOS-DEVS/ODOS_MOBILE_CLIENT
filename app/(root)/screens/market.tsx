@@ -1,19 +1,30 @@
-import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreCard from "@/components/cards/StoreCard";
 import {
   CommerceFilterChips,
   CommerceSeeAllEmptyState,
-  CommerceSeeAllHero,
+  CommerceSeeAllListFooter,
   CommerceSeeAllSearch,
   CommerceSeeAllSectionHeader,
   useCommerceSeeAllScreenStyles,
 } from "@/components/browse/CommerceSeeAllUi";
+import { StoreGridSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useMarketLookup, useMarkets, useStores } from "@/hooks/useCommerce";
-import { productCardGapX, rS, rV, useResponsive } from "@/styles/responsive";
+import { usePagedList } from "@/hooks/usePagedList";
+import { productCardGapX, rV, useResponsive } from "@/styles/responsive";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, View } from "react-native";
+
+/**
+ * Stores grouped by market, as one scrolling grid.
+ *
+ * Same shape as the stores screen: the FlatList owns the scroll so rows are
+ * windowed instead of every store in a market mounting at once, and reaching
+ * the bottom reveals the next page.
+ */
+
+const PAGE_SIZE = 10;
 
 const MarketScreen = () => {
   const screenStyles = useCommerceSeeAllScreenStyles();
@@ -60,6 +71,13 @@ const MarketScreen = () => {
     [activeMarket, filteredStores.length, marketNames],
   );
 
+  const handleMarketChange = useCallback((marketName: string) => {
+    setActiveMarket(marketName);
+    setIsSearching(false);
+    setSearchResults([]);
+    setSearchSessionKey((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
     if (
       typeof initialMarketParam === "string" &&
@@ -71,111 +89,107 @@ const MarketScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMarketParam]);
 
-  const handleMarketChange = (marketName: string) => {
-    setActiveMarket(marketName);
-    setIsSearching(false);
-    setSearchResults([]);
-    setSearchSessionKey((prev) => prev + 1);
-  };
+  const paged = usePagedList(filteredStores, {
+    pageSize: PAGE_SIZE,
+    key: `${activeMarket}-${isSearching ? `s${searchSessionKey}` : "browse"}`,
+  });
 
   const handleReset = () => {
     handleMarketChange("All");
   };
 
+  const showSkeleton = isLoadingMarkets || (isLoadingStores && fetchedStores.length === 0);
+
   const sectionTitle =
     activeMarket === "All" ? "All market stores" : `Stores in ${activeMarket}`;
+
+  const listHeader = (
+    <View style={{ gap: rV(4) }}>
+      <CommerceSeeAllSearch
+        key={`${activeMarket}-${searchSessionKey}`}
+        data={fetchedStores}
+        onStartSearch={() => setIsSearching(true)}
+        onResults={(results) => {
+          setIsSearching(true);
+          setSearchResults(results);
+        }}
+        placeholder="Search stores by name, category, or market"
+        searchKeys={["title", "category", "subtitle", "name", "store"]}
+      />
+
+      <CommerceFilterChips
+        chips={filterChips}
+        activeKey={activeMarket}
+        onChange={handleMarketChange}
+        trailingAction={{ label: "Reset", onPress: handleReset }}
+      />
+
+      {showSkeleton ? null : (
+        <CommerceSeeAllSectionHeader
+          title={isSearching ? "Search results" : sectionTitle}
+          subtitle={
+            isSearching
+              ? `${filteredStores.length} result${filteredStores.length === 1 ? "" : "s"}`
+              : "Tap a market above to narrow the list"
+          }
+          count={filteredStores.length}
+        />
+      )}
+
+      {showSkeleton ? <StoreGridSkeleton /> : null}
+    </View>
+  );
 
   return (
     <View style={screenStyles.screen}>
       <ProfileHeader title="Markets" />
 
-      <ScrollView
+      <FlatList
+        data={showSkeleton ? [] : paged.items}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={{ columnGap: productCardGapX() }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           screenStyles.scrollContent,
-          {
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: sectionSpacing,
-          },
+          { paddingHorizontal: horizontalPadding, paddingBottom: sectionSpacing },
         ]}
-      >
-        <CommerceSeeAllHero
-          badgeIcon="location-outline"
-          badgeLabel="Markets & hubs"
-          title="Find stores by market"
-          subtitle="Filter by popular markets across Ghana and discover vendors near the areas you shop most."
-          accent="default"
-          stats={[
-            { value: marketItems.length, label: "markets" },
-            { value: filteredStores.length, label: "stores shown" },
-            {
-              value:
-                activeMarket.length > 12
-                  ? `${activeMarket.slice(0, 12)}…`
-                  : activeMarket,
-              label: "selected",
-            },
-          ]}
-        />
-
-        <CommerceSeeAllSearch
-          key={`${activeMarket}-${searchSessionKey}`}
-          data={fetchedStores}
-          onStartSearch={() => setIsSearching(true)}
-          onResults={(results) => {
-            setIsSearching(true);
-            setSearchResults(results);
-          }}
-          placeholder="Search stores by name, category, or market"
-          searchKeys={["title", "category", "subtitle", "name", "store"]}
-        />
-
-        <CommerceFilterChips
-          chips={filterChips}
-          activeKey={activeMarket}
-          onChange={handleMarketChange}
-          trailingAction={{ label: "Reset", onPress: handleReset }}
-        />
-
-        <View style={screenStyles.contentBlock}>
-          <CommerceSeeAllSectionHeader
-            title={sectionTitle}
-            subtitle={
-              isSearching
-                ? `${filteredStores.length} search result${filteredStores.length === 1 ? "" : "s"}`
-                : "Tap a market above to narrow the list"
-            }
-            count={filteredStores.length}
-          />
-
-          {isLoadingMarkets || isLoadingStores ? (
-            <StoreGridSkeleton />
-          ) : filteredStores.length === 0 ? (
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          showSkeleton ? null : (
             <CommerceSeeAllEmptyState
               icon="location-outline"
               title="No stores here yet"
               subtitle="Try another market or reset to see all stores."
             />
-          ) : (
-            <FlatList
-              data={filteredStores}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              scrollEnabled={false}
-              columnWrapperStyle={{ columnGap: productCardGapX() }}
-              renderItem={({ item }) => (
-                <StoreCard
-                  {...item}
-                  cardWidth={gridCardWidth(2, productCardGapX())}
-                  horizontalSpacing={0}
-                  category={(item as { market?: string }).market ?? item.category}
-                />
-              )}
-              contentContainerStyle={{ paddingTop: rV(4) }}
-            />
-          )}
-        </View>
-      </ScrollView>
+          )
+        }
+        ListFooterComponent={
+          <CommerceSeeAllListFooter
+            hasMore={paged.hasMore}
+            shownCount={paged.items.length}
+            totalCount={paged.total}
+            noun="stores"
+          />
+        }
+        onEndReached={() => {
+          if (paged.hasMore) {
+            paged.showMore();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        initialNumToRender={PAGE_SIZE}
+        maxToRenderPerBatch={PAGE_SIZE}
+        windowSize={7}
+        renderItem={({ item }) => (
+          <StoreCard
+            {...item}
+            cardWidth={gridCardWidth(2, productCardGapX())}
+            horizontalSpacing={0}
+            category={(item as { market?: string }).market ?? item.category}
+          />
+        )}
+      />
     </View>
   );
 };

@@ -5,6 +5,7 @@ import {
   AccountInsightCard,
   AccountListCard,
   AccountSegmentedTabs,
+  AccountShowMore,
   useAccountStyles,
 } from "@/components/account/AccountUi";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
@@ -12,6 +13,7 @@ import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import CommerceImage from "@/components/media/CommerceImage";
+import { GuideHintLink } from "@/components/help/GuideUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import TextInputField from "@/components/TextInputField";
 import Fonts from "@/constants/Fonts";
@@ -19,6 +21,7 @@ import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
+import { usePagedList } from "@/hooks/usePagedList";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { pickCroppedImage } from "@/utils/imagePicker";
 import { resolveImageSource } from "@/utils/media";
@@ -216,6 +219,9 @@ export default function ReturnsScreen() {
     }
   };
 
+  const pagedEligible = usePagedList(eligibleItems, { key: "eligible" });
+  const pagedRequests = usePagedList(submittedRequests, { key: "requests" });
+
   if (isLoadingOrders) {
     return (
       <View style={accountStyles.screen}>
@@ -242,6 +248,8 @@ export default function ReturnsScreen() {
           ]}
         />
 
+        <GuideHintLink slug="returns-and-refunds" label="How returns and refunds work" />
+
         <AccountSegmentedTabs
           options={[
             { key: "eligible", label: "Eligible items" },
@@ -259,7 +267,8 @@ export default function ReturnsScreen() {
               message="Once a returnable order item is delivered, it will show up here so you can request a refund, exchange, or return."
             />
           ) : (
-            eligibleItems.map(({ order, item, latestRequest }) => {
+            <>
+            {pagedEligible.items.map(({ order, item, latestRequest }) => {
               const imageSource = resolveImageSource(item.image_url, item.image_key);
               const hasOpenRequest = latestRequest
                 ? isOpenReturnStatus(latestRequest.status)
@@ -320,7 +329,18 @@ export default function ReturnsScreen() {
                   </View>
                 </AccountListCard>
               );
-            })
+            })}
+            <AccountShowMore
+              remaining={pagedEligible.remaining}
+              total={pagedEligible.total}
+              nextPageSize={pagedEligible.nextPageSize}
+              isExpanded={pagedEligible.isExpanded}
+              onShowMore={pagedEligible.showMore}
+              onShowAll={pagedEligible.showAll}
+              onCollapse={pagedEligible.collapse}
+              noun="item"
+            />
+            </>
           )
         ) : submittedRequests.length === 0 ? (
           <AccountEmptyState
@@ -329,7 +349,8 @@ export default function ReturnsScreen() {
             message="When you submit a return, refund, or exchange case, ODOS will keep status updates here."
           />
         ) : (
-          submittedRequests.map(({ order, request, item }) => {
+          <>
+          {pagedRequests.items.map(({ order, request, item }) => {
             const statusMeta = getReturnStatusMeta(request.status, colors);
             return (
               <AccountListCard key={request.id}>
@@ -390,7 +411,18 @@ export default function ReturnsScreen() {
                 ) : null}
               </AccountListCard>
             );
-          })
+          })}
+          <AccountShowMore
+            remaining={pagedRequests.remaining}
+            total={pagedRequests.total}
+            nextPageSize={pagedRequests.nextPageSize}
+            isExpanded={pagedRequests.isExpanded}
+            onShowMore={pagedRequests.showMore}
+            onShowAll={pagedRequests.showAll}
+            onCollapse={pagedRequests.collapse}
+            noun="request"
+          />
+          </>
         )}
       </KeyboardAwareScreen>
 

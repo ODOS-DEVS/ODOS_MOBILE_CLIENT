@@ -36,7 +36,7 @@ const TabsLayout = () => {
   // Seller Center: Home · Orders · Products · Stock · Business
   // Shopping: Home · Category · Cart · Wishlist · Profile
   const tabCount = 5;
-  const tabMetrics = useTabBarMetrics(tabCount, insets.bottom);
+  const tabMetrics = useTabBarMetrics(tabCount, insets.bottom, !sellOnly);
 
   const tabBarStyles = useMemo(
     () =>
@@ -80,7 +80,7 @@ const TabsLayout = () => {
         right: 0,
         bottom: tabMetrics.barBottomOffset,
         height: tabMetrics.barTotalHeight,
-        paddingTop: 0,
+        paddingTop: tabMetrics.barPaddingTop,
         paddingBottom: tabMetrics.barPaddingBottom,
         paddingHorizontal: tabMetrics.barInnerPaddingH,
         borderTopWidth: StyleSheet.hairlineWidth,
@@ -108,6 +108,7 @@ const TabsLayout = () => {
       tabBarStyles.item,
       tabBarStyles.label,
       tabMetrics.barBottomOffset,
+      tabMetrics.barPaddingTop,
       tabMetrics.barPaddingBottom,
       tabMetrics.barTotalHeight,
       tabMetrics.barInnerPaddingH,
@@ -116,7 +117,11 @@ const TabsLayout = () => {
   );
 
   return (
-    <TabBarMetricsProvider tabCount={tabCount} bottomInset={insets.bottom}>
+    <TabBarMetricsProvider
+      tabCount={tabCount}
+      bottomInset={insets.bottom}
+      pillIcons={!sellOnly}
+    >
       <Tabs detachInactiveScreens={false} screenOptions={screenOptions}>
         <Tabs.Screen
           name="index"

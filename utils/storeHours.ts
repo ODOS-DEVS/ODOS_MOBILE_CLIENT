@@ -159,3 +159,44 @@ export function getWeekScheduleRows(businessHours: BusinessHoursMap) {
     return { key, day: DAY_LABELS[index], hours };
   });
 }
+
+/**
+ * "Opens at 08:00" — the short form for a closed store card.
+ *
+ * `computeStoreOpenStatus().label` is written for a detail panel, where
+ * "Closed · Opens tomorrow at 8:00 AM" reads well with room around it. On a
+ * card the word "Closed" is already carried by the dimmed artwork, so
+ * repeating it spends the one line available on something the image has
+ * said. This returns just the part a shopper cannot infer: when to come back.
+ *
+ * Returns null when the store has no usable hours, so callers can fall back to
+ * a plain "Closed" rather than inventing a time.
+ */
+export function formatNextOpenLabel(
+  businessHours: BusinessHoursMap | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!businessHours || Object.keys(businessHours).length === 0) {
+    return null;
+  }
+
+  const todayKey = getDayKey(now);
+  const today = businessHours[todayKey];
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (today && !today.closed && today.open) {
+    const openMinutes = parseTimeToMinutes(today.open);
+    // Still ahead of today's opening — that is the soonest it reopens.
+    if (openMinutes != null && nowMinutes < openMinutes) {
+      return `Opens at ${formatTimeLabel(today.open)}`;
+    }
+  }
+
+  const next = findNextOpenDay(businessHours, now);
+  if (!next) {
+    return null;
+  }
+  return next.label === "tomorrow"
+    ? `Opens tomorrow at ${next.openTime}`
+    : `Opens ${next.label} at ${next.openTime}`;
+}

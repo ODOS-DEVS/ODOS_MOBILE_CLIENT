@@ -21,6 +21,7 @@ import {
   estimateOrderScreenFooterHeight,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
+import { GuideHintLink } from "@/components/help/GuideUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import TextInputField from "@/components/TextInputField";
@@ -666,6 +667,8 @@ export default function OrderDetailScreen() {
             );
           })}
         </AccountSectionCard>
+
+        <GuideHintLink slug="tracking-delivery" label="What each delivery stage means" />
 
         <AccountSectionCard title="Items">
           {order.items.map((item, index) => {

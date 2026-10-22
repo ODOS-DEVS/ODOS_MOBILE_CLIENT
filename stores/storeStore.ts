@@ -7,6 +7,7 @@ import {
   deleteVendorProduct,
   fetchVendorOrder,
   fetchVendorOrders,
+  fetchVendorProductPerformance,
   fetchVendorProducts,
   fetchVendorStore,
   notifyVendorOrderDepartureApi,
@@ -17,6 +18,7 @@ import {
   updateVendorStore,
   uploadVendorOrderDispatchPhoto,
 } from "@/services/storeService";
+import type { VendorProductPerformance } from "@/services/storeService";
 import type {
   ManagedStoreProfile,
   ManagedStoreUpdateInput,
@@ -32,6 +34,10 @@ type StoreStoreState = {
   storeProfile: ManagedStoreProfile | null;
   products: VendorProduct[];
   orders: VendorOrder[];
+  /** Units and revenue per SKU over `performanceWindowDays`, keyed by product id. */
+  productPerformance: Record<string, VendorProductPerformance>;
+  performanceWindowDays: number;
+  isLoadingPerformance: boolean;
   isLoadingStore: boolean;
   isSavingStore: boolean;
   isLoadingProducts: boolean;
@@ -40,13 +46,24 @@ type StoreStoreState = {
   isUpdatingOrder: boolean;
   updatingOrderId: string | null;
   updatingProductId: string | null;
+  /** Server paging: one page in flight, and whether another page exists. */
+  productsHasMore: boolean;
+  ordersHasMore: boolean;
+  isLoadingMoreProducts: boolean;
+  isLoadingMoreOrders: boolean;
+  productsQuery: string;
+  ordersQuery: string;
   error: string | null;
   fetchStoreProfile: (session: VendorSessionContext) => Promise<void>;
   updateStoreProfile: (
     session: VendorSessionContext,
     input: ManagedStoreUpdateInput,
   ) => Promise<ManagedStoreProfile>;
-  fetchProducts: (session: VendorSessionContext) => Promise<void>;
+  fetchProducts: (
+    session: VendorSessionContext,
+    options?: { q?: string; append?: boolean },
+  ) => Promise<void>;
+  loadMoreProducts: (session: VendorSessionContext) => Promise<void>;
   createProduct: (
     session: VendorSessionContext,
     input: VendorProductInput,
@@ -75,7 +92,15 @@ type StoreStoreState = {
       status?: "active" | "hidden";
     },
   ) => Promise<VendorProduct[]>;
-  fetchOrders: (session: VendorSessionContext) => Promise<void>;
+  fetchProductPerformance: (
+    session: VendorSessionContext,
+    options?: { days?: number },
+  ) => Promise<void>;
+  fetchOrders: (
+    session: VendorSessionContext,
+    options?: { q?: string; append?: boolean },
+  ) => Promise<void>;
+  loadMoreOrders: (session: VendorSessionContext) => Promise<void>;
   fetchOrder: (session: VendorSessionContext, orderId: string) => Promise<VendorOrder>;
   updateOrderStatus: (
     session: VendorSessionContext,
@@ -98,6 +123,9 @@ const initialState = {
   storeProfile: null,
   products: [],
   orders: [],
+  productPerformance: {},
+  performanceWindowDays: 30,
+  isLoadingPerformance: false,
   isLoadingStore: false,
   isSavingStore: false,
   isLoadingProducts: false,
@@ -106,8 +134,17 @@ const initialState = {
   isUpdatingOrder: false,
   updatingOrderId: null,
   updatingProductId: null,
+  productsHasMore: true,
+  ordersHasMore: true,
+  isLoadingMoreProducts: false,
+  isLoadingMoreOrders: false,
+  productsQuery: "",
+  ordersQuery: "",
   error: null,
 };
+
+/** One screen of rows. The API caps `limit` at 100. */
+export const VENDOR_PAGE_SIZE = 20;
 
 export const useStoreStore = create<StoreStoreState>((set, get) => ({
   ...initialState,
@@ -152,24 +189,79 @@ export const useStoreStore = create<StoreStoreState>((set, get) => ({
     }
   },
 
-  fetchProducts: async (session) => {
-    const hasCache = get().products.length > 0;
-    if (!hasCache) {
-      set({ isLoadingProducts: true, error: null });
+  fetchProducts: async (session, options = {}) => {
+    const { q, append = false } = options;
+    const state = get();
+    const query = q ?? state.productsQuery;
+
+    if (append) {
+      // Guard against onEndReached firing repeatedly while a page is in flight.
+      if (state.isLoadingMoreProducts || !state.productsHasMore) {
+        return;
+      }
+      set({ isLoadingMoreProducts: true, error: null });
+    } else if (state.products.length === 0 || query !== state.productsQuery) {
+      set({ isLoadingProducts: true, error: null, productsQuery: query });
     } else {
-      set({ error: null });
+      set({ error: null, productsQuery: query });
     }
+
+    const offset = append ? get().products.length : 0;
+
     try {
-      const products = await fetchVendorProducts(session);
-      set({ products, isLoadingProducts: false });
+      const page = await fetchVendorProducts(session, {
+        q: query,
+        limit: VENDOR_PAGE_SIZE,
+        offset,
+      });
+
+      set((current) => {
+        const products = append ? [...current.products, ...page] : page;
+        return {
+          products,
+          // A short page means the server has nothing left to give.
+          productsHasMore: page.length === VENDOR_PAGE_SIZE,
+          isLoadingProducts: false,
+          isLoadingMoreProducts: false,
+          productsQuery: query,
+        };
+      });
     } catch (error) {
       set({
         isLoadingProducts: false,
+        isLoadingMoreProducts: false,
         error:
           error instanceof Error
             ? error.message
             : "We couldn't load the vendor products right now.",
       });
+    }
+  },
+
+  loadMoreProducts: async (session) => {
+    await get().fetchProducts(session, { append: true });
+  },
+
+  /**
+   * Load per-SKU sales performance.
+   *
+   * Deliberately does not touch `error` or any loading flag the lists key off:
+   * performance is an annotation on rows that are already useful without it,
+   * so a failed or slow fetch must leave the catalog readable rather than
+   * blocking it behind a spinner or an error banner.
+   */
+  fetchProductPerformance: async (session, options = {}) => {
+    const days = options.days ?? get().performanceWindowDays;
+    set({ isLoadingPerformance: true });
+    try {
+      const byProductId = await fetchVendorProductPerformance(session, { days });
+      set({
+        productPerformance: byProductId,
+        performanceWindowDays: days,
+        isLoadingPerformance: false,
+      });
+    } catch {
+      set({ isLoadingPerformance: false });
     }
   },
 
@@ -311,25 +403,55 @@ export const useStoreStore = create<StoreStoreState>((set, get) => ({
     }
   },
 
-  fetchOrders: async (session) => {
-    const hasCache = get().orders.length > 0;
-    if (!hasCache) {
-      set({ isLoadingOrders: true, error: null });
+  fetchOrders: async (session, options = {}) => {
+    const { q, append = false } = options;
+    const state = get();
+    const query = q ?? state.ordersQuery;
+
+    if (append) {
+      if (state.isLoadingMoreOrders || !state.ordersHasMore) {
+        return;
+      }
+      set({ isLoadingMoreOrders: true, error: null });
+    } else if (state.orders.length === 0 || query !== state.ordersQuery) {
+      set({ isLoadingOrders: true, error: null, ordersQuery: query });
     } else {
-      set({ error: null });
+      set({ error: null, ordersQuery: query });
     }
+
+    const offset = append ? get().orders.length : 0;
+
     try {
-      const orders = await fetchVendorOrders(session);
-      set({ orders, isLoadingOrders: false });
+      const page = await fetchVendorOrders(session, {
+        q: query,
+        limit: VENDOR_PAGE_SIZE,
+        offset,
+      });
+
+      set((current) => {
+        const orders = append ? [...current.orders, ...page] : page;
+        return {
+          orders,
+          ordersHasMore: page.length === VENDOR_PAGE_SIZE,
+          isLoadingOrders: false,
+          isLoadingMoreOrders: false,
+          ordersQuery: query,
+        };
+      });
     } catch (error) {
       set({
         isLoadingOrders: false,
+        isLoadingMoreOrders: false,
         error:
           error instanceof Error
             ? error.message
             : "We couldn't load vendor orders right now.",
       });
     }
+  },
+
+  loadMoreOrders: async (session) => {
+    await get().fetchOrders(session, { append: true });
   },
 
   fetchOrder: async (session, orderId) => {

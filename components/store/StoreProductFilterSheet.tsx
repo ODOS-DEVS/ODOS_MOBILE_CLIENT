@@ -2,10 +2,13 @@ import DiscoveryFilterChip from "@/components/search/DiscoveryFilterChip";
 import Fonts from "@/constants/Fonts";
 import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
-import type {
-  StoreProductBrowseMode,
-  StoreProductPriceRange,
-  StoreProductSortMode,
+import {
+  STORE_MODE_OPTIONS,
+  STORE_PRICE_OPTIONS,
+  STORE_SORT_OPTIONS,
+  type StoreProductBrowseMode,
+  type StoreProductPriceRange,
+  type StoreProductSortMode,
 } from "@/utils/storeProductBrowse";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,28 +23,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const SORT_OPTIONS: Array<{ value: StoreProductSortMode; label: string }> = [
-  { value: "relevance", label: "Best match" },
-  { value: "newest", label: "Newest" },
-  { value: "price_low", label: "Price ↑" },
-  { value: "price_high", label: "Price ↓" },
-  { value: "rating", label: "Top rated" },
-];
-
-const MODE_OPTIONS: Array<{ value: StoreProductBrowseMode; label: string }> = [
-  { value: "all", label: "All items" },
-  { value: "flash-sale", label: "Flash deals" },
-  { value: "deals", label: "On sale" },
-];
-
-const PRICE_OPTIONS: Array<{ value: StoreProductPriceRange; label: string }> = [
-  { value: "all", label: "Any price" },
-  { value: "under_100", label: "Under ₵100" },
-  { value: "100_250", label: "₵100–250" },
-  { value: "250_500", label: "₵250–500" },
-  { value: "500_plus", label: "₵500+" },
-];
 
 type CategoryOption = { key: string; label: string; count: number };
 type SubcategoryOption = { key: string; label: string; count: number };
@@ -61,6 +42,16 @@ type StoreProductFilterSheetProps = {
   onSubcategoryChange: (slug: string) => void;
   categories: CategoryOption[];
   subcategories: SubcategoryOption[];
+  /** The shop's own shelves. Empty renders no group. */
+  sections?: { id: string; title: string }[];
+  selectedSectionId?: string;
+  onSectionChange?: (id: string) => void;
+  /** Platform audience segments, e.g. ladies / gents / kids. */
+  segments?: { key: string; label: string }[];
+  selectedSegmentKey?: string;
+  onSegmentChange?: (key: string) => void;
+  /** Opened from the Sort chip — lead with sort instead of burying it. */
+  focusSort?: boolean;
   onReset: () => void;
 };
 
@@ -90,11 +81,31 @@ export default function StoreProductFilterSheet({
   onSubcategoryChange,
   categories,
   subcategories,
+  sections = [],
+  selectedSectionId = "",
+  onSectionChange,
+  segments = [],
+  selectedSegmentKey = "",
+  onSegmentChange,
+  focusSort = false,
   onReset,
 }: StoreProductFilterSheetProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const sortGroup = (
+    <Section title="Sort by">
+      {STORE_SORT_OPTIONS.map((option) => (
+        <DiscoveryFilterChip
+          key={option.value}
+          label={option.label}
+          active={selectedSort === option.value}
+          onPress={() => onSortChange(option.value)}
+        />
+      ))}
+    </Section>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -102,15 +113,59 @@ export default function StoreProductFilterSheet({
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, rV(16)) }]}>
         <View style={styles.handle} />
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Filter products</Text>
+          <Text style={styles.title}>{focusSort ? "Sort & filter" : "Filter products"}</Text>
           <TouchableOpacity onPress={onReset} activeOpacity={0.82}>
             <Text style={styles.resetText}>Reset</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Sort leads when the sheet was opened from the Sort chip, so that
+              chip goes where it says it goes. */}
+          {focusSort ? sortGroup : null}
+
+          {sections.length > 0 && onSectionChange ? (
+            <Section title="Shelves in this shop">
+              <DiscoveryFilterChip
+                label="All products"
+                active={!selectedSectionId}
+                onPress={() => onSectionChange("")}
+              />
+              {sections.map((section) => (
+                <DiscoveryFilterChip
+                  key={section.id}
+                  label={section.title}
+                  active={selectedSectionId === section.id}
+                  onPress={() =>
+                    onSectionChange(selectedSectionId === section.id ? "" : section.id)
+                  }
+                />
+              ))}
+            </Section>
+          ) : null}
+
+          {segments.length > 0 && onSegmentChange ? (
+            <Section title="Shop for">
+              <DiscoveryFilterChip
+                label="Everyone"
+                active={!selectedSegmentKey}
+                onPress={() => onSegmentChange("")}
+              />
+              {segments.map((segment) => (
+                <DiscoveryFilterChip
+                  key={segment.key}
+                  label={segment.label}
+                  active={selectedSegmentKey === segment.key}
+                  onPress={() =>
+                    onSegmentChange(selectedSegmentKey === segment.key ? "" : segment.key)
+                  }
+                />
+              ))}
+            </Section>
+          ) : null}
+
           <Section title="Show">
-            {MODE_OPTIONS.map((option) => (
+            {STORE_MODE_OPTIONS.map((option) => (
               <DiscoveryFilterChip
                 key={option.value}
                 label={option.label}
@@ -120,19 +175,8 @@ export default function StoreProductFilterSheet({
             ))}
           </Section>
 
-          <Section title="Sort by">
-            {SORT_OPTIONS.map((option) => (
-              <DiscoveryFilterChip
-                key={option.value}
-                label={option.label}
-                active={selectedSort === option.value}
-                onPress={() => onSortChange(option.value)}
-              />
-            ))}
-          </Section>
-
           <Section title="Price">
-            {PRICE_OPTIONS.map((option) => (
+            {STORE_PRICE_OPTIONS.map((option) => (
               <DiscoveryFilterChip
                 key={option.value}
                 label={option.label}
@@ -170,6 +214,8 @@ export default function StoreProductFilterSheet({
               ))}
             </Section>
           ) : null}
+
+          {focusSort ? null : sortGroup}
         </ScrollView>
 
         <TouchableOpacity style={styles.applyButton} activeOpacity={0.9} onPress={onClose}>

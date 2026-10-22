@@ -166,9 +166,14 @@ export function FaqHero({ totalCount, categoryCount }: FaqHeroProps) {
 type FaqSearchBarProps = {
   value: string;
   onChangeText: (value: string) => void;
+  placeholder?: string;
 };
 
-export function FaqSearchBar({ value, onChangeText }: FaqSearchBarProps) {
+export function FaqSearchBar({
+  value,
+  onChangeText,
+  placeholder = "Search questions, e.g. delivery, voucher…",
+}: FaqSearchBarProps) {
   const { colors } = useTheme();
   const styles = useMemo(
     () =>
@@ -206,7 +211,7 @@ export function FaqSearchBar({ value, onChangeText }: FaqSearchBarProps) {
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder="Search questions, e.g. delivery, voucher…"
+        placeholder={placeholder}
         placeholderTextColor={colors.placeholder}
         style={styles.input}
         returnKeyType="search"
@@ -228,6 +233,33 @@ type FaqCategoryChipsProps = {
 };
 
 export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChipsProps) {
+  return (
+    <HelpCategoryChips
+      categories={FAQ_CATEGORIES}
+      activeKey={activeKey}
+      onChange={onChange}
+      counts={counts}
+    />
+  );
+}
+
+type HelpCategoryChipsProps<T extends string> = {
+  categories: { key: T; label: string; icon: keyof typeof Ionicons.glyphMap }[];
+  activeKey: T;
+  onChange: (key: T) => void;
+  counts: Record<string, number>;
+};
+
+/**
+ * The filter rail shared by the FAQ screen and the resource center, so both
+ * read as the same control rather than two that merely look alike.
+ */
+export function HelpCategoryChips<T extends string>({
+  categories,
+  activeKey,
+  onChange,
+  counts,
+}: HelpCategoryChipsProps<T>) {
   const { colors } = useTheme();
   const styles = useMemo(
     () =>
@@ -294,7 +326,7 @@ export function FaqCategoryChips({ activeKey, onChange, counts }: FaqCategoryChi
       style={styles.scroll}
       contentContainerStyle={styles.content}
     >
-      {FAQ_CATEGORIES.map((item, index) => {
+      {categories.map((item) => {
         const active = activeKey === item.key;
         const count = counts[item.key] ?? 0;
         return (

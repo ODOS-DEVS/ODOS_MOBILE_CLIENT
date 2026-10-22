@@ -1,27 +1,47 @@
 import { AccountEmptyState, AccountListCard } from "@/components/account/AccountUi";
-import VendorListSearch from "@/components/vendor/VendorListSearch";
-import {
-  VendorPageIntro,
-  vendorStyles,
-} from "@/components/vendor/VendorUi";
+import { CommerceSeeAllListFooter } from "@/components/browse/CommerceSeeAllUi";
+import VendorListHeader from "@/components/vendor/VendorListHeader";
+import VendorMovementFeedSheet, {
+  formatVendorMovementReason,
+} from "@/components/vendor/VendorMovementFeedSheet";
+import VendorOptionSheet from "@/components/vendor/VendorOptionSheet";
+import { VendorRowActionsProvider, VendorRowSeparator } from "@/components/vendor/VendorRowUi";
+import VendorStockRow from "@/components/vendor/VendorStockRow";
+import { vendorStyles } from "@/components/vendor/VendorUi";
+import { VendorPulseBar, type VendorPulseMetric } from "@/components/vendor/VendorWorkspaceUi";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useRequireVendor } from "@/hooks/useRequireVendor";
 import {
+  fetchVendorInventoryFeed,
   fetchVendorProductInventoryMovements,
+  type VendorInventoryFeedEntry,
   type VendorInventoryMovement,
 } from "@/services/storeService";
 import { useStoreStore } from "@/stores/storeStore";
+import { rMS, rS, rV, useResponsive } from "@/styles/responsive";
 import type { VendorProduct } from "@/types/store";
+import { formatCurrencyCompact } from "@/utils/currency";
 import {
+  getVendorStockSignal,
+  sortByRestockUrgency,
+  summarizeVendorInventory,
+  type VendorStockSignal,
+} from "@/utils/vendorInventoryIntelligence";
+import {
+  buildVendorCategoryOptions,
   isLowStockProduct,
   isOutOfStockProduct,
-  LOW_STOCK_THRESHOLD,
 } from "@/utils/vendorProductCatalog";
-import { rMS, rV, useResponsive } from "@/styles/responsive";
+import {
+  buildVendorStockCsv,
+  buildVendorStockCsvFilename,
+} from "@/utils/vendorStockExport";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,29 +49,63 @@ import {
   Modal,
   RefreshControl,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type InventoryFilter = "all" | "low" | "out";
+/**
+ * Stock, organised around the only question it has to answer: what do I reorder?
+ *
+ * The panel used to be a filtered list of on-hand counts, which is a readout
+ * rather than a tool — a vendor could see "12" on forty rows and still not
+ * know which of them to buy more of. Every addition here exists to close that
+ * gap: urgency bands derived from sales velocity, a suggested quantity per
+ * line, the capital tied up in stock that is not moving, and a movement feed
+ * for when the numbers simply disagree with reality.
+ */
 
-function formatMovementReason(reason: string) {
-  switch (reason) {
-    case "manual":
-      return "Manual adjustment";
-    case "bulk":
-      return "Bulk update";
-    case "order_sale":
-      return "Order sale";
-    case "return_restock":
-      return "Return restock";
-    case "system":
-      return "System";
-    default:
-      return reason.replace(/_/g, " ");
+type InventoryFilter = "reorder" | "out" | "low" | "all";
+
+type StockSort = "urgency" | "stock_low" | "stock_high" | "value_high" | "name" | "updated";
+
+const STOCK_SORTS: { value: StockSort; label: string }[] = [
+  { value: "urgency", label: "Needs restocking first" },
+  { value: "value_high", label: "Highest stock value" },
+  { value: "stock_low", label: "Lowest stock first" },
+  { value: "stock_high", label: "Highest stock first" },
+  { value: "name", label: "Name A–Z" },
+  { value: "updated", label: "Recently updated" },
+];
+
+function sortStock(
+  products: VendorProduct[],
+  sort: StockSort,
+  performance: Parameters<typeof sortByRestockUrgency>[1],
+  windowDays: number,
+) {
+  if (sort === "urgency") {
+    return sortByRestockUrgency(products, performance, windowDays);
   }
+
+  const sorted = [...products];
+  if (sort === "value_high") {
+    return sorted.sort(
+      (a, b) => b.price * b.stock - a.price * a.stock || a.name.localeCompare(b.name),
+    );
+  }
+  if (sort === "stock_high") {
+    return sorted.sort((a, b) => b.stock - a.stock || a.name.localeCompare(b.name));
+  }
+  if (sort === "name") {
+    return sorted.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  if (sort === "updated") {
+    return sorted.sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  }
+  return sorted.sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name));
 }
 
 type VendorInventoryPanelProps = {
@@ -66,40 +120,86 @@ export default function VendorInventoryPanel({
   const { contentMaxWidth } = useResponsive();
   const { showToast } = useToast();
   const { session } = useRequireVendor();
-  const { fetchProducts, patchProductStock, products, isLoadingProducts, updatingProductId } =
-    useStoreStore();
-  const [filter, setFilter] = useState<InventoryFilter>("all");
+  const {
+    fetchProductPerformance,
+    fetchProducts,
+    isLoadingMoreProducts,
+    isLoadingProducts,
+    loadMoreProducts,
+    patchProductStock,
+    performanceWindowDays,
+    productPerformance,
+    products,
+    productsHasMore,
+    updatingProductId,
+  } = useStoreStore();
+  const [filter, setFilter] = useState<InventoryFilter>("reorder");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sortMode, setSortMode] = useState<StockSort>("urgency");
+  const [sortOpen, setSortOpen] = useState(false);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [draftStock, setDraftStock] = useState<Record<string, string>>({});
+  const [isExporting, setIsExporting] = useState(false);
+  /** Stock shown while a debounced write is still in flight. */
+  const [pendingStock, setPendingStock] = useState<Record<string, number>>({});
+  const stockTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [historyProduct, setHistoryProduct] = useState<VendorProduct | null>(null);
   const [historyRows, setHistoryRows] = useState<VendorInventoryMovement[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
+  const [feedRows, setFeedRows] = useState<VendorInventoryFeedEntry[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       void fetchProducts(session);
+      void fetchProductPerformance(session);
       return undefined;
-    }, [fetchProducts, session]),
+    }, [fetchProductPerformance, fetchProducts, session]),
   );
 
-  const lowCount = useMemo(
-    () => products.filter(isLowStockProduct).length,
-    [products],
+  const signals = useMemo(() => {
+    const map: Record<string, VendorStockSignal> = {};
+    for (const product of products) {
+      map[product.id] = getVendorStockSignal(
+        product,
+        productPerformance[product.id],
+        performanceWindowDays,
+      );
+    }
+    return map;
+  }, [performanceWindowDays, productPerformance, products]);
+
+  const getSignal = useCallback(
+    (product: VendorProduct) =>
+      signals[product.id] ??
+      getVendorStockSignal(product, productPerformance[product.id], performanceWindowDays),
+    [performanceWindowDays, productPerformance, signals],
   );
-  const outCount = useMemo(
-    () => products.filter(isOutOfStockProduct).length,
-    [products],
+
+  const summary = useMemo(
+    () => summarizeVendorInventory(products, productPerformance, performanceWindowDays),
+    [performanceWindowDays, productPerformance, products],
   );
+
+  const lowCount = useMemo(() => products.filter(isLowStockProduct).length, [products]);
+  const outCount = useMemo(() => products.filter(isOutOfStockProduct).length, [products]);
 
   const filtered = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase();
     const list =
-      filter === "low"
-        ? products.filter(isLowStockProduct)
-        : filter === "out"
-          ? products.filter(isOutOfStockProduct)
-          : [...products];
+      filter === "reorder"
+        ? products.filter((product) => {
+            const urgency = getSignal(product).urgency;
+            return urgency === "reorder_now" || urgency === "reorder_soon";
+          })
+        : filter === "low"
+          ? products.filter(isLowStockProduct)
+          : filter === "out"
+            ? products.filter(isOutOfStockProduct)
+            : [...products];
+
     const searched = needle
       ? list.filter((product) => {
           const name = product.name.toLowerCase();
@@ -112,50 +212,93 @@ export default function VendorInventoryPanel({
           );
         })
       : list;
-    return searched.sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name));
-  }, [filter, products, searchQuery]);
 
-  const applyStock = async (product: VendorProduct, next: number) => {
-    try {
-      await patchProductStock(session, product.id, next);
-      showToast(`Updated ${product.name} on-hand stock to ${next}`, "success");
-      setDraftStock((prev) => {
-        const copy = { ...prev };
-        delete copy[product.id];
-        return copy;
-      });
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Could not update stock",
-        "error",
-      );
-    }
-  };
+    const scoped = categoryFilter
+      ? searched.filter((product) => product.category === categoryFilter)
+      : searched;
 
-  const saveStock = async (product: VendorProduct) => {
-    const raw = draftStock[product.id] ?? String(product.stock);
-    const next = Math.max(0, Math.floor(Number(raw)));
-    if (!Number.isFinite(next) || next === product.stock) return;
+    return sortStock(scoped, sortMode, productPerformance, performanceWindowDays);
+  }, [
+    categoryFilter,
+    filter,
+    getSignal,
+    performanceWindowDays,
+    productPerformance,
+    products,
+    searchQuery,
+    sortMode,
+  ]);
 
-    const reserved = product.reservedStock ?? 0;
-    if (next < reserved) {
-      Alert.alert(
-        "Below reserved stock",
-        `${reserved} unit${reserved === 1 ? " is" : "s are"} already committed to open orders for ${product.name}. Setting on-hand to ${next} means some of those orders may not be fulfillable.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Set anyway",
-            style: "destructive",
-            onPress: () => void applyStock(product, next),
-          },
-        ],
-      );
-      return;
-    }
+  const categoryOptions = useMemo(() => buildVendorCategoryOptions(products), [products]);
 
-    await applyStock(product, next);
-  };
+  useEffect(
+    () => () => {
+      for (const timer of Object.values(stockTimers.current)) {
+        clearTimeout(timer);
+      }
+    },
+    [],
+  );
+
+  /**
+   * One request per burst of taps, not one per tap.
+   *
+   * The reserved-stock guard still applies, but it is checked when the write
+   * actually fires rather than on every increment — a vendor stepping from 0
+   * to 6 should not be interrogated six times on the way past the threshold.
+   */
+  const queueStockChange = useCallback(
+    (product: VendorProduct, next: number) => {
+      setPendingStock((current) => ({ ...current, [product.id]: next }));
+
+      clearTimeout(stockTimers.current[product.id]);
+      stockTimers.current[product.id] = setTimeout(() => {
+        const reserved = product.reservedStock ?? 0;
+        const commit = () => {
+          void (async () => {
+            try {
+              await patchProductStock(session, product.id, next);
+            } catch (error) {
+              showToast(
+                error instanceof Error ? error.message : "Could not update stock",
+                "error",
+              );
+            } finally {
+              setPendingStock((current) => {
+                const copy = { ...current };
+                delete copy[product.id];
+                return copy;
+              });
+            }
+          })();
+        };
+
+        if (next < reserved) {
+          Alert.alert(
+            "Below reserved stock",
+            `${reserved} unit${reserved === 1 ? " is" : "s are"} already committed to open orders for ${product.name}. Setting on-hand to ${next} means some of those orders may not be fulfillable.`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () =>
+                  setPendingStock((current) => {
+                    const copy = { ...current };
+                    delete copy[product.id];
+                    return copy;
+                  }),
+              },
+              { text: "Set anyway", style: "destructive", onPress: commit },
+            ],
+          );
+          return;
+        }
+
+        commit();
+      }, 600);
+    },
+    [patchProductStock, session, showToast],
+  );
 
   const openHistory = async (product: VendorProduct) => {
     setHistoryProduct(product);
@@ -177,8 +320,127 @@ export default function VendorInventoryPanel({
     }
   };
 
+  const openFeed = async () => {
+    setFeedOpen(true);
+    setFeedLoading(true);
+    try {
+      setFeedRows(await fetchVendorInventoryFeed(session, { limit: 60 }));
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Could not load stock movements",
+        "error",
+      );
+      setFeedOpen(false);
+    } finally {
+      setFeedLoading(false);
+    }
+  };
+
+  /**
+   * Hand the stock sheet to whatever the vendor reconciles in.
+   *
+   * Written to the cache directory rather than documents: it is a snapshot
+   * that stops being true the moment the next order lands, so it should not
+   * accumulate in the vendor's own file storage.
+   */
+  const exportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const csv = buildVendorStockCsv(
+        products,
+        productPerformance,
+        performanceWindowDays,
+      );
+      const file = new File(Paths.cache, buildVendorStockCsvFilename());
+      // `overwrite` because exporting twice in one day is the same filename,
+      // and `create` throws rather than replacing by default.
+      file.create({ overwrite: true });
+      file.write(csv);
+
+      if (!(await Sharing.isAvailableAsync())) {
+        showToast("Sharing isn't available on this device.", "error");
+        return;
+      }
+      await Sharing.shareAsync(file.uri, {
+        mimeType: "text/csv",
+        dialogTitle: "Export stock",
+        UTI: "public.comma-separated-values-text",
+      });
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Could not export stock.",
+        "error",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const pulseMetrics: VendorPulseMetric[] = [
+    {
+      key: "value",
+      label: "Stock value",
+      value: formatCurrencyCompact(summary.stockValue),
+    },
+    {
+      key: "units",
+      label: "Units on hand",
+      value: String(summary.unitsOnHand),
+    },
+    {
+      key: "reorder",
+      label: "Reorder now",
+      value: String(summary.reorderNow),
+      tone: summary.reorderNow > 0 ? "danger" : "neutral",
+      active: filter === "reorder",
+      onPress: () => setFilter("reorder"),
+    },
+    {
+      key: "dead",
+      label: "Dead capital",
+      value: formatCurrencyCompact(summary.deadValue),
+      tone: summary.deadValue > 0 ? "warn" : "neutral",
+    },
+  ];
+
+  const emptyCopy = (() => {
+    if (searchQuery.trim()) {
+      return {
+        icon: "layers-outline" as const,
+        title: "No matching products",
+        message: "Try another keyword or clear the category filter.",
+      };
+    }
+    if (filter === "reorder") {
+      return {
+        icon: "checkmark-circle-outline" as const,
+        title: "Nothing needs restocking",
+        message: `Every selling product has more than two weeks of cover at its current rate.`,
+      };
+    }
+    if (filter === "out") {
+      return {
+        icon: "checkmark-circle-outline" as const,
+        title: "Nothing is out of stock",
+        message: "Every product has at least one unit on hand.",
+      };
+    }
+    if (filter === "low") {
+      return {
+        icon: "checkmark-circle-outline" as const,
+        title: "No low stock",
+        message: "No product is down to its last couple of units.",
+      };
+    }
+    return {
+      icon: "layers-outline" as const,
+      title: "No products yet",
+      message: "Add products to start managing stock.",
+    };
+  })();
+
   return (
-    <>
+    <VendorRowActionsProvider>
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -186,252 +448,130 @@ export default function VendorInventoryPanel({
         initialNumToRender={8}
         maxToRenderPerBatch={6}
         windowSize={7}
-        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => {
               setIsRefreshing(true);
-              void fetchProducts(session).finally(() => setIsRefreshing(false));
+              void Promise.all([
+                fetchProducts(session),
+                fetchProductPerformance(session),
+              ]).finally(() => setIsRefreshing(false));
             }}
           />
         }
-        contentContainerStyle={[
-          vendorStyles.listContent,
-          { paddingBottom: contentPaddingBottom },
-        ]}
+        // See the products list: vendorStyles.listContent's gap and padding
+        // turned dense rows into separated blocks.
+        contentContainerStyle={{ paddingBottom: contentPaddingBottom, flexGrow: 1 }}
         ListHeaderComponent={
-          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth, gap: rV(12) }]}>
-            <VendorPageIntro
-              title="Stock control"
-              subtitle={`On hand, reserved (open orders), and available. Low stock is ${LOW_STOCK_THRESHOLD} units or fewer.`}
-              stats={[
-                { value: products.length, label: "SKUs" },
-                { value: lowCount, label: "Low" },
-                { value: outCount, label: "Out" },
+          <View
+            style={[
+              vendorStyles.contentWrap,
+              {
+                paddingHorizontal: rS(16),
+                maxWidth: contentMaxWidth,
+                paddingTop: rV(12),
+                paddingBottom: rV(14),
+                gap: rV(12),
+              },
+            ]}
+          >
+            <VendorPulseBar metrics={pulseMetrics} />
+
+            <VendorListHeader
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              error={null}
+              searchPlaceholder="Search stock by name or category"
+              chips={[
+                {
+                  key: "reorder",
+                  label: "Reorder",
+                  count: summary.reorderNow + summary.reorderSoon,
+                  urgent: true,
+                },
+                { key: "out", label: "Out of stock", count: outCount, urgent: true },
+                { key: "low", label: "Low stock", count: lowCount },
+                { key: "all", label: "All", count: products.length },
+              ]}
+              activeChip={filter}
+              onChipChange={(key) => setFilter(key as InventoryFilter)}
+              summary={filtered.length === 1 ? "1 product" : `${filtered.length} products`}
+              controls={[
+                ...(categoryOptions.length > 1
+                  ? [
+                      {
+                        label: categoryFilter || "All categories",
+                        onPress: () => setCategorySheetOpen(true),
+                        active: Boolean(categoryFilter),
+                      },
+                    ]
+                  : []),
+                {
+                  label:
+                    STOCK_SORTS.find((option) => option.value === sortMode)?.label ?? "Sort",
+                  onPress: () => setSortOpen(true),
+                },
+                {
+                  label: "Movements",
+                  icon: "time-outline" as const,
+                  onPress: () => void openFeed(),
+                },
+                {
+                  label: isExporting ? "Exporting…" : "Export",
+                  icon: "download-outline" as const,
+                  onPress: () => {
+                    if (!isExporting) {
+                      void exportCsv();
+                    }
+                  },
+                },
               ]}
             />
-            <VendorListSearch
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search by name or category"
-            />
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-              {(
-                [
-                  ["all", "All"],
-                  ["low", "Low stock"],
-                  ["out", "Out of stock"],
-                ] as const
-              ).map(([key, label]) => {
-                const active = filter === key;
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => setFilter(key)}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 999,
-                      backgroundColor: active ? colors.text : colors.pill,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: Fonts.textBold,
-                        fontSize: rMS(12),
-                        color: active ? colors.onPrimary : colors.text,
-                      }}
-                    >
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
           </View>
         }
         ListEmptyComponent={
           <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
             <AccountEmptyState
-              icon="layers-outline"
-              title={isLoadingProducts ? "Loading inventory" : "No matching products"}
-              message="Add products or clear search/filters to manage stock."
-              actionLabel="Add product"
-              onAction={() => router.push("/vendor/products/new" as any)}
+              icon={emptyCopy.icon}
+              title={isLoadingProducts ? "Loading inventory" : emptyCopy.title}
+              message={emptyCopy.message}
+              actionLabel={products.length === 0 ? "Add product" : undefined}
+              onAction={
+                products.length === 0
+                  ? () => router.push("/vendor/products/new" as any)
+                  : undefined
+              }
             />
           </View>
         }
-        renderItem={({ item }) => {
-          const value = draftStock[item.id] ?? String(item.stock);
-          const busy = updatingProductId === item.id;
-          const reserved = item.reservedStock ?? 0;
-          const available =
-            item.availableStock ?? Math.max(0, item.stock - reserved);
-          const tone = isOutOfStockProduct(item)
-            ? colors.dangerText
-            : isLowStockProduct(item)
-              ? colors.warningText
-              : colors.textMuted;
-          return (
-            <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
-              <AccountListCard>
-                <View style={{ gap: rV(10) }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        style={{
-                          fontFamily: Fonts.titleBold,
-                          fontSize: rMS(14),
-                          color: colors.text,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={{
-                          marginTop: 4,
-                          fontFamily: Fonts.text,
-                          fontSize: rMS(12),
-                          color: tone,
-                        }}
-                      >
-                        {isOutOfStockProduct(item)
-                          ? "Out of stock"
-                          : isLowStockProduct(item)
-                            ? "Low stock"
-                            : "In stock"}
-                        {" · "}
-                        {item.status}
-                      </Text>
-                      <Text
-                        style={{
-                          marginTop: 4,
-                          fontFamily: Fonts.text,
-                          fontSize: rMS(12),
-                          color: colors.textMuted,
-                        }}
-                      >
-                        On hand {item.stock}
-                        {" · "}Reserved {reserved}
-                        {" · "}Available {available}
-                      </Text>
-                      {item.category ? (
-                        <Text
-                          style={{
-                            marginTop: 2,
-                            fontFamily: Fonts.text,
-                            fontSize: rMS(11.5),
-                            color: colors.textMuted,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {item.category}
-                          {item.subcategory ? ` · ${item.subcategory}` : ""}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <View style={{ alignItems: "flex-end", gap: 8 }}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          router.push({
-                            pathname: "/vendor/products/new" as any,
-                            params: { productId: item.id },
-                          })
-                        }
-                      >
-                        <Text
-                          style={{
-                            fontFamily: Fonts.textBold,
-                            fontSize: rMS(12),
-                            color: colors.primary,
-                          }}
-                        >
-                          Edit
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => void openHistory(item)}>
-                        <Text
-                          style={{
-                            fontFamily: Fonts.textBold,
-                            fontSize: rMS(12),
-                            color: colors.textMuted,
-                          }}
-                        >
-                          History
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <View style={{ gap: 6 }}>
-                    <Text
-                      style={{
-                        fontFamily: Fonts.textBold,
-                        fontSize: rMS(12),
-                        color: colors.textMuted,
-                      }}
-                    >
-                      On-hand stock
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <TextInput
-                        value={value}
-                        onChangeText={(text) =>
-                          setDraftStock((prev) => ({
-                            ...prev,
-                            [item.id]: text.replace(/[^0-9]/g, ""),
-                          }))
-                        }
-                        keyboardType="number-pad"
-                        editable={!busy}
-                        style={{
-                          flex: 1,
-                          borderWidth: 1,
-                          borderColor: colors.inputBorder,
-                          backgroundColor: colors.inputBg,
-                          borderRadius: 12,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          fontFamily: Fonts.textBold,
-                          fontSize: rMS(14),
-                          color: colors.text,
-                        }}
-                      />
-                      <TouchableOpacity
-                        disabled={busy}
-                        onPress={() => void saveStock(item)}
-                        style={{
-                          backgroundColor: colors.inverseSurface,
-                          borderRadius: 12,
-                          paddingHorizontal: 14,
-                          paddingVertical: 12,
-                          opacity: busy ? 0.6 : 1,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: Fonts.textBold,
-                            fontSize: rMS(12),
-                            color: colors.onInverseSurface,
-                          }}
-                        >
-                          Save
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </AccountListCard>
-            </View>
-          );
+        ItemSeparatorComponent={VendorRowSeparator}
+        renderItem={({ item }) => (
+          <VendorStockRow
+            product={item}
+            stock={pendingStock[item.id] ?? item.stock}
+            signal={getSignal(item)}
+            isUpdating={updatingProductId === item.id}
+            onChangeStock={(next) => queueStockChange(item, next)}
+            onOpenHistory={() => void openHistory(item)}
+          />
+        )}
+        onEndReached={() => {
+          if (productsHasMore && !isLoadingMoreProducts) {
+            void loadMoreProducts(session);
+          }
         }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          <View style={[vendorStyles.contentWrap, { maxWidth: contentMaxWidth }]}>
+            <CommerceSeeAllListFooter
+              hasMore={productsHasMore && filtered.length > 0}
+              shownCount={filtered.length}
+              totalCount={filtered.length}
+              noun="products"
+            />
+          </View>
+        }
       />
 
       <Modal
@@ -526,7 +666,7 @@ export default function VendorInventoryPanel({
                       color: colors.textMuted,
                     }}
                   >
-                    {formatMovementReason(row.reason)}
+                    {formatVendorMovementReason(row.reason)}
                     {row.note ? ` · ${row.note}` : ""}
                   </Text>
                   <Text
@@ -545,6 +685,36 @@ export default function VendorInventoryPanel({
           )}
         </View>
       </Modal>
-    </>
+
+      <VendorMovementFeedSheet
+        visible={feedOpen}
+        entries={feedRows}
+        isLoading={feedLoading}
+        onClose={() => setFeedOpen(false)}
+      />
+
+      <VendorOptionSheet
+        visible={sortOpen}
+        title="Sort stock"
+        options={STOCK_SORTS}
+        selected={sortMode}
+        onSelect={setSortMode}
+        onClose={() => setSortOpen(false)}
+      />
+      <VendorOptionSheet
+        visible={categorySheetOpen}
+        title="Filter by category"
+        options={[
+          { value: "", label: "All categories" },
+          ...categoryOptions.map((option) => ({
+            value: option.key,
+            label: `${option.label} (${option.count})`,
+          })),
+        ]}
+        selected={categoryFilter}
+        onSelect={setCategoryFilter}
+        onClose={() => setCategorySheetOpen(false)}
+      />
+    </VendorRowActionsProvider>
   );
 }

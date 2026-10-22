@@ -179,9 +179,18 @@ export type VendorReturnRequest = {
 
 export type VendorReturnQueueTab = "open" | "resolved";
 
-export type VendorOrderQueueTab = "new" | "active" | "done";
+// "overdue" is a lens across new and active rather than a status: anything
+// still awaiting the vendor that has passed the SLA window.
+export type VendorOrderQueueTab = "overdue" | "new" | "active" | "done";
 
-export type VendorProductCatalogTab = "all" | "live" | "pending" | "hidden";
+// "attention" is a lens over the others rather than a status of its own:
+// anything live that is sold out, nearly sold out, or missing a photo or price.
+export type VendorProductCatalogTab =
+  | "attention"
+  | "all"
+  | "live"
+  | "pending"
+  | "hidden";
 
 export type VendorFlashSaleNomination = {
   id: string;

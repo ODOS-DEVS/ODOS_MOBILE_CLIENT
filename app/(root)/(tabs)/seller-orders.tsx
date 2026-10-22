@@ -49,8 +49,6 @@ export default function SellerOrdersTab() {
   return (
     <VendorScreenShell title="Orders" showBackButton={false} showSettings={false}>
       <VendorOrdersList
-        introTitle="Order inbox"
-        introSubtitle="Confirm, prepare, and complete fulfillment from one place."
         contentPaddingBottom={tabBarInset}
         tabParam={tabParam}
       />

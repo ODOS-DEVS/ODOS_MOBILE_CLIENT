@@ -10,6 +10,7 @@ import {
 import PhoneVerificationField, {
   isPhoneVerificationRequired,
 } from "@/components/profile/PhoneVerificationField";
+import { GuideHintLink } from "@/components/help/GuideUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import CardEntryForm from "@/components/wallet/CardEntryForm";
 import {
@@ -278,7 +279,13 @@ export default function WalletScreen() {
       if (checkoutResult.type === "success" && checkoutResult.url) {
         router.replace({
           pathname: "/wallet/topup-return" as any,
-          params: normalizeRouteParamsFromUrl(checkoutResult.url),
+          // Session reference backfills the redirect's params, which cannot be
+          // relied on to carry one. Without it the return screen has nothing to
+          // verify against -- same reason as the order checkout path.
+          params: {
+            reference: session.reference,
+            ...normalizeRouteParamsFromUrl(checkoutResult.url),
+          },
         });
         return;
       }
@@ -349,9 +356,11 @@ export default function WalletScreen() {
               transactionCount={walletTx.length}
             />
 
+            <GuideHintLink slug="wallet-top-up" label="How topping up your wallet works" />
+
             <WalletSectionCard
               title="Top up wallet"
-              subtitle="Add funds instantly and pay faster at checkout. Secure payments via Paystack."
+              subtitle="Add funds instantly and pay faster at checkout. Secure payments via KutanaPay."
             >
               <WalletAmountChips
                 amounts={[20, 50, 100, 200]}

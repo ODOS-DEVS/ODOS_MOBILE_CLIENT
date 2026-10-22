@@ -279,7 +279,7 @@ export default function CardEntryForm({
         <Text style={styles.secureText}>
           This just saves a label for your own reference — we only keep the last 4 digits.
           Your full card number never leaves this device or reaches ODOS; actual charges are
-          entered directly and processed securely by Paystack.
+          entered directly and processed securely by KutanaPay.
         </Text>
       </View>
 

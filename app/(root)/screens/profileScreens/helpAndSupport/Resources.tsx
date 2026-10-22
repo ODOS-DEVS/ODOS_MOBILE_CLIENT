@@ -1,131 +1,223 @@
 import {
-  AccountActionButton,
-  AccountInsightCard,
-  AccountLinkRow,
-  AccountListCard,
-  useAccountStyles,
-} from "@/components/profile/ProfileHubUi";
+  FaqSearchBar,
+  FaqStillNeedHelp,
+  HelpCategoryChips,
+  filterFaqItems,
+} from "@/components/help/FaqUi";
+import {
+  GuideCard,
+  GuideEmptyState,
+  GuideFaqResult,
+  GuideProgressHero,
+  GuideSectionHeader,
+  GuideVideoFilterToggle,
+} from "@/components/help/GuideUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import Fonts from "@/constants/Fonts";
-import type { ThemeColors } from "@/constants/theme";
-import { useTheme } from "@/context/ThemeContext";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { rMS, rV } from "@/styles/responsive";
-import { router } from "expo-router";
-import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAccountStyles } from "@/components/profile/ProfileHubUi";
+import { FAQ_ITEMS } from "@/constants/faqContent";
+import {
+  GUIDE_CATEGORIES,
+  RESOURCE_GUIDES,
+  STARTER_GUIDES,
+  buildGuideCounts,
+  filterGuides,
+  groupGuidesByCategory,
+  type GuideCategory,
+} from "@/constants/resourceGuides";
+import { rV } from "@/styles/responsive";
+import { useGuideVideos } from "@/hooks/useGuideVideos";
+import { useGuideProgress } from "@/utils/guideProgress";
+import { Ionicons } from "@expo/vector-icons";
+import { router, type Href } from "expo-router";
+import React, { useMemo, useState } from "react";
+import { ScrollView, View } from "react-native";
 
-const resources = [
-  {
-    id: "res-1",
-    icon: "book-outline" as const,
-    title: "Buying guide",
-    subtitle: "Find authentic products and compare options with confidence.",
+/** FAQ hits are a supporting answer here, not the main event — keep them few. */
+const MAX_FAQ_MATCHES = 4;
+
+const CATEGORY_ICONS = GUIDE_CATEGORIES.reduce(
+  (map, entry) => {
+    map[entry.key] = entry.icon;
+    return map;
   },
-  {
-    id: "res-2",
-    icon: "card-outline" as const,
-    title: "Payment safety",
-    subtitle: "Secure checkout, card protection, and payment best practices.",
-  },
-  {
-    id: "res-3",
-    icon: "cube-outline" as const,
-    title: "Shipping guide",
-    subtitle: "Delivery timelines, tracking milestones, and return basics.",
-  },
-  {
-    id: "res-4",
-    icon: "shield-checkmark-outline" as const,
-    title: "Account security",
-    subtitle: "Stronger credentials, privacy controls, and safer sign-in.",
-  },
-];
+  {} as Record<string, keyof typeof Ionicons.glyphMap>,
+);
+
+function openGuide(slug: string) {
+  router.push(`/(root)/screens/resources/${slug}` as Href);
+}
 
 export default function ResourcesScreen() {
   const accountStyles = useAccountStyles();
-  const { requireAuth } = useRequireAuth();
-  const { colors } = useTheme();
-  const supportStyles = useMemo(() => createSupportStyles(colors), [colors]);
+  const { isRead, readCount } = useGuideProgress();
+  const { slugsWithVideo } = useGuideVideos();
+  const [selectedCategory, setSelectedCategory] = useState<GuideCategory | "All">("All");
+  const [query, setQuery] = useState("");
+  const [videosOnly, setVideosOnly] = useState(false);
 
-  const openSupport = () => {
-    if (
-      !requireAuth({
-        title: "Sign in to contact support",
-        message:
-          "Log in so your conversation with the admin team stays attached to your account.",
-      })
-    ) {
-      return;
-    }
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length > 0;
+  const isBrowsingAll = selectedCategory === "All" && !isSearching && !videosOnly;
 
-    router.push({
-      pathname: "/screens/support/chat",
-      params: {
-        subject: "Guidance from the resource center",
-        fallback: "/(root)/screens/profileScreens/helpAndSupport/Resources",
-      },
-    });
+  const counts = useMemo(() => buildGuideCounts(RESOURCE_GUIDES), []);
+
+  const filtered = useMemo(() => {
+    const matches = filterGuides(RESOURCE_GUIDES, selectedCategory, query);
+    return videosOnly ? matches.filter((guide) => slugsWithVideo.has(guide.slug)) : matches;
+  }, [query, selectedCategory, slugsWithVideo, videosOnly]);
+
+  const grouped = useMemo(
+    () => (isBrowsingAll ? groupGuidesByCategory(filtered) : null),
+    [filtered, isBrowsingAll],
+  );
+
+  // Searching the guides alone would strand anyone whose question has a
+  // one-line answer on the FAQ screen, so both are searched from this one box.
+  const faqMatches = useMemo(
+    () => (isSearching ? filterFaqItems(FAQ_ITEMS, "All", query).slice(0, MAX_FAQ_MATCHES) : []),
+    [isSearching, query],
+  );
+
+  // Point people at the next thing worth reading: finish the starter path
+  // first, then whatever else is still unread.
+  const resumeGuide = useMemo(() => {
+    const nextStarter = STARTER_GUIDES.find((guide) => !isRead(guide.slug));
+    return nextStarter ?? RESOURCE_GUIDES.find((guide) => !isRead(guide.slug)) ?? null;
+  }, [isRead]);
+
+  const clearSearch = () => {
+    setQuery("");
+    setSelectedCategory("All");
+    setVideosOnly(false);
   };
+
+  const hasResults = filtered.length > 0 || faqMatches.length > 0;
 
   return (
     <View style={accountStyles.screen}>
       <ProfileHeader title="Resources" />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={accountStyles.content}>
-        <AccountInsightCard
-          title="Knowledge center"
-          subtitle="Practical guides to help you shop smarter and resolve issues faster."
-          stats={[
-            { value: resources.length, label: "Guides" },
-            { value: "24/7", label: "Self-serve" },
-          ]}
+        <GuideProgressHero
+          total={RESOURCE_GUIDES.length}
+          readCount={readCount}
+          onResume={resumeGuide ? () => openGuide(resumeGuide.slug) : undefined}
+          resumeLabel={
+            resumeGuide
+              ? readCount === 0
+                ? `Start with “${resumeGuide.title}”`
+                : `Continue: ${resumeGuide.title}`
+              : undefined
+          }
         />
 
-        <AccountListCard>
-          {resources.map((item, index) => (
-            <AccountLinkRow
-              key={item.id}
-              icon={item.icon}
-              title={item.title}
-              subtitle={item.subtitle}
-              badge="Guide"
-              isLast={index === resources.length - 1}
-            />
-          ))}
-        </AccountListCard>
-
-        <AccountListCard>
-          <Text style={supportStyles.title}>Still need help?</Text>
-          <Text style={supportStyles.subtitle}>
-            Our support team can walk you through account, payment, and order concerns.
-          </Text>
-          <AccountActionButton
-            label="Contact support"
-            variant="primary"
-            onPress={openSupport}
-            icon="chatbubble-ellipses-outline"
+        <View style={{ marginTop: rV(14), gap: rV(12) }}>
+          <FaqSearchBar
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search guides, e.g. refund, momo, tracking…"
           />
-        </AccountListCard>
+          <HelpCategoryChips
+            categories={GUIDE_CATEGORIES}
+            activeKey={selectedCategory}
+            onChange={setSelectedCategory}
+            counts={counts}
+          />
+          {slugsWithVideo.size > 0 ? (
+            <GuideVideoFilterToggle
+              active={videosOnly}
+              count={slugsWithVideo.size}
+              onToggle={() => setVideosOnly((current) => !current)}
+            />
+          ) : null}
+        </View>
+
+        {isBrowsingAll && STARTER_GUIDES.length > 0 ? (
+          <View>
+            <GuideSectionHeader title="New to ODOS? Read these first" icon="sparkles-outline" />
+            <View style={{ gap: rV(10) }}>
+              {STARTER_GUIDES.map((guide, index) => (
+                <GuideCard
+                  key={guide.slug}
+                  guide={guide}
+                  isRead={isRead(guide.slug)}
+                  hasVideo={slugsWithVideo.has(guide.slug)}
+                  stepIndex={index + 1}
+                  onPress={() => openGuide(guide.slug)}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {!hasResults ? (
+          <GuideEmptyState query={trimmedQuery} onClear={clearSearch} />
+        ) : grouped ? (
+          grouped.map((section) => (
+            <View key={section.category}>
+              <GuideSectionHeader
+                title={section.category}
+                icon={CATEGORY_ICONS[section.category] ?? "folder-outline"}
+              />
+              <View style={{ gap: rV(10) }}>
+                {section.items.map((guide) => (
+                  <GuideCard
+                    key={guide.slug}
+                    guide={guide}
+                    isRead={isRead(guide.slug)}
+                    hasVideo={slugsWithVideo.has(guide.slug)}
+                    onPress={() => openGuide(guide.slug)}
+                  />
+                ))}
+              </View>
+            </View>
+          ))
+        ) : (
+          <View>
+            {filtered.length > 0 ? (
+              <>
+                <GuideSectionHeader
+                  title={`${filtered.length} ${filtered.length === 1 ? "guide" : "guides"}`}
+                  icon="book-outline"
+                />
+                <View style={{ gap: rV(10) }}>
+                  {filtered.map((guide) => (
+                    <GuideCard
+                      key={guide.slug}
+                      guide={guide}
+                      isRead={isRead(guide.slug)}
+                      hasVideo={slugsWithVideo.has(guide.slug)}
+                      onPress={() => openGuide(guide.slug)}
+                    />
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </View>
+        )}
+
+        {faqMatches.length > 0 ? (
+          <View>
+            <GuideSectionHeader title="Quick answers" icon="help-circle-outline" />
+            <View style={{ gap: rV(10) }}>
+              {faqMatches.map((item) => (
+                <GuideFaqResult
+                  key={item.id}
+                  item={item}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(root)/screens/profileScreens/helpAndSupport/FAQ",
+                      params: { q: item.title },
+                    } as never)
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <FaqStillNeedHelp />
       </ScrollView>
     </View>
   );
-}
-
-function createSupportStyles(colors: ThemeColors) {
-  return StyleSheet.create({
-    title: {
-      fontFamily: Fonts.titleBold,
-      fontSize: rMS(15),
-      color: colors.text,
-    },
-    subtitle: {
-      marginTop: rV(6),
-      marginBottom: rV(14),
-      fontFamily: Fonts.text,
-      fontSize: rMS(12.5),
-      lineHeight: rMS(18),
-      color: colors.textMuted,
-    },
-  });
 }

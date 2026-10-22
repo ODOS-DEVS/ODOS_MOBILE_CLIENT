@@ -49,7 +49,7 @@ export default function LoyaltyScreen() {
   // This screen is pushed above the tabs, so it renders outside
   // TabBarMetricsProvider and must not demand it.
   const tabBarInset = useOptionalTabBarContentInset();
-  const { account, transactions, loading, error, fetchAccount, fetchTransactionHistory, redeemPoints } = useLoyalty();
+  const { account, transactions, loading, error, fetchAccount, fetchTransactionHistory, redeemPoints } = useLoyalty({ withHistory: true });
 
   const {
     visibleCount: visibleHistoryCount,
@@ -82,7 +82,7 @@ export default function LoyaltyScreen() {
 
     Alert.prompt(
       'Redeem Points',
-      `You have ${account.total_points} points available.\n\nHow many points would you like to redeem? (100 points = 1 GHS)`,
+      `You have ${account.total_points} points available.\n\nHow many points would you like to redeem? 100 points = GHS 1, added to your ODOS wallet to spend at checkout.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -103,7 +103,14 @@ export default function LoyaltyScreen() {
             // redemption as a success.
             const result = await redeemPoints(points);
             if (result.success) {
-              Alert.alert('Success', `Redeemed ${points} points for GHS ${(points / 100).toFixed(2)}`);
+              // The server is the authority on what landed: it enforces the
+              // 100-point multiple and returns the credit it actually made,
+              // so echoing a locally computed figure could contradict it.
+              Alert.alert(
+                'Added to your wallet',
+                result.message ??
+                  `Redeemed ${points} points for GHS ${(result.cashValue ?? points / 100).toFixed(2)}.`,
+              );
               await handleRefresh();
             } else {
               Alert.alert('Error', result.error ?? 'Failed to redeem points');

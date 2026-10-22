@@ -2,9 +2,9 @@ import { AccountListCard } from "@/components/account/AccountUi";
 import WorkspaceSwitcherSheet from "@/components/account/WorkspaceSwitcherSheet";
 import { AppReviewPrompt } from "@/components/app-review/AppReviewPrompt";
 import { MenuItem } from "@/components/MenuItem";
+import { formatOrderMoney } from "@/components/orders/OrderUi";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import UserAvatar from "@/components/UserAvatar";
-import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -14,7 +14,7 @@ import { useLoyalty } from "@/hooks/useLoyalty";
 import { useVendorStore } from "@/stores/vendorStore";
 import { useWorkspaceModeStore } from "@/stores/workspaceModeStore";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { normalizeVendorStatus } from "@/types/vendor";
+import { normalizeVendorStatus, type AppRole, type VendorStatus } from "@/types/vendor";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAppReview } from "@/hooks/useAppReview";
 import { resetAuthStackToSignIn } from "@/utils/authNavigation";
@@ -23,6 +23,33 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+type VendorIdentity = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  roles: AppRole[];
+  vendorId?: string | null;
+  // Matches VendorSessionContext: the store wants a normalized status or
+  // nothing, never a raw string.
+  vendorStatus?: VendorStatus;
+  vendorRejectionReason?: string | null;
+};
+
+/** Maps an auth user onto the identity fields the vendor store expects. */
+function toVendorSessionFields(user: VendorIdentity) {
+  return {
+    userId: user.id,
+    fullName: user.full_name,
+    email: user.email,
+    phoneNumber: user.phone_number,
+    roles: user.roles,
+    vendorId: user.vendorId,
+    vendorStatus: user.vendorStatus,
+    vendorRejectionReason: user.vendorRejectionReason,
+  };
+}
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
@@ -36,7 +63,6 @@ export default function ProfileScreen() {
   const { requireAuth } = useRequireAuth();
   const {
     visible: reviewPromptVisible,
-    promptFromProfile,
     handleRate: handleAppReviewRate,
     handleDismiss: handleAppReviewDismiss,
   } = useAppReview();
@@ -44,8 +70,7 @@ export default function ProfileScreen() {
   const { isApprovedVendor, storeLabel } = useVendorQuickAccess();
   const workspaceMode = useWorkspaceModeStore((state) => state.mode);
   const [workspaceSwitcherVisible, setWorkspaceSwitcherVisible] = useState(false);
-  const { isLoading, hasLoadedVendorState, refreshVendorState, vendorApplication, vendorStatus } =
-    useVendorStore();
+  const { refreshVendorState, vendorApplication, vendorStatus } = useVendorStore();
   const { account: loyaltyAccount } = useLoyalty();
   const hasRefreshedThisFocusRef = useRef(false);
   const authUserSnapshot = useMemo(
@@ -97,36 +122,48 @@ export default function ProfileScreen() {
           authUserSnapshot.vendorStatus !== "approved" ||
           !authUserSnapshot.roles.includes("vendor");
 
-        const refreshedUser = shouldRefreshAuthUser
-          ? await refreshCurrentUser()
-          : null;
-        if (isCancelled) {
+        const knownUser = {
+          id: authUserSnapshot.id,
+          full_name: authUserSnapshot.fullName,
+          email: authUserSnapshot.email,
+          phone_number: authUserSnapshot.phoneNumber,
+          roles: authUserSnapshot.roles,
+          vendorId: authUserSnapshot.vendorId,
+          vendorStatus: authUserSnapshot.vendorStatus,
+          vendorRejectionReason: authUserSnapshot.vendorRejectionReason,
+        };
+
+        // Both requests go out together. The vendor fetch only needs identity
+        // fields we already hold, so waiting on refreshCurrentUser first was
+        // an extra round trip before anything could render — that serial wait
+        // is why this section settled visibly later than the rest of the page.
+        const [refreshedUser] = await Promise.all([
+          shouldRefreshAuthUser ? refreshCurrentUser() : Promise.resolve(null),
+          refreshVendorState({
+            accessToken: session.accessToken,
+            ...toVendorSessionFields(knownUser),
+          }),
+        ]);
+
+        if (isCancelled || !refreshedUser) {
           return;
         }
 
-        const nextUser =
-          refreshedUser ??
-          {
-            id: authUserSnapshot.id,
-            full_name: authUserSnapshot.fullName,
-            email: authUserSnapshot.email,
-            phone_number: authUserSnapshot.phoneNumber,
-            roles: authUserSnapshot.roles,
-            vendorId: authUserSnapshot.vendorId,
-            vendorStatus: authUserSnapshot.vendorStatus,
-            vendorRejectionReason: authUserSnapshot.vendorRejectionReason,
-          };
-        await refreshVendorState({
-          accessToken: session.accessToken,
-          userId: nextUser.id,
-          fullName: nextUser.full_name,
-          email: nextUser.email,
-          phoneNumber: nextUser.phone_number,
-          roles: nextUser.roles,
-          vendorId: nextUser.vendorId,
-          vendorStatus: nextUser.vendorStatus,
-          vendorRejectionReason: nextUser.vendorRejectionReason,
-        });
+        // A role actually changed server-side (an application was approved
+        // while the app was open), so re-resolve against the new identity.
+        const rolesChanged =
+          refreshedUser.roles.join(",") !== authUserSnapshot.rolesKey ||
+          refreshedUser.vendorStatus !== authUserSnapshot.vendorStatus;
+
+        if (rolesChanged) {
+          await refreshVendorState(
+            {
+              accessToken: session.accessToken,
+              ...toVendorSessionFields(refreshedUser),
+            },
+            { force: true },
+          );
+        }
       };
 
       void syncVendorState();
@@ -152,46 +189,58 @@ export default function ProfileScreen() {
     return authVendorStatus !== "none" ? authVendorStatus : vendorStatus;
   }, [user, vendorStatus]);
 
-  const vendorSection = useMemo(() => {
+  /**
+   * The vendor state as a menu row rather than a standalone card.
+   *
+   * Every destination the old card reached is still here: the primary row
+   * carries the main action, and `secondary` becomes a second row instead of
+   * a small text link under a button. A rejection reason is deliberately not
+   * inlined — the badge says something needs changing and the review-notes row
+   * leads to the full explanation, which is where it already lives.
+   */
+  const vendorRow = useMemo((): {
+    label: string;
+    description?: string;
+    badge?: { label: string; tone: "success" | "info" | "warning" | "danger" };
+    value?: string;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    onPress: () => void;
+    secondary: { label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; onPress: () => void } | null;
+  } => {
     if (resolvedVendorStatus === "approved") {
       return {
-        title: "Vendor Dashboard",
-        body:
-          vendorApplication?.storeName
-            ? `${vendorApplication.storeName} is ready for vendor management.`
-            : "Your vendor access is active and ready to manage products, orders, and store details.",
-        cta: "Open Vendor Dashboard",
+        label: "Vendor dashboard",
+        description: vendorApplication?.storeName || undefined,
+        badge: { label: "Active", tone: "success" },
+        icon: "briefcase-outline",
         onPress: () => router.push("/vendor/dashboard" as any),
-        secondaryAction: {
-          label: "Vendor Settings",
+        secondary: {
+          label: "Vendor settings",
+          icon: "options-outline",
           onPress: () => router.push("/vendor/settings" as any),
         },
       };
     }
 
-    if (
-      resolvedVendorStatus === "pending" ||
-      resolvedVendorStatus === "under_review"
-    ) {
+    if (resolvedVendorStatus === "pending" || resolvedVendorStatus === "under_review") {
       return {
-        title: "Vendor Application Pending",
-        body: "Your application is in review. You can track progress and next steps from the status screen.",
-        cta: "View Application Status",
+        label: "Vendor application",
+        badge: { label: "In review", tone: "info" },
+        icon: "time-outline",
         onPress: () => router.push("/vendor/application-status" as any),
-        secondaryAction: null,
+        secondary: null,
       };
     }
 
     if (resolvedVendorStatus === "rejected") {
       return {
-        title: "Vendor Application Needs Changes",
-        body:
-          vendorApplication?.rejectionReason ||
-          "ODOS needs a few updates before approval. Review the status details and apply again when ready.",
-        cta: "Apply Again",
+        label: "Vendor application",
+        badge: { label: "Needs changes", tone: "danger" },
+        icon: "alert-circle-outline",
         onPress: () => router.push("/vendor/apply" as any),
-        secondaryAction: {
-          label: "View Review Notes",
+        secondary: {
+          label: "Review notes",
+          icon: "document-text-outline",
           onPress: () => router.push("/vendor/application-status" as any),
         },
       };
@@ -199,28 +248,47 @@ export default function ProfileScreen() {
 
     if (resolvedVendorStatus === "suspended") {
       return {
-        title: "Vendor Access Suspended",
-        body: "Your vendor profile exists, but storefront actions are currently paused pending review.",
-        cta: "View Status Details",
+        label: "Vendor access",
+        badge: { label: "Suspended", tone: "warning" },
+        icon: "pause-circle-outline",
         onPress: () => router.push("/vendor/application-status" as any),
-        secondaryAction: null,
+        secondary: null,
       };
     }
 
     return {
-      title: "Become a Vendor",
-      body: "Apply once and manage your store from the same ODOS account after approval.",
-      cta: "Apply to Become a Vendor",
+      label: "Sell on ODOS",
+      description: "Apply once, sell from this account",
+      icon: "storefront-outline",
       onPress: () => router.push("/vendor/apply" as any),
-      secondaryAction: null,
+      secondary: null,
     };
-  }, [
-    resolvedVendorStatus,
-    vendorApplication?.rejectionReason,
-    vendorApplication?.storeName,
-  ]);
+  }, [resolvedVendorStatus, vendorApplication?.storeName]);
 
-  const isVendorSectionLoading = Boolean(user) && isLoading && !hasLoadedVendorState;
+  // Deliberately no loading state. `resolvedVendorStatus` already has a usable
+  // answer from the auth user on the first frame, so "Checking..." only
+  // replaced a correct label with a placeholder and then changed it back. The
+  // background refresh corrects the row in place if the server disagrees.
+
+  /**
+   * Rendered for every signed-in user, loaded or not. The backend creates a
+   * loyalty account on first read, so one always exists — which means the row
+   * can claim its space on the first frame and fill its value in when the
+   * request lands, instead of appearing late and pushing the list down.
+   */
+  const loyaltyRow = useMemo(() => {
+    if (!loyaltyAccount) {
+      return { value: undefined, description: "Points, tier and rewards" };
+    }
+
+    const tier =
+      loyaltyAccount.tier_level.charAt(0).toUpperCase() + loyaltyAccount.tier_level.slice(1);
+
+    return {
+      value: `${tier} · ${loyaltyAccount.total_points.toLocaleString()} pts`,
+      description: `Worth ${formatOrderMoney(loyaltyAccount.points_value_ghs)}`,
+    };
+  }, [loyaltyAccount]);
 
   const styles = useMemo(
     () =>
@@ -295,66 +363,6 @@ export default function ProfileScreen() {
           fontFamily: Fonts.textBold,
           textTransform: "uppercase",
           letterSpacing: 0.4,
-        },
-        vendorCard: {
-          backgroundColor: colors.card,
-          borderRadius: rMS(24),
-          padding: rMS(16),
-          marginBottom: rV(18),
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.cardBorder,
-        },
-        vendorCardHeader: {
-          flexDirection: "row",
-          alignItems: "flex-start",
-        },
-        vendorIconWrap: {
-          width: rMS(40),
-          height: rMS(40),
-          borderRadius: rMS(20),
-          backgroundColor: colors.pill,
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: rS(12),
-        },
-        vendorTextWrap: {
-          flex: 1,
-        },
-        vendorTitle: {
-          color: colors.text,
-          fontFamily: Fonts.title,
-          fontSize: rMS(15),
-        },
-        vendorBody: {
-          marginTop: rV(6),
-          color: colors.textMuted,
-          fontFamily: Fonts.text,
-          fontSize: rMS(12.5),
-          lineHeight: rMS(18),
-        },
-        vendorButton: {
-          marginTop: rV(16),
-          backgroundColor: colors.inverseSurface,
-          borderRadius: rMS(999),
-          alignItems: "center",
-          justifyContent: "center",
-          paddingVertical: rV(14),
-        },
-        vendorButtonLabel: {
-          color: colors.onInverseSurface,
-          fontFamily: Fonts.textBold,
-          fontSize: rMS(13),
-        },
-        vendorSecondaryButton: {
-          marginTop: rV(12),
-          alignItems: "center",
-          justifyContent: "center",
-          paddingVertical: rV(6),
-        },
-        vendorSecondaryButtonLabel: {
-          color: colors.primary,
-          fontFamily: Fonts.textBold,
-          fontSize: rMS(12.5),
         },
         menuCard: {
           marginBottom: rV(20),
@@ -476,79 +484,6 @@ export default function ProfileScreen() {
 
       {user ? (
         <>
-          <Text style={styles.sectionTitle}>Vendor</Text>
-          <View style={styles.vendorCard}>
-            <View style={styles.vendorCardHeader}>
-              <View style={styles.vendorIconWrap}>
-                <Ionicons
-                  name="briefcase-outline"
-                  size={rMS(18)}
-                  color={colors.text}
-                />
-              </View>
-              <View style={styles.vendorTextWrap}>
-                <Text style={styles.vendorTitle}>{vendorSection.title}</Text>
-                <Text style={styles.vendorBody}>{vendorSection.body}</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.vendorButton}
-              onPress={vendorSection.onPress}
-              activeOpacity={0.85}
-              disabled={isVendorSectionLoading}
-            >
-              <Text style={styles.vendorButtonLabel}>
-                {isVendorSectionLoading ? "Loading..." : vendorSection.cta}
-              </Text>
-            </TouchableOpacity>
-
-            {vendorSection.secondaryAction ? (
-              <TouchableOpacity
-                onPress={vendorSection.secondaryAction.onPress}
-                activeOpacity={0.75}
-                style={styles.vendorSecondaryButton}
-              >
-                <Text style={styles.vendorSecondaryButtonLabel}>
-                  {vendorSection.secondaryAction.label}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          {workspaceMode !== "sell_only" && loyaltyAccount && (
-            <>
-              <Text style={styles.sectionTitle}>Loyalty</Text>
-              <View style={styles.vendorCard}>
-                <View style={styles.vendorCardHeader}>
-                  <View style={[styles.vendorIconWrap, { backgroundColor: "#FFF5E6" }]}>
-                    <Ionicons
-                      name="star-outline"
-                      size={rMS(18)}
-                      color="#FFB800"
-                    />
-                  </View>
-                  <View style={styles.vendorTextWrap}>
-                    <Text style={styles.vendorTitle}>{loyaltyAccount.tier_level} Member</Text>
-                    <Text style={styles.vendorBody}>
-                      {loyaltyAccount.total_points.toLocaleString()} points · GHS {(loyaltyAccount.total_points / 100).toFixed(2)} value
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.vendorButton}
-                  onPress={() => router.push("../screens/loyalty" as any)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.vendorButtonLabel}>
-                    View Loyalty Details
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
           <Text style={styles.sectionTitle}>
             {workspaceMode === "sell_only" ? "Business" : "Account"}
           </Text>
@@ -677,8 +612,36 @@ export default function ProfileScreen() {
                     router.push("../screens/profileScreens/Account/Vouchers" as any);
                   }}
                 />
+                <MenuItem
+                  icon="medal-outline"
+                  label="Loyalty"
+                  value={loyaltyRow.value}
+                  description={loyaltyRow.description}
+                  onPress={() => {
+                    router.push("../screens/loyalty" as any);
+                  }}
+                />
               </>
             )}
+          </AccountListCard>
+
+          <Text style={styles.sectionTitle}>Selling</Text>
+          <AccountListCard style={styles.menuCard}>
+            <MenuItem
+              icon={vendorRow.icon}
+              label={vendorRow.label}
+              description={vendorRow.description}
+              value={vendorRow.value}
+              badge={vendorRow.badge}
+              onPress={vendorRow.onPress}
+            />
+            {vendorRow.secondary && workspaceMode !== "sell_only" ? (
+              <MenuItem
+                icon={vendorRow.secondary.icon}
+                label={vendorRow.secondary.label}
+                onPress={vendorRow.secondary.onPress}
+              />
+            ) : null}
           </AccountListCard>
 
           {workspaceMode === "sell_only" ? null : (
@@ -761,11 +724,6 @@ export default function ProfileScreen() {
           onPress={() => {
             router.push("../screens/profileScreens/helpAndSupport/FAQ");
           }}
-        />
-        <MenuItem
-          icon="star-outline"
-          label="Rate ODOS"
-          onPress={promptFromProfile}
         />
       </AccountListCard>
 

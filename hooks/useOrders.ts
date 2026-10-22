@@ -265,7 +265,10 @@ export type CheckoutSession = {
   order_number: string;
   reference: string;
   authorization_url: string;
-  access_code: string;
+  // null on KutanaPay, which has no access_code -- its checkout token travels
+  // in authorization_url. Nothing in the app reads this; it is kept because
+  // the API still returns it for older Paystack sessions.
+  access_code: string | null;
   amount: number;
   currency: string;
   payment_status: string;
@@ -306,7 +309,8 @@ export type CustomerWallet = {
 export type WalletTopUpSession = {
   reference: string;
   authorization_url: string;
-  access_code: string;
+  // null on KutanaPay -- see CheckoutSession.access_code.
+  access_code: string | null;
   amount: number;
   currency: string;
   status: string;

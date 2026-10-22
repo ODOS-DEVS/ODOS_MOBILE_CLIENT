@@ -5,7 +5,7 @@ import {
   AccountFilterChips,
   AccountInsightCard,
   AccountListCard,
-  AccountSegmentedTabs,
+  AccountShowMore,
   useAccountStyles,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
@@ -20,6 +20,7 @@ import {
   type VoucherWalletItem,
   useVouchers,
 } from "@/hooks/useVouchers";
+import { usePagedList } from "@/hooks/usePagedList";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,14 +35,25 @@ import {
 } from "react-native";
 
 type VoucherFilter = "all" | VoucherStatus;
-type WalletSection = "promotions" | "gift_cards";
+// Usable first, then spent, then dead. Within the active group the one
+// expiring soonest matters most, so it leads.
+const STATUS_ORDER: Record<VoucherStatus, number> = { active: 0, used: 1, expired: 2 };
 
-const filters: { key: VoucherFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "used", label: "Used" },
-  { key: "expired", label: "Expired" },
-];
+function sortVouchers(items: VoucherWalletItem[]): VoucherWalletItem[] {
+  return [...items].sort((a, b) => {
+    const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    if (byStatus !== 0) {
+      return byStatus;
+    }
+    if (a.status !== "active") {
+      return 0;
+    }
+    // No expiry means it never lapses, so it is the least urgent.
+    const aExpiry = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+    const bExpiry = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+    return aExpiry - bExpiry;
+  });
+}
 
 function getStatusMeta(
   colors: ThemeColors,
@@ -116,17 +128,16 @@ export default function VouchersScreen() {
   const { checkoutVoucherCode, setCheckoutVoucherCode } = useProfile();
   const { vouchers, isLoadingVouchers } = useVouchers();
   const [activeFilter, setActiveFilter] = useState<VoucherFilter>("all");
-  const [activeSection, setActiveSection] = useState<WalletSection>("promotions");
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const statusMeta = useMemo(() => getStatusMeta(colors), [colors]);
 
   const filteredVouchers = useMemo(() => {
-    if (activeFilter === "all") {
-      return vouchers;
-    }
-
-    return vouchers.filter((item) => item.status === activeFilter);
+    const scoped =
+      activeFilter === "all"
+        ? vouchers
+        : vouchers.filter((item) => item.status === activeFilter);
+    return sortVouchers(scoped);
   }, [activeFilter, vouchers]);
 
   const activeCount = useMemo(
@@ -141,6 +152,18 @@ export default function VouchersScreen() {
     () => vouchers.filter((item) => item.status === "expired").length,
     [vouchers],
   );
+
+  const filters = useMemo(
+    (): { key: VoucherFilter; label: string }[] => [
+      { key: "all", label: `All ${vouchers.length}` },
+      { key: "active", label: `Active ${activeCount}` },
+      { key: "used", label: `Used ${usedCount}` },
+      { key: "expired", label: `Expired ${expiredCount}` },
+    ],
+    [activeCount, expiredCount, usedCount, vouchers.length],
+  );
+
+  const pagedVouchers = usePagedList(filteredVouchers, { key: activeFilter });
 
   const handleUseVoucher = (voucher: VoucherWalletItem) => {
     setCheckoutVoucherCode(voucher.code);
@@ -180,7 +203,7 @@ export default function VouchersScreen() {
         >
           <AccountInsightCard
             title="Wallet benefits"
-            subtitle="Keep ODOS promotions and store offers here. Gift cards stay separate from discount codes."
+            subtitle="Claimed offers wait here until checkout. The ones expiring soonest are listed first."
             stats={[
               { value: activeCount, label: "Active" },
               { value: usedCount, label: "Used" },
@@ -188,37 +211,39 @@ export default function VouchersScreen() {
             ]}
           />
 
-          <AccountSegmentedTabs
-            options={[
-              { key: "promotions", label: "Promotions" },
-              { key: "gift_cards", label: "Gift cards" },
-            ]}
-            activeKey={activeSection}
-            onChange={setActiveSection}
+          <AccountFilterChips
+            options={filters}
+            activeKey={activeFilter}
+            onChange={setActiveFilter}
           />
 
-          {activeSection === "promotions" ? (
+          {filteredVouchers.length === 0 ? (
+            <AccountEmptyState
+              icon="ticket-outline"
+              title={activeFilter === "all" ? "No vouchers yet" : "Nothing in this filter"}
+              message={
+                activeFilter === "all"
+                  ? "Claim offers from Deals and they will wait here until you check out."
+                  : "Switch filter to see the vouchers you do have."
+              }
+              actionLabel={activeFilter === "all" ? "Browse deals" : undefined}
+              onAction={
+                activeFilter === "all"
+                  ? () => router.push("/(root)/screens/deals" as any)
+                  : undefined
+              }
+            />
+          ) : (
             <>
-              <AccountFilterChips
-                options={filters}
-                activeKey={activeFilter}
-                onChange={setActiveFilter}
-              />
+              {pagedVouchers.items.map((voucher) => {
+                const meta = statusMeta[voucher.status];
+                const isActive = voucher.status === "active";
+                const isSelected = checkoutVoucherCode === voucher.code;
 
-              {filteredVouchers.length === 0 ? (
-                <AccountEmptyState
-                  icon="ticket-outline"
-                  title="No promotions here yet"
-                  message="Claimed store offers and active ODOS promos will show up here."
-                />
-              ) : (
-                filteredVouchers.map((voucher) => {
-                  const meta = statusMeta[voucher.status];
-                  const isActive = voucher.status === "active";
-                  const isSelected = checkoutVoucherCode === voucher.code;
-
-                  return (
-                    <AccountListCard key={voucher.id}>
+                return (
+                  // A spent or lapsed voucher stays readable but recedes, so
+                  // the ones you can actually use carry the page.
+                  <AccountListCard key={voucher.id} style={isActive ? null : styles.spentCard}>
                       <View style={styles.cardTop}>
                         <View style={styles.storeBadge}>
                           <Ionicons
@@ -310,17 +335,20 @@ export default function VouchersScreen() {
                           ) : null}
                         </View>
                       </View>
-                    </AccountListCard>
-                  );
-                })
-              )}
+                  </AccountListCard>
+                );
+              })}
+              <AccountShowMore
+                remaining={pagedVouchers.remaining}
+                total={pagedVouchers.total}
+                nextPageSize={pagedVouchers.nextPageSize}
+                isExpanded={pagedVouchers.isExpanded}
+                onShowMore={pagedVouchers.showMore}
+                onShowAll={pagedVouchers.showAll}
+                onCollapse={pagedVouchers.collapse}
+                noun="voucher"
+              />
             </>
-          ) : (
-            <AccountEmptyState
-              icon="card-outline"
-              title="Gift cards are next"
-              message="ODOS gift cards will live here as stored value, separate from discount promotions."
-            />
           )}
         </ScrollView>
       )}
@@ -330,6 +358,9 @@ export default function VouchersScreen() {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    spentCard: {
+      opacity: 0.6,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.screen,

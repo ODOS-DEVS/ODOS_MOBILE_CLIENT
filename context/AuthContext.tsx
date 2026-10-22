@@ -11,6 +11,9 @@ import {
   type VendorStatus,
 } from "@/types/vendor";
 import * as SecureStore from "expo-secure-store";
+
+import { clearFetchCache } from "@/utils/fetchCache";
+import { clearLoyaltyCache } from "@/utils/loyaltyCache";
 import { router } from "expo-router";
 import { Alert, AppState } from "react-native";
 import React, {
@@ -879,6 +882,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       accessTokenRef.current = null;
       setAccessToken(null);
       setUser(null);
+      // The response cache is keyed by URL only, so it has to go with the
+      // session — otherwise the next account signed in on this device can be
+      // served this one's data from memory.
+      clearFetchCache();
+      clearLoyaltyCache();
 
       if (showBlockedAlert && !blockedAlertShownRef.current) {
         blockedAlertShownRef.current = true;

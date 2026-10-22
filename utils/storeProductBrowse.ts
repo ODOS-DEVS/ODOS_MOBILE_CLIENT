@@ -409,3 +409,119 @@ export function pickStoreLandingProducts(products: CatalogProductItem[], storeId
     preview: ranked.slice(LANDING_FEATURED_COUNT, LANDING_FEATURED_COUNT + LANDING_PREVIEW_COUNT),
   };
 }
+
+
+/** Labels for the fixed filter groups. The sheet and the active-filter pills
+ * both read these so a chip and its pill can never disagree. */
+export const STORE_SORT_OPTIONS: { value: StoreProductSortMode; label: string }[] = [
+  { value: "relevance", label: "Best match" },
+  { value: "newest", label: "Newest" },
+  { value: "price_low", label: "Price: low to high" },
+  { value: "price_high", label: "Price: high to low" },
+  { value: "rating", label: "Top rated" },
+];
+
+export const STORE_MODE_OPTIONS: { value: StoreProductBrowseMode; label: string }[] = [
+  { value: "all", label: "All items" },
+  { value: "flash-sale", label: "Flash deals" },
+  { value: "deals", label: "On sale" },
+];
+
+export const STORE_PRICE_OPTIONS: { value: StoreProductPriceRange; label: string }[] = [
+  { value: "all", label: "Any price" },
+  { value: "under_100", label: "Under \u20b5100" },
+  { value: "100_250", label: "\u20b5100\u2013250" },
+  { value: "250_500", label: "\u20b5250\u2013500" },
+  { value: "500_plus", label: "\u20b5500+" },
+];
+
+export function formatStoreSortLabel(sort: StoreProductSortMode) {
+  return STORE_SORT_OPTIONS.find((option) => option.value === sort)?.label ?? "Best match";
+}
+
+/** Which filter a pill removes, so the screen can clear exactly one. */
+export type ActiveStoreFilterKind =
+  | "mode"
+  | "sort"
+  | "price"
+  | "category"
+  | "subcategory"
+  | "audience"
+  | "section";
+
+export type ActiveStoreFilter = {
+  kind: ActiveStoreFilterKind;
+  label: string;
+};
+
+/**
+ * The applied filters, as removable pills.
+ *
+ * A browse screen with six filter dimensions hidden behind a sheet leaves
+ * people unable to see why a result set is small. Listing what is applied —
+ * and letting any one be lifted without reopening the sheet — is what keeps
+ * that from feeling arbitrary.
+ */
+export function describeActiveStoreFilters({
+  mode,
+  sort,
+  priceRange,
+  categorySlug,
+  subcategorySlug,
+  audienceSlug,
+  sectionTitle,
+  audienceLabel,
+  categories,
+  subcategories,
+}: {
+  mode: StoreProductBrowseMode;
+  sort: StoreProductSortMode;
+  priceRange: StoreProductPriceRange;
+  categorySlug: string;
+  subcategorySlug: string;
+  audienceSlug: string;
+  sectionTitle?: string | null;
+  audienceLabel?: string | null;
+  categories: StoreBrowseFilterOption[];
+  subcategories: StoreBrowseFilterOption[];
+}): ActiveStoreFilter[] {
+  const pills: ActiveStoreFilter[] = [];
+
+  if (sectionTitle) {
+    pills.push({ kind: "section", label: sectionTitle });
+  }
+  if (mode !== "all") {
+    pills.push({
+      kind: "mode",
+      label: STORE_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode,
+    });
+  }
+  if (audienceSlug) {
+    pills.push({ kind: "audience", label: audienceLabel || audienceSlug });
+  }
+  if (categorySlug) {
+    pills.push({
+      kind: "category",
+      label: categories.find((option) => option.key === categorySlug)?.label ?? categorySlug,
+    });
+  }
+  if (subcategorySlug) {
+    pills.push({
+      kind: "subcategory",
+      label:
+        subcategories.find((option) => option.key === subcategorySlug)?.label ?? subcategorySlug,
+    });
+  }
+  if (priceRange !== "all") {
+    pills.push({
+      kind: "price",
+      label:
+        STORE_PRICE_OPTIONS.find((option) => option.value === priceRange)?.label ?? priceRange,
+    });
+  }
+  if (sort !== "relevance") {
+    pills.push({ kind: "sort", label: formatStoreSortLabel(sort) });
+  }
+
+  return pills;
+}

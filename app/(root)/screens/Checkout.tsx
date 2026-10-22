@@ -6,6 +6,7 @@ import CheckoutProcessingOverlay, {
 } from "@/components/checkout/CheckoutProcessingOverlay";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import CommerceImage from "@/components/media/CommerceImage";
+import { GuideHintLink } from "@/components/help/GuideUi";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import DeliveryPackageBreakdown from "@/components/delivery/DeliveryPackageBreakdown";
 import {
@@ -582,7 +583,17 @@ export default function CheckoutScreen() {
       );
 
       if (checkoutResult.type === "success" && checkoutResult.url) {
-        routeToPaymentReturn(normalizeRouteParamsFromUrl(checkoutResult.url));
+        // The redirect's own params win, but the session's reference backfills
+        // them. Whether a gateway echoes a reference back on redirect is its
+        // choice, not ours -- KutanaPay is handed no per-checkout return URL,
+        // so a redirect configured in its dashboard arrives bare. Without this
+        // fallback the return screen has nothing to verify and tells a customer
+        // who just paid that we couldn't confirm it.
+        routeToPaymentReturn({
+          orderId: checkoutSession.order_id,
+          reference: checkoutSession.reference,
+          ...normalizeRouteParamsFromUrl(checkoutResult.url),
+        });
         return;
       }
 
@@ -929,6 +940,11 @@ export default function CheckoutScreen() {
                 onSelectWallet={() => setCheckoutPaymentId(WALLET_CHECKOUT_PAYMENT_ID)}
                 onSelectMethod={(id) => setCheckoutPaymentId(id)}
                 onManagePayments={openPaymentScreen}
+              />
+              <GuideHintLink
+                slug="paying-on-odos"
+                label="Wallet, card or MoMo — which to pick"
+                style={{ marginTop: rV(12) }}
               />
             </AccountSectionCard>
 

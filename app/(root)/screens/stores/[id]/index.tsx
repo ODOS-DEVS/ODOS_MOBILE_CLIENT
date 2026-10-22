@@ -2,9 +2,9 @@ import VerifiedSeal from "@/components/badges/VerifiedSeal";
 import CommerceImage from "@/components/media/CommerceImage";
 import { StoreProfileSkeleton } from "@/components/loaders/CommerceSkeletons";
 import StoreDealsShowcase from "@/components/store/StoreDealsShowcase";
+import StoreCategoriesShowcase from "@/components/store/StoreCategoriesShowcase";
 import StoreSectionsShowcase from "@/components/store/StoreSectionsShowcase";
 import StoreExploreBar from "@/components/store/StoreExploreBar";
-import StoreFeaturedShowcase from "@/components/store/StoreFeaturedShowcase";
 import StoreInfoPanel from "@/components/store/StoreInfoPanel";
 import StoreVouchersStrip from "@/components/store/StoreVouchersStrip";
 import AssistantEntryButton from "@/components/assistant/AssistantEntryButton";
@@ -367,21 +367,40 @@ const StoreLandingScreen = () => {
             />
           </View>
 
-          <StoreSectionsShowcase
-            sections={storeSections}
-            storeId={storeId}
-            horizontalPadding={horizontalPadding}
-          />
+          {/*
+            Two ways into the same catalogue, in the order a shopper thinks.
 
-          <StoreFeaturedShowcase
+            Categories first, because "do you sell fridges?" comes before "what
+            has this shop put on its front shelf?" — the vendor's own
+            arrangement is interesting once you already know the shop stocks
+            your kind of thing.
+
+            Both shelves hide themselves when empty, so a single-line shop with
+            no sections sees neither and the page stays as short as it should.
+          */}
+          <StoreCategoriesShowcase
             products={storeProducts}
             storeId={storeId}
             storeTitle={store.title}
             horizontalPadding={horizontalPadding}
-            productsLoading={productsLoading}
-            hasMoreProducts={hasMoreStoreProducts}
-            onBrowseAll={openStoreProducts}
           />
+
+          <StoreSectionsShowcase
+            sections={storeSections}
+            storeId={storeId}
+            storeTitle={store.title}
+            horizontalPadding={horizontalPadding}
+          />
+
+          {/*
+            The featured rail is gone.
+
+            With categories and shelves above it, it was a third rail of the
+            same products chosen by a different rule the shopper cannot see —
+            and unlike those two it led nowhere in particular. The explore bar
+            below already owns "show me everything", so featured sat between
+            two better answers without being either.
+          */}
         </View>
       </AnimatedScrollView>
 

@@ -25,12 +25,19 @@ export default function StoreProductsScreen() {
         ? params.imageBanner[0]
         : image;
 
+  const readParam = (key: string) => {
+    const value = params[key];
+    return typeof value === "string" ? value : Array.isArray(value) ? value[0] : "";
+  };
+
   return (
     <StoreProductsBrowseScreen
       storeId={storeId}
       fallbackTitle={title}
       fallbackImage={image}
       fallbackImageBanner={imageBanner}
+      initialSectionId={readParam("sectionId")}
+      initialCategorySlug={readParam("categorySlug")}
     />
   );
 }

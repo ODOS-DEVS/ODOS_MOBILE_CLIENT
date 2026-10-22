@@ -56,8 +56,6 @@ export default function VendorProductsScreen() {
   return (
     <VendorScreenShell title="My Products" rightNode={addButton}>
       <VendorProductsList
-        introTitle="Catalog control"
-        introSubtitle="Hide, relist, adjust stock, or remove products without opening the full editor."
         contentPaddingBottom={insets.bottom + rV(28)}
       />
     </VendorScreenShell>

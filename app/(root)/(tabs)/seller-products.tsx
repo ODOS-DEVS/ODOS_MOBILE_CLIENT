@@ -76,8 +76,6 @@ export default function SellerProductsTab() {
       rightNode={addButton}
     >
       <VendorProductsList
-        introTitle="Catalog"
-        introSubtitle="Publish, hide, and restock products without leaving Seller Center."
         contentPaddingBottom={tabBarInset}
       />
     </VendorScreenShell>

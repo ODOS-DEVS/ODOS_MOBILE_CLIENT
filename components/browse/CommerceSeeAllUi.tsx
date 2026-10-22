@@ -1,10 +1,12 @@
 import { SearchBar } from "@/components/SearchBar";
 import { useTheme } from "@/context/ThemeContext";
 import { useCommerceSeeAllUiStyles } from "@/styles/themedBrowseStyles";
-import { rMS } from "@/styles/responsive";
+import Fonts from "@/constants/Fonts";
+import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -237,3 +239,69 @@ export function CommerceSeeAllEmptyState({
 }
 
 export { useCommerceSeeAllScreenStyles } from "@/styles/themedBrowseStyles";
+
+
+/**
+ * The footer of an infinite grid: a spinner while more rows are still to come,
+ * and a quiet end-of-list marker once they are not.
+ *
+ * Having both matters — a list that simply stops leaves you wondering whether
+ * it is still loading, and a spinner that never resolves does the same.
+ */
+export function CommerceSeeAllListFooter({
+  hasMore,
+  shownCount,
+  totalCount,
+  noun,
+}: {
+  hasMore: boolean;
+  shownCount: number;
+  totalCount: number;
+  /** Plural noun for the end marker, e.g. "stores". */
+  noun: string;
+}) {
+  const { colors } = useTheme();
+
+  if (totalCount === 0) {
+    return null;
+  }
+
+  if (hasMore) {
+    return (
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: rS(9),
+          paddingVertical: rV(22),
+        }}
+      >
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text
+          style={{
+            fontFamily: Fonts.title,
+            fontSize: rMS(12),
+            color: colors.textMuted,
+          }}
+        >
+          Loading more…
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ alignItems: "center", paddingVertical: rV(22) }}>
+      <Text
+        style={{
+          fontFamily: Fonts.title,
+          fontSize: rMS(11.5),
+          color: colors.textMuted,
+        }}
+      >
+        {`That's all ${totalCount} ${noun}`}
+      </Text>
+    </View>
+  );
+}

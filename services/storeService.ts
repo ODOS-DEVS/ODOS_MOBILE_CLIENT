@@ -389,11 +389,49 @@ export async function updateVendorStore(
   return mapStore(payload);
 }
 
-export async function fetchVendorProducts(session: VendorSessionContext) {
+/**
+ * Server-side paging for the vendor lists.
+ *
+ * `/vendor/products` and `/vendor/orders` have accepted `q`, `limit` and
+ * `offset` all along — the app simply never sent them and pulled the whole
+ * catalogue on every focus. A vendor with a few hundred listings paid for all
+ * of it, every time, before a single row appeared.
+ *
+ * `q` goes to the server rather than filtering in memory on purpose: once a
+ * list is paged, filtering locally would only ever search the rows already
+ * downloaded, so a product on page 7 would be invisible to its own name.
+ */
+export type VendorListPage = {
+  q?: string;
+  limit?: number;
+  offset?: number;
+};
+
+function buildVendorListQuery({ q, limit, offset }: VendorListPage = {}) {
+  const params = new URLSearchParams();
+  const needle = q?.trim();
+  if (needle) {
+    params.set("q", needle);
+  }
+  if (typeof limit === "number") {
+    params.set("limit", String(limit));
+  }
+  if (typeof offset === "number") {
+    params.set("offset", String(offset));
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function fetchVendorProducts(
+  session: VendorSessionContext,
+  page: VendorListPage = {},
+) {
   const accessToken = requireAccessToken(session);
-  const response = await fetch(`${API_BASE_URL}/vendor/products`, {
-    headers: buildHeaders(accessToken),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products${buildVendorListQuery(page)}`,
+    { headers: buildHeaders(accessToken) },
+  );
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response));
@@ -523,11 +561,15 @@ export async function updateVendorProduct(
   return mapProduct(payload);
 }
 
-export async function fetchVendorOrders(session: VendorSessionContext) {
+export async function fetchVendorOrders(
+  session: VendorSessionContext,
+  page: VendorListPage = {},
+) {
   const accessToken = requireAccessToken(session);
-  const response = await fetch(`${API_BASE_URL}/vendor/orders`, {
-    headers: buildHeaders(accessToken),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/orders${buildVendorListQuery(page)}`,
+    { headers: buildHeaders(accessToken) },
+  );
 
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response));
@@ -815,6 +857,128 @@ export async function fetchVendorProductInventoryMovements(
       }),
     ) ?? []
   );
+}
+
+export type VendorInventoryFeedEntry = {
+  id: string;
+  productId: string;
+  productTitle: string;
+  delta: number;
+  stockAfter: number;
+  reason: string;
+  note?: string | null;
+  createdAt: string;
+};
+
+type VendorInventoryFeedApi = {
+  id?: string;
+  product_id?: string;
+  product_title?: string;
+  delta?: number | null;
+  stock_after?: number | null;
+  reason?: string | null;
+  note?: string | null;
+  created_at?: string;
+};
+
+/**
+ * Recent stock movements across the whole catalog.
+ *
+ * The per-product history needs the vendor to already suspect a line. This is
+ * the one they open when stock is simply wrong and they do not yet know which
+ * product to blame.
+ */
+export async function fetchVendorInventoryFeed(
+  session: VendorSessionContext,
+  options?: { limit?: number; offset?: number },
+) {
+  const accessToken = requireAccessToken(session);
+  const params = new URLSearchParams();
+  if (options?.limit != null) params.set("limit", String(options.limit));
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/inventory-movements${query ? `?${query}` : ""}`,
+    { headers: buildHeaders(accessToken) },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorInventoryFeedApi[]>(response);
+  return (
+    payload?.map(
+      (row): VendorInventoryFeedEntry => ({
+        id: String(row.id ?? ""),
+        productId: row.product_id ?? "",
+        productTitle: row.product_title ?? row.product_id ?? "Product",
+        delta: row.delta ?? 0,
+        stockAfter: row.stock_after ?? 0,
+        reason: row.reason ?? "manual",
+        note: row.note,
+        createdAt: row.created_at ?? new Date().toISOString(),
+      }),
+    ) ?? []
+  );
+}
+
+export type VendorProductPerformance = {
+  productId: string;
+  unitsSold: number;
+  grossSales: number;
+  orderCount: number;
+  lastSoldAt?: string | null;
+};
+
+type VendorProductPerformanceApi = {
+  product_id?: string;
+  units_sold?: number | null;
+  gross_sales?: number | null;
+  order_count?: number | null;
+  last_sold_at?: string | null;
+};
+
+/**
+ * Sales performance per SKU, keyed by product id.
+ *
+ * Keyed rather than listed because every caller wants the same thing — "how is
+ * *this* row doing?" while rendering a list. A product missing from the result
+ * sold nothing in the window; that is not an error.
+ */
+export async function fetchVendorProductPerformance(
+  session: VendorSessionContext,
+  options?: { days?: number },
+) {
+  const accessToken = requireAccessToken(session);
+  const params = new URLSearchParams();
+  if (options?.days != null) params.set("days", String(options.days));
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/vendor/products/performance${query ? `?${query}` : ""}`,
+    { headers: buildHeaders(accessToken) },
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const payload = await parseResponse<VendorProductPerformanceApi[]>(response);
+  const byProductId: Record<string, VendorProductPerformance> = {};
+  for (const row of payload ?? []) {
+    const productId = row.product_id ? String(row.product_id) : "";
+    if (!productId) {
+      continue;
+    }
+    byProductId[productId] = {
+      productId,
+      unitsSold: row.units_sold ?? 0,
+      grossSales: row.gross_sales ?? 0,
+      orderCount: row.order_count ?? 0,
+      lastSoldAt: row.last_sold_at,
+    };
+  }
+  return byProductId;
 }
 
 export type VendorCampaignOptIn = {

@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/utils/apiClient';
+import { useAuth } from '@/context/AuthContext';
+import {
+  isLoyaltyCacheFresh,
+  readLoyaltyCache,
+  writeLoyaltyCache,
+} from '@/utils/loyaltyCache';
+
+// Re-exported so existing callers keep working; the implementation moved to
+// utils/loyaltyCache to break an AuthContext require cycle.
+export { clearLoyaltyCache } from '@/utils/loyaltyCache';
 
 export interface LoyaltyAccount {
   account_id: string;
@@ -37,27 +47,53 @@ interface RedeemResponse {
   success: boolean;
   message?: string;
   account?: LoyaltyAccount;
-  discount_amount_ghs?: number;
+  /**
+   * Cash moved into the ODOS wallet by this redemption.
+   *
+   * Replaces `discount_amount_ghs`, which was never real: the old endpoint
+   * burned the points and reported a discount no checkout code applied. Points
+   * now become spendable wallet balance, so the response carries the credit
+   * and the resulting balance.
+   */
+  cash_value_ghs?: number;
+  points_redeemed?: number;
+  wallet_balance?: number;
 }
 
-export function useLoyalty() {
-  const [account, setAccount] = useState<LoyaltyAccount | null>(null);
+export function useLoyalty({ withHistory = false }: { withHistory?: boolean } = {}) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
+  // Seed from cache so a revisit paints the real value on the first frame.
+  const [account, setAccount] = useState<LoyaltyAccount | null>(
+    () => readLoyaltyCache(userId)?.account ?? null,
+  );
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !readLoyaltyCache(userId));
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAccount = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const account = await apiClient.get<LoyaltyAccount>('/loyalty/account');
-      setAccount(account);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch loyalty account');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchAccount = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      const entry = readLoyaltyCache(userId);
+      if (!force && isLoyaltyCacheFresh(entry)) {
+        setAccount(entry!.account);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setError(null);
+        const next = await apiClient.get<LoyaltyAccount>('/loyalty/account');
+        writeLoyaltyCache(userId, next);
+        setAccount(next);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch loyalty account');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId],
+  );
 
   const fetchTransactionHistory = useCallback(async (limit = 20, offset = 0) => {
     try {
@@ -86,7 +122,10 @@ export function useLoyalty() {
         if (response.account) setAccount(response.account);
         return {
           success: true,
-          discountAmount: response.discount_amount_ghs,
+          cashValue: response.cash_value_ghs,
+          pointsRedeemed: response.points_redeemed,
+          walletBalance: response.wallet_balance,
+          message: response.message,
         };
       } else {
         return {
@@ -123,14 +162,18 @@ export function useLoyalty() {
   }, [account]);
 
   useEffect(() => {
-    fetchAccount();
-    fetchTransactionHistory();
-  }, [fetchAccount, fetchTransactionHistory]);
+    void fetchAccount();
+    if (withHistory) {
+      void fetchTransactionHistory();
+    }
+  }, [fetchAccount, fetchTransactionHistory, withHistory]);
 
   return {
     account,
     transactions,
     loading,
+    /** False only while the first load for this user is still in flight. */
+    hasLoaded: !loading,
     error,
     fetchAccount,
     fetchTransactionHistory,

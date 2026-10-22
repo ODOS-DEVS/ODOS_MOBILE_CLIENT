@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -643,3 +644,107 @@ export function AccountChoiceOption({
   );
 }
 
+
+/**
+ * The footer for a progressively disclosed list — see `usePagedList`.
+ *
+ * Renders nothing while everything already fits, so a short list looks
+ * exactly as it did before pagination existed. The count is spelled out
+ * ("12 more") rather than left as a bare "See more" so the reader can judge
+ * whether it is worth the tap.
+ */
+export function AccountShowMore({
+  remaining,
+  total,
+  nextPageSize,
+  isExpanded,
+  onShowMore,
+  onShowAll,
+  onCollapse,
+  noun = "item",
+}: {
+  remaining: number;
+  total: number;
+  nextPageSize: number;
+  isExpanded: boolean;
+  onShowMore: () => void;
+  onShowAll?: () => void;
+  onCollapse?: () => void;
+  /** Singular noun for the count label, e.g. "request", "voucher". */
+  noun?: string;
+}) {
+  const { colors } = useAccountUiStyles();
+
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          gap: rV(8),
+          marginTop: rV(2),
+        },
+        button: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: rS(8),
+          paddingVertical: rV(13),
+          borderRadius: rMS(16),
+          backgroundColor: colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        },
+        label: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(13),
+          color: colors.text,
+        },
+        secondaryRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: rS(16),
+        },
+        secondaryLabel: {
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(12),
+          color: colors.primary,
+          paddingVertical: rV(4),
+        },
+      }),
+    [colors],
+  );
+
+  if (remaining <= 0 && !isExpanded) {
+    return null;
+  }
+
+  const plural = remaining === 1 ? noun : `${noun}s`;
+
+  return (
+    <View style={styles.wrap}>
+      {remaining > 0 ? (
+        <TouchableOpacity style={styles.button} onPress={onShowMore} activeOpacity={0.86}>
+          <Text style={styles.label}>
+            Show {nextPageSize} more
+          </Text>
+          <Ionicons name="chevron-down" size={rMS(16)} color={colors.textMuted} />
+        </TouchableOpacity>
+      ) : null}
+
+      <View style={styles.secondaryRow}>
+        {remaining > nextPageSize && onShowAll ? (
+          <TouchableOpacity onPress={onShowAll} activeOpacity={0.75}>
+            <Text style={styles.secondaryLabel}>
+              Show all {total} {plural}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {isExpanded && onCollapse ? (
+          <TouchableOpacity onPress={onCollapse} activeOpacity={0.75}>
+            <Text style={styles.secondaryLabel}>Show less</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+}

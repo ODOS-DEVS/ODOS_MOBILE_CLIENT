@@ -30,8 +30,6 @@ export default function VendorOrdersScreen() {
   return (
     <VendorScreenShell title="Orders">
       <VendorOrdersList
-        introTitle="Order command center"
-        introSubtitle="New orders first, with wait times and full customer details one tap away."
         contentPaddingBottom={insets.bottom + rV(28)}
         tabParam={tabParam}
       />

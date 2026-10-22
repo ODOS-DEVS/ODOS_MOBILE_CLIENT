@@ -10,7 +10,8 @@
     "lint": "expo lint",
     "generate-icons": "bash ./scripts/generate-app-icons.sh",
     "validate-android-assets": "bash ./scripts/validate-android-assets.sh",
-    "test:store-browse": "npx tsx scripts/test-store-product-browse.ts"
+    "test:store-browse": "npx tsx scripts/test-store-product-browse.ts",
+    "export:guide-catalog": "npx tsx scripts/export-guide-catalog.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -47,6 +48,7 @@
     "expo-store-review": "~57.0.3",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
+    "expo-video": "~57.0.5",
     "expo-web-browser": "~57.0.3",
     "lucide-react-native": "^0.562.0",
     "nativewind": "^4.2.1",

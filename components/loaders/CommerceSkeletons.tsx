@@ -117,13 +117,49 @@ export const MarketsRowSkeleton = () => <SectionSkeleton variant="strip" />;
 export const PromoBannerSkeleton = () => <SectionSkeleton variant="banner" />;
 export const SectionTitleSkeleton = () => <SkeletonLine width="32%" height={rV(12)} />;
 
-export function CategoryListSkeleton({ count = 3 }: { count?: number }) {
-  const safeCount = Math.min(count, 3);
+/**
+ * Mirrors `CategoryCollectionTile` in a two-column grid — the shape the
+ * category tab actually renders.
+ *
+ * It used to be three stacked full-width rows, so the placeholder and the real
+ * content had completely different geometry and the screen visibly jumped when
+ * data landed. The numbers below are read off `CategoryUi`'s `collectionTile`
+ * styles; if that tile changes, change these with it.
+ */
+export function CategoryListSkeleton({ count = 6 }: { count?: number }) {
+  const { colors } = useTheme();
+  const { width } = Dimensions.get("window");
+  const cardWidth = gridCardWidth(width, 2, productCardGapX());
+
+  const tileStyle = useMemo(
+    () => ({
+      width: cardWidth,
+      borderRadius: rMS(20),
+      backgroundColor: colors.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: "hidden" as const,
+    }),
+    [cardWidth, colors],
+  );
 
   return (
-    <View style={styles.stackGap}>
-      {Array.from({ length: safeCount }).map((_, index) => (
-        <SkeletonListRow key={`category-skeleton-${index}`} delay={index * 80} />
+    <View style={styles.categoryGrid}>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={`category-skeleton-${index}`} style={tileStyle}>
+          {/* collectionImage: full width, rV(108) */}
+          <SkeletonTile
+            width="100%"
+            height={rV(108)}
+            radius={0}
+            delay={index * 60}
+          />
+          {/* collectionBody: rS(12) / rV(12) padding, rV(6) gap, title + meta */}
+          <View style={styles.categoryTileBody}>
+            <SkeletonLine width="78%" height={rV(11)} delay={index * 60 + 40} />
+            <SkeletonLine width="44%" height={rV(9)} delay={index * 60 + 70} />
+          </View>
+        </View>
       ))}
     </View>
   );
@@ -361,6 +397,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: productCardGapX(),
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    columnGap: productCardGapX(),
+    rowGap: rV(12),
+  },
+  categoryTileBody: {
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(12),
+    gap: rV(6),
   },
   detailContainer: {
     paddingBottom: rV(72),

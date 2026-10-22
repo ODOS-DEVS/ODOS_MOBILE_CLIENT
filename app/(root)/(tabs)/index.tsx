@@ -25,6 +25,7 @@ import { useCatalogProducts } from "@/hooks/useCatalog";
 import { useNewProducts } from "@/hooks/useNewProducts";
 import { useForYouRecommendations } from "@/hooks/useRecommendations";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
+import { useFocusRevalidate } from "@/hooks/useLiveRefresh";
 import { usePromoBanners } from "@/hooks/usePromoBanners";
 import { useMerchandisingCampaigns } from "@/hooks/useMerchandisingCampaigns";
 import { dedupeProductsById, isDealProduct } from "@/utils/deals";
@@ -36,6 +37,8 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const HOME_RECOMMENDATION_COUNT = 3;
 
 type HomeSectionProps = {
   title: string;
@@ -239,18 +242,16 @@ const HomeScreen = () => {
     refreshStores,
   ]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void refreshPromoBanners();
-    }, [refreshPromoBanners]),
-  );
+  const revalidatePromoBanners = useFocusRevalidate(refreshPromoBanners);
+  useFocusEffect(revalidatePromoBanners);
 
   const handleOpenDeals = useCallback(() => {
     router.push("../screens/deals");
   }, []);
 
+  // Three on the home feed. The full set lives behind "See all".
   const homeRecommendationProducts = useMemo(
-    () => recommendationProducts.slice(0, 4),
+    () => recommendationProducts.slice(0, HOME_RECOMMENDATION_COUNT),
     [recommendationProducts],
   );
 

@@ -1,4 +1,3 @@
-import VerifiedSeal from "@/components/badges/VerifiedSeal";
 import Fonts from "@/constants/Fonts";
 import { useTheme } from "@/context/ThemeContext";
 import type { StoreItem } from "@/hooks/useCommerce";
@@ -18,7 +17,16 @@ import {
   type LayoutChangeEvent,
 } from "react-native";
 
-export const STOREFRONT_COVER_HEIGHT = rV(280);
+/**
+ * Cover height.
+ *
+ * Was rV(280), which pushed the store name, its rating and every action below
+ * the fold on a small phone — the shopper arrived at a picture and had to
+ * scroll to learn where they were. Bolt Food and Deliveroo both sit nearer a
+ * fifth of the screen for the same reason: the cover sets the mood, the sheet
+ * under it does the work.
+ */
+export const STOREFRONT_COVER_HEIGHT = rV(190);
 
 type StorefrontHeroProps = {
   store: StoreItem;
@@ -197,55 +205,28 @@ export function StorefrontHero({
       </View>
 
       <View style={[styles.identityBlock, { backgroundColor: colors.screen }]}>
-        <View style={styles.logoFloat}>
-          <View
-            style={[
-              styles.logoRing,
-              { borderColor: colors.screen, shadowColor: colors.shadow },
-            ]}
-          >
-            {store.image ? (
-              <CommerceImage
-                source={store.image}
-                style={styles.logoImage}
-                contentFit="cover"
-                trackingId={`storefront-logo-${store.id}`}
-                recyclingKey={store.imageKey || store.imageUrl || store.id}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.logoFallback,
-                  { backgroundColor: colors.surfaceMuted },
-                ]}
-              >
-                <Ionicons
-                  name="storefront-outline"
-                  size={rS(28)}
-                  color={colors.iconMuted}
-                />
-              </View>
-            )}
-          </View>
-          {isVerified ? (
-            <VerifiedSeal size={rS(24)} style={styles.verifiedBadge} />
-          ) : null}
-        </View>
+        {/*
+          The logo medallion is gone on purpose.
 
+          The cover and the logo were two photographs of the same shop stacked
+          on top of each other, and the medallion punched a hole through the
+          one that was actually chosen as artwork. Bolt Food shows a single
+          image for the same reason: one picture reads as a place, two read as
+          a template with slots.
+
+          Verification follows the name instead, which is where trust belongs —
+          attached to the shop's identity rather than floating over its photo.
+        */}
         <View
           ref={nameAnchorRef}
           collapsable={false}
           onLayout={handleNameLayout}
         >
-          <Animated.Text
-            style={[
-              styles.storeTitle,
-              { color: colors.text, opacity: inlineNameOpacity },
-            ]}
-            numberOfLines={2}
-          >
-            {store.title}
-          </Animated.Text>
+          <Animated.View style={{ opacity: inlineNameOpacity }}>
+            <Text style={[styles.storeTitle, { color: colors.text }]} numberOfLines={2}>
+              {store.title}
+            </Text>
+          </Animated.View>
         </View>
 
         {trustLine ? (
@@ -266,6 +247,25 @@ export function StorefrontHero({
             {store.description}
           </Text>
         ) : null}
+
+        {/*
+          The three things a shopper does *to* a shop, rather than inside it.
+
+          They were scattered: share hid in the cover's glass bar, chat lived
+          further down the page, and directions were only reachable from the
+          info panel. Collecting them under the name makes the sheet a header
+          for the shop rather than a caption for its photo.
+
+          Each is gated on being possible — a shop with no coordinates gets no
+          Directions button rather than one that apologises when tapped.
+        */}
+        <View style={styles.quickActions}>
+          <StorefrontQuickAction icon="chatbubble-ellipses-outline" label="Message" onPress={onChat} />
+          {onMap ? (
+            <StorefrontQuickAction icon="navigate-outline" label="Directions" onPress={onMap} />
+          ) : null}
+          <StorefrontQuickAction icon="share-social-outline" label="Share" onPress={onShare} />
+        </View>
 
         {productBadge ? (
           <View style={[styles.countChip, { backgroundColor: colors.pill }]}>
@@ -370,6 +370,34 @@ export function StorefrontSectionTitle({
   );
 }
 
+/** One quick action: icon over label, sized to share a row evenly. */
+function StorefrontQuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity activeOpacity={0.75} onPress={onPress} style={{ flex: 1 }}>
+      <View
+        style={[
+          styles.quickAction,
+          { borderColor: colors.cardBorder, backgroundColor: colors.surfaceSubtle },
+        ]}
+      >
+        <Ionicons name={icon} size={rMS(17)} color={colors.text} />
+        <Text style={[styles.quickActionLabel, { color: colors.text }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     // Deliberately not clipped: the cover has to be free to grow *above* its
@@ -414,43 +442,42 @@ const styles = StyleSheet.create({
   identityBlock: {
     alignItems: "center",
     paddingHorizontal: rS(24),
+    paddingTop: rS(18),
     paddingBottom: rS(8),
-    marginTop: -rS(52),
-  },
-  logoFloat: {
-    marginBottom: rS(14),
-  },
-  logoRing: {
-    width: rS(96),
-    height: rS(96),
-    borderRadius: rS(30),
-    borderWidth: 4,
-    overflow: "hidden",
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  logoImage: {
-    width: "100%",
-    height: "100%",
-  },
-  logoFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifiedBadge: {
-    position: "absolute",
-    right: -rS(2),
-    bottom: -rS(2),
+    // A small lift, so the sheet reads as sitting over the cover rather than
+    // butting against it. The old -52 existed only to host the logo; with the
+    // medallion gone, that much overlap would have eaten the artwork.
+    marginTop: -rS(20),
+    borderTopLeftRadius: rS(22),
+    borderTopRightRadius: rS(22),
   },
   storeTitle: {
     fontFamily: Fonts.black,
-    fontSize: rMS(26),
-    lineHeight: rMS(32),
+    fontSize: rMS(24),
+    lineHeight: rMS(30),
     letterSpacing: -0.6,
     textAlign: "center",
+  },
+  quickActions: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    justifyContent: "center",
+    gap: rS(9),
+    marginTop: rV(14),
+    alignSelf: "stretch",
+  },
+  quickAction: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rV(5),
+    paddingVertical: rV(10),
+    borderRadius: rMS(13),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  quickActionLabel: {
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(11.5),
   },
   trustLine: {
     marginTop: rS(8),
