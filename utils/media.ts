@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/constants/auth";
 import { resolveCatalogImage } from "@/constants/catalogImages";
+import { File } from "expo-file-system";
 
 function getApiOrigin() {
   try {
@@ -83,6 +84,23 @@ function inferFileName(uri: string, fallbackName: string) {
   return `${fallbackName}.${extension}`;
 }
 
+/**
+ * Attach a local image to a multipart upload.
+ *
+ * Appends an `expo-file-system` File rather than React Native's
+ * `{ uri, name, type }` file descriptor, because global `fetch` in this SDK is
+ * Expo's WinterCG implementation, not React Native's.
+ *
+ * That matters: winter fetch serialises multipart itself
+ * (expo/src/winter/fetch/convertFormData.ts). It accepts a part that is a
+ * Blob, or any object exposing `bytes()` — and rejects everything else with
+ * "Unsupported FormData implementation" / "Unsupported FormDataPart
+ * implementation". A `{ uri, name, type }` descriptor has no `bytes()`, so
+ * every image upload threw before a single byte left the device.
+ *
+ * `File` is constructed synchronously and only read when fetch serialises the
+ * body, so this stays a drop-in for the old synchronous call sites.
+ */
 export function appendImageToFormData(
   formData: FormData,
   fieldName: string,
@@ -93,9 +111,14 @@ export function appendImageToFormData(
     return;
   }
 
-  formData.append(fieldName, {
-    uri,
-    name: inferFileName(uri, fallbackName),
-    type: inferMimeType(uri),
-  } as any);
+  const file = new File(uri);
+  // The multipart filename and content type are read off the part, and File
+  // derives them from the path — which loses the caller's intended name for
+  // URIs like ImagePicker's opaque cache paths. Pin both explicitly.
+  Object.defineProperties(file, {
+    name: { value: inferFileName(uri, fallbackName), configurable: true },
+    type: { value: inferMimeType(uri), configurable: true },
+  });
+
+  formData.append(fieldName, file as unknown as Blob);
 }

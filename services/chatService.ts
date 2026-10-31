@@ -9,6 +9,7 @@ import type {
 } from "@/types/chat";
 import { resolveApiMediaUrl } from "@/utils/media";
 import * as SecureStore from "expo-secure-store";
+import { File } from "expo-file-system";
 
 type ChatThreadApi = {
   id: string;
@@ -260,11 +261,16 @@ export async function createChatMessage(
     formData.append("body", trimmedBody);
   }
   if (attachment) {
-    formData.append("attachment", {
-      uri: attachment.uri,
-      name: attachment.name,
-      type: attachment.type,
-    } as any);
+    // Same reason as utils/media.appendImageToFormData: global fetch is Expo's
+    // WinterCG implementation, which serialises multipart itself and rejects
+    // React Native's { uri, name, type } descriptor. It needs a part exposing
+    // bytes(), which expo-file-system's File provides.
+    const attachmentFile = new File(attachment.uri);
+    Object.defineProperties(attachmentFile, {
+      name: { value: attachment.name, configurable: true },
+      type: { value: attachment.type, configurable: true },
+    });
+    formData.append("attachment", attachmentFile as unknown as Blob);
     if (typeof attachment.durationSeconds === "number") {
       formData.append(
         "attachment_duration_seconds",
