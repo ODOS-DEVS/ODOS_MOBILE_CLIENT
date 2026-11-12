@@ -10,6 +10,7 @@ import {
   View,
   type StyleProp,
   type ViewStyle,
+  type TextInputInstance,
 } from "react-native";
 
 export const OTP_LENGTH = 6;
@@ -40,7 +41,7 @@ export default function OtpCodeInput({
   containerStyle,
 }: OtpCodeInputProps) {
   const { colors } = useTheme();
-  const inputRef = useRef<TextInput | null>(null);
+  const inputRef = useRef<TextInputInstance | null>(null);
   const joined = value.join("");
   const cellStyles = compact ? compactStyles : defaultStyles;
 

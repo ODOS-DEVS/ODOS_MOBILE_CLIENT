@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
   type LayoutChangeEvent,
+  type ViewInstance,
 } from "react-native";
 
 /**
@@ -34,7 +35,7 @@ type StorefrontHeroProps = {
   headerButtonTop: number;
   scrollY: Animated.Value;
   inlineNameOpacity: Animated.AnimatedInterpolation<number>;
-  nameAnchorRef: RefObject<View | null>;
+  nameAnchorRef: RefObject<ViewInstance | null>;
   onMeasureName: () => void;
   onBack: () => void;
   onShare: () => void;

@@ -545,13 +545,19 @@ export default function SearchScreen() {
             <Ionicons name="arrow-back" size={rMS(20)} color={colors.text} />
           </TouchableOpacity>
 
-          <SearchField
-            embedded
-            autoFocus
-            value={query}
-            onChangeText={setQuery}
-            placeholder="What are you looking for?"
-          />
+          {/* `embedded` sizes the field at width:100%, which is right in a
+              column but overflows here: this row also carries the back button,
+              so the field ran 40pt wider than the space it had. A flex parent
+              gives "100%" the correct box to measure against. */}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <SearchField
+              embedded
+              autoFocus
+              value={query}
+              onChangeText={setQuery}
+              placeholder="What are you looking for?"
+            />
+          </View>
         </View>
 
         <View style={styles.toolbar}>
@@ -632,7 +638,7 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.id}
             numColumns={numColumns}
             key={numColumns}
-            ListHeaderComponent={listHeader}
+            ListHeaderComponent={listHeader ?? undefined}
             onEndReached={() => void loadMore()}
             onEndReachedThreshold={0.45}
             ListFooterComponent={<CatalogScrollFooter isLoadingMore={isLoadingMore} />}
@@ -649,7 +655,7 @@ export default function SearchScreen() {
               showIdleDiscovery ||
               isLoadingProducts ||
               isLoadingMore ||
-              (Boolean(query.trim()) && hasMore) ? null : (
+              (Boolean(query.trim()) && hasMore) ? undefined : (
                 <View style={{ marginTop: rV(32) }}>
                   <CommerceEmptyState
                     icon="search-outline"
@@ -699,6 +705,8 @@ export default function SearchScreen() {
         onStoreChange={setSelectedStore}
         stores={filteredStores.map((s) => ({ id: s.id, title: s.title }))}
         onReset={clearFilters}
+        resultCount={filteredProducts.length}
+        activeFilterCount={filterCount}
       />
     </View>
   );

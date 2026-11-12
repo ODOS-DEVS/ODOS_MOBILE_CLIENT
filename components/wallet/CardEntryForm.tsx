@@ -22,7 +22,7 @@ import {
   Text,
   TextInput,
   View,
-  type TextInput as TextInputType,
+  type TextInputInstance,
 } from "react-native";
 
 type CardEntryFormProps = {
@@ -85,8 +85,8 @@ export default function CardEntryForm({
   onClearError,
 }: CardEntryFormProps) {
   const { colors } = useTheme();
-  const numberRef = useRef<TextInputType>(null);
-  const expiryRef = useRef<TextInputType>(null);
+  const numberRef = useRef<TextInputInstance>(null);
+  const expiryRef = useRef<TextInputInstance>(null);
 
   const brand = useMemo(() => detectCardBrand(values.cardNumber), [values.cardNumber]);
   const previewNumber = useMemo(

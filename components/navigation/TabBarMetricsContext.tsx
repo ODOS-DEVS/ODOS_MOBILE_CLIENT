@@ -1,4 +1,5 @@
-import React, { createContext, useContext, type ReactNode } from "react";
+import { useAppChromeStore } from "@/stores/appChromeStore";
+import React, { createContext, useContext, useEffect, type ReactNode } from "react";
 
 import { useTabBarMetrics, type TabBarMetrics } from "@/components/navigation/tabBarMetrics";
 
@@ -19,6 +20,14 @@ export function TabBarMetricsProvider({
   children,
 }: TabBarMetricsProviderProps) {
   const metrics = useTabBarMetrics(tabCount, bottomInset, pillIcons);
+
+  // Publish for overlays mounted above the root Stack, which cannot read this
+  // context. Reset on unmount so a pushed screen is not told a bar is there.
+  const setTabBarHeight = useAppChromeStore((state) => state.setTabBarHeight);
+  useEffect(() => {
+    setTabBarHeight(metrics.barTotalHeight);
+    return () => setTabBarHeight(0);
+  }, [metrics.barTotalHeight, setTabBarHeight]);
 
   return (
     <TabBarMetricsContext.Provider value={metrics}>

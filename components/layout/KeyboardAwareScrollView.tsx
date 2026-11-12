@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { Platform, ScrollView, type ScrollViewProps } from "react-native";
+import { Platform, ScrollView, type ScrollViewProps, type ScrollViewInstance } from "react-native";
 
 type KeyboardAwareScrollViewProps = ScrollViewProps & {
   /**
@@ -9,7 +9,7 @@ type KeyboardAwareScrollViewProps = ScrollViewProps & {
   enableAutomaticInsets?: boolean;
 };
 
-const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrollViewProps>(
+const KeyboardAwareScrollView = forwardRef<ScrollViewInstance, KeyboardAwareScrollViewProps>(
   function KeyboardAwareScrollView(
     {
       automaticallyAdjustKeyboardInsets,

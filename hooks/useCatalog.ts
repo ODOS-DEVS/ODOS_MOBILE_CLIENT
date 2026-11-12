@@ -354,6 +354,7 @@ export function useCatalogProducts({
   subcategory,
   storeId,
   maxAgeDays,
+  limit,
 }: {
   audience?: string;
   category?: string;
@@ -363,6 +364,12 @@ export function useCatalogProducts({
   subcategory?: string;
   storeId?: string;
   maxAgeDays?: number;
+  /**
+   * Cap the request. Home renders each rail as a short strip behind a
+   * "See all", so asking for the whole section downloads rows and image URLs
+   * for cards that will never be mounted.
+   */
+  limit?: number;
 }) {
   const productsUrl = useMemo(
     () =>
@@ -375,8 +382,19 @@ export function useCatalogProducts({
         subcategory,
         storeId,
         maxAgeDays,
+        limit,
       }),
-    [audience, category, flashEvent, maxAgeDays, placement, section, storeId, subcategory],
+    [
+      audience,
+      category,
+      flashEvent,
+      limit,
+      maxAgeDays,
+      placement,
+      section,
+      storeId,
+      subcategory,
+    ],
   );
   const staleTimeMs = useMemo(
     () => productsStaleTimeMs({ section, placement }),

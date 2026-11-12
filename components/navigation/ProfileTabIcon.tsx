@@ -2,6 +2,7 @@ import TabBarIconShell from "@/components/navigation/TabBarIconShell";
 import { useTabBarMetricsContext } from "@/components/navigation/TabBarMetricsContext";
 import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import { useChatInbox } from "@/hooks/useChatInbox";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -66,6 +67,9 @@ function ProfileAvatar({
 
 export default function ProfileTabIcon({ focused, sellOnly = false }: ProfileTabIconProps) {
   const { iconSize } = useTabBarMetricsContext();
+  // Above the sellOnly early return: hooks cannot be conditional, and the
+  // seller tab reads its own badge from useVendorQuickAccess anyway.
+  const { unreadCount } = useChatInbox();
   const avatarSize = Math.round(iconSize * 0.92);
 
   // Seller Center tabs use React Navigation labels. TabBarIconShell would
@@ -75,7 +79,10 @@ export default function ProfileTabIcon({ focused, sellOnly = false }: ProfileTab
   }
 
   return (
-    <TabBarIconShell focused={focused} title="Profile">
+    // Chats live under Profile, so the unread count belongs on this tab: it
+    // is the persistent signal between replies, while the launcher pill
+    // handles the moment one actually arrives.
+    <TabBarIconShell focused={focused} title="Profile" badgeCount={unreadCount}>
       <ProfileAvatar focused={focused} size={avatarSize} onPrimaryWhenFocused />
     </TabBarIconShell>
   );

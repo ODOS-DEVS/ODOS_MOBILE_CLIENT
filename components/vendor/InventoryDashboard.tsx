@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import React, { useState } from 'react';
 import {
   View,
@@ -42,7 +43,10 @@ export function InventoryDashboard({ storeId }: Props) {
     showMore: showMoreProducts,
     remaining: remainingProducts,
     hasMore: hasMoreProducts,
-  } = useVisibleCount(products.length, INVENTORY_PAGE_SIZE);  const [searchQuery, setSearchQuery] = useState('');
+  } = useVisibleCount(products.length, INVENTORY_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(showMoreProducts, {
+    enabled: hasMoreProducts,
+  });  const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingStock, setEditingStock] = useState('');
@@ -96,6 +100,7 @@ export function InventoryDashboard({ storeId }: Props) {
 
   return (
     <ScrollView
+      {...autoLoad}
       style={[styles.container, { backgroundColor: colors.screen }]}
       showsVerticalScrollIndicator={false}
       refreshControl={

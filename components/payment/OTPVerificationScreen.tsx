@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  type TextInputInstance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
@@ -43,7 +44,7 @@ export function OTPVerificationScreen({
   const [resendLoading, setResendLoading] = useState(false);
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const styles = useMemo(
     () =>

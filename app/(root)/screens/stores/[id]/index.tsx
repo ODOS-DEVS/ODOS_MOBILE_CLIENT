@@ -41,6 +41,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewInstance,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -55,8 +56,8 @@ const StoreLandingScreen = () => {
   );
   const [stickyActive, setStickyActive] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const contentRef = useRef<View>(null);
-  const nameAnchorRef = useRef<View>(null);
+  const contentRef = useRef<ViewInstance>(null);
+  const nameAnchorRef = useRef<ViewInstance>(null);
   const params = useLocalSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();

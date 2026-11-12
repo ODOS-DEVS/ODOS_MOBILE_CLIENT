@@ -1,8 +1,12 @@
 import type { BottomTabBarButtonProps } from "expo-router/build/react-navigation/bottom-tabs/types";
 // expo-router's own vendored copy — the same component its default tab button
 // renders, and the one the types above already come from. The standalone
-// @react-navigation/elements package is what SDK 56 refuses to load.
-import { PlatformPressable } from "expo-router/build/react-navigation/elements";
+// @react-navigation/elements package is what expo-router refuses to load.
+//
+// Imported via the package's `./react-navigation` export rather than a deep
+// `./build/...` path: SDK 58's exports map `./build/*` to `./build/*.d.ts`,
+// a file pattern that cannot resolve a directory's index.
+import { PlatformPressable } from "expo-router/react-navigation";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import { Platform, StyleSheet } from "react-native";

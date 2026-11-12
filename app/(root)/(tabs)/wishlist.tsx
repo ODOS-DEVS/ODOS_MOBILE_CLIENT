@@ -49,6 +49,7 @@ const WishlistScreen = () => {
           backgroundColor: colors.screen,
         },
         emptyWrap: {
+          flex: 1,
           paddingHorizontal: rS(16),
           paddingTop: rV(8),
         },
@@ -192,17 +193,15 @@ const WishlistScreen = () => {
         <WishlistGridSkeleton columns={columns} count={columns} />
       ) : isEmpty ? (
         <View style={[styles.emptyWrap, { paddingBottom: tabBarInset }]}>
+          {/* Signed out, syncing is the thing worth doing first: saves made
+              now live only on this device until the account catches them. */}
           <CommerceEmptyState
-            icon="heart-outline"
+            variant="quiet"
             title="Nothing saved yet"
             message="Tap the heart on any product to save it here for later."
-            primaryLabel="Discover products"
-            onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
-            secondaryLabel={user ? "Browse categories" : "Sign in to sync"}
-            onSecondaryPress={() =>
-              user
-                ? router.push("/(root)/(tabs)/category" as any)
-                : openWishlistGate()
+            primaryLabel={user ? "Browse products" : "Sign in to sync"}
+            onPrimaryPress={() =>
+              user ? router.push("/(root)/(tabs)/" as any) : openWishlistGate()
             }
           />
         </View>
@@ -223,7 +222,7 @@ const WishlistScreen = () => {
             maxToRenderPerBatch={columns * 3}
             windowSize={7}
             removeClippedSubviews
-            ListHeaderComponent={listHeader}
+            ListHeaderComponent={listHeader ?? undefined}
             contentContainerStyle={[
               styles.listContent,
               {

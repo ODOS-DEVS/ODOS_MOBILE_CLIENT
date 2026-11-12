@@ -174,7 +174,7 @@ export default function PopularProductsScreen() {
             windowSize={7}
             removeClippedSubviews
             ListFooterComponent={
-              isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+              isSearching ? undefined : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
             }
             ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
             renderItem={({ item }) => (

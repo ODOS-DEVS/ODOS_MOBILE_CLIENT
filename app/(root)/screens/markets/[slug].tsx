@@ -764,7 +764,7 @@ export default function MarketHubScreen() {
                         />
                       )}
                     </View>
-                  ) : null
+                  ) : undefined
                 }
               />
             )}

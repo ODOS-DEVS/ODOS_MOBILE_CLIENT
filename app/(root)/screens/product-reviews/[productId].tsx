@@ -103,7 +103,7 @@ export default function ProductReviewsScreen() {
                 })}
               </View>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <View style={styles.reviewCard}>

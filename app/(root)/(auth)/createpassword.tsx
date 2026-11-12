@@ -20,7 +20,7 @@ import {
 } from "@/utils/passwordResetSession";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputInstance } from "react-native";
 
 export default function CreatePasswordScreen() {
   const { colors } = useTheme();
@@ -63,7 +63,7 @@ export default function CreatePasswordScreen() {
     openForgotPassword(router, routeEmail, { replace: true });
   };
 
-  const confirmPasswordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInputInstance>(null);
 
   const handleSubmit = async () => {
     setPasswordError("");

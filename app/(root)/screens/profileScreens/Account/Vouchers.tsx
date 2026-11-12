@@ -21,6 +21,7 @@ import {
   useVouchers,
 } from "@/hooks/useVouchers";
 import { usePagedList } from "@/hooks/usePagedList";
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { goBackOr } from "@/utils/navigation";
 import { Ionicons } from "@expo/vector-icons";
@@ -164,6 +165,9 @@ export default function VouchersScreen() {
   );
 
   const pagedVouchers = usePagedList(filteredVouchers, { key: activeFilter });
+  const autoLoad = useAutoLoadOnScrollEnd(pagedVouchers.showMore, {
+    enabled: pagedVouchers.hasMore,
+  });
 
   const handleUseVoucher = (voucher: VoucherWalletItem) => {
     setCheckoutVoucherCode(voucher.code);
@@ -198,6 +202,7 @@ export default function VouchersScreen() {
         <ScreenLoader label="Loading vouchers..." />
       ) : (
         <ScrollView
+          {...autoLoad}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={accountStyles.content}
         >

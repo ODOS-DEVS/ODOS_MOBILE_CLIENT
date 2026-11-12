@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import {
   AccountActionButton,
   AccountActionRow,
@@ -33,6 +34,10 @@ export default function ProcessingTab({
   const orderStyles = useOrderStyles();
   const { showErrorToast } = useToast();
   const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(
+    () => setVisibleCount((current) => current + ORDERS_PAGE_SIZE),
+    { enabled: orders.length > visibleCount },
+  );
   const visibleOrders = orders.slice(0, visibleCount);
 
   const handleCancel = useCallback(
@@ -49,7 +54,9 @@ export default function ProcessingTab({
   );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
+    <ScrollView
+      {...autoLoad}
+      showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
       {orders.length === 0 ? (
         <AccountEmptyState
           icon="time-outline"

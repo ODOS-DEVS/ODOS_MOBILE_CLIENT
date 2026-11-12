@@ -203,7 +203,7 @@ const StoreScreen = () => {
         ]}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          showSkeleton || showError ? null : (
+          showSkeleton || showError ? undefined : (
             <CommerceSeeAllEmptyState
               icon="storefront-outline"
               title="No stores match your filters"

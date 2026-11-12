@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import {
   AccountBadge,
   AccountEmptyState,
@@ -28,10 +29,16 @@ export default function DeliveredTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
   const { colors } = useTheme();
   const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(
+    () => setVisibleCount((current) => current + ORDERS_PAGE_SIZE),
+    { enabled: orders.length > visibleCount },
+  );
   const visibleOrders = orders.slice(0, visibleCount);
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
+    <ScrollView
+      {...autoLoad}
+      showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
       {orders.length === 0 ? (
         <AccountEmptyState
           icon="checkmark-done-outline"

@@ -10,6 +10,7 @@ import {
   TextInputProps,
   TouchableOpacity,
   View,
+  type TextInputInstance,
 } from "react-native";
 
 // Extends TextInputProps rather than naming a fixed list, so a screen can reach
@@ -27,7 +28,7 @@ type TextInputFieldProps = Omit<TextInputProps, "style"> & {
   helperText?: string;
 };
 
-const TextInputField = forwardRef<TextInput, TextInputFieldProps>(function TextInputField(
+const TextInputField = forwardRef<TextInputInstance, TextInputFieldProps>(function TextInputField(
   {
     label,
     icon,

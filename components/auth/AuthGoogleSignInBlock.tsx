@@ -1,4 +1,4 @@
-import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import SocialSignInRow from "@/components/auth/SocialSignInRow";
 import AuthErrorBanner from "@/components/auth/AuthErrorBanner";
 import AuthGoogleSignInBlockOAuth from "@/components/auth/AuthGoogleSignInBlockOAuth";
 import { canUseGoogleAuthRequest } from "@/constants/googleAuth";
@@ -6,6 +6,7 @@ import {
   useGoogleSignInFallback,
   type GoogleSignInControls,
 } from "@/hooks/useGoogleSignIn";
+import { useAppleSignIn } from "@/hooks/useAppleSignIn";
 import React from "react";
 import { View } from "react-native";
 
@@ -67,30 +68,48 @@ export function AuthGoogleSignInBlockContent({
   beforeSignIn,
 }: ContentProps) {
   const { signIn, error, clearError, isLoading } = google;
+  const apple = useAppleSignIn();
 
-  const label = variant === "signin" ? "Continue with Google" : "Sign up with Google";
-  const hint =
+  const caption =
     variant === "signin"
-      ? "Quick access with your Google account"
-      : "We'll create your ODOS account for you";
+      ? "Or continue with"
+      : "Or sign up with";
+
+  const guard = () => {
+    if (beforeSignIn && !beforeSignIn()) {
+      return false;
+    }
+    return true;
+  };
 
   return (
     <View>
+      {/* Either provider can fail, and only one can be mid-flight at a time,
+          so a single banner shows whichever spoke last. */}
+      <AuthErrorBanner message={error || apple.error} />
 
-      <AuthErrorBanner message={error} />
-
-      <GoogleSignInButton
-        onPress={async () => {
-          if (beforeSignIn && !beforeSignIn()) {
+      <SocialSignInRow
+        caption={caption}
+        disabled={disabled}
+        showApple={apple.isAvailable}
+        googleLoading={isLoading}
+        onGooglePress={async () => {
+          if (!guard()) {
             return;
           }
+          apple.clearError();
           clearError();
           await signIn();
         }}
-        loading={isLoading}
-        disabled={disabled}
-        label={label}
-        hint={hint}
+        appleLoading={apple.isLoading}
+        onApplePress={async () => {
+          if (!guard()) {
+            return;
+          }
+          clearError();
+          apple.clearError();
+          await apple.signIn();
+        }}
       />
     </View>
   );

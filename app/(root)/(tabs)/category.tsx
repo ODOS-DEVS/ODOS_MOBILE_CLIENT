@@ -2,7 +2,7 @@ import { CategoryCollectionTile } from "@/components/category/CategoryUi";
 import { CategoryListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import { AccountEmptyState } from "@/components/account/AccountUi";
 import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
-import SearchLauncher from "@/components/search/SearchLauncher";
+import SearchField from "@/components/search/SearchField";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import Fonts from "@/constants/Fonts";
 import { useCatalogCategories } from "@/hooks/useCatalog";
@@ -11,8 +11,8 @@ import { buildCategoryRouteParams } from "@/utils/catalogLanes";
 import { useTheme } from "@/context/ThemeContext";
 import { productCardGapX, rMS, rV, useResponsive } from "@/styles/responsive";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { FlatList, RefreshControl, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppColors } from "@/constants/Colors";
 
@@ -25,6 +25,7 @@ const CategoryScreen = () => {
   const gridGap = productCardGapX();
   const cardWidth = gridCardWidth(NUM_COLUMNS, gridGap);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [query, setQuery] = useState("");
   const { categories: catalogCategories, isLoading, error, errorKind, refresh } =
     useCatalogCategories();
 
@@ -42,6 +43,30 @@ const CategoryScreen = () => {
     }
   }, [refresh]);
 
+  /**
+   * Filtering happens here rather than on the product search screen.
+   *
+   * Tapping search on a screen of categories used to jump to product search,
+   * which threw away the context the shopper was already in: they were looking
+   * for a *category*, and landed somewhere that searches products. Matching
+   * covers subcategory names too, so "sneakers" finds Footwear even when no
+   * category is called that.
+   */
+  const visibleCategories = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+      return catalogCategories;
+    }
+    return catalogCategories.filter((category) => {
+      const haystack = [
+        category.title,
+        category.subtitle,
+        ...(category.subcategories ?? []),
+      ];
+      return haystack.some((value) => value?.toLowerCase().includes(needle));
+    });
+  }, [catalogCategories, query]);
+
   const handlePress = useCallback((category: (typeof catalogCategories)[number]) => {
     router.push({
       pathname: "/screens/categories/[slug]" as any,
@@ -52,7 +77,7 @@ const CategoryScreen = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.screen }} edges={["top"]}>
       <FlatList
-        data={catalogCategories}
+        data={visibleCategories}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
         numColumns={NUM_COLUMNS}
@@ -75,7 +100,12 @@ const CategoryScreen = () => {
         )}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: horizontalPadding, paddingBottom: rV(14), gap: rV(14) }}>
-            <SearchLauncher placeholder="Search products, stores & more" />
+            <SearchField
+              embedded
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search categories"
+            />
             <View>
               <Text style={{ fontFamily: Fonts.titleBold, fontSize: rMS(20), color: colors.text }}>
                 Shop by category
@@ -88,8 +118,13 @@ const CategoryScreen = () => {
                   color: colors.textMuted,
                 }}
               >
-                {catalogCategories.length} categor{catalogCategories.length === 1 ? "y" : "ies"} to
-                explore
+                {query.trim()
+                  ? `${visibleCategories.length} match${
+                      visibleCategories.length === 1 ? "" : "es"
+                    } for "${query.trim()}"`
+                  : `${catalogCategories.length} categor${
+                      catalogCategories.length === 1 ? "y" : "ies"
+                    } to explore`}
               </Text>
             </View>
           </View>
@@ -99,7 +134,37 @@ const CategoryScreen = () => {
         }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          catalogCategories.length > 0 ? null : isLoading ? (
+          visibleCategories.length > 0 ? undefined : query.trim() ? (
+            <View style={{ paddingHorizontal: horizontalPadding, gap: rV(10) }}>
+              <AccountEmptyState
+                icon="search-outline"
+                title="No matching category"
+                message={`Nothing here matches "${query.trim()}".`}
+              />
+              {/* The search box filters categories, so product search stays
+                  reachable as an explicit next step rather than hijacking it. */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: "/screens/search" as any,
+                    params: { query: query.trim() },
+                  })
+                }
+              >
+                <Text
+                  style={{
+                    textAlign: "center",
+                    fontFamily: Fonts.titleBold,
+                    fontSize: rMS(13.5),
+                    color: AppColors.primary,
+                  }}
+                >
+                  Search products for “{query.trim()}”
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : isLoading ? (
             <View style={{ paddingHorizontal: horizontalPadding }}>
               <CategoryListSkeleton />
             </View>

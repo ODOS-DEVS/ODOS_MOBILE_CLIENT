@@ -1,6 +1,7 @@
+import { deferAfterInteractions } from "@/utils/deferAfterInteractions";
 import { API_BASE_URL } from "@/constants/auth";
 import { useAuth } from "@/context/AuthContext";
-import { AppState, InteractionManager } from "react-native";
+import { AppState } from "react-native";
 import React, {
   createContext,
   useCallback,
@@ -106,7 +107,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       try {
         const event = JSON.parse(raw) as RealtimeEventEnvelope;
 
-        InteractionManager.runAfterInteractions(() => {
+        deferAfterInteractions(() => {
           dispatchEvent(event);
         });
 

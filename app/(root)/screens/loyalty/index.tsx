@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import React, { useCallback, useMemo } from 'react';
 import {
   View,
@@ -57,6 +58,7 @@ export default function LoyaltyScreen() {
     remaining: remainingHistory,
     hasMore: hasMoreHistory,
   } = useVisibleCount(transactions?.length ?? 0, LOYALTY_HISTORY_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(showMoreHistory, { enabled: hasMoreHistory });
 
   const tierDetails = useMemo(() => {
     if (!account) return getTierDetails('bronze');
@@ -363,6 +365,7 @@ export default function LoyaltyScreen() {
       <ProfileHeader title="Loyalty Rewards" showBackButton />
 
       <ScrollView
+        {...autoLoad}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
         contentContainerStyle={styles.scrollContent}

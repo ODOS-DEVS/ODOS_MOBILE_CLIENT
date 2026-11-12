@@ -124,6 +124,7 @@ type AuthContextType = {
   isRefreshingSession: boolean;
   isSigningIn: boolean;
   isSigningInWithGoogle: boolean;
+  isSigningInWithApple: boolean;
   isSigningUp: boolean;
   isSigningOut: boolean;
   isUpdatingProfile: boolean;
@@ -138,6 +139,7 @@ type AuthContextType = {
   fetchVerifiedPhones: () => Promise<void>;
   signIn: (payload: LoginPayload) => Promise<AuthResult>;
   signInWithGoogle: (idToken: string, pictureUrl?: string | null) => Promise<AuthResult>;
+  signInWithApple: (identityToken: string, fullName?: string | null) => Promise<AuthResult>;
   signUp: (payload: SignupPayload) => Promise<AuthResult>;
   updateProfile: (payload: ProfileUpdatePayload) => Promise<AuthResult>;
   sendPhoneVerificationCode: (
@@ -603,6 +605,40 @@ async function googleAuthRequest(idToken: string, pictureUrl?: string | null) {
   };
 }
 
+async function appleAuthRequest(identityToken: string, fullName?: string | null) {
+  const response = await fetch(`${API_BASE_URL}/auth/apple`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      identity_token: identityToken,
+      // Apple hands over the name only on the very first authorization, so
+      // this is sent when present and simply absent on every later sign-in.
+      full_name: fullName ?? null,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  const responsePayload = (await response.json()) as {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    user: Record<string, unknown>;
+  };
+
+  return {
+    access_token: responsePayload.access_token,
+    token_type: responsePayload.token_type,
+    expires_in: responsePayload.expires_in,
+    user: normalizeAuthUser(responsePayload.user),
+  };
+}
+
 async function loginRequest(payload: LoginPayload) {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
@@ -858,6 +894,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isRefreshingSession, setIsRefreshingSession] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+  const [isSigningInWithApple, setIsSigningInWithApple] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -1179,6 +1216,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsHydrating(false);
     }
   }, []);
+
+  const signInWithApple = useCallback(
+    async (identityToken: string, fullName?: string | null) => {
+      setIsSigningInWithApple(true);
+
+      try {
+        const payload = await appleAuthRequest(identityToken, fullName);
+
+        await SecureStore.setItemAsync(
+          ACCESS_TOKEN_STORAGE_KEY,
+          payload.access_token,
+          { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+        );
+
+        setAccessToken(payload.access_token);
+        setUser(payload.user);
+        return {
+          success: true,
+          requiresVerification: !payload.user.is_verified,
+          user: payload.user,
+        };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          "detail" in error
+        ) {
+          // Same shaping as Google: the server's own message is the useful
+          // one (unverified existing account, blocked account, bad audience).
+          const errorCode =
+            "code" in error && typeof error.code === "string" ? error.code : null;
+
+          return buildGoogleAuthError(
+            (error as { detail: unknown }).detail,
+            Number((error as { status: unknown }).status),
+            errorCode,
+          );
+        }
+
+        return {
+          success: false,
+          fieldErrors: {
+            general:
+              "We couldn't reach the server. Check your connection and try again.",
+          },
+        };
+      } finally {
+        setIsSigningInWithApple(false);
+        setIsHydrating(false);
+      }
+    },
+    [],
+  );
 
   const signUp = useCallback(
     async ({ fullName, email, password }: SignupPayload) => {
@@ -1789,6 +1880,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRefreshingSession,
       isSigningIn,
       isSigningInWithGoogle,
+      isSigningInWithApple,
       isSigningUp,
       isSigningOut,
       isUpdatingProfile,
@@ -1803,6 +1895,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchVerifiedPhones,
       signIn,
       signInWithGoogle,
+      signInWithApple,
       signUp,
       updateProfile,
       sendPhoneVerificationCode,
@@ -1821,6 +1914,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRefreshingSession,
       isSigningIn,
       isSigningInWithGoogle,
+      isSigningInWithApple,
       isSigningOut,
       isSigningUp,
       isUpdatingProfile,
@@ -1842,6 +1936,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshCurrentUser,
       signIn,
       signInWithGoogle,
+      signInWithApple,
       signOut,
       signUp,
       updateProfile,

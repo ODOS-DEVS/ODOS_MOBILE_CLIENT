@@ -60,8 +60,13 @@ function mapCampaign(item: CampaignApiItem): MerchandisingCampaignItem {
   };
 }
 
-export function useMerchandisingCampaigns(options?: { featuredOnly?: boolean }) {
+export function useMerchandisingCampaigns(options?: {
+  featuredOnly?: boolean;
+  /** Cap the request; home shows a strip behind "See all". */
+  limit?: number;
+}) {
   const featuredOnly = Boolean(options?.featuredOnly);
+  const limit = options?.limit ?? 40;
   const [campaigns, setCampaigns] = useState<MerchandisingCampaignItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +77,7 @@ export function useMerchandisingCampaigns(options?: { featuredOnly?: boolean }) 
     try {
       const query = new URLSearchParams({
         featured: featuredOnly ? "true" : "false",
-        limit: "40",
+        limit: String(limit),
       });
       const response = await fetch(`${API_BASE_URL}/catalog/campaigns?${query}`);
       if (!response.ok) {
@@ -88,7 +93,7 @@ export function useMerchandisingCampaigns(options?: { featuredOnly?: boolean }) 
     } finally {
       setIsLoading(false);
     }
-  }, [featuredOnly]);
+  }, [featuredOnly, limit]);
 
   useEffect(() => {
     void refresh();

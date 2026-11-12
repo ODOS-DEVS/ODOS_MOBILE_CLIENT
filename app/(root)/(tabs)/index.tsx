@@ -40,6 +40,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const HOME_RECOMMENDATION_COUNT = 3;
 
+/**
+ * How many cards a horizontal rail renders before "See all" takes over.
+ *
+ * The rails previously rendered whatever the fetch returned, so a busy
+ * category could mount dozens of cards — and their images — for a strip the
+ * shopper may never swipe. Every rail already has a "See all" that opens the
+ * full, paginated screen, which is the right place for depth; the rail's job
+ * is to show that the section has something worth opening.
+ */
+const HOME_RAIL_COUNT = 8;
+
 type HomeSectionProps = {
   title: string;
   onSeeAll?: () => void;
@@ -131,7 +142,7 @@ function HomeSection({
 const HomeScreen = () => {
   const { colors } = useTheme();
   const tabBarInset = useTabBarContentInsetFromContext();
-  const { horizontalPadding, sectionSpacing } = useResponsive();
+  const { horizontalPadding, sectionSpacing, width } = useResponsive();
   const {
     products: flashSaleProducts,
     isLoading: isLoadingFlashSales,
@@ -140,6 +151,7 @@ const HomeScreen = () => {
     refresh: refreshFlashSales,
   } = useCatalogProducts({
     placement: "flash-sale",
+    limit: HOME_RAIL_COUNT,
   });
   const { primaryEvent: primaryFlashSaleEvent } = useFlashSaleEvents();
   const { banners: promoBanners, isLoading: isLoadingPromoBanners, refresh: refreshPromoBanners } =
@@ -148,7 +160,7 @@ const HomeScreen = () => {
     campaigns: featuredCampaigns,
     isLoading: isLoadingCampaigns,
     refresh: refreshCampaigns,
-  } = useMerchandisingCampaigns({ featuredOnly: true });
+  } = useMerchandisingCampaigns({ featuredOnly: true, limit: HOME_RAIL_COUNT });
   const {
     feed: recommendationFeed,
     products: recommendationProducts,
@@ -166,6 +178,7 @@ const HomeScreen = () => {
     refresh: refreshPopular,
   } = useCatalogProducts({
     section: "popular",
+    limit: HOME_RAIL_COUNT,
   });
   const {
     products: newProducts,
@@ -254,6 +267,26 @@ const HomeScreen = () => {
     () => recommendationProducts.slice(0, HOME_RECOMMENDATION_COUNT),
     [recommendationProducts],
   );
+
+  // Each rail shows a sample; "See all" opens the full paginated screen.
+  const flashSaleRail = useMemo(
+    () => flashSaleProducts.slice(0, HOME_RAIL_COUNT),
+    [flashSaleProducts],
+  );
+  const campaignRail = useMemo(
+    () => featuredCampaigns.slice(0, HOME_RAIL_COUNT),
+    [featuredCampaigns],
+  );
+  const storeRail = useMemo(() => storeItems.slice(0, HOME_RAIL_COUNT), [storeItems]);
+  const popularRail = useMemo(
+    () => popularProducts.slice(0, HOME_RAIL_COUNT),
+    [popularProducts],
+  );
+  const newProductRail = useMemo(
+    () => newProducts.slice(0, HOME_RAIL_COUNT),
+    [newProducts],
+  );
+  const marketRail = useMemo(() => marketItems.slice(0, HOME_RAIL_COUNT), [marketItems]);
 
   const hasCatalogContent =
     flashSaleProducts.length > 0 ||
@@ -392,18 +425,32 @@ const HomeScreen = () => {
                 sectionSpacing={sectionSpacing}
                 horizontalPadding={horizontalPadding}
               >
-                <View style={{ marginLeft: -horizontalPadding }}>
-                  <FlatList
-                    data={flashSaleProducts}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <FlashSalesCard {...item} />}
-                    contentContainerStyle={{
-                      paddingHorizontal: horizontalPadding,
-                    }}
-                  />
-                </View>
+                {/* A lone sale is not a strip. Rendering one 160pt card in a
+                    full-width scroller leaves most of the row empty and makes
+                    the only live offer look like an afterthought, so a single
+                    card takes the content width instead. */}
+                {flashSaleRail.length === 1 ? (
+                  <View style={{ paddingHorizontal: horizontalPadding }}>
+                    <FlashSalesCard
+                      {...flashSaleRail[0]}
+                      cardWidth={width - horizontalPadding * 2}
+                      cardSpacing={0}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ marginLeft: -horizontalPadding }}>
+                    <FlatList
+                      data={flashSaleRail}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => <FlashSalesCard {...item} />}
+                      contentContainerStyle={{
+                        paddingHorizontal: horizontalPadding,
+                      }}
+                    />
+                  </View>
+                )}
               </HomeSection>
 
               {hasCatalogContent || promoBanners.length > 0 ? (
@@ -432,7 +479,7 @@ const HomeScreen = () => {
               >
                 <View style={{ marginLeft: -horizontalPadding }}>
                   <FlatList
-                    data={featuredCampaigns}
+                    data={campaignRail}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
@@ -588,7 +635,7 @@ const HomeScreen = () => {
               >
                 <View style={{ paddingHorizontal: horizontalPadding }}>
                   <FlatList
-                    data={storeItems}
+                    data={storeRail}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
@@ -612,7 +659,7 @@ const HomeScreen = () => {
               >
                 <View style={{ paddingHorizontal: horizontalPadding }}>
                   <FlatList
-                    data={popularProducts}
+                    data={popularRail}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
@@ -639,7 +686,7 @@ const HomeScreen = () => {
               >
                 <View style={{ paddingHorizontal: horizontalPadding }}>
                   <FlatList
-                    data={newProducts}
+                    data={newProductRail}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}
@@ -666,7 +713,7 @@ const HomeScreen = () => {
               >
                 <View style={{ paddingHorizontal: horizontalPadding }}>
                   <FlatList
-                    data={marketItems}
+                    data={marketRail}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id}

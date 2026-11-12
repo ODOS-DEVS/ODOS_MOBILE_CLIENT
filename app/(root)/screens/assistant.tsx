@@ -418,7 +418,7 @@ export default function AssistantScreen() {
                   aiEnabled={Boolean(status?.enabled)}
                   context={focusedContext}
                 />
-              ) : null
+              ) : undefined
             }
             ListFooterComponent={listFooter}
             showsVerticalScrollIndicator={false}

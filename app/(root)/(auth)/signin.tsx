@@ -20,7 +20,7 @@ import {
 } from "@/utils/authNavigation";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputInstance } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +31,7 @@ export default function SignInScreen() {
   useAuthScreenRedirect();
   useBlockBackNavigation(true);
 
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

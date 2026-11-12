@@ -14,7 +14,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "ODOS uses your location to pin your store on the map and show directions to shoppers."
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.paul.odos",
@@ -47,6 +48,7 @@
         }
       ],
       "expo-secure-store",
+      "expo-apple-authentication",
       [
         "expo-notifications",
         {

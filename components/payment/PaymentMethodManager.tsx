@@ -394,7 +394,7 @@ export function PaymentMethodManager({
               <Ionicons name="add-circle" size={18} color="#fff" />
               <Text style={styles.addButtonText}>Add New Payment Method</Text>
             </TouchableOpacity>
-          ) : null
+          ) : undefined
         }
       />
     </View>

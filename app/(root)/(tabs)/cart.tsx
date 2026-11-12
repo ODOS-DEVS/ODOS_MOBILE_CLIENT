@@ -104,6 +104,7 @@ const MyCart = () => {
           paddingTop: rV(14),
         },
         emptyContent: {
+          flexGrow: 1,
           paddingHorizontal: rS(16),
           paddingTop: rV(8),
         },
@@ -253,13 +254,11 @@ const MyCart = () => {
             />
           ) : (
             <CommerceEmptyState
-              icon="bag-handle-outline"
+              variant="quiet"
               title="Your cart is empty"
-              message="Save items you love while browsing. They'll stay here until you're ready to check out."
+              message="Items you add will stay here until you're ready to check out."
               primaryLabel="Start shopping"
               onPrimaryPress={() => router.push("/(root)/(tabs)/" as any)}
-              secondaryLabel="Browse categories"
-              onSecondaryPress={() => router.push("/(root)/(tabs)/category" as any)}
             />
           )}
         </ScrollView>

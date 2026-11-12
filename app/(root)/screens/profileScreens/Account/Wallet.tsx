@@ -1,5 +1,6 @@
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import { useVisibleCount } from "@/hooks/useVisibleCount";
 import {
   AccountEmptyState,
@@ -225,6 +226,7 @@ export default function WalletScreen() {
     remaining: remainingTx,
     hasMore: hasMoreTx,
   } = useVisibleCount(walletTx.length, WALLET_ACTIVITY_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(showMoreTx, { enabled: hasMoreTx });
   const topupMethods = paymentMethods.filter((method) => method.type === topupPaymentType);
   const selectedTopupMethod =
     topupMethods.find((method) => method.id === selectedTopupMethodId) ??
@@ -339,6 +341,7 @@ export default function WalletScreen() {
         <ScreenLoader label="Loading payment methods..." />
       ) : (
       <ScrollView
+        {...autoLoad}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[accountStyles.content, { gap: rV(14) }]}
       >

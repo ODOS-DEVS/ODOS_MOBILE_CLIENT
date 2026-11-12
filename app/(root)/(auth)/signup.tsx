@@ -16,7 +16,7 @@ import { goToEmailVerification, goToSignIn } from "@/utils/authNavigation";
 import { buildFullName, validateNameParts } from "@/utils/fullName";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputInstance } from "react-native";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -50,11 +50,11 @@ export default function SignUpScreen() {
     confirmPassword.length > 0 &&
     hasConsented;
 
-  const lastNameRef = useRef<TextInput>(null);
-  const otherNamesRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const confirmPasswordRef = useRef<TextInput>(null);
+  const lastNameRef = useRef<TextInputInstance>(null);
+  const otherNamesRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
+  const confirmPasswordRef = useRef<TextInputInstance>(null);
 
   const handleSignUp = async () => {
     let hasError = false;

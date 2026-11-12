@@ -1,4 +1,5 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import KeyboardAwareScreen from "@/components/layout/KeyboardAwareScreen";
 import KeyboardAwareScrollView from "@/components/layout/KeyboardAwareScrollView";
 import TextInputField from "@/components/TextInputField";
@@ -150,6 +151,17 @@ export default function VendorWalletScreen() {
   const [withdrawalNote, setWithdrawalNote] = useState("");
   const [visibleWithdrawalCount, setVisibleWithdrawalCount] = useState(WALLET_LIST_PAGE_SIZE);
   const [visibleTransactionCount, setVisibleTransactionCount] = useState(WALLET_LIST_PAGE_SIZE);
+
+  // Transactions are the last section on the page, so the bottom of the
+  // scroller is the bottom of that list. Withdrawal requests sit above it and
+  // keep their button: auto-expanding a mid-page section would push whatever
+  // the vendor was reading off the screen.
+  const autoLoad = useAutoLoadOnScrollEnd(
+    () => setVisibleTransactionCount((current) => current + WALLET_LIST_PAGE_SIZE),
+    {
+      enabled: (wallet?.recentTransactions.length ?? 0) > visibleTransactionCount,
+    },
+  );
 
   const loadWallet = useCallback(async () => {
     if (!hasVendorAccess) {
@@ -424,6 +436,7 @@ export default function VendorWalletScreen() {
   return (
     <VendorScreenShell title="Vendor Wallet">
       <KeyboardAwareScreen
+        {...autoLoad}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[

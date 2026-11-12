@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import {
   AccountActionButton,
   AccountBadge,
@@ -29,10 +30,16 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
   const { colors } = useTheme();
   const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(
+    () => setVisibleCount((current) => current + ORDERS_PAGE_SIZE),
+    { enabled: orders.length > visibleCount },
+  );
   const visibleOrders = orders.slice(0, visibleCount);
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
+    <ScrollView
+      {...autoLoad}
+      showsVerticalScrollIndicator={false} contentContainerStyle={orderStyles.tabContent}>
       {orders.length === 0 ? (
         <AccountEmptyState
           icon="close-circle-outline"

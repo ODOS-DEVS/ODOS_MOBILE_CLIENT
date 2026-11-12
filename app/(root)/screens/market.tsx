@@ -156,7 +156,7 @@ const MarketScreen = () => {
         ]}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          showSkeleton ? null : (
+          showSkeleton ? undefined : (
             <CommerceSeeAllEmptyState
               icon="location-outline"
               title="No stores here yet"

@@ -1,3 +1,4 @@
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import TextInputField from "@/components/TextInputField";
 import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import { useVisibleCount } from "@/hooks/useVisibleCount";
@@ -66,6 +67,9 @@ export default function VendorFlashSaleNominateScreen() {
     remaining: remainingProducts,
     hasMore: hasMoreProducts,
   } = useVisibleCount(liveProducts.length, NOMINATE_PAGE_SIZE);
+  const autoLoad = useAutoLoadOnScrollEnd(showMoreProducts, {
+    enabled: hasMoreProducts,
+  });
 
   const selectedProduct = liveProducts.find((product) => product.id === selectedProductId) ?? null;
 
@@ -119,6 +123,7 @@ export default function VendorFlashSaleNominateScreen() {
   return (
     <VendorScreenShell title="Nominate product">
       <ScrollView
+      {...autoLoad}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           vendorStyles.listContent,

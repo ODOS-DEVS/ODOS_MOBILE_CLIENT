@@ -302,7 +302,9 @@ export default function StoreLocationExperience({
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      {/* RN 0.88 dropped `translucent` and `backgroundColor`: Android draws
+          edge-to-edge by default now, which is what those two were asking for. */}
+      <StatusBar barStyle="dark-content" />
 
       {showNativeMap ? (
         <Mapbox.MapView

@@ -13,6 +13,15 @@ type CommerceEmptyStateProps = {
   onPrimaryPress?: () => void;
   secondaryLabel?: string;
   onSecondaryPress?: () => void;
+  /**
+   * "card" is the full panel: icon badge, filled button, outlined second
+   * action. "quiet" is a line of text and one text link.
+   *
+   * Empty is not always a problem to solve. An empty cart is just a cart you
+   * have not filled yet, and answering that with a bordered card, a 76pt icon
+   * and two buttons gives it more weight than the state deserves.
+   */
+  variant?: "card" | "quiet";
 };
 
 export default function CommerceEmptyState({
@@ -23,8 +32,34 @@ export default function CommerceEmptyState({
   onPrimaryPress,
   secondaryLabel,
   onSecondaryPress,
+  variant = "card",
 }: CommerceEmptyStateProps) {
   const styles = useCommerceEmptyStyles();
+
+  if (variant === "quiet") {
+    // One action only. Offering both "start shopping" and "browse categories"
+    // asks the shopper to choose a route before they have chosen anything.
+    const linkLabel = primaryLabel ?? secondaryLabel;
+    const onLinkPress = primaryLabel ? onPrimaryPress : onSecondaryPress;
+
+    return (
+      <View style={styles.quietWrap}>
+        <Text style={styles.quietTitle}>{title}</Text>
+        <Text style={styles.quietMessage}>{message}</Text>
+
+        {linkLabel && onLinkPress ? (
+          <TouchableOpacity
+            style={styles.quietLink}
+            onPress={onLinkPress}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+          >
+            <Text style={styles.quietLinkText}>{linkLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>

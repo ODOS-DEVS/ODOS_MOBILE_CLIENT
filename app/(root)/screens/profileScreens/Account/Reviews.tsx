@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/context/ToastContext";
 import { Order, useOrders } from "@/hooks/useOrders";
 import { usePagedList } from "@/hooks/usePagedList";
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import {
   type ReviewDraft,
   type StoredReview,
@@ -333,6 +334,9 @@ export default function ReviewsScreen() {
   ]);
 
   const pagedReviews = usePagedList(filteredData, { key: activeFilter });
+  const autoLoad = useAutoLoadOnScrollEnd(pagedReviews.showMore, {
+    enabled: pagedReviews.hasMore,
+  });
 
   if (isLoading) {
     return (
@@ -348,6 +352,7 @@ export default function ReviewsScreen() {
       <ProfileHeader title="My Reviews" />
 
       <ScrollView
+        {...autoLoad}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
       >

@@ -185,6 +185,42 @@ export function useCommerceEmptyStyles() {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(14),
         },
+        // The quiet variant: no card, no icon, no filled button. For screens
+        // where "empty" is an ordinary state rather than a problem -- an empty
+        // cart or wishlist is just a cart you have not filled yet, and a panel
+        // with a badge and two buttons overstates it.
+        quietWrap: {
+          flexGrow: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: rS(32),
+          paddingVertical: rV(48),
+          gap: rV(6),
+        },
+        quietTitle: {
+          color: colors.text,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(15),
+          textAlign: "center",
+        },
+        quietMessage: {
+          color: colors.textMuted,
+          fontFamily: Fonts.text,
+          fontSize: rMS(13),
+          lineHeight: rMS(19),
+          textAlign: "center",
+        },
+        quietLink: {
+          marginTop: rV(10),
+          paddingVertical: rV(6),
+          paddingHorizontal: rS(4),
+        },
+        quietLinkText: {
+          color: colors.primary,
+          fontFamily: Fonts.titleBold,
+          fontSize: rMS(13.5),
+          textAlign: "center",
+        },
         secondaryButton: {
           marginTop: rV(12),
           paddingVertical: rV(8),
