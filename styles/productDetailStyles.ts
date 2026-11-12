@@ -85,7 +85,6 @@ export function createProductDetailStyles(c: ThemeColors) {
   // keeps anything shot to a different ratio whole instead of cropping it.
   imageSlide: {
     width: screenWidth,
-    height: screenWidth,
     backgroundColor: c.surface,
     alignItems: "center",
     justifyContent: "center",

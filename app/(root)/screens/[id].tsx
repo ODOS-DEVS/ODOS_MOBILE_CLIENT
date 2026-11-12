@@ -710,13 +710,22 @@ export default function ProductDetail() {
                   }}
                   renderItem={({ item, index }) => (
                     <TouchableOpacity
-                      style={styles.imageSlide}
+                      // The frame still runs to the very top of the screen so
+                      // the backdrop sits behind the status bar and notch, but
+                      // the photo itself is inset below them — nothing of the
+                      // product should ever be under the cutout. Both heights
+                      // are explicit pixels rather than percentages so the
+                      // image box stays exactly square under the padding.
+                      style={[
+                        styles.imageSlide,
+                        { paddingTop: insets.top, height: screenWidth + insets.top },
+                      ]}
                       activeOpacity={0.96}
                       onPress={() => setIsGalleryOpen(true)}
                     >
                       <CommerceImage
                         source={item as any}
-                        style={styles.heroImage}
+                        style={[styles.heroImage, { height: screenWidth }]}
                         // Never crop the goods: a shopper judging a product
                         // needs the whole frame the seller photographed.
                         contentFit="contain"
