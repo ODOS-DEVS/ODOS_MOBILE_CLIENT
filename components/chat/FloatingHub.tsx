@@ -157,16 +157,24 @@ function ThreadRow({
         onPress={() => onOpenThread(thread)}
         style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.75 }]}
       >
-        <CommerceImage
-          source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
-          style={styles.rowAvatar}
-          contentFit="cover"
-          participateInReadyGate={false}
-        />
+        {thread.counterpart.avatarUrl || thread.store.imageUrl ? (
+          <CommerceImage
+            source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
+            style={styles.rowAvatar}
+            contentFit="cover"
+            participateInReadyGate={false}
+          />
+        ) : (
+          <View style={[styles.rowAvatar, styles.rowAvatarFallback, { backgroundColor: colors.surfaceMuted }]}>
+            <Text style={[styles.rowAvatarInitial, { color: colors.textMuted }]}>
+              {(thread.counterpart.name || thread.store.title || "S").trim().charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         <View style={styles.rowCopy}>
           <View style={styles.rowTitleLine}>
             <Text numberOfLines={1} style={[styles.rowName, { color: colors.text }]}>
-              {thread.counterpart.name || thread.store.title}
+              {thread.counterpart.name?.trim() || thread.store.title?.trim() || "Seller"}
             </Text>
             <Text style={[styles.rowTime, { color: colors.textMuted }]}>
               {relativeTime(thread.lastMessageAt ?? thread.updatedAt)}
@@ -516,10 +524,15 @@ export default function FloatingHub() {
 
               {hasThreads ? (
                 <FlatList
-                  data={sorted.slice(0, 12)}
+                  data={sorted.slice(0, 20)}
                   keyExtractor={(thread) => thread.id}
-                  style={{ flexGrow: 0 }}
-                  contentContainerStyle={{ gap: rV(8), paddingHorizontal: rS(14), paddingTop: rV(2) }}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{
+                    paddingHorizontal: rS(16),
+                    paddingTop: rV(2),
+                    paddingBottom: rV(16),
+                  }}
+                  ItemSeparatorComponent={() => <View style={{ height: rV(8) }} />}
                   keyboardShouldPersistTaps="handled"
                   renderItem={({ item }) => (
                     <ThreadRow
@@ -632,11 +645,15 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     backgroundColor: "rgba(10, 10, 12, 0.5)",
   },
+  // A fixed-height panel, not a content-sized one: with maxHeight alone the
+  // sheet collapsed around however much the list happened to measure, clipping
+  // rows mid-card (the screenshot that prompted this). A determinate height
+  // with a flexed list inside is boring and correct.
   sheet: {
-    borderTopLeftRadius: rMS(24),
-    borderTopRightRadius: rMS(24),
+    height: rV(520),
+    borderTopLeftRadius: rMS(26),
+    borderTopRightRadius: rMS(26),
     paddingTop: rV(8),
-    maxHeight: "74%",
   },
   grabber: {
     alignSelf: "center",
@@ -665,9 +682,11 @@ const styles = StyleSheet.create({
   },
   seeAllText: { fontFamily: Fonts.textBold, fontSize: rMS(12) },
   empty: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: rS(32),
-    paddingVertical: rV(28),
+    paddingBottom: rV(40),
     gap: rV(8),
   },
   emptyIcon: {
@@ -686,14 +705,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   rowWrap: { borderWidth: 1, borderRadius: rMS(16), overflow: "hidden" },
+  // Margins rather than flex gap inside the row: the geometry must hold on
+  // every RN version this app has shipped on.
   rowMain: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rS(10),
-    padding: rS(12),
+    minHeight: rV(64),
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(10),
   },
-  rowAvatar: { width: rMS(42), height: rMS(42), borderRadius: rMS(21) },
-  rowCopy: { flex: 1, minWidth: 0 },
+  rowAvatar: {
+    width: rMS(42),
+    height: rMS(42),
+    borderRadius: rMS(21),
+    marginRight: rS(10),
+  },
+  rowAvatarFallback: { alignItems: "center", justifyContent: "center" },
+  rowAvatarInitial: { fontFamily: Fonts.titleBold, fontSize: rMS(16) },
+  rowCopy: { flex: 1, minWidth: 0, marginRight: rS(8) },
   rowTitleLine: {
     flexDirection: "row",
     alignItems: "center",
