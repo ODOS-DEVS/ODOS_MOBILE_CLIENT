@@ -3,7 +3,6 @@ import TabBarButton from "@/components/navigation/TabBarButton";
 import ProfileTabBarButton from "@/components/navigation/ProfileTabBarButton";
 import ProfileTabIcon from "@/components/navigation/ProfileTabIcon";
 import TabBarVectorIcon from "@/components/navigation/TabBarVectorIcon";
-import AssistantFab from "@/components/assistant/AssistantFab";
 import { TabBarMetricsProvider } from "@/components/navigation/TabBarMetricsContext";
 import { useTabBarMetrics } from "@/components/navigation/tabBarMetrics";
 import VendorTabIcon from "@/components/vendor/VendorTabIcon";
@@ -230,7 +229,7 @@ const TabsLayout = () => {
           }}
         />
       </Tabs>
-      {sellOnly ? null : <AssistantFab />}
+      {/* The assistant now lives inside the root FloatingHub speed dial. */}
     </TabBarMetricsProvider>
   );
 };

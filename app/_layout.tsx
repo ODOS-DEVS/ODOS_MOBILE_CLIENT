@@ -1,4 +1,4 @@
-import ChatDock from "@/components/chat/ChatDock";
+import FloatingHub from "@/components/chat/FloatingHub";
 import { deferAfterInteractions } from "@/utils/deferAfterInteractions";
 import RootErrorBoundary from "@/components/RootErrorBoundary";
 import { installWorkletCrashGuard } from "@/utils/workletCrashGuard";
@@ -199,7 +199,7 @@ function ThemedAppShell({ children }: { children: ReactNode }) {
           `(tabs)` is one route in the root Stack, so anything rendered inside
           it is covered the moment a screen is pushed on top — which is most
           of the app, and exactly where a reply tends to arrive. */}
-      <ChatDock />
+      <FloatingHub />
     </View>
   );
 }

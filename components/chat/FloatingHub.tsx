@@ -7,11 +7,20 @@ import { useToast } from "@/context/ToastContext";
 import { useChatInbox, useChatInboxSync } from "@/hooks/useChatInbox";
 import { useAppChromeStore } from "@/stores/appChromeStore";
 import type { ChatThread } from "@/types/chat";
+import {
+  assistantContextToParams,
+  buildStoreAssistantContext,
+  extractStoreIdFromPath,
+} from "@/utils/assistantContext";
+import { deriveAssistantScreen } from "@/utils/assistantQuickPrompts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, usePathname } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -26,20 +35,22 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
- * Chat, reachable and answerable from any screen.
+ * One floating button for everything that floats.
  *
- * A fixed bubble rides above the assistant FAB in the bottom-right corner —
- * the one corner the thumb already knows — with a numbered badge when replies
- * are waiting. Tapping opens the inbox as a sheet over the current screen:
- * every conversation, newest and unread first, each expandable into a quick
- * reply right there. The full thread screen (attachments, voice notes) stays
- * one tap away. The dock exists whenever the shopper is signed in, because
- * the moment a seller replies must be visible from wherever the shopper
- * happens to be standing.
+ * The assistant FAB and a separate chat bubble were two controls fighting for
+ * the same corner. This is the website's speed-dial pattern brought to the
+ * app: a single button where the assistant has always lived; tapping it fans
+ * out labelled actions — Assistant and Messages — and tapping Messages swaps
+ * the dial for the inbox sheet. Unread replies show on the closed button, so
+ * a seller's answer is visible from any screen without opening anything.
+ *
+ * Sellers have no assistant, so for them the button skips the dial and opens
+ * Messages directly — a one-option menu is a worse tap, not a feature.
  */
 
 const HIDDEN_PATH_SNIPPETS = [
   "chat",
+  "assistant",
   "Checkout",
   "payments/",
   "wallet/topup-return",
@@ -52,9 +63,8 @@ const HIDDEN_PATH_SNIPPETS = [
   "splash",
 ];
 
-/** Matches AssistantFab: width 52 + its 12pt gap off the tab bar. */
-const ASSISTANT_SIZE = rMS(52);
-const STACK_GAP = rV(10);
+const FAB_SIZE = rMS(52);
+const OPTION_SIZE = rMS(46);
 
 function relativeTime(iso?: string | null): string {
   if (!iso) {
@@ -80,6 +90,17 @@ function relativeTime(iso?: string | null): string {
     return `${days}d`;
   }
   return new Date(then).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function UnreadBadge({ count, borderColor }: { count: number; borderColor: string }) {
+  if (count < 1) {
+    return null;
+  }
+  return (
+    <View style={[styles.badge, { borderColor }]}>
+      <Text style={styles.badgeText}>{count > 9 ? "9+" : count}</Text>
+    </View>
+  );
 }
 
 function ThreadRow({
@@ -125,7 +146,7 @@ function ThreadRow({
   return (
     <View
       style={[
-        rowStyles.wrap,
+        styles.rowWrap,
         { borderColor: colors.cardBorder, backgroundColor: colors.card },
         unread > 0 && { borderColor: colors.primary + "55" },
       ]}
@@ -134,28 +155,28 @@ function ThreadRow({
         accessibilityRole="button"
         accessibilityLabel={`Conversation with ${thread.counterpart.name || thread.store.title}`}
         onPress={() => onOpenThread(thread)}
-        style={({ pressed }) => [rowStyles.main, pressed && { opacity: 0.75 }]}
+        style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.75 }]}
       >
         <CommerceImage
           source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
-          style={rowStyles.avatar}
+          style={styles.rowAvatar}
           contentFit="cover"
           participateInReadyGate={false}
         />
-        <View style={rowStyles.copy}>
-          <View style={rowStyles.titleRow}>
-            <Text numberOfLines={1} style={[rowStyles.name, { color: colors.text }]}>
+        <View style={styles.rowCopy}>
+          <View style={styles.rowTitleLine}>
+            <Text numberOfLines={1} style={[styles.rowName, { color: colors.text }]}>
               {thread.counterpart.name || thread.store.title}
             </Text>
-            <Text style={[rowStyles.time, { color: colors.textMuted }]}>
+            <Text style={[styles.rowTime, { color: colors.textMuted }]}>
               {relativeTime(thread.lastMessageAt ?? thread.updatedAt)}
             </Text>
           </View>
-          <View style={rowStyles.previewRow}>
+          <View style={styles.rowPreviewLine}>
             <Text
               numberOfLines={1}
               style={[
-                rowStyles.preview,
+                styles.rowPreview,
                 { color: unread > 0 ? colors.text : colors.textMuted },
                 unread > 0 && { fontFamily: Fonts.textBold },
               ]}
@@ -163,8 +184,8 @@ function ThreadRow({
               {thread.lastMessageText ?? (isSelling ? "A customer reached out" : "Say hello")}
             </Text>
             {unread > 0 ? (
-              <View style={[rowStyles.unreadPill, { backgroundColor: colors.primary }]}>
-                <Text style={rowStyles.unreadPillText}>{unread > 99 ? "99+" : unread}</Text>
+              <View style={[styles.rowUnreadPill, { backgroundColor: colors.primary }]}>
+                <Text style={styles.rowUnreadPillText}>{unread > 99 ? "99+" : unread}</Text>
               </View>
             ) : null}
           </View>
@@ -175,8 +196,11 @@ function ThreadRow({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           onPress={onToggleExpand}
           style={[
-            rowStyles.replyToggle,
-            { backgroundColor: expanded ? colors.primary : colors.surface, borderColor: colors.cardBorder },
+            styles.rowReplyToggle,
+            {
+              backgroundColor: expanded ? colors.primary : colors.surface,
+              borderColor: colors.cardBorder,
+            },
           ]}
         >
           <Ionicons
@@ -188,7 +212,7 @@ function ThreadRow({
       </Pressable>
 
       {expanded ? (
-        <View style={[rowStyles.replyRow, { borderTopColor: colors.cardBorder }]}>
+        <View style={[styles.replyRow, { borderTopColor: colors.cardBorder }]}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -196,7 +220,7 @@ function ThreadRow({
             placeholderTextColor={colors.textMuted}
             autoFocus
             style={[
-              rowStyles.replyInput,
+              styles.replyInput,
               { color: colors.text, backgroundColor: colors.surface, borderColor: colors.cardBorder },
             ]}
             editable={!isSending}
@@ -208,7 +232,7 @@ function ThreadRow({
             disabled={isSending || !draft.trim()}
             onPress={() => void quickReply()}
             style={[
-              rowStyles.replySend,
+              styles.replySend,
               { backgroundColor: colors.primary },
               (isSending || !draft.trim()) && { opacity: 0.45 },
             ]}
@@ -221,22 +245,70 @@ function ThreadRow({
   );
 }
 
-export default function ChatDock() {
+export default function FloatingHub() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { showToast } = useToast();
   useChatInboxSync();
   const { threads, unreadCount, hasThreads, isSelling } = useChatInbox();
-  // Published by the tab bar; 0 on pushed screens, which have no tab bar.
   const tabBarHeight = useAppChromeStore((state) => state.tabBarHeight);
-  const [open, setOpen] = useState(false);
+
+  const [dialOpen, setDialOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const progress = useRef(new Animated.Value(0)).current;
 
   const hidden = useMemo(
     () => HIDDEN_PATH_SNIPPETS.some((snippet) => pathname.includes(snippet)),
     [pathname],
   );
+
+  const animateDial = useCallback(
+    (open: boolean) => {
+      setDialOpen(open);
+      Animated.timing(progress, {
+        toValue: open ? 1 : 0,
+        duration: 190,
+        easing: open ? Easing.out(Easing.back(1.4)) : Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    },
+    [progress],
+  );
+
+  const openAssistant = useCallback(() => {
+    animateDial(false);
+    const screen = deriveAssistantScreen(pathname);
+    const storeContext = buildStoreAssistantContext({
+      storeId: extractStoreIdFromPath(pathname),
+    });
+    router.push({
+      pathname: "/screens/assistant",
+      params: { screen, ...assistantContextToParams(storeContext) },
+    } as never);
+  }, [animateDial, pathname]);
+
+  const openMessages = useCallback(() => {
+    // The dial makes way for the sheet — two overlays at once is noise.
+    animateDial(false);
+    if (!user) {
+      showToast("Sign in to see your messages.", "info");
+      router.push("/(root)/(auth)/signin" as never);
+      return;
+    }
+    setSheetOpen(true);
+  }, [animateDial, showToast, user]);
+
+  const onMainPress = useCallback(() => {
+    if (isSelling) {
+      // No assistant on the seller side; the button IS messages.
+      setSheetOpen(true);
+      return;
+    }
+    animateDial(!dialOpen);
+  }, [animateDial, dialOpen, isSelling]);
 
   const sorted = useMemo(
     () =>
@@ -255,7 +327,7 @@ export default function ChatDock() {
 
   const openThread = useCallback(
     (thread: ChatThread) => {
-      setOpen(false);
+      setSheetOpen(false);
       setExpandedId(null);
       router.push({
         pathname: "/screens/productDetails/chat/[vendorId]" as never,
@@ -270,70 +342,154 @@ export default function ChatDock() {
     [isSelling],
   );
 
-  // Anchored to the same corner as the assistant, stacked just above it so
-  // the two read as one control cluster. The assistant FAB only exists on
-  // shopper tab screens, so the clearance applies exactly there; on pushed
-  // screens and for sellers the bubble takes the corner itself.
-  const baseBottom = (tabBarHeight || insets.bottom) + rS(12);
-  const bottom =
-    tabBarHeight && !isSelling ? baseBottom + ASSISTANT_SIZE + STACK_GAP : baseBottom;
-
-  if (hidden || !user) {
+  // Signed-out shoppers keep the assistant; Messages asks them to sign in.
+  if (hidden) {
     return null;
   }
 
+  const bottom = (tabBarHeight || insets.bottom) + rS(12);
+  const rotate = progress.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "45deg"] });
+  const optionStyle = (index: number) => ({
+    opacity: progress,
+    transform: [
+      {
+        translateY: progress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [rV(14) * (index + 1), 0],
+        }),
+      },
+      { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+    ],
+  });
+
   return (
     <>
-      <View style={[dockStyles.wrap, { bottom }]} pointerEvents="box-none">
+      {/* Tapping anywhere else folds the dial away. */}
+      {dialOpen ? (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { zIndex: 44 }]}
+          accessibilityLabel="Close quick actions"
+          onPress={() => animateDial(false)}
+        />
+      ) : null}
+
+      <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+        {!isSelling ? (
+          <View pointerEvents={dialOpen ? "auto" : "none"} style={styles.options}>
+            <Animated.View style={[styles.optionRow, optionStyle(1)]}>
+              <View style={[styles.optionLabel, { backgroundColor: colors.inverseSurface }]}>
+                <Text style={[styles.optionLabelText, { color: colors.onInverseSurface }]}>
+                  Assistant
+                </Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Open ODOS Assistant"
+                activeOpacity={0.85}
+                onPress={openAssistant}
+                style={styles.optionButtonShadow}
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.textSecondary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.optionButton}
+                >
+                  <Ionicons name="sparkles" size={rMS(19)} color={colors.onPrimary} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={[styles.optionRow, optionStyle(0)]}>
+              <View style={[styles.optionLabel, { backgroundColor: colors.inverseSurface }]}>
+                <Text style={[styles.optionLabelText, { color: colors.onInverseSurface }]}>
+                  Messages
+                </Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  unreadCount > 0 ? `Messages, ${unreadCount} unread` : "Open messages"
+                }
+                activeOpacity={0.85}
+                onPress={openMessages}
+                style={[
+                  styles.optionButton,
+                  styles.optionButtonShadow,
+                  { backgroundColor: colors.inverseSurface },
+                ]}
+              >
+                <Ionicons name="chatbubbles" size={rMS(18)} color={colors.onInverseSurface} />
+                <UnreadBadge count={unreadCount} borderColor={colors.screen} />
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
-            unreadCount > 0
-              ? `${unreadCount} new message${unreadCount === 1 ? "" : "s"}. Open chats`
-              : "Open chats"
+            isSelling
+              ? unreadCount > 0
+                ? `Messages, ${unreadCount} unread`
+                : "Open messages"
+              : dialOpen
+                ? "Close quick actions"
+                : "Open quick actions"
           }
-          onPress={() => setOpen(true)}
+          onPress={onMainPress}
           style={({ pressed }) => [
-            dockStyles.bubble,
-            {
-              backgroundColor: colors.inverseSurface,
-              shadowColor: colors.shadow,
-              borderColor: colors.screen,
-            },
-            pressed && { transform: [{ scale: 0.94 }], opacity: 0.9 },
+            styles.fabShadow,
+            { shadowColor: colors.shadow },
+            pressed && { transform: [{ scale: 0.94 }] },
           ]}
         >
-          <Ionicons name="chatbubbles" size={rMS(21)} color={colors.onInverseSurface} />
-          {unreadCount > 0 ? (
-            <View style={[dockStyles.badge, { borderColor: colors.screen }]}>
-              <Text style={dockStyles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-            </View>
-          ) : null}
+          <LinearGradient
+            colors={[colors.primary, colors.textSecondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fab}
+          >
+            {isSelling ? (
+              <Ionicons name="chatbubbles" size={rMS(21)} color={colors.onPrimary} />
+            ) : (
+              <Animated.View style={{ transform: [{ rotate }] }}>
+                <Ionicons name="add" size={rMS(28)} color={colors.onPrimary} />
+              </Animated.View>
+            )}
+          </LinearGradient>
+          {/* Hidden while the dial is open — the count moves to the Messages option. */}
+          {!dialOpen ? <UnreadBadge count={unreadCount} borderColor={colors.screen} /> : null}
         </Pressable>
       </View>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View style={sheetStyles.backdrop}>
+      <Modal
+        visible={sheetOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSheetOpen(false)}
+      >
+        <View style={styles.backdrop}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            accessibilityLabel="Close chats"
-            onPress={() => setOpen(false)}
+            accessibilityLabel="Close messages"
+            onPress={() => setSheetOpen(false)}
           />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <View
               style={[
-                sheetStyles.sheet,
+                styles.sheet,
                 { backgroundColor: colors.screen, paddingBottom: insets.bottom + rV(12) },
               ]}
             >
-              <View style={[sheetStyles.grabber, { backgroundColor: colors.cardBorder }]} />
+              <View style={[styles.grabber, { backgroundColor: colors.cardBorder }]} />
 
-              <View style={sheetStyles.header}>
+              <View style={styles.sheetHeader}>
                 <View>
-                  <Text style={[sheetStyles.title, { color: colors.text }]}>
+                  <Text style={[styles.sheetTitle, { color: colors.text }]}>
                     {isSelling ? "Customer chats" : "Messages"}
                   </Text>
-                  <Text style={[sheetStyles.subtitle, { color: colors.textMuted }]}>
+                  <Text style={[styles.sheetSubtitle, { color: colors.textMuted }]}>
                     {unreadCount > 0
                       ? `${unreadCount} unread · reply right here`
                       : hasThreads
@@ -344,16 +500,16 @@ export default function ChatDock() {
                 <TouchableOpacity
                   accessibilityLabel="Open full chat screen"
                   onPress={() => {
-                    setOpen(false);
+                    setSheetOpen(false);
                     router.push(
                       (isSelling
                         ? "/vendor/chats"
                         : "/(root)/screens/profileScreens/Account/Chats") as never,
                     );
                   }}
-                  style={[sheetStyles.seeAll, { borderColor: colors.cardBorder }]}
+                  style={[styles.seeAll, { borderColor: colors.cardBorder }]}
                 >
-                  <Text style={[sheetStyles.seeAllText, { color: colors.text }]}>See all</Text>
+                  <Text style={[styles.seeAllText, { color: colors.text }]}>See all</Text>
                   <Ionicons name="arrow-forward" size={rMS(12)} color={colors.text} />
                 </TouchableOpacity>
               </View>
@@ -370,20 +526,22 @@ export default function ChatDock() {
                       thread={item}
                       isSelling={isSelling}
                       expanded={expandedId === item.id}
-                      onToggleExpand={() => setExpandedId((cur) => (cur === item.id ? null : item.id))}
+                      onToggleExpand={() =>
+                        setExpandedId((cur) => (cur === item.id ? null : item.id))
+                      }
                       onOpenThread={openThread}
                     />
                   )}
                 />
               ) : (
-                <View style={sheetStyles.empty}>
-                  <View style={[sheetStyles.emptyIcon, { backgroundColor: colors.card }]}>
+                <View style={styles.empty}>
+                  <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
                     <Ionicons name="chatbubbles-outline" size={rMS(22)} color={colors.textMuted} />
                   </View>
-                  <Text style={[sheetStyles.emptyTitle, { color: colors.text }]}>No chats yet</Text>
-                  <Text style={[sheetStyles.emptyBody, { color: colors.textMuted }]}>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>No chats yet</Text>
+                  <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
                     Message a seller from any product or store page, and the conversation stays
-                    here — replies show up on this bubble wherever you are in the app.
+                    here — replies show up on this button wherever you are in the app.
                   </Text>
                 </View>
               )}
@@ -395,24 +553,61 @@ export default function ChatDock() {
   );
 }
 
-const dockStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
     right: rS(16),
     zIndex: 45,
     alignItems: "flex-end",
   },
-  bubble: {
-    width: ASSISTANT_SIZE,
-    height: ASSISTANT_SIZE,
-    borderRadius: ASSISTANT_SIZE / 2,
+  options: {
+    alignItems: "flex-end",
+    gap: rV(10),
+    marginBottom: rV(10),
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(10),
+  },
+  optionLabel: {
+    borderRadius: 999,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(6),
+  },
+  optionLabelText: {
+    fontFamily: Fonts.textBold,
+    fontSize: rMS(12),
+  },
+  optionButton: {
+    width: OPTION_SIZE,
+    height: OPTION_SIZE,
+    borderRadius: OPTION_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    shadowOpacity: Platform.OS === "ios" ? 0.22 : 0.3,
+  },
+  optionButtonShadow: {
+    shadowColor: "#000",
+    shadowOpacity: Platform.OS === "ios" ? 0.2 : 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderRadius: OPTION_SIZE / 2,
+  },
+  fabShadow: {
+    shadowOpacity: Platform.OS === "ios" ? 0.24 : 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 10,
+    borderRadius: FAB_SIZE / 2,
+  },
+  fab: {
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   badge: {
     position: "absolute",
@@ -432,9 +627,6 @@ const dockStyles = StyleSheet.create({
     fontFamily: Fonts.titleBold,
     fontSize: rMS(10),
   },
-});
-
-const sheetStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: "flex-end",
@@ -453,15 +645,15 @@ const sheetStyles = StyleSheet.create({
     borderRadius: 999,
     marginBottom: rV(8),
   },
-  header: {
+  sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: rS(16),
     paddingBottom: rV(12),
   },
-  title: { fontFamily: Fonts.titleBold, fontSize: rMS(17) },
-  subtitle: { fontFamily: Fonts.text, fontSize: rMS(11.5), marginTop: rV(2) },
+  sheetTitle: { fontFamily: Fonts.titleBold, fontSize: rMS(17) },
+  sheetSubtitle: { fontFamily: Fonts.text, fontSize: rMS(11.5), marginTop: rV(2) },
   seeAll: {
     flexDirection: "row",
     alignItems: "center",
@@ -493,34 +685,31 @@ const sheetStyles = StyleSheet.create({
     lineHeight: rMS(18),
     textAlign: "center",
   },
-});
-
-const rowStyles = StyleSheet.create({
-  wrap: { borderWidth: 1, borderRadius: rMS(16), overflow: "hidden" },
-  main: {
+  rowWrap: { borderWidth: 1, borderRadius: rMS(16), overflow: "hidden" },
+  rowMain: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(10),
     padding: rS(12),
   },
-  avatar: { width: rMS(42), height: rMS(42), borderRadius: rMS(21) },
-  copy: { flex: 1, minWidth: 0 },
-  titleRow: {
+  rowAvatar: { width: rMS(42), height: rMS(42), borderRadius: rMS(21) },
+  rowCopy: { flex: 1, minWidth: 0 },
+  rowTitleLine: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: rS(8),
   },
-  name: { fontFamily: Fonts.textBold, fontSize: rMS(13.5), flexShrink: 1 },
-  time: { fontFamily: Fonts.text, fontSize: rMS(10.5) },
-  previewRow: {
+  rowName: { fontFamily: Fonts.textBold, fontSize: rMS(13.5), flexShrink: 1 },
+  rowTime: { fontFamily: Fonts.text, fontSize: rMS(10.5) },
+  rowPreviewLine: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(8),
     marginTop: rV(2),
   },
-  preview: { fontFamily: Fonts.text, fontSize: rMS(12), flex: 1 },
-  unreadPill: {
+  rowPreview: { fontFamily: Fonts.text, fontSize: rMS(12), flex: 1 },
+  rowUnreadPill: {
     minWidth: rMS(18),
     height: rMS(18),
     borderRadius: rMS(9),
@@ -528,8 +717,8 @@ const rowStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  unreadPillText: { color: "#FFFFFF", fontFamily: Fonts.titleBold, fontSize: rMS(9.5) },
-  replyToggle: {
+  rowUnreadPillText: { color: "#FFFFFF", fontFamily: Fonts.titleBold, fontSize: rMS(9.5) },
+  rowReplyToggle: {
     width: rMS(32),
     height: rMS(32),
     borderRadius: rMS(16),

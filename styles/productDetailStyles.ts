@@ -74,8 +74,6 @@ export function createProductDetailStyles(c: ThemeColors) {
   galleryShell: {
     position: "relative",
     backgroundColor: c.imagePlaceholder,
-    borderBottomLeftRadius: rMS(28),
-    borderBottomRightRadius: rMS(28),
     overflow: "hidden",
   },
   imageSlide: {
@@ -87,14 +85,15 @@ export function createProductDetailStyles(c: ThemeColors) {
     width: "100%",
     height: "100%",
   },
+  // Sits at the bottom-left of the image, clear of the floating header above
+  // and leaving the bottom-right to the expand hint.
   galleryOverlayRow: {
     position: "absolute",
-    top: rV(16),
+    bottom: rV(16),
     left: rS(16),
-    right: rS(16),
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: rS(8),
   },
   galleryCountBadge: {
     flexDirection: "row",
