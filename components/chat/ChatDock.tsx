@@ -1,11 +1,12 @@
+import CommerceImage from "@/components/media/CommerceImage";
 import Fonts from "@/constants/Fonts";
+import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useChatInbox, useChatInboxSync } from "@/hooks/useChatInbox";
 import { useAppChromeStore } from "@/stores/appChromeStore";
 import type { ChatThread } from "@/types/chat";
-import CommerceImage from "@/components/media/CommerceImage";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
@@ -25,16 +26,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
- * Chat, reachable from anywhere — and answerable from anywhere.
+ * Chat, reachable and answerable from any screen.
  *
- * The earlier launcher appeared only when a reply was unread, so between
- * replies the way back into a conversation was still Profile → Chats. This
- * keeps a quiet dock on screen whenever the person has conversations at all:
- * a small bubble normally, the informative "Kofi replied" pill when something
- * is waiting. Tapping opens the inbox as a sheet over the current screen —
- * read the latest from every conversation and fire back a quick reply right
- * there, without abandoning the cart, the product, or wherever you were.
- * The full thread screen (attachments, voice notes) is one more tap.
+ * A fixed bubble rides above the assistant FAB in the bottom-right corner —
+ * the one corner the thumb already knows — with a numbered badge when replies
+ * are waiting. Tapping opens the inbox as a sheet over the current screen:
+ * every conversation, newest and unread first, each expandable into a quick
+ * reply right there. The full thread screen (attachments, voice notes) stays
+ * one tap away. The dock exists whenever the shopper is signed in, because
+ * the moment a seller replies must be visible from wherever the shopper
+ * happens to be standing.
  */
 
 const HIDDEN_PATH_SNIPPETS = [
@@ -51,32 +52,47 @@ const HIDDEN_PATH_SNIPPETS = [
   "splash",
 ];
 
-/** The assistant FAB's own footprint, so the dock sits clear above it. */
-const ASSISTANT_FAB_CLEARANCE = rMS(52) + rV(22);
+/** Matches AssistantFab: width 52 + its 12pt gap off the tab bar. */
+const ASSISTANT_SIZE = rMS(52);
+const STACK_GAP = rV(10);
 
-function timeLabel(iso?: string): string {
+function relativeTime(iso?: string | null): string {
   if (!iso) {
     return "";
   }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) {
     return "";
   }
-  const now = new Date();
-  const sameDay = date.toDateString() === now.toDateString();
-  if (sameDay) {
-    return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const minutes = Math.floor((Date.now() - then) / 60_000);
+  if (minutes < 1) {
+    return "now";
   }
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 7) {
+    return `${days}d`;
+  }
+  return new Date(then).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function ThreadRow({
   thread,
   isSelling,
+  expanded,
+  onToggleExpand,
   onOpenThread,
 }: {
   thread: ChatThread;
   isSelling: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onOpenThread: (thread: ChatThread) => void;
 }) {
   const { colors } = useTheme();
@@ -84,7 +100,7 @@ function ThreadRow({
   const { sendMessage, loadMessages } = useChat();
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const unread = (thread.unreadCount ?? 0) > 0;
+  const unread = thread.unreadCount ?? 0;
 
   const quickReply = useCallback(async () => {
     const text = draft.trim();
@@ -95,8 +111,8 @@ function ThreadRow({
     try {
       await sendMessage(thread.id, text);
       setDraft("");
-      // Fetching the thread is what marks it read server-side; silent so no
-      // spinner appears anywhere. Realtime then clears the badge.
+      // Fetching the thread marks it read server-side; silent, so no spinner
+      // appears anywhere. Realtime then clears the badge on its own.
       void loadMessages(thread.id, { silent: true });
       showToast("Sent", "success");
     } catch (error) {
@@ -107,46 +123,82 @@ function ThreadRow({
   }, [draft, isSending, loadMessages, sendMessage, showToast, thread.id]);
 
   return (
-    <View style={[rowStyles.wrap, { borderColor: colors.cardBorder, backgroundColor: colors.card }]}>
-      <TouchableOpacity activeOpacity={0.75} style={rowStyles.main} onPress={() => onOpenThread(thread)}>
-        <View style={rowStyles.avatarWrap}>
-          <CommerceImage
-            source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
-            style={rowStyles.avatar}
-            contentFit="cover"
-            participateInReadyGate={false}
-          />
-          {unread ? <View style={[rowStyles.unreadDot, { backgroundColor: colors.primary }]} /> : null}
-        </View>
+    <View
+      style={[
+        rowStyles.wrap,
+        { borderColor: colors.cardBorder, backgroundColor: colors.card },
+        unread > 0 && { borderColor: colors.primary + "55" },
+      ]}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Conversation with ${thread.counterpart.name || thread.store.title}`}
+        onPress={() => onOpenThread(thread)}
+        style={({ pressed }) => [rowStyles.main, pressed && { opacity: 0.75 }]}
+      >
+        <CommerceImage
+          source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
+          style={rowStyles.avatar}
+          contentFit="cover"
+          participateInReadyGate={false}
+        />
         <View style={rowStyles.copy}>
           <View style={rowStyles.titleRow}>
             <Text numberOfLines={1} style={[rowStyles.name, { color: colors.text }]}>
               {thread.counterpart.name || thread.store.title}
             </Text>
-            <Text style={[rowStyles.time, { color: colors.textMuted }]}>{timeLabel(thread.lastMessageAt ?? undefined)}</Text>
+            <Text style={[rowStyles.time, { color: colors.textMuted }]}>
+              {relativeTime(thread.lastMessageAt ?? thread.updatedAt)}
+            </Text>
           </View>
-          <Text
-            numberOfLines={1}
-            style={[
-              rowStyles.preview,
-              { color: unread ? colors.text : colors.textMuted },
-              unread && { fontFamily: Fonts.textBold },
-            ]}
-          >
-            {thread.lastMessageText ?? (isSelling ? "A customer reached out" : "Start the conversation")}
-          </Text>
+          <View style={rowStyles.previewRow}>
+            <Text
+              numberOfLines={1}
+              style={[
+                rowStyles.preview,
+                { color: unread > 0 ? colors.text : colors.textMuted },
+                unread > 0 && { fontFamily: Fonts.textBold },
+              ]}
+            >
+              {thread.lastMessageText ?? (isSelling ? "A customer reached out" : "Say hello")}
+            </Text>
+            {unread > 0 ? (
+              <View style={[rowStyles.unreadPill, { backgroundColor: colors.primary }]}>
+                <Text style={rowStyles.unreadPillText}>{unread > 99 ? "99+" : unread}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={rMS(15)} color={colors.textMuted} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? "Hide quick reply" : "Quick reply"}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={onToggleExpand}
+          style={[
+            rowStyles.replyToggle,
+            { backgroundColor: expanded ? colors.primary : colors.surface, borderColor: colors.cardBorder },
+          ]}
+        >
+          <Ionicons
+            name="arrow-undo-outline"
+            size={rMS(14)}
+            color={expanded ? "#FFFFFF" : colors.textMuted}
+          />
+        </TouchableOpacity>
+      </Pressable>
 
-      {unread ? (
+      {expanded ? (
         <View style={[rowStyles.replyRow, { borderTopColor: colors.cardBorder }]}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Reply without leaving this screen…"
+            placeholder={`Reply to ${thread.counterpart.name || thread.store.title}…`}
             placeholderTextColor={colors.textMuted}
-            style={[rowStyles.replyInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.cardBorder }]}
+            autoFocus
+            style={[
+              rowStyles.replyInput,
+              { color: colors.text, backgroundColor: colors.surface, borderColor: colors.cardBorder },
+            ]}
             editable={!isSending}
             returnKeyType="send"
             onSubmitEditing={() => void quickReply()}
@@ -158,7 +210,7 @@ function ThreadRow({
             style={[
               rowStyles.replySend,
               { backgroundColor: colors.primary },
-              (isSending || !draft.trim()) && { opacity: 0.5 },
+              (isSending || !draft.trim()) && { opacity: 0.45 },
             ]}
           >
             <Ionicons name="arrow-up" size={rMS(16)} color="#FFFFFF" />
@@ -173,11 +225,13 @@ export default function ChatDock() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { showToast } = useToast();
+  const { user } = useAuth();
   useChatInboxSync();
-  const { threads, unreadCount, latestUnreadThread, hasThreads, isSelling } = useChatInbox();
+  const { threads, unreadCount, hasThreads, isSelling } = useChatInbox();
+  // Published by the tab bar; 0 on pushed screens, which have no tab bar.
   const tabBarHeight = useAppChromeStore((state) => state.tabBarHeight);
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const hidden = useMemo(
     () => HIDDEN_PATH_SNIPPETS.some((snippet) => pathname.includes(snippet)),
@@ -187,11 +241,14 @@ export default function ChatDock() {
   const sorted = useMemo(
     () =>
       [...threads].sort((a, b) => {
-        const unreadGap = (b.unreadCount ?? 0) - (a.unreadCount ?? 0) === 0 ? 0 : (b.unreadCount ?? 0) > 0 ? 1 : -1;
-        if ((a.unreadCount ?? 0) > 0 !== ((b.unreadCount ?? 0) > 0)) {
-          return unreadGap;
+        const aUnread = (a.unreadCount ?? 0) > 0;
+        const bUnread = (b.unreadCount ?? 0) > 0;
+        if (aUnread !== bUnread) {
+          return aUnread ? -1 : 1;
         }
-        return Date.parse(b.lastMessageAt ?? b.updatedAt) - Date.parse(a.lastMessageAt ?? a.updatedAt);
+        return (
+          Date.parse(b.lastMessageAt ?? b.updatedAt) - Date.parse(a.lastMessageAt ?? a.updatedAt)
+        );
       }),
     [threads],
   );
@@ -199,6 +256,7 @@ export default function ChatDock() {
   const openThread = useCallback(
     (thread: ChatThread) => {
       setOpen(false);
+      setExpandedId(null);
       router.push({
         pathname: "/screens/productDetails/chat/[vendorId]" as never,
         params: {
@@ -212,75 +270,77 @@ export default function ChatDock() {
     [isSelling],
   );
 
-  const bottom = tabBarHeight
-    ? tabBarHeight + (isSelling ? rV(12) : ASSISTANT_FAB_CLEARANCE)
-    : insets.bottom + rV(12);
+  // Anchored to the same corner as the assistant, stacked just above it so
+  // the two read as one control cluster. The assistant FAB only exists on
+  // shopper tab screens, so the clearance applies exactly there; on pushed
+  // screens and for sellers the bubble takes the corner itself.
+  const baseBottom = (tabBarHeight || insets.bottom) + rS(12);
+  const bottom =
+    tabBarHeight && !isSelling ? baseBottom + ASSISTANT_SIZE + STACK_GAP : baseBottom;
 
-  // No conversations yet: nothing to open, so no dock. The first chat is
-  // started from a product or store, and the dock exists from then on.
-  if (hidden || !hasThreads) {
+  if (hidden || !user) {
     return null;
   }
-
-  const who = latestUnreadThread?.counterpart.name?.trim();
 
   return (
     <>
       <View style={[dockStyles.wrap, { bottom }]} pointerEvents="box-none">
-        {unreadCount > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${unreadCount} new message${unreadCount === 1 ? "" : "s"}. Open chats`}
-            onPress={() => setOpen(true)}
-            style={({ pressed }) => [
-              dockStyles.pill,
-              { backgroundColor: colors.inverseSurface, shadowColor: colors.shadow },
-              pressed && { opacity: 0.88 },
-            ]}
-          >
-            <View style={[dockStyles.pillIcon, { backgroundColor: colors.onInverseSurface }]}>
-              <Ionicons name="chatbubble-ellipses" size={rMS(16)} color={colors.inverseSurface} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            unreadCount > 0
+              ? `${unreadCount} new message${unreadCount === 1 ? "" : "s"}. Open chats`
+              : "Open chats"
+          }
+          onPress={() => setOpen(true)}
+          style={({ pressed }) => [
+            dockStyles.bubble,
+            {
+              backgroundColor: colors.inverseSurface,
+              shadowColor: colors.shadow,
+              borderColor: colors.screen,
+            },
+            pressed && { transform: [{ scale: 0.94 }], opacity: 0.9 },
+          ]}
+        >
+          <Ionicons name="chatbubbles" size={rMS(21)} color={colors.onInverseSurface} />
+          {unreadCount > 0 ? (
+            <View style={[dockStyles.badge, { borderColor: colors.screen }]}>
+              <Text style={dockStyles.badgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
             </View>
-            <View style={{ flexShrink: 1 }}>
-              <Text numberOfLines={1} style={[dockStyles.pillTitle, { color: colors.onInverseSurface }]}>
-                {unreadCount === 1 ? "1 new message" : `${unreadCount} new messages`}
-              </Text>
-              <Text numberOfLines={1} style={[dockStyles.pillSubtitle, { color: colors.onInverseSurface }]}>
-                {who ? `${who} replied · tap to read` : "Tap to read and reply"}
-              </Text>
-            </View>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open chats"
-            onPress={() => setOpen(true)}
-            style={({ pressed }) => [
-              dockStyles.bubble,
-              { backgroundColor: colors.inverseSurface, shadowColor: colors.shadow },
-              pressed && { opacity: 0.88 },
-            ]}
-          >
-            <Ionicons name="chatbubble-ellipses" size={rMS(19)} color={colors.onInverseSurface} />
-          </Pressable>
-        )}
+          ) : null}
+        </Pressable>
       </View>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={sheetStyles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} accessibilityLabel="Close chats" onPress={() => setOpen(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            accessibilityLabel="Close chats"
+            onPress={() => setOpen(false)}
+          />
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <View
               style={[
                 sheetStyles.sheet,
-                { backgroundColor: colors.surface, paddingBottom: insets.bottom + rV(12) },
+                { backgroundColor: colors.screen, paddingBottom: insets.bottom + rV(12) },
               ]}
             >
-              <View style={sheetStyles.grabber} />
+              <View style={[sheetStyles.grabber, { backgroundColor: colors.cardBorder }]} />
+
               <View style={sheetStyles.header}>
-                <Text style={[sheetStyles.title, { color: colors.text }]}>
-                  {isSelling ? "Customer chats" : "Your chats"}
-                </Text>
+                <View>
+                  <Text style={[sheetStyles.title, { color: colors.text }]}>
+                    {isSelling ? "Customer chats" : "Messages"}
+                  </Text>
+                  <Text style={[sheetStyles.subtitle, { color: colors.textMuted }]}>
+                    {unreadCount > 0
+                      ? `${unreadCount} unread · reply right here`
+                      : hasThreads
+                        ? "All caught up"
+                        : "Conversations with sellers live here"}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   accessibilityLabel="Open full chat screen"
                   onPress={() => {
@@ -291,21 +351,42 @@ export default function ChatDock() {
                         : "/(root)/screens/profileScreens/Account/Chats") as never,
                     );
                   }}
+                  style={[sheetStyles.seeAll, { borderColor: colors.cardBorder }]}
                 >
-                  <Text style={[sheetStyles.seeAll, { color: colors.primary }]}>See all</Text>
+                  <Text style={[sheetStyles.seeAllText, { color: colors.text }]}>See all</Text>
+                  <Ionicons name="arrow-forward" size={rMS(12)} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
-              <FlatList
-                data={sorted.slice(0, 12)}
-                keyExtractor={(thread) => thread.id}
-                style={{ flexGrow: 0 }}
-                contentContainerStyle={{ gap: rV(8), paddingHorizontal: rS(14) }}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                  <ThreadRow thread={item} isSelling={isSelling} onOpenThread={openThread} />
-                )}
-              />
+              {hasThreads ? (
+                <FlatList
+                  data={sorted.slice(0, 12)}
+                  keyExtractor={(thread) => thread.id}
+                  style={{ flexGrow: 0 }}
+                  contentContainerStyle={{ gap: rV(8), paddingHorizontal: rS(14), paddingTop: rV(2) }}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                    <ThreadRow
+                      thread={item}
+                      isSelling={isSelling}
+                      expanded={expandedId === item.id}
+                      onToggleExpand={() => setExpandedId((cur) => (cur === item.id ? null : item.id))}
+                      onOpenThread={openThread}
+                    />
+                  )}
+                />
+              ) : (
+                <View style={sheetStyles.empty}>
+                  <View style={[sheetStyles.emptyIcon, { backgroundColor: colors.card }]}>
+                    <Ionicons name="chatbubbles-outline" size={rMS(22)} color={colors.textMuted} />
+                  </View>
+                  <Text style={[sheetStyles.emptyTitle, { color: colors.text }]}>No chats yet</Text>
+                  <Text style={[sheetStyles.emptyBody, { color: colors.textMuted }]}>
+                    Message a seller from any product or store page, and the conversation stays
+                    here — replies show up on this bubble wherever you are in the app.
+                  </Text>
+                </View>
+              )}
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -317,78 +398,101 @@ export default function ChatDock() {
 const dockStyles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    left: rS(16),
     right: rS(16),
-    zIndex: 50,
-    alignItems: "center",
+    zIndex: 45,
+    alignItems: "flex-end",
   },
   bubble: {
-    alignSelf: "flex-start",
-    width: rMS(44),
-    height: rMS(44),
-    borderRadius: rMS(22),
+    width: ASSISTANT_SIZE,
+    height: ASSISTANT_SIZE,
+    borderRadius: ASSISTANT_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
     shadowOpacity: Platform.OS === "ios" ? 0.22 : 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
   },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(10),
-    alignSelf: "center",
-    maxWidth: "100%",
-    paddingLeft: rS(12),
-    paddingRight: rS(16),
-    paddingVertical: rV(10),
-    borderRadius: 999,
-    shadowOpacity: Platform.OS === "ios" ? 0.22 : 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
-  },
-  pillIcon: {
-    width: rMS(30),
-    height: rMS(30),
-    borderRadius: rMS(15),
+  badge: {
+    position: "absolute",
+    top: -rV(3),
+    right: -rS(3),
+    minWidth: rMS(19),
+    height: rMS(19),
+    borderRadius: rMS(10),
+    paddingHorizontal: rS(4),
+    backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
   },
-  pillTitle: { fontFamily: Fonts.titleBold, fontSize: rMS(13) },
-  pillSubtitle: { fontFamily: Fonts.text, fontSize: rMS(11.5), opacity: 0.75 },
+  badgeText: {
+    color: "#FFFFFF",
+    fontFamily: Fonts.titleBold,
+    fontSize: rMS(10),
+  },
 });
 
 const sheetStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(10, 10, 12, 0.45)",
+    backgroundColor: "rgba(10, 10, 12, 0.5)",
   },
   sheet: {
-    borderTopLeftRadius: rMS(22),
-    borderTopRightRadius: rMS(22),
+    borderTopLeftRadius: rMS(24),
+    borderTopRightRadius: rMS(24),
     paddingTop: rV(8),
-    maxHeight: "72%",
+    maxHeight: "74%",
   },
   grabber: {
     alignSelf: "center",
-    width: rS(38),
-    height: rV(4),
+    width: rS(40),
+    height: rV(4.5),
     borderRadius: 999,
-    backgroundColor: "rgba(127,127,127,0.35)",
-    marginBottom: rV(6),
+    marginBottom: rV(8),
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: rS(16),
-    paddingBottom: rV(10),
+    paddingBottom: rV(12),
   },
-  title: { fontFamily: Fonts.titleBold, fontSize: rMS(16) },
-  seeAll: { fontFamily: Fonts.textBold, fontSize: rMS(13) },
+  title: { fontFamily: Fonts.titleBold, fontSize: rMS(17) },
+  subtitle: { fontFamily: Fonts.text, fontSize: rMS(11.5), marginTop: rV(2) },
+  seeAll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(5),
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: rS(12),
+    paddingVertical: rV(7),
+  },
+  seeAllText: { fontFamily: Fonts.textBold, fontSize: rMS(12) },
+  empty: {
+    alignItems: "center",
+    paddingHorizontal: rS(32),
+    paddingVertical: rV(28),
+    gap: rV(8),
+  },
+  emptyIcon: {
+    width: rMS(52),
+    height: rMS(52),
+    borderRadius: rMS(26),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: rV(4),
+  },
+  emptyTitle: { fontFamily: Fonts.titleBold, fontSize: rMS(14.5) },
+  emptyBody: {
+    fontFamily: Fonts.text,
+    fontSize: rMS(12),
+    lineHeight: rMS(18),
+    textAlign: "center",
+  },
 });
 
 const rowStyles = StyleSheet.create({
@@ -399,30 +503,47 @@ const rowStyles = StyleSheet.create({
     gap: rS(10),
     padding: rS(12),
   },
-  avatarWrap: { position: "relative" },
-  avatar: { width: rMS(40), height: rMS(40), borderRadius: rMS(20) },
-  unreadDot: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: rMS(11),
-    height: rMS(11),
-    borderRadius: rMS(6),
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
+  avatar: { width: rMS(42), height: rMS(42), borderRadius: rMS(21) },
   copy: { flex: 1, minWidth: 0 },
-  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: rS(8) },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rS(8),
+  },
   name: { fontFamily: Fonts.textBold, fontSize: rMS(13.5), flexShrink: 1 },
-  time: { fontFamily: Fonts.text, fontSize: rMS(11) },
-  preview: { fontFamily: Fonts.text, fontSize: rMS(12), marginTop: rV(2) },
+  time: { fontFamily: Fonts.text, fontSize: rMS(10.5) },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(8),
+    marginTop: rV(2),
+  },
+  preview: { fontFamily: Fonts.text, fontSize: rMS(12), flex: 1 },
+  unreadPill: {
+    minWidth: rMS(18),
+    height: rMS(18),
+    borderRadius: rMS(9),
+    paddingHorizontal: rS(4),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadPillText: { color: "#FFFFFF", fontFamily: Fonts.titleBold, fontSize: rMS(9.5) },
+  replyToggle: {
+    width: rMS(32),
+    height: rMS(32),
+    borderRadius: rMS(16),
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   replyRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: rS(8),
     borderTopWidth: 1,
     paddingHorizontal: rS(10),
-    paddingVertical: rV(8),
+    paddingVertical: rV(9),
   },
   replyInput: {
     flex: 1,

@@ -1,5 +1,5 @@
 import CatalogScrollFooter from "@/components/catalog/CatalogScrollFooter";
-import FlashSaleCard from "@/components/cards/FlashSaleCard";
+import RecommendationCard from "@/components/cards/RecommendationCard";
 import { ProductListSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ImageReadyScreenGate from "@/components/media/ImageReadyScreenGate";
 import {
@@ -35,14 +35,8 @@ function formatFlashStatCountdown(totalSeconds: number) {
 
 export default function FlashSalesScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
-  const { horizontalPadding, sectionSpacing, width } = useResponsive();
+  const { horizontalPadding, sectionSpacing } = useResponsive();
 
-  // FlashSaleCard is a 160pt tile built for the home rail. In this
-  // single-column list it kept that width, so every row sat against the left
-  // edge with the rest of the screen empty -- most obvious with one live sale,
-  // where the page looked broken rather than sparse. Cards take the content
-  // width here, matching the full-width rows on the other catalog screens.
-  const flashCardWidth = width - horizontalPadding * 2;
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
   const { events: flashEvents, primaryEvent } = useFlashSaleEvents();
@@ -290,15 +284,7 @@ export default function FlashSalesScreen() {
             }
             ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
             renderItem={({ item }) => (
-              <FlashSaleCard
-                {...item}
-                cardWidth={flashCardWidth}
-                cardSpacing={0}
-                reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
-                flashSaleEndsAt={item.flashSaleEndsAt}
-                flashSaleStockLimit={item.flashSaleStockLimit}
-                flashSaleUnitsRemaining={item.flashSaleUnitsRemaining}
-              />
+              <RecommendationCard {...item} />
             )}
             contentContainerStyle={{
               paddingHorizontal: horizontalPadding,

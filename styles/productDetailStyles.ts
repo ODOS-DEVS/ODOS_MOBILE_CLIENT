@@ -37,36 +37,50 @@ export function createProductDetailStyles(c: ThemeColors) {
     fontFamily: Fonts.titleBold,
     color: c.text,
   },
+  // The loaded screen's header floats over the hero image: no bar, no title,
+  // just frosted circular controls that read on any photograph.
+  headerFloating: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "transparent",
+  },
+  headerButtonFloating: {
+    width: rMS(40),
+    height: rMS(40),
+    borderRadius: rMS(20),
+    backgroundColor: "rgba(12, 10, 9, 0.42)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   scroll: {
     flex: 1,
   },
   heroSection: {
     position: "relative",
-    paddingBottom: rV(10),
   },
+  // The old design framed the gallery as a rounded card floating on a tinted
+  // backdrop, with a solid "Product Details" bar above it. The product now
+  // owns the top of the screen: edge-to-edge imagery with the header floating
+  // over it — the backdrop has nothing left to do.
   heroBackdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: rV(250),
-    backgroundColor: c.cardElevated,
-    borderBottomLeftRadius: rMS(34),
-    borderBottomRightRadius: rMS(34),
+    display: "none",
   },
   galleryShell: {
     position: "relative",
     backgroundColor: c.imagePlaceholder,
-    marginHorizontal: rS(16),
-    marginTop: rV(12),
-    borderRadius: rMS(30),
+    borderBottomLeftRadius: rMS(28),
+    borderBottomRightRadius: rMS(28),
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
   },
   imageSlide: {
-    width: screenWidth - rS(32),
-    height: rV(350),
+    width: screenWidth,
+    height: rV(430),
     backgroundColor: c.imagePlaceholder,
   },
   heroImage: {

@@ -635,7 +635,7 @@ export default function ProductDetail() {
     <View style={styles.container}>
       <View
         style={[
-          styles.header,
+          shouldShowLoadingState ? styles.header : styles.headerFloating,
           {
             paddingTop: Math.max(insets.top + rV(6), rV(44)),
             paddingHorizontal: horizontalPadding,
@@ -643,20 +643,34 @@ export default function ProductDetail() {
         ]}
       >
         <TouchableOpacity
-          style={styles.headerButton}
+          style={shouldShowLoadingState ? styles.headerButton : styles.headerButtonFloating}
           onPress={() => goBackOr(router, { fallback: "/(root)/(tabs)" })}
           activeOpacity={0.7}
+          accessibilityLabel="Back"
         >
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Ionicons
+            name="arrow-back"
+            size={22}
+            color={shouldShowLoadingState ? colors.text : "#FFFFFF"}
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Product Details</Text>
+        {shouldShowLoadingState ? (
+          <Text style={styles.headerTitle}>Product Details</Text>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
         <TouchableOpacity
-          style={styles.headerButton}
+          style={shouldShowLoadingState ? styles.headerButton : styles.headerButtonFloating}
           activeOpacity={0.7}
           onPress={openShareSheet}
           disabled={shouldShowLoadingState || !title}
+          accessibilityLabel="Share this product"
         >
-          <AntDesign name="share-alt" size={18} color={colors.text} />
+          <AntDesign
+            name="share-alt"
+            size={18}
+            color={shouldShowLoadingState ? colors.text : "#FFFFFF"}
+          />
         </TouchableOpacity>
       </View>
 
@@ -682,14 +696,15 @@ export default function ProductDetail() {
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(_, index) => `${id}-gallery-${index}`}
                   getItemLayout={(_, index) => ({
-                    length: screenWidth - rS(32),
-                    offset: (screenWidth - rS(32)) * index,
+                    // Slides are edge-to-edge now; the old card width made
+                    // paging drift one slide per swipe after the redesign.
+                    length: screenWidth,
+                    offset: screenWidth * index,
                     index,
                   })}
                   onMomentumScrollEnd={(event) => {
                     const index = Math.round(
-                      event.nativeEvent.contentOffset.x /
-                        (screenWidth - rS(32)),
+                      event.nativeEvent.contentOffset.x / screenWidth,
                     );
                     setActiveImageIndex(index);
                   }}
