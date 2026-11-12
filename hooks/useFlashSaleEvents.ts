@@ -84,3 +84,34 @@ export function useFlashSaleEvents() {
     refresh,
   };
 }
+
+/**
+ * Scheduled-but-unstarted flash sales, soonest first. Separate state from the
+ * live list because the two refresh on different rhythms — a live sale ticks,
+ * an upcoming one just waits.
+ */
+export function useUpcomingFlashSaleEvents() {
+  const [events, setEvents] = useState<FlashSaleEventItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const payload = await fetchJsonCached<FlashSaleEventApiItem[]>(
+        `${API_BASE_URL}/catalog/flash-sale-events/upcoming`,
+        { staleTimeMs: 60_000 },
+      );
+      setEvents(payload.map(mapFlashSaleEvent));
+    } catch {
+      // The rail simply doesn't render — upcoming sales are never worth an error state.
+      setEvents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { events, isLoading, refresh };
+}

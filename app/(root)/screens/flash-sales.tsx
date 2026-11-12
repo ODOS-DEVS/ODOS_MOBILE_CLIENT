@@ -12,6 +12,7 @@ import {
 } from "@/components/browse/CommerceSeeAllUi";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import UpcomingFlashRail from "@/components/deals/UpcomingFlashRail";
 import { NetworkErrorState } from "@/components/empty/NetworkErrorState";
 import { useInfiniteCatalogProducts } from "@/hooks/useInfiniteCatalogProducts";
 import { useFlashSaleEvents } from "@/hooks/useFlashSaleEvents";
@@ -34,7 +35,14 @@ function formatFlashStatCountdown(totalSeconds: number) {
 
 export default function FlashSalesScreen() {
   const screenStyles = useCommerceSeeAllScreenStyles();
-  const { horizontalPadding, sectionSpacing } = useResponsive();
+  const { horizontalPadding, sectionSpacing, width } = useResponsive();
+
+  // FlashSaleCard is a 160pt tile built for the home rail. In this
+  // single-column list it kept that width, so every row sat against the left
+  // edge with the rest of the screen empty -- most obvious with one live sale,
+  // where the page looked broken rather than sparse. Cards take the content
+  // width here, matching the full-width rows on the other catalog screens.
+  const flashCardWidth = width - horizontalPadding * 2;
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
   const { primaryEvent: flashSaleEvent } = useFlashSaleEvents();
@@ -159,6 +167,8 @@ export default function FlashSalesScreen() {
         />
       ) : null}
 
+      <UpcomingFlashRail />
+
       <CommerceSeeAllSearch
         data={products}
         onStartSearch={() => setIsSearching(true)}
@@ -256,12 +266,14 @@ export default function FlashSalesScreen() {
             windowSize={7}
             removeClippedSubviews
             ListFooterComponent={
-              isSearching ? null : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
+              isSearching ? undefined : <CatalogScrollFooter isLoadingMore={isLoadingMore} />
             }
             ItemSeparatorComponent={() => <View style={{ height: productCardGapY() }} />}
             renderItem={({ item }) => (
               <FlashSaleCard
                 {...item}
+                cardWidth={flashCardWidth}
+                cardSpacing={0}
                 reviews={item.reviews !== undefined ? Number(item.reviews) : undefined}
                 flashSaleEndsAt={item.flashSaleEndsAt}
                 flashSaleStockLimit={item.flashSaleStockLimit}
