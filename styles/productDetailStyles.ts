@@ -76,10 +76,19 @@ export function createProductDetailStyles(c: ThemeColors) {
     backgroundColor: c.imagePlaceholder,
     overflow: "hidden",
   },
+  // Square, because the catalogue is: every product original sampled from the
+  // CDN is 1:1. The hero used to be a fixed portrait height, so `cover` scaled
+  // a square photo up to fill it and sliced roughly a quarter of the width off
+  // — the pump and base of a bottle shot ended up outside the frame while the
+  // thumbnail below showed the whole thing. Matching the source shape means
+  // square photography fills the frame exactly, and `contain` on the image
+  // keeps anything shot to a different ratio whole instead of cropping it.
   imageSlide: {
     width: screenWidth,
-    height: rV(430),
-    backgroundColor: c.imagePlaceholder,
+    height: screenWidth,
+    backgroundColor: c.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   heroImage: {
     width: "100%",

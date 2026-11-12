@@ -717,7 +717,9 @@ export default function ProductDetail() {
                       <CommerceImage
                         source={item as any}
                         style={styles.heroImage}
-                        contentFit="cover"
+                        // Never crop the goods: a shopper judging a product
+                        // needs the whole frame the seller photographed.
+                        contentFit="contain"
                         displayWidth={screenWidth}
                         imageQuality="best"
                         trackingId={`product-hero-${id}-${index}`}
