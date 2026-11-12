@@ -718,6 +718,8 @@ export default function ProductDetail() {
                         source={item as any}
                         style={styles.heroImage}
                         contentFit="cover"
+                        displayWidth={screenWidth}
+                        imageQuality="best"
                         trackingId={`product-hero-${id}-${index}`}
                         recyclingKey={
                           item && typeof item === "object" && "uri" in item

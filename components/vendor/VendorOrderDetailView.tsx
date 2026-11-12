@@ -109,7 +109,7 @@ export default function VendorOrderDetailView({
   const handlePickDispatchPhoto = async () => {
     const result = await pickCroppedImage();
     if (result.tooLarge) {
-      Alert.alert("Image too large", "Please choose a smaller photo (under 8MB).");
+      Alert.alert("Image too large", "Please choose a smaller photo (under 18MB).");
       return;
     }
     if (!result.uri) {

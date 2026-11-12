@@ -21,6 +21,7 @@ import type { ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrders } from "@/hooks/useOrders";
+import { useAutoLoadOnScrollEnd } from "@/hooks/useAutoLoadOnScrollEnd";
 import { usePagedList } from "@/hooks/usePagedList";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { pickCroppedImage } from "@/utils/imagePicker";
@@ -156,7 +157,7 @@ export default function ReturnsScreen() {
       return;
     }
 
-    const picked = await pickCroppedImage(undefined, 0.82);
+    const picked = await pickCroppedImage();
     if (!picked.granted) {
       Alert.alert(
         "Permission needed",
@@ -166,7 +167,7 @@ export default function ReturnsScreen() {
     }
 
     if (picked.tooLarge) {
-      Alert.alert("Photo too large", "Please choose a photo under 8MB.");
+      Alert.alert("Photo too large", "Please choose a photo under 18MB.");
       return;
     }
 
@@ -222,6 +223,12 @@ export default function ReturnsScreen() {
   const pagedEligible = usePagedList(eligibleItems, { key: "eligible" });
   const pagedRequests = usePagedList(submittedRequests, { key: "requests" });
 
+  // One scroller, two lists: feed whichever tab the reader is actually on.
+  const pagedActive = activeView === "eligible" ? pagedEligible : pagedRequests;
+  const autoLoad = useAutoLoadOnScrollEnd(pagedActive.showMore, {
+    enabled: pagedActive.hasMore,
+  });
+
   if (isLoadingOrders) {
     return (
       <View style={accountStyles.screen}>
@@ -236,6 +243,7 @@ export default function ReturnsScreen() {
       <ProfileHeader title="Returns" />
 
       <KeyboardAwareScreen
+        {...autoLoad}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={accountStyles.content}
       >

@@ -178,6 +178,10 @@ export default function ProductImageGalleryModal({
                   source={item}
                   style={styles.fullscreenImage}
                   contentFit="contain"
+                  // The closest look a shopper gets at the goods, so the
+                  // sharpest variant the original supports.
+                  displayWidth={screenWidth}
+                  imageQuality="best"
                   trackingId={`product-gallery-${getGalleryImageKey(item, index)}`}
                   recyclingKey={getGalleryImageKey(item, index)}
                 />

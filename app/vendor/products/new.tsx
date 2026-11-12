@@ -316,13 +316,13 @@ export default function NewVendorProductScreen() {
       return;
     }
 
-    const result = await pickCroppedImage(undefined, 0.85);
+    const result = await pickCroppedImage();
     if (!result.granted) {
       showToast("Allow photo access to upload product images.");
       return;
     }
     if (result.tooLarge) {
-      showToast("That photo is too large. Please choose one under 8MB.");
+      showToast("That photo is too large. Please choose one under 18MB.");
       return;
     }
     if (result.canceled || !result.uri) {

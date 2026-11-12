@@ -236,13 +236,13 @@ export default function VendorApplyScreen() {
   const handlePickImage = async (
     field: "logoImage" | "bannerImage" | "shopImage",
   ) => {
-    const result = await pickCroppedImage(undefined, 0.8);
+    const result = await pickCroppedImage();
     if (!result.granted) {
       showWarningToast("Allow photo access to upload store images.");
       return;
     }
     if (result.tooLarge) {
-      showWarningToast("That photo is too large. Please choose one under 8MB.");
+      showWarningToast("That photo is too large. Please choose one under 18MB.");
       return;
     }
     if (result.canceled || !result.uri) {
