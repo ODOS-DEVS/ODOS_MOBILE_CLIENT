@@ -3,7 +3,8 @@ import { useTheme } from "@/context/ThemeContext";
 import type { StoreVoucherOffer } from "@/hooks/useVouchers";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import * as Clipboard from "expo-clipboard";
+import React, { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 function formatExpiry(value?: string | null) {
@@ -35,6 +36,7 @@ export default function PromoOfferCard({
   onUse,
 }: PromoOfferCardProps) {
   const { colors, isDark } = useTheme();
+  const [copied, setCopied] = useState(false);
   const isClaimable = offer.availability === "claim" || offer.availability === "auto";
 
   const styles = useMemo(
@@ -74,6 +76,18 @@ export default function PromoOfferCard({
           color: isDark ? colors.warningText : colors.primary,
           fontFamily: Fonts.title,
           fontSize: rMS(10),
+        },
+        codeChip: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: rS(6),
+          paddingHorizontal: rS(10),
+          paddingVertical: rV(5),
+          borderRadius: rMS(10),
+          borderWidth: 1,
+          borderStyle: "dashed",
+          borderColor: isDark ? colors.warningBorder : colors.primary,
+          backgroundColor: isDark ? "rgba(250, 204, 21, 0.08)" : "rgba(105, 105, 105, 0.06)",
         },
         code: {
           color: colors.textMuted,
@@ -167,7 +181,24 @@ export default function PromoOfferCard({
             {offer.scope === "store" ? "Store offer" : "Platform offer"}
           </Text>
         </View>
-        <Text style={styles.code}>{offer.code}</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Copy code ${offer.code}`}
+          activeOpacity={0.75}
+          onPress={() => {
+            void Clipboard.setStringAsync(offer.code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1600);
+          }}
+          style={styles.codeChip}
+        >
+          <Text style={styles.code}>{copied ? "Copied!" : offer.code}</Text>
+          <Ionicons
+            name={copied ? "checkmark" : "copy-outline"}
+            size={rMS(12)}
+            color={colors.textMuted}
+          />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.title} numberOfLines={2}>

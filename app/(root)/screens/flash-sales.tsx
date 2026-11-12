@@ -45,7 +45,15 @@ export default function FlashSalesScreen() {
   const flashCardWidth = width - horizontalPadding * 2;
   const [activeFilter, setActiveFilter] = useState<FlashFilter>("all");
   const [isSearching, setIsSearching] = useState(false);
-  const { primaryEvent: flashSaleEvent } = useFlashSaleEvents();
+  const { events: flashEvents, primaryEvent } = useFlashSaleEvents();
+  // More than one sale can run at once; the chips below the hero switch
+  // between them. Null means "follow the primary", so a freshly started
+  // event is adopted automatically until the shopper picks one.
+  const [selectedEventSlug, setSelectedEventSlug] = useState<string | null>(null);
+  const flashSaleEvent = useMemo(
+    () => flashEvents.find((event) => event.slug === selectedEventSlug) ?? primaryEvent,
+    [flashEvents, primaryEvent, selectedEventSlug],
+  );
 
   // Track flash event impression
   useEffect(() => {
@@ -164,6 +172,18 @@ export default function FlashSalesScreen() {
         <FlashSaleCountdown
           endsAt={flashSaleEvent.endsAt}
           serverSecondsRemaining={flashSaleEvent.secondsRemaining}
+        />
+      ) : null}
+
+      {flashEvents.length > 1 ? (
+        <CommerceFilterChips
+          chips={flashEvents.map((event) => ({
+            key: event.slug,
+            label: event.title,
+            count: event.productCount,
+          }))}
+          activeKey={flashSaleEvent?.slug ?? flashEvents[0].slug}
+          onChange={(key) => setSelectedEventSlug(key)}
         />
       ) : null}
 

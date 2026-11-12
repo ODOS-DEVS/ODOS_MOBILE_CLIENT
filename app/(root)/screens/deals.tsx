@@ -1,7 +1,8 @@
 import PromoOfferCard from "@/components/cards/PromoOfferCard";
 import RecommendationCard from "@/components/cards/RecommendationCard";
 import PromoBanner from "@/components/cards/PromoBanner";
-import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
+import FlashEventShowcase from "@/components/deals/FlashEventShowcase";
+import UpcomingFlashRail from "@/components/deals/UpcomingFlashRail";
 import TopDealSpotlight from "@/components/deals/TopDealSpotlight";
 import { CarouselDots } from "@/components/ui/CarouselDots";
 import { HomeContentSkeleton } from "@/components/loaders/CommerceSkeletons";
@@ -325,30 +326,9 @@ export default function DealsScreen() {
                 </View>
               ) : null}
 
-              {primaryFlashEvent ? (
-                <View style={{ gap: rV(10) }}>
-                  <CommerceSeeAllSectionHeader
-                    title={primaryFlashEvent.title}
-                    subtitle={primaryFlashEvent.subtitle ?? "Limited-time event"}
-                    count={primaryFlashEvent.productCount}
-                  />
-                  <FlashSaleCountdown
-                    endsAt={primaryFlashEvent.endsAt}
-                    serverSecondsRemaining={primaryFlashEvent.secondsRemaining}
-                  />
-                  <TouchableOpacity onPress={() => router.push("/(root)/screens/flash-sales")}>
-                    <Text
-                      style={{
-                        fontFamily: Fonts.titleBold,
-                        fontSize: 13,
-                        color: colors.primary,
-                      }}
-                    >
-                      View all flash sales →
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
+              {primaryFlashEvent ? <FlashEventShowcase event={primaryFlashEvent} /> : null}
+
+              <UpcomingFlashRail />
 
               {promotions.length > 0 ? (
               <View style={{ gap: rV(12) }}>
