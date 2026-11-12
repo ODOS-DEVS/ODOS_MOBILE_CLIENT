@@ -1,3 +1,5 @@
+import ChatDock from "@/components/chat/ChatDock";
+import { deferAfterInteractions } from "@/utils/deferAfterInteractions";
 import RootErrorBoundary from "@/components/RootErrorBoundary";
 import { installWorkletCrashGuard } from "@/utils/workletCrashGuard";
 import { CartProvider } from "@/context/CartContext";
@@ -25,7 +27,7 @@ import { mapRealtimeVendorOrderPayload } from "@/services/storeService";
 import { vendorOrderAlertFromRealtimePayload } from "@/utils/vendorOrderAlertBus";
 import { useFonts } from "expo-font";
 import { SplashScreen as ExpoSplashScreen, Stack } from "expo-router";
-import { AppState, InteractionManager, View } from "react-native";
+import { AppState, View } from "react-native";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { enableFreeze } from "react-native-screens";
@@ -131,7 +133,7 @@ function VendorRealtimeBridge() {
       ].includes(status);
 
       if (!isStillActive && alertPayload) {
-        InteractionManager.runAfterInteractions(() => {
+        deferAfterInteractions(() => {
           void cancelVendorOrderReminders(alertPayload.orderId);
         });
       }
@@ -142,11 +144,11 @@ function VendorRealtimeBridge() {
 
       if (alertPayload) {
         const mappedOrder = mapRealtimeVendorOrderPayload(payload);
-        InteractionManager.runAfterInteractions(() => {
+        deferAfterInteractions(() => {
           upsertRealtimeOrder(mappedOrder);
         });
       } else {
-        InteractionManager.runAfterInteractions(() => {
+        deferAfterInteractions(() => {
           void fetchOrders(session);
         });
       }
@@ -191,7 +193,14 @@ function VendorRealtimeBridge() {
 function ThemedAppShell({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: colors.screen }}>{children}</View>
+    <View style={{ flex: 1, backgroundColor: colors.screen }}>
+      {children}
+      {/* Mounted here rather than in the tabs layout so it survives a push:
+          `(tabs)` is one route in the root Stack, so anything rendered inside
+          it is covered the moment a screen is pushed on top — which is most
+          of the app, and exactly where a reply tends to arrive. */}
+      <ChatDock />
+    </View>
   );
 }
 

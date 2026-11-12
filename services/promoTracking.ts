@@ -59,21 +59,21 @@ async function flushPromoEvents() {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/promotions/events/batch`, {
+    // API_BASE_URL already ends in /api — appending another produced /api/api/… and a 404.
+    const response = await fetch(`${API_BASE_URL}/promotions/events/batch`, {
       method: 'POST',
       headers,
       body: JSON.stringify(batch),
     });
 
     if (!response.ok) {
-      console.error('Promo analytics batch failed:', response.status);
-      // Re-queue failed events for retry
-      eventQueue.unshift(...eventsToSend);
+      // Dropped, not retried: a rejected batch retried later double-counts
+      // the funnel, and a permanent 404 would otherwise grow the queue for
+      // the life of the app. Analytics is never worth either.
+      console.warn('Promo analytics batch dropped:', response.status);
     }
-  } catch (error) {
-    console.error('Promo tracking error:', error);
-    // Re-queue failed events for retry
-    eventQueue.unshift(...eventsToSend);
+  } catch {
+    // Network blip: drop for the same reason. The next interaction records fresh events.
   }
 }
 
