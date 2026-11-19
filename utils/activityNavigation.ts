@@ -176,8 +176,13 @@ export function routeFromPushData(
 
   if (
     routeType === "vendor_campaign" ||
-    readString(data.type) === "vendor_campaign_opt_in"
+    routeType === "vendor_campaign_submit" ||
+    readString(data.type) === "vendor_campaign_opt_in" ||
+    readString(data.type) === "vendor_campaign_invite"
   ) {
+    // The invite carries the campaign slug, but this app has no per-campaign submission
+    // screen — the vendor campaigns list is the closest real destination. Mapping it here
+    // rather than leaving it unhandled means the notification is still tappable.
     return { type: "vendor_campaign" };
   }
 
