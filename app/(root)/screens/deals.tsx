@@ -282,16 +282,19 @@ export default function DealsScreen() {
                           borderColor: colors.border,
                         }}
                       >
-                        {campaign.thumbnailImageUrl || campaign.bannerImageUrl ? (
+                        {/* Banner first, matching the website and the campaign detail screen.
+                            Preferring the thumbnail here meant one campaign wore two different
+                            pictures depending on which app you opened it in. */}
+                        {campaign.bannerImageUrl || campaign.thumbnailImageUrl ? (
                           <CommerceImage
                             source={{
-                              uri: campaign.thumbnailImageUrl || campaign.bannerImageUrl,
+                              uri: campaign.bannerImageUrl || campaign.thumbnailImageUrl,
                             }}
                             style={{ width: "100%", height: 96 }}
                             contentFit="cover"
                             trackingId={`deals-campaign-${campaign.id}`}
                             recyclingKey={
-                              campaign.thumbnailImageUrl || campaign.bannerImageUrl || campaign.id
+                              campaign.bannerImageUrl || campaign.thumbnailImageUrl || campaign.id
                             }
                             placeholderColor={colors.imagePlaceholder}
                           />
