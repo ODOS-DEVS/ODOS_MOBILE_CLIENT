@@ -31,6 +31,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -151,12 +152,21 @@ function ThreadRow({
         unread > 0 && { borderColor: colors.primary + "55" },
       ]}
     >
-      <Pressable
+      {/*
+        Layout lives on a plain inner View, never on the touchable.
+        NativeWind owns the JSX runtime in this app and its style interop
+        never invokes the callback form, so `style={({pressed}) => ...}` is
+        dropped outright — the row lost `flexDirection: "row"` and rendered
+        as an unstyled column: avatar on its own line, name and timestamp
+        stretched full width, the reply button orphaned bottom-left.
+      */}
+      <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={`Conversation with ${thread.counterpart.name || thread.store.title}`}
         onPress={() => onOpenThread(thread)}
-        style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.75 }]}
+        activeOpacity={0.75}
       >
+        <View style={styles.rowMain}>
         {thread.counterpart.avatarUrl || thread.store.imageUrl ? (
           <CommerceImage
             source={{ uri: thread.counterpart.avatarUrl ?? thread.store.imageUrl ?? undefined }}
@@ -216,8 +226,9 @@ function ThreadRow({
             size={rMS(14)}
             color={expanded ? "#FFFFFF" : colors.textMuted}
           />
-        </TouchableOpacity>
-      </Pressable>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
 
       {expanded ? (
         <View style={[styles.replyRow, { borderTopColor: colors.cardBorder }]}>
@@ -256,6 +267,7 @@ function ThreadRow({
 export default function FloatingHub() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { colors } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -317,6 +329,24 @@ export default function FloatingHub() {
     }
     animateDial(!dialOpen);
   }, [animateDial, dialOpen, isSelling]);
+
+  /**
+   * Determinate height, derived from the content rather than fixed at 520.
+   *
+   * A flat 520 was chosen to stop the panel collapsing around a short list
+   * and clipping rows, but it overcorrected: a single conversation left two
+   * thirds of the sheet empty. Measuring the rows keeps the panel honest at
+   * both ends — still a fixed number by the time it reaches the style, so
+   * the list inside can flex without the collapse the comment warned about.
+   */
+  const sheetHeight = useMemo(() => {
+    const chrome = rV(96); // grabber + header
+    const rows = Math.min(threads.length, 20) * rV(72);
+    const wanted = chrome + rows + insets.bottom + rV(24);
+    return Math.round(
+      Math.min(Math.max(wanted, rV(240)), windowHeight * 0.78),
+    );
+  }, [insets.bottom, threads.length, windowHeight]);
 
   const sorted = useMemo(
     () =>
@@ -446,11 +476,7 @@ export default function FloatingHub() {
                 : "Open quick actions"
           }
           onPress={onMainPress}
-          style={({ pressed }) => [
-            styles.fabShadow,
-            { shadowColor: colors.shadow },
-            pressed && { transform: [{ scale: 0.94 }] },
-          ]}
+          style={[styles.fabShadow, { shadowColor: colors.shadow }]}
         >
           <LinearGradient
             colors={[colors.primary, colors.textSecondary]}
@@ -487,7 +513,11 @@ export default function FloatingHub() {
             <View
               style={[
                 styles.sheet,
-                { backgroundColor: colors.screen, paddingBottom: insets.bottom + rV(12) },
+                {
+                  height: sheetHeight,
+                  backgroundColor: colors.screen,
+                  paddingBottom: insets.bottom + rV(12),
+                },
               ]}
             >
               <View style={[styles.grabber, { backgroundColor: colors.cardBorder }]} />
@@ -645,12 +675,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     backgroundColor: "rgba(10, 10, 12, 0.5)",
   },
-  // A fixed-height panel, not a content-sized one: with maxHeight alone the
-  // sheet collapsed around however much the list happened to measure, clipping
-  // rows mid-card (the screenshot that prompted this). A determinate height
-  // with a flexed list inside is boring and correct.
+  // Height is supplied by the component (see `sheetHeight`): a determinate
+  // number, computed from the row count, so the list can flex inside it
+  // without the sheet collapsing around a short list and clipping rows.
   sheet: {
-    height: rV(520),
     borderTopLeftRadius: rMS(26),
     borderTopRightRadius: rMS(26),
     paddingTop: rV(8),

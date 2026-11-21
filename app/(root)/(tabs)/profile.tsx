@@ -613,6 +613,14 @@ export default function ProfileScreen() {
                   }}
                 />
                 <MenuItem
+                  icon="pricetags-outline"
+                  label="Negotiations"
+                  description="Offers you've made and prices you've agreed"
+                  onPress={() => {
+                    router.push("../screens/negotiations" as any);
+                  }}
+                />
+                <MenuItem
                   icon="medal-outline"
                   label="Loyalty"
                   value={loyaltyRow.value}

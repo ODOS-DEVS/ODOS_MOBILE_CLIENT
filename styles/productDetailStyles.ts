@@ -2,9 +2,7 @@ import { AppColors } from "@/constants/Colors";
 import type { ThemeColors } from "@/constants/theme";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
-import { Dimensions, StyleSheet } from "react-native";
-
-const screenWidth = Dimensions.get("window").width;
+import { StyleSheet } from "react-native";
 
 export function createProductDetailStyles(c: ThemeColors) {
   return StyleSheet.create({
@@ -50,156 +48,86 @@ export function createProductDetailStyles(c: ThemeColors) {
     justifyContent: "space-between",
     backgroundColor: "transparent",
   },
+  // A light chip, not a dark scrim. The scrim existed for a hero that was a
+  // full-bleed photograph, where a translucent black circle was the only way
+  // to keep a white glyph legible over unknown pixels. The showcase backdrop
+  // is now a known, flat surface, so the control can simply be a surface chip
+  // in the theme's own colours — which also stops it reading as a dark blob
+  // floating on a pale page.
   headerButtonFloating: {
     width: rMS(40),
     height: rMS(40),
     borderRadius: rMS(20),
-    backgroundColor: "rgba(12, 10, 9, 0.42)",
+    backgroundColor: c.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: c.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   scroll: {
     flex: 1,
   },
-  heroSection: {
-    position: "relative",
-  },
-  // The old design framed the gallery as a rounded card floating on a tinted
-  // backdrop, with a solid "Product Details" bar above it. The product now
-  // owns the top of the screen: edge-to-edge imagery with the header floating
-  // over it — the backdrop has nothing left to do.
-  heroBackdrop: {
-    display: "none",
-  },
-  galleryShell: {
-    position: "relative",
-    backgroundColor: c.imagePlaceholder,
-    overflow: "hidden",
-  },
-  // Square, because the catalogue is: every product original sampled from the
-  // CDN is 1:1. The hero used to be a fixed portrait height, so `cover` scaled
-  // a square photo up to fill it and sliced roughly a quarter of the width off
-  // — the pump and base of a bottle shot ended up outside the frame while the
-  // thumbnail below showed the whole thing. Matching the source shape means
-  // square photography fills the frame exactly, and `contain` on the image
-  // keeps anything shot to a different ratio whole instead of cropping it.
-  imageSlide: {
-    width: screenWidth,
-    backgroundColor: c.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
-  // Sits at the bottom-left of the image, clear of the floating header above
-  // and leaving the bottom-right to the expand hint.
-  galleryOverlayRow: {
-    position: "absolute",
-    bottom: rV(16),
-    left: rS(16),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(8),
-  },
-  galleryCountBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: "rgba(15, 23, 42, 0.62)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  galleryCountText: {
-    color: c.onInverseSurface,
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-  },
-  discountPill: {
-    backgroundColor: "rgba(15, 23, 42, 0.78)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  discountPillText: {
-    color: c.onInverseSurface,
-    fontSize: rMS(11),
-    fontFamily: Fonts.titleBold,
-  },
-  expandHintWrap: {
-    position: "absolute",
-    right: rS(16),
-    bottom: rV(16),
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: "rgba(15, 23, 42, 0.62)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderRadius: 999,
-  },
-  expandHintText: {
-    color: c.onInverseSurface,
-    fontSize: rMS(11),
-    fontFamily: Fonts.title,
-  },
-  thumbnailWrap: {
-    width: rMS(64),
-    height: rMS(64),
-    borderRadius: rMS(16),
-    marginRight: rS(10),
-    padding: 3,
-    backgroundColor: c.card,
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  thumbnailWrapActive: {
-    borderColor: AppColors.primary,
-    borderWidth: 2,
-  },
-  thumbnailImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: rMS(13),
-  },
   content: {
     paddingTop: rV(10),
   },
+  // Flat. This was a 28pt-radius card with a border and a 22pt shadow,
+  // stacked directly above two more cards of the same kind — the repetition
+  // was doing the work of a separator at the cost of three shadow layers.
+  // The copy reads better straight on the page, with rules between sections.
   infoShell: {
-    backgroundColor: c.card,
-    borderRadius: rMS(28),
-    paddingHorizontal: rS(18),
-    paddingVertical: rV(18),
-    borderWidth: 1,
-    borderColor: c.border,
-    shadowColor: c.shadow,
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 22,
-    elevation: 3,
+    paddingTop: rV(4),
   },
-  taxonomyRow: {
+  // Provenance in one muted line, replacing a row of filled pills.
+  eyebrow: {
+    fontSize: rMS(11.5),
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    color: c.textMuted,
+    fontFamily: Fonts.titleBold,
+  },
+  metaLine: {
     flexDirection: "row",
+    alignItems: "center",
     flexWrap: "wrap",
-    gap: rS(8),
+    gap: rS(6),
+    marginTop: rV(10),
   },
-  taxonomyPill: {
-    borderRadius: 999,
-    backgroundColor: c.pill,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(7),
+  metaRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rS(4),
   },
-  taxonomyPillText: {
-    fontSize: rMS(11),
+  metaStrong: {
+    fontSize: rMS(12.5),
     color: c.text,
-    fontFamily: Fonts.title,
+    fontFamily: Fonts.titleBold,
   },
+  metaDim: {
+    fontSize: rMS(12.5),
+    color: c.textMuted,
+    fontFamily: Fonts.text,
+  },
+  metaDot: {
+    fontSize: rMS(12.5),
+    color: c.textMuted,
+    fontFamily: Fonts.text,
+  },
+  metaStock: {
+    fontSize: rMS(12.5),
+    color: c.successText,
+    fontFamily: Fonts.titleBold,
+  },
+  metaStockLow: { color: c.warningText },
+  metaStockOut: { color: c.dangerText },
   productTitle: {
-    marginTop: rV(14),
-    fontSize: rMS(26),
-    lineHeight: rMS(33),
+    marginTop: rV(12),
+    fontSize: rMS(22),
+    lineHeight: rMS(29),
     color: c.text,
     fontFamily: Fonts.titleBold,
   },
@@ -210,77 +138,11 @@ export function createProductDetailStyles(c: ThemeColors) {
     color: c.textMuted,
     fontFamily: Fonts.text,
   },
-  metaRow: {
-    marginTop: rV(14),
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: rS(10),
-  },
-  infoStatsRow: {
-    flexDirection: "row",
-    gap: rS(10),
-    marginTop: rV(16),
-  },
-  infoStat: {
-    flex: 1,
-    backgroundColor: c.accentSoft,
-    borderRadius: rMS(16),
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(12),
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  infoStatLabel: {
-    fontSize: rMS(10.5),
-    color: c.textMuted,
-    fontFamily: Fonts.text,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  infoStatValue: {
-    marginTop: rV(6),
-    fontSize: rMS(12),
-    color: c.text,
-    fontFamily: Fonts.title,
-  },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rS(6),
-    backgroundColor: c.card,
-    borderRadius: 999,
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  metaChipText: {
-    fontSize: rMS(11),
-    color: c.textMuted,
-    fontFamily: Fonts.text,
-  },
   priceCard: {
-    marginTop: rV(18),
-    borderRadius: rMS(26),
-    backgroundColor: c.inverseSurface,
-    padding: rS(18),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.04)",
-    shadowColor: c.shadow,
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 26,
-    elevation: 4,
-  },
-  priceTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: rS(12),
-  },
-  priceLabel: {
-    fontSize: rMS(12),
-    color: c.mutedOnInverse,
-    fontFamily: Fonts.text,
+    marginTop: rV(16),
+    paddingTop: rV(16),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.border,
   },
   priceRow: {
     flexDirection: "row",
@@ -289,36 +151,34 @@ export function createProductDetailStyles(c: ThemeColors) {
     flexWrap: "wrap",
   },
   price: {
-    fontSize: rMS(24),
-    color: c.onInverseSurface,
+    fontSize: rMS(29),
+    color: c.text,
     fontFamily: Fonts.titleBold,
   },
   oldPrice: {
     marginLeft: rS(10),
     fontSize: rMS(15),
-    color: c.placeholder,
+    color: c.textMuted,
     fontFamily: Fonts.text,
     textDecorationLine: "line-through",
   },
   savingsPill: {
     alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: rS(12),
-    paddingVertical: rV(8),
+    borderRadius: rMS(8),
+    backgroundColor: c.dangerSoft,
+    paddingHorizontal: rS(10),
+    paddingVertical: rV(6),
   },
   savingsPillText: {
-    fontSize: rMS(11),
-    color: "#E2E8F0",
+    fontSize: rMS(11.5),
+    color: c.dangerText,
     fontFamily: Fonts.titleBold,
   },
   variantCard: {
     marginTop: rV(18),
-    borderRadius: rMS(24),
-    backgroundColor: c.card,
-    padding: rS(18),
-    borderWidth: 1,
-    borderColor: c.border,
+    paddingTop: rV(18),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.border,
     gap: rV(14),
   },
   variantHeader: {
@@ -346,7 +206,7 @@ export function createProductDetailStyles(c: ThemeColors) {
     minHeight: rMS(42),
     borderRadius: rMS(16),
     borderWidth: 1,
-    borderColor: "#DBDBDB",
+    borderColor: c.border,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: c.card,
@@ -383,7 +243,7 @@ export function createProductDetailStyles(c: ThemeColors) {
     paddingVertical: rV(9),
     borderRadius: rMS(12),
     borderWidth: 1,
-    borderColor: "#D6D6D8",
+    borderColor: c.border,
     backgroundColor: c.card,
   },
   sizeBtnActive: {
@@ -515,84 +375,6 @@ export function createProductDetailStyles(c: ThemeColors) {
   },
   relatedList: {
     paddingBottom: rV(4),
-  },
-  fullscreenModal: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  fullscreenHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  fullscreenHeaderButton: {
-    width: rMS(42),
-    height: rMS(42),
-    borderRadius: rMS(21),
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenCounter: {
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: rS(14),
-    paddingVertical: rV(9),
-  },
-  fullscreenCounterText: {
-    color: c.onInverseSurface,
-    fontSize: rMS(12),
-    fontFamily: Fonts.title,
-  },
-  fullscreenImageSlide: {
-    width: screenWidth,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenImage: {
-    width: "100%",
-    height: "100%",
-  },
-  fullscreenFooter: {
-    paddingHorizontal: rS(16),
-    paddingBottom: rV(22),
-  },
-  fullscreenTitle: {
-    color: c.onInverseSurface,
-    fontSize: rMS(16),
-    fontFamily: Fonts.titleBold,
-  },
-  fullscreenPrice: {
-    marginTop: rV(4),
-    color: c.mutedOnInverse,
-    fontSize: rMS(13),
-    fontFamily: Fonts.text,
-  },
-  fullscreenThumbs: {
-    paddingTop: rV(14),
-  },
-  fullscreenThumbWrap: {
-    width: rMS(56),
-    height: rMS(56),
-    borderRadius: rMS(14),
-    overflow: "hidden",
-    marginRight: rS(10),
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  fullscreenThumbWrapActive: {
-    borderWidth: 2,
-    borderColor: AppColors.white,
-  },
-  fullscreenThumbImage: {
-    width: "100%",
-    height: "100%",
   },
   bottomBar: {
     position: "absolute",

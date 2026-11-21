@@ -78,6 +78,20 @@ export async function openActivityRoute(route: ActivityRoute) {
     return;
   }
 
+  if (route.type === "negotiation") {
+    // Both sides share one route_type; the screen works out which party is looking from
+    // the negotiation itself, so one destination serves shopper and vendor alike.
+    if (route.negotiationId) {
+      router.push({
+        pathname: "/(root)/screens/negotiations/[id]" as any,
+        params: { id: route.negotiationId },
+      });
+    } else {
+      router.push("/(root)/screens/negotiations" as any);
+    }
+    return;
+  }
+
   if (route.type === "vendor_vouchers") {
     router.push("/vendor/vouchers" as any);
     return;
@@ -184,6 +198,13 @@ export function routeFromPushData(
     // screen — the vendor campaigns list is the closest real destination. Mapping it here
     // rather than leaving it unhandled means the notification is still tappable.
     return { type: "vendor_campaign" };
+  }
+
+  if (routeType === "negotiation" || readString(data.type) === "negotiation") {
+    return {
+      type: "negotiation",
+      negotiationId: routeTargetId ?? readString(data.negotiationId) ?? undefined,
+    };
   }
 
   if (

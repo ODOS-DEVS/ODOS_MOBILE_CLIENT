@@ -33,6 +33,7 @@ export type ActivityRoute =
     }
   | { type: "vendor_flash_sale" }
   | { type: "vendor_campaign" }
+  | { type: "negotiation"; negotiationId?: string }
   | { type: "vendor_product"; productId?: string }
   | { type: "profile" }
   | { type: "orders" }

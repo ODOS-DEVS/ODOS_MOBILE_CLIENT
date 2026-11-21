@@ -4,9 +4,10 @@ import FlashSaleCountdown from "@/components/deals/FlashSaleCountdown";
 import DeliveryOptionsCard from "@/components/delivery/DeliveryOptionsCard";
 import { ProductDetailSkeleton } from "@/components/loaders/CommerceSkeletons";
 import ProductImageGalleryModal from "@/components/media/ProductImageGalleryModal";
-import CommerceImage from "@/components/media/CommerceImage";
 import ProductDetailBottomBar from "@/components/product/ProductDetailBottomBar";
+import ProductGallery from "@/components/product/ProductGallery";
 import ProductDetailRecommendations from "@/components/product/ProductDetailRecommendations";
+import MakeOfferSheet from "@/components/negotiation/MakeOfferSheet";
 import { ProductReviewsPanel } from "@/components/reviews/ReviewUi";
 import ProductShareSheet from "@/components/share/ProductShareSheet";
 import { useProfile } from "@/context/ProfileContext";
@@ -39,18 +40,15 @@ import {
 import type { ProductSharePayload } from "@/utils/shareCatalog";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const screenWidth = Dimensions.get("window").width;
 
 const namedColorMap: Record<string, string> = {
   black: "#111827",
@@ -133,53 +131,7 @@ function formatReviewCountLabel(value?: string | number | null) {
   return "Customer reviews";
 }
 
-function ProductMetaChip({
-  icon,
-  label,
-  styles,
-  mutedColor,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  styles: ReturnType<typeof createProductDetailStyles>;
-  mutedColor: string;
-  onPress?: () => void;
-}) {
-  const content = (
-    <>
-      <Ionicons name={icon} size={rMS(13)} color={mutedColor} />
-      <Text style={styles.metaChipText}>{label}</Text>
-    </>
-  );
 
-  if (!onPress) {
-    return <View style={styles.metaChip}>{content}</View>;
-  }
-
-  return (
-    <TouchableOpacity style={styles.metaChip} activeOpacity={0.86} onPress={onPress}>
-      {content}
-    </TouchableOpacity>
-  );
-}
-
-function InfoStat({
-  label,
-  value,
-  styles,
-}: {
-  label: string;
-  value: string;
-  styles: ReturnType<typeof createProductDetailStyles>;
-}) {
-  return (
-    <View style={styles.infoStat}>
-      <Text style={styles.infoStatLabel}>{label}</Text>
-      <Text style={styles.infoStatValue}>{value}</Text>
-    </View>
-  );
-}
 
 export default function ProductDetail() {
   const { colors } = useTheme();
@@ -189,7 +141,6 @@ export default function ProductDetail() {
   const insets = useSafeAreaInsets();
   const { horizontalPadding } = useResponsive();
   const params = useLocalSearchParams();
-  const galleryRef = useRef<FlatList<any>>(null);
   const id = String(getParam(params.id) ?? "");
   const paramTitle = getParam(params.title) ?? "";
   const paramCategory = getParam(params.category) ?? undefined;
@@ -203,6 +154,7 @@ export default function ProductDetail() {
   const paramDiscount = getParam(params.discount) ?? undefined;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [offerSheetOpen, setOfferSheetOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
@@ -648,11 +600,7 @@ export default function ProductDetail() {
           activeOpacity={0.7}
           accessibilityLabel="Back"
         >
-          <Ionicons
-            name="arrow-back"
-            size={22}
-            color={shouldShowLoadingState ? colors.text : "#FFFFFF"}
-          />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         {shouldShowLoadingState ? (
           <Text style={styles.headerTitle}>Product Details</Text>
@@ -666,11 +614,7 @@ export default function ProductDetail() {
           disabled={shouldShowLoadingState || !title}
           accessibilityLabel="Share this product"
         >
-          <AntDesign
-            name="share-alt"
-            size={18}
-            color={shouldShowLoadingState ? colors.text : "#FFFFFF"}
-          />
+          <AntDesign name="share-alt" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -685,232 +629,97 @@ export default function ProductDetail() {
             }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.heroSection}>
-              <View style={styles.heroBackdrop} />
-              <View style={styles.galleryShell}>
-                <FlatList
-                  ref={galleryRef}
-                  data={productImages}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(_, index) => `${id}-gallery-${index}`}
-                  getItemLayout={(_, index) => ({
-                    // Slides are edge-to-edge now; the old card width made
-                    // paging drift one slide per swipe after the redesign.
-                    length: screenWidth,
-                    offset: screenWidth * index,
-                    index,
-                  })}
-                  onMomentumScrollEnd={(event) => {
-                    const index = Math.round(
-                      event.nativeEvent.contentOffset.x / screenWidth,
-                    );
-                    setActiveImageIndex(index);
-                  }}
-                  renderItem={({ item, index }) => (
-                    <TouchableOpacity
-                      // The frame still runs to the very top of the screen so
-                      // the backdrop sits behind the status bar and notch, but
-                      // the photo itself is inset below them — nothing of the
-                      // product should ever be under the cutout. Both heights
-                      // are explicit pixels rather than percentages so the
-                      // image box stays exactly square under the padding.
-                      style={[
-                        styles.imageSlide,
-                        { paddingTop: insets.top, height: screenWidth + insets.top },
-                      ]}
-                      activeOpacity={0.96}
-                      onPress={() => setIsGalleryOpen(true)}
-                    >
-                      <CommerceImage
-                        source={item as any}
-                        style={[styles.heroImage, { height: screenWidth }]}
-                        // Never crop the goods: a shopper judging a product
-                        // needs the whole frame the seller photographed.
-                        contentFit="contain"
-                        displayWidth={screenWidth}
-                        imageQuality="best"
-                        trackingId={`product-hero-${id}-${index}`}
-                        recyclingKey={
-                          item && typeof item === "object" && "uri" in item
-                            ? (item as { uri?: string }).uri
-                            : `${id}-${index}`
-                        }
-                        placeholderColor={colors.imagePlaceholder}
-                      />
-                    </TouchableOpacity>
-                  )}
-                />
-
-                <View style={styles.galleryOverlayRow}>
-                  <View style={styles.galleryCountBadge}>
-                    <Ionicons
-                      name="images-outline"
-                      size={rMS(13)}
-                      color={colors.onInverseSurface}
-                    />
-                    <Text style={styles.galleryCountText}>
-                      {activeImageIndex + 1}/{productImages.length}
-                    </Text>
-                  </View>
-                  {discount ? (
-                    <View style={styles.discountPill}>
-                      <Text style={styles.discountPillText}>{discount}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <View style={styles.expandHintWrap}>
-                  <Ionicons
-                    name="expand-outline"
-                    size={rMS(14)}
-                    color={colors.onInverseSurface}
-                  />
-                  <Text style={styles.expandHintText}>Tap to view</Text>
-                </View>
-              </View>
-            </View>
-
-            {productImages.length > 1 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingHorizontal: horizontalPadding,
-                  paddingTop: rV(14),
-                }}
-              >
-                {productImages.map((item, index) => {
-                  const active = index === activeImageIndex;
-                  return (
-                    <TouchableOpacity
-                      key={`${id}-thumb-${index}`}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        setActiveImageIndex(index);
-                        galleryRef.current?.scrollToIndex({
-                          index,
-                          animated: true,
-                        });
-                      }}
-                      style={[
-                        styles.thumbnailWrap,
-                        active && styles.thumbnailWrapActive,
-                      ]}
-                    >
-                      <CommerceImage
-                        source={item as any}
-                        style={styles.thumbnailImage}
-                        contentFit="cover"
-                        trackingId={`product-thumb-${id}-${index}`}
-                        recyclingKey={
-                          item && typeof item === "object" && "uri" in item
-                            ? (item as { uri?: string }).uri
-                            : `${id}-${index}`
-                        }
-                        placeholderColor={colors.imagePlaceholder}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
+            <ProductGallery
+              images={productImages}
+              activeIndex={activeImageIndex}
+              onActiveIndexChange={setActiveImageIndex}
+              onPressImage={() => setIsGalleryOpen(true)}
+              idPrefix={String(id)}
+              horizontalPadding={horizontalPadding}
+              topInset={insets.top}
+            />
 
             <View
               style={[styles.content, { paddingHorizontal: horizontalPadding }]}
             >
               <View style={styles.infoShell}>
-                <View style={styles.taxonomyRow}>
-                  {taxonomyLabels.map((label) => (
-                    <View key={label} style={styles.taxonomyPill}>
-                      <Text style={styles.taxonomyPillText}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
+                {/*
+                  One quiet line of provenance, not three pills. Category,
+                  subcategory and store-category were each rendered as a
+                  filled pill above the name, so the first thing on the page
+                  was taxonomy rather than the product.
+                */}
+                {taxonomyLabels.length > 0 ? (
+                  <Text style={styles.eyebrow} numberOfLines={1}>
+                    {taxonomyLabels.join("  ·  ")}
+                  </Text>
+                ) : null}
 
                 <Text style={styles.productTitle}>{title}</Text>
 
-                <View style={styles.metaRow}>
+                {/*
+                  Rating and availability as text on one line. These were four
+                  bordered chips competing with the three pills above them;
+                  seven pill-shaped things stacked before the price is what
+                  made the screen read as generated rather than designed.
+                */}
+                <View style={styles.metaLine}>
                   {hasRatingsInfo ? (
-                    <ProductMetaChip
-                      icon="star"
-                      styles={styles}
-                      mutedColor={colors.textMuted}
+                    <TouchableOpacity
+                      style={styles.metaRating}
+                      activeOpacity={0.7}
                       onPress={handleOpenProductReview}
-                      label={
-                        rating > 0 && reviewsLabel.trim()
-                          ? `${rating.toFixed(1)} · ${reviewsLabel}`
-                          : rating > 0
-                            ? `${rating.toFixed(1)} rated`
-                            : reviewsLabel
-                      }
-                    />
+                      accessibilityRole="button"
+                      accessibilityLabel="Read reviews"
+                    >
+                      <Ionicons name="star" size={rMS(13)} color={colors.warningText} />
+                      <Text style={styles.metaStrong}>
+                        {rating > 0 ? rating.toFixed(1) : "New"}
+                      </Text>
+                      {reviewsLabel.trim() ? (
+                        <Text style={styles.metaDim}>({reviewsLabel})</Text>
+                      ) : null}
+                    </TouchableOpacity>
                   ) : null}
-                  <ProductMetaChip
-                    icon={
-                      stock > 0
-                        ? "checkmark-circle-outline"
-                        : "close-circle-outline"
-                    }
-                    styles={styles}
-                    mutedColor={colors.textMuted}
-                    label={
-                      stock > 0
-                        ? isLowStock
-                          ? `Only ${stock} left`
-                          : `${stock} in stock`
-                        : "Currently unavailable"
-                    }
-                  />
-                  {hasLiveFlashSale ? (
-                    <FlashSaleCountdown endsAt={flashSaleEndsAt} tone="dark" />
-                  ) : null}
-                  {store?.title ? (
-                    <ProductMetaChip
-                      icon="storefront-outline"
-                      styles={styles}
-                      mutedColor={colors.textMuted}
-                      label={store.title}
-                    />
-                  ) : null}
-                </View>
 
-                <View style={styles.infoStatsRow}>
-                  <InfoStat
-                    label="Category"
-                    value={subcategory ?? category ?? "General"}
-                    styles={styles}
-                  />
-                  <InfoStat
-                    label="Market"
-                    value={titleFromSlug(store?.marketSlug) ?? "Storefront"}
-                    styles={styles}
-                  />
-                  <InfoStat
-                    label="Store rating"
-                    value={
-                      typeof store?.rating === "number"
-                        ? `${store.rating.toFixed(1)} / 5`
-                        : "Live seller"
-                    }
-                    styles={styles}
-                  />
+                  {hasRatingsInfo ? <Text style={styles.metaDot}>·</Text> : null}
+
+                  <Text
+                    style={[
+                      styles.metaStock,
+                      stock <= 0 && styles.metaStockOut,
+                      isLowStock && stock > 0 && styles.metaStockLow,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {stock > 0
+                      ? isLowStock
+                        ? `Only ${stock} left`
+                        : "In stock"
+                      : "Currently unavailable"}
+                  </Text>
+
+                  {hasLiveFlashSale ? (
+                    <>
+                      <Text style={styles.metaDot}>·</Text>
+                      <FlashSaleCountdown endsAt={flashSaleEndsAt} tone="gold" />
+                    </>
+                  ) : null}
                 </View>
               </View>
 
+              {/*
+                Price directly under the name. It used to sit below a
+                three-column stats row repeating the category and the store
+                rating already shown above, so the number a shopper opens the
+                screen for was the fourth thing they reached.
+              */}
               <View style={styles.priceCard}>
-                <View style={styles.priceTopRow}>
-                  <View>
-                    <Text style={styles.priceLabel}>ODOS price</Text>
-                    <View style={styles.priceRow}>
-                      <Text style={styles.price}>{formatCurrency(price)}</Text>
-                      {oldPrice > 0 ? (
-                        <Text style={styles.oldPrice}>
-                          {formatCurrency(oldPrice)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
+                <View style={styles.priceRow}>
+                  <Text style={styles.price}>{formatCurrency(price)}</Text>
+                  {oldPrice > 0 ? (
+                    <Text style={styles.oldPrice}>{formatCurrency(oldPrice)}</Text>
+                  ) : null}
                   {hasDiscount ? (
                     <View style={styles.savingsPill}>
                       <Text style={styles.savingsPillText}>
@@ -920,6 +729,49 @@ export default function ProductDetail() {
                   ) : null}
                 </View>
               </View>
+
+              {/* Offers sit beside the price, never in place of Add to Cart: someone happy to
+                  pay the listed price should not have to think about negotiating at all. */}
+              {product.isNegotiable ? (
+                <View
+                  style={{
+                    marginTop: rV(12),
+                    padding: rV(14),
+                    borderRadius: rV(16),
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                    backgroundColor: colors.surfaceMuted,
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: rV(13) }}>
+                    Price negotiable
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: rV(12), marginTop: 4 }}>
+                    Propose your own price. If the seller agrees you can check out at that
+                    price — and only you can use it.
+                  </Text>
+                  {product.negotiationNote ? (
+                    <Text style={{ color: colors.textMuted, fontSize: rV(11), marginTop: 6 }}>
+                      Seller says: {product.negotiationNote}
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    onPress={() => setOfferSheetOpen(true)}
+                    style={{
+                      marginTop: rV(12),
+                      paddingVertical: rV(11),
+                      borderRadius: rV(12),
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                    }}
+                  >
+                    <Text style={{ color: colors.primary, fontWeight: "700", fontSize: rV(13) }}>
+                      Make an offer
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
 
               {productColorOptions.length > 0 ||
               productSizeOptions.length > 0 ? (
@@ -1219,6 +1071,19 @@ export default function ProductDetail() {
         previewImage={productImages[0]}
         onClose={() => setIsShareSheetOpen(false)}
       />
+
+      {product.isNegotiable ? (
+        <MakeOfferSheet
+          visible={offerSheetOpen}
+          onClose={() => setOfferSheetOpen(false)}
+          productId={product.id}
+          productTitle={product.title}
+          listedPrice={price}
+          negotiationNote={product.negotiationNote}
+          selectedColor={selectedColor}
+          selectedSize={selectedSize}
+        />
+      ) : null}
     </View>
   );
 }

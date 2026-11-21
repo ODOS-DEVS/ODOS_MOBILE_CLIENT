@@ -51,6 +51,9 @@ export type CatalogProductItem = ProductCardProps & {
   flashSaleEventTitle?: string;
   flashSaleStockLimit?: number;
   flashSaleUnitsRemaining?: number;
+  /** The seller accepts offers. Their minimum is never sent to this app. */
+  isNegotiable?: boolean;
+  negotiationNote?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -67,6 +70,8 @@ type CategoryApiItem = {
 
 export type ProductApiItem = {
   id: string;
+  is_negotiable?: boolean | null;
+  negotiation_note?: string | null;
   audience_slug: string | null;
   section: string | null;
   placement_tags?: string[] | null;
@@ -132,6 +137,8 @@ export function mapProduct(item: ProductApiItem): CatalogProductItem {
     imageKey: item.image_key,
     imageUrl,
     imageUrls: item.image_urls?.map((value) => resolveApiMediaUrl(value) ?? value) ?? undefined,
+    isNegotiable: Boolean(item.is_negotiable),
+    negotiationNote: item.negotiation_note ?? undefined,
     audienceSlug: item.audience_slug ?? undefined,
     section: item.section ?? undefined,
     placementTags: item.placement_tags ?? undefined,

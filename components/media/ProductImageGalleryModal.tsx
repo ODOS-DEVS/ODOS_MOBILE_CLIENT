@@ -6,7 +6,6 @@ import CommerceImage from "@/components/media/CommerceImage";
 import { AntDesign } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  Dimensions,
   FlatList,
   ImageSourcePropType,
   Modal,
@@ -15,6 +14,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -28,7 +28,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const screenWidth = Dimensions.get("window").width;
 const DISMISS_THRESHOLD = 120;
 
 function getGalleryImageKey(source: ImageSourcePropType, index: number): string {
@@ -62,8 +61,12 @@ export default function ProductImageGalleryModal({
   onSharePress,
 }: ProductImageGalleryModalProps) {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(
+    () => createStyles(colors, screenWidth),
+    [colors, screenWidth],
+  );
   const galleryRef = useRef<FlatList<ImageSourcePropType>>(null);
   const translateY = useSharedValue(0);
   const backdropOpacity = useSharedValue(1);
@@ -234,7 +237,7 @@ export default function ProductImageGalleryModal({
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, screenWidth: number) {
   return StyleSheet.create({
     backdrop: {
       ...StyleSheet.absoluteFill,
