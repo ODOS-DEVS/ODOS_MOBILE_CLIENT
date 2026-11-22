@@ -14,44 +14,21 @@ import {
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
-import { useToast } from "@/context/ToastContext";
 import { Order } from "@/hooks/useOrders";
 import { router } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 
 const ORDERS_PAGE_SIZE = 10;
 
-export default function ProcessingTab({
-  orders,
-  onCancelOrder,
-  isMutatingOrder,
-}: {
-  orders: Order[];
-  onCancelOrder: (orderId: string) => Promise<unknown>;
-  isMutatingOrder: boolean;
-}) {
+export default function ProcessingTab({ orders }: { orders: Order[] }) {
   const orderStyles = useOrderStyles();
-  const { showErrorToast } = useToast();
   const [visibleCount, setVisibleCount] = useState(ORDERS_PAGE_SIZE);
   const autoLoad = useAutoLoadOnScrollEnd(
     () => setVisibleCount((current) => current + ORDERS_PAGE_SIZE),
     { enabled: orders.length > visibleCount },
   );
   const visibleOrders = orders.slice(0, visibleCount);
-
-  const handleCancel = useCallback(
-    (orderId: string) => {
-      void onCancelOrder(orderId).catch((error) => {
-        showErrorToast(
-          error instanceof Error && error.message
-            ? error.message
-            : "We couldn't cancel this order right now.",
-        );
-      });
-    },
-    [onCancelOrder, showErrorToast],
-  );
 
   return (
     <ScrollView
@@ -90,25 +67,12 @@ export default function ProcessingTab({
               <OrderTrackingPreview order={order} />
 
               <AccountActionRow>
-                <AccountActionButton
-                  label={isMutatingOrder ? "Updating..." : "Cancel Order"}
-                  variant="secondary"
-                  disabled={isMutatingOrder}
-                  onPress={() =>
-                    Alert.alert(
-                      "Cancel this order?",
-                      "We'll move it to your cancelled orders list.",
-                      [
-                        { text: "Keep order", style: "cancel" },
-                        {
-                          text: "Cancel order",
-                          style: "destructive",
-                          onPress: () => handleCancel(order.id),
-                        },
-                      ],
-                    )
-                  }
-                />
+                {/* Cancelling lives on the detail screen, which collects the
+                    reason the seller is shown and says what will actually
+                    happen -- whether the order stops now or the request goes
+                    to the seller, and whether a refund follows. This card
+                    said "we'll move it to your cancelled orders list" and
+                    sent no reason at all. */}
                 <AccountActionButton
                   label="View Details"
                   variant="primary"

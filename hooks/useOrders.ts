@@ -178,6 +178,32 @@ export type OrderPackage = {
   item_ids: string[];
 };
 
+/** One attempt to return money, with the arithmetic that produced it. */
+export type OrderRefund = {
+  id: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  status:
+    | "pending"
+    | "approved"
+    | "processing"
+    | "successful"
+    | "failed"
+    | string;
+  items_amount: number;
+  delivery_amount: number;
+  discount_withheld: number;
+  gateway_fee_withheld: number;
+  reason_code: string | null;
+  reason_note: string | null;
+  /** Present only once the money has actually moved. */
+  provider_reference: string | null;
+  failure_reason: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+};
+
 export type Order = {
   id: string;
   order_number: string;
@@ -250,6 +276,27 @@ export type Order = {
   refunded_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Cancellation and refund as their own dimensions, because they are separate
+   * facts: an order can be cancelled, paid for, and still awaiting its money
+   * back. Defaulted by the API, so these are optional for older payloads.
+   */
+  cancellation_status?: "none" | "requested" | "completed" | "rejected" | string;
+  cancellation_requested_at?: string | null;
+  cancellation_requested_role?: string | null;
+  cancellation_reason_code?: string | null;
+  cancellation_decided_at?: string | null;
+  cancellation_decision_note?: string | null;
+  refund_status?:
+    | "not_applicable"
+    | "pending"
+    | "approved"
+    | "processing"
+    | "successful"
+    | "failed"
+    | "partially_refunded"
+    | string;
+  refunds?: OrderRefund[];
   items: OrderItem[];
   return_requests: ReturnRequest[];
   timeline: OrderStatusEvent[];
@@ -640,8 +687,17 @@ export function useOrders() {
     });
   }, [subscribe, user]);
 
-  const cancelOrder = useCallback(
-    async (orderId: string) => {
+  /**
+   * Asks to cancel, with the reason the vendor and the desk will see.
+   *
+   * Completes outright where policy allows and is *held for review* where it
+   * does not -- a paid order the vendor has already accepted needs their
+   * agreement. Callers must therefore read `cancellation_status` on the
+   * returned order rather than treating a resolved promise as "cancelled":
+   * "requested" means somebody still has to answer.
+   */
+  const requestCancellation = useCallback(
+    async (orderId: string, reasonCode: string, note?: string | null) => {
       const token = await getAccessToken(accessToken);
       if (!token) {
         throw new Error("Please sign in again to manage this order.");
@@ -650,12 +706,14 @@ export function useOrders() {
       setIsMutatingOrder(true);
       try {
         const response = await fetch(
-          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/cancel`,
+          `${API_BASE_URL}/orders/${encodeURIComponent(orderId)}/cancellation-request`,
           {
-            method: "PATCH",
+            method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
+            body: JSON.stringify({ reason_code: reasonCode, note: note ?? null }),
           },
         );
 
@@ -675,6 +733,16 @@ export function useOrders() {
       }
     },
     [accessToken],
+  );
+
+  /**
+   * The old no-reason cancel. Kept so existing call sites keep working; it
+   * sends the same request with an unspecified reason. Prefer
+   * `requestCancellation` so the vendor is told why.
+   */
+  const cancelOrder = useCallback(
+    (orderId: string) => requestCancellation(orderId, "other", null),
+    [requestCancellation],
   );
 
   /**
@@ -903,6 +971,7 @@ export function useOrders() {
     isMutatingOrder,
     ordersError,
     cancelOrder,
+    requestCancellation,
     confirmDelivery,
     reportDeliveryProblem,
     createReturnRequest,

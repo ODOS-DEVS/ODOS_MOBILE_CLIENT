@@ -2,6 +2,7 @@ import ScreenLoader from "@/components/loaders/ScreenLoader";
 import CommerceImage from "@/components/media/CommerceImage";
 import DeliveryCelebration from "@/components/orders/DeliveryCelebration";
 import DeliveryFeedbackPrompt from "@/components/orders/DeliveryFeedbackPrompt";
+import CancelOrderSheet from "@/components/orders/CancelOrderSheet";
 import DeliveryProblemSheet from "@/components/orders/DeliveryProblemSheet";
 import OrderPackagesCard from "@/components/orders/OrderPackagesCard";
 import RescheduleRequestSheet from "@/components/orders/RescheduleRequestSheet";
@@ -32,6 +33,13 @@ import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { Order, OrderItem, ReturnRequest, useOrder, useOrders } from "@/hooks/useOrders";
 import { getDeliveryMethodLabel } from "@/utils/delivery";
+import {
+  cancellability,
+  orderStateCopy,
+  paymentStateLabel,
+  refundStateLabel,
+  type OrderTone,
+} from "@/utils/orderState";
 import { formatOrderTimelineDate, getOrderTimelineSteps } from "@/utils/orderTracking";
 import { buildReviewComposerRoute } from "@/utils/reviewNavigation";
 import { getReturnStatusMeta, isOpenReturnStatus } from "@/utils/returns";
@@ -61,58 +69,43 @@ const getParam = (value: string | string[] | undefined) =>
 
 const MAX_RETURN_EVIDENCE_IMAGES = 4;
 
+const TONE_FOR_STATE: Record<OrderTone, "success" | "danger" | "warning" | "info"> = {
+  good: "success",
+  dead: "danger",
+  warning: "warning",
+  pending: "warning",
+  active: "info",
+};
+
 function getStatusTone(order: Order): "success" | "danger" | "warning" | "info" {
-  if (order.status === "pending_payment") {
-    return "warning";
-  }
-  if (order.status === "delivered") {
-    return "success";
-  }
-  if (order.status === "cancelled") {
-    return "danger";
-  }
-  return "info";
+  return TONE_FOR_STATE[orderStateCopy(order).tone];
 }
 
+/**
+ * The status chip, from the one place that knows what an order's four state
+ * fields mean together (`utils/orderState`).
+ *
+ * This used to read the lifecycle column alone, which could only ever say
+ * "Processing" for an order whose cancellation was awaiting a decision, and
+ * captioned every cancelled order "Cancelled by customer" even when the seller
+ * or the ODOS desk had cancelled it.
+ */
 function getStatusMeta(order: Order, colors: ThemeColors) {
-  if (order.status === "pending_payment") {
-    return {
-      label: "Awaiting Payment",
-      backgroundColor: colors.warningSoft,
-      textColor: colors.warningText,
-      helperText:
-        order.payment_status === "failed"
-          ? "Payment was not completed successfully."
-          : "We’re waiting for secure payment confirmation before preparation starts.",
-    };
-  }
-
-  if (order.status === "delivered") {
-    return {
-      label: "Delivered",
-      backgroundColor: colors.successSoft,
-      textColor: colors.successText,
-      helperText: order.delivered_at
-        ? `Delivered on ${new Date(order.delivered_at).toLocaleDateString()}`
-        : "Delivered successfully",
-    };
-  }
-
-  if (order.status === "cancelled") {
-    return {
-      label: "Cancelled",
-      backgroundColor: colors.dangerSoft,
-      textColor: colors.dangerText,
-      helperText: order.cancellation_reason || "Cancelled by customer",
-    };
-  }
-
-  return {
-    label: "Processing",
-    backgroundColor: colors.infoSoft,
-    textColor: colors.infoText,
-    helperText: order.tracking_eta || "Estimated delivery in 2–3 days",
+  const state = orderStateCopy(order);
+  const palette: Record<OrderTone, { backgroundColor: string; textColor: string }> = {
+    good: { backgroundColor: colors.successSoft, textColor: colors.successText },
+    dead: { backgroundColor: colors.dangerSoft, textColor: colors.dangerText },
+    warning: { backgroundColor: colors.warningSoft, textColor: colors.warningText },
+    pending: { backgroundColor: colors.warningSoft, textColor: colors.warningText },
+    active: { backgroundColor: colors.infoSoft, textColor: colors.infoText },
   };
+
+  // A live order still prefers its own ETA when there is one -- it is more use
+  // than a generic sentence about preparation.
+  const helperText =
+    state.tone === "active" && order.tracking_eta ? order.tracking_eta : state.detail;
+
+  return { label: state.label, ...palette[state.tone], helperText };
 }
 
 
@@ -124,7 +117,7 @@ export default function OrderDetailScreen() {
   const orderId = getParam(params.orderId) ?? "";
   const { order, isLoadingOrder, orderErrorKind, refreshOrder } = useOrder(orderId);
   const {
-    cancelOrder,
+    requestCancellation,
     confirmDelivery,
     reportDeliveryProblem,
     createReturnRequest,
@@ -161,6 +154,7 @@ export default function OrderDetailScreen() {
   const [showRescheduleSheet, setShowRescheduleSheet] = React.useState(false);
   const [isSubmittingReschedule, setIsSubmittingReschedule] = React.useState(false);
   const [showProblemSheet, setShowProblemSheet] = React.useState(false);
+  const [showCancelSheet, setShowCancelSheet] = React.useState(false);
   const [isSubmittingProblem, setIsSubmittingProblem] = React.useState(false);
   // Which shop's bag an action is about. Null means the whole order, which is
   // what every action meant before orders could span several shops.
@@ -403,18 +397,45 @@ export default function OrderDetailScreen() {
     setShowProblemSheet(true);
   };
 
-  const handleCancelOrder = async () => {
+  /**
+   * Cancels, or asks to.
+   *
+   * The server decides which: a paid order the seller has already accepted comes
+   * back `cancellation_status: "requested"`, and this used to send the shopper
+   * straight to their Cancelled tab regardless -- telling them an order was gone
+   * when the seller had not yet agreed. The outcome is now read off the response.
+   */
+  const handleCancelOrder = async (reasonCode: string, note: string | null) => {
     if (!order) {
       return;
     }
 
     try {
-      await cancelOrder(order.id);
+      const updated = await requestCancellation(order.id, reasonCode, note);
+      setShowCancelSheet(false);
+
+      if (updated.cancellation_status === "requested") {
+        showToast({
+          message: "We've asked the seller to confirm. We'll let you know their answer.",
+          variant: "success",
+        });
+        await refreshOrder();
+        return;
+      }
+
+      showToast({
+        message:
+          updated.refund_status && updated.refund_status !== "not_applicable"
+            ? "Order cancelled. Your refund has been started."
+            : "Order cancelled.",
+        variant: "success",
+      });
       router.replace({
         pathname: "/(root)/screens/profileScreens/orders" as any,
         params: { tab: "cancelled" },
       });
     } catch (error) {
+      setShowCancelSheet(false);
       handleError(
         error instanceof Error
           ? error.message
@@ -541,6 +562,10 @@ export default function OrderDetailScreen() {
   }
 
   const statusMeta = getStatusMeta(order, colors);
+  // Mirrors the API's own cancellation rule, so the button never offers
+  // something the server will refuse, and its label says whether cancelling
+  // ends the order or only files a request.
+  const cancelAbility = cancellability(order);
   const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const timelineSteps = getOrderTimelineSteps(order);
 
@@ -899,6 +924,9 @@ export default function OrderDetailScreen() {
               : order.payment_network || "Mobile Money"}
           </Text>
           {order.payment_phone ? <Text style={styles.detailText}>{order.payment_phone}</Text> : null}
+          {/* In words, never the raw column: payment_status has held values
+              like "cancelled" that say nothing about whether money moved. */}
+          <Text style={styles.detailText}>{paymentStateLabel(order)}</Text>
           {order.voucher_code ? (
             <Text style={styles.detailText}>
               Voucher: {order.voucher_code}
@@ -906,6 +934,41 @@ export default function OrderDetailScreen() {
             </Text>
           ) : null}
         </AccountSectionCard>
+
+        {/* Only once a refund actually exists. "Paid back" waits on a provider
+            reference, so until the money has really moved this says so. */}
+        {order.refunds && order.refunds.length > 0 ? (
+          <AccountSectionCard
+            title={order.refunds.length === 1 ? "Your refund" : "Your refunds"}
+          >
+            {order.refunds.map((refund, index) => (
+              <View
+                key={refund.id}
+                // The first one needs no divider -- the card title is above it.
+                style={index === 0 ? undefined : styles.refundRow}
+              >
+                <View style={styles.refundHeader}>
+                  <Text style={styles.detailPrimary}>{formatOrderMoney(refund.amount)}</Text>
+                  <Text style={styles.refundStatus}>{refundStateLabel(refund)}</Text>
+                </View>
+                <Text style={styles.detailText}>Reference {refund.reference}</Text>
+                {refund.delivery_amount > 0 ? (
+                  <Text style={styles.detailText}>
+                    Includes delivery {formatOrderMoney(refund.delivery_amount)}
+                  </Text>
+                ) : null}
+                {refund.discount_withheld > 0 ? (
+                  <Text style={styles.detailText}>
+                    Discount not refunded {formatOrderMoney(refund.discount_withheld)}
+                  </Text>
+                ) : null}
+                {refund.status === "failed" && refund.failure_reason ? (
+                  <Text style={styles.refundFailure}>{refund.failure_reason}</Text>
+                ) : null}
+              </View>
+            ))}
+          </AccountSectionCard>
+        ) : null}
 
         <AccountSectionCard title="Summary">
           <OrderSummaryRow
@@ -986,54 +1049,38 @@ export default function OrderDetailScreen() {
           </AccountActionRow>
         ) : null}
 
-        {order.status === "processing" && order.delivery_status === "not_dispatched" ? (
+        {/* One cancel entry point, gated by the same rule the API applies
+            (utils/orderState). Two buttons used to decide from the lifecycle
+            column alone: one appeared on any "processing" order, including
+            those the seller had already accepted and the server would only
+            hold; the other never appeared on an order whose payment had
+            failed. The label says which outcome to expect. */}
+        {cancelAbility.can ? (
           <AccountActionRow>
             <AccountActionButton
-              label={isMutatingOrder ? "Updating..." : "Cancel Order"}
+              label={
+                isMutatingOrder
+                  ? "Updating..."
+                  : cancelAbility.requiresReview
+                    ? "Request Cancellation"
+                    : "Cancel Order"
+              }
               variant="danger"
               disabled={isMutatingOrder}
-              onPress={() =>
-                Alert.alert(
-                  "Cancel this order?",
-                  "We'll stop processing it and move it to your cancelled orders list.",
-                  [
-                    { text: "Keep order", style: "cancel" },
-                    {
-                      text: "Cancel order",
-                      style: "destructive",
-                      onPress: () => {
-                        void handleCancelOrder();
-                      },
-                    },
-                  ],
-                )
-              }
+              onPress={() => setShowCancelSheet(true)}
             />
           </AccountActionRow>
-        ) : null}
-
-        {order.status === "pending_payment" ? (
-          <AccountActionButton
-            label={isMutatingOrder ? "Updating..." : "Cancel Pending Order"}
-            variant="danger"
-            disabled={isMutatingOrder}
-            onPress={() =>
-              Alert.alert(
-                "Cancel this pending order?",
-                "This removes the payment hold request from your active orders list.",
-                [
-                  { text: "Keep order", style: "cancel" },
-                  {
-                    text: "Cancel order",
-                    style: "destructive",
-                    onPress: () => {
-                      void handleCancelOrder();
-                    },
-                  },
-                ],
-              )
-            }
-          />
+        ) : cancelAbility.reason ? (
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontSize: rV(12),
+              lineHeight: rV(18),
+              marginTop: rV(10),
+            }}
+          >
+            {cancelAbility.reason}
+          </Text>
         ) : null}
 
         {order.status === "cancelled" ? (
@@ -1277,6 +1324,13 @@ export default function OrderDetailScreen() {
       <DeliveryCelebration
         visible={showDeliveryCelebration}
         onDone={() => setShowDeliveryCelebration(false)}
+      />
+      <CancelOrderSheet
+        visible={showCancelSheet}
+        order={order}
+        isSubmitting={isMutatingOrder}
+        onClose={() => setShowCancelSheet(false)}
+        onSubmit={(reasonCode, note) => void handleCancelOrder(reasonCode, note)}
       />
       <RescheduleRequestSheet
         visible={showRescheduleSheet}
@@ -1624,6 +1678,29 @@ function createStyles(colors: ThemeColors) {
       color: colors.textSecondary,
       lineHeight: rMS(18),
       marginBottom: rV(2),
+    },
+    refundRow: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderStrong,
+      paddingTop: rV(10),
+    },
+    refundHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    refundStatus: {
+      fontSize: rMS(11),
+      fontFamily: Fonts.textBold,
+      color: colors.textSecondary,
+      marginBottom: rV(4),
+    },
+    refundFailure: {
+      fontSize: rMS(12),
+      fontFamily: Fonts.text,
+      color: colors.dangerText,
+      lineHeight: rMS(18),
+      marginTop: rV(4),
     },
     summaryRow: {
       flexDirection: "row",

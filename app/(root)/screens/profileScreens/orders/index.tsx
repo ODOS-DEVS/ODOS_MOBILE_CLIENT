@@ -10,6 +10,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useOrders } from "@/hooks/useOrders";
+import { isOrderClosed, isOrderDelivered, isOrderLive } from "@/utils/orderState";
 import Fonts from "@/constants/Fonts";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { openSignInFromApp } from "@/utils/authNavigation";
@@ -40,14 +41,14 @@ export default function OrdersScreen() {
       ? requestedTab
       : "delivered";
   const [activeTab, setActiveTab] = useState<OrderTab>(initialTab);
-  const { orders, isLoadingOrders, isMutatingOrder, ordersError, cancelOrder, refreshOrders } =
-    useOrders();
+  const { orders, isLoadingOrders, ordersError, refreshOrders } = useOrders();
 
-  const deliveredOrders = orders.filter((order) => order.status === "delivered");
-  const processingOrders = orders.filter(
-    (order) => order.status === "processing" || order.status === "pending_payment",
-  );
-  const cancelledOrders = orders.filter((order) => order.status === "cancelled");
+  // From utils/orderState rather than a list of statuses per screen. The old
+  // filters named "processing" and "pending_payment" explicitly, so an order
+  // that expired unpaid or whose payment failed appeared in no tab at all.
+  const deliveredOrders = orders.filter(isOrderDelivered);
+  const processingOrders = orders.filter(isOrderLive);
+  const cancelledOrders = orders.filter(isOrderClosed);
 
   const stats = useMemo(
     () => [
@@ -125,8 +126,6 @@ export default function OrdersScreen() {
           {activeTab === "processing" && (
             <ProcessingTab
               orders={processingOrders}
-              isMutatingOrder={isMutatingOrder}
-              onCancelOrder={cancelOrder}
             />
           )}
           {activeTab === "cancelled" && <CancelledTab orders={cancelledOrders} />}

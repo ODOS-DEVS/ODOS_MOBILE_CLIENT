@@ -4,6 +4,7 @@ import {
 import { resolveOrderItemImageSource } from "@/utils/orderImages";
 import Fonts from "@/constants/Fonts";
 import type { Order } from "@/hooks/useOrders";
+import { orderStateCopy, type OrderTone } from "@/utils/orderState";
 import { getActiveOrderTimelineStep } from "@/utils/orderTracking";
 import { rMS, rS, rV } from "@/styles/responsive";
 import { useOrderStyles } from "@/styles/themedOrderStyles";
@@ -76,24 +77,30 @@ export function getOrderLineItemImage(item: {
   return resolveOrderItemImageSource(item);
 }
 
+const TONE_FOR_STATE: Record<OrderTone, "success" | "danger" | "warning" | "info"> = {
+  good: "success",
+  dead: "danger",
+  warning: "warning",
+  pending: "warning",
+  active: "info",
+};
+
+/**
+ * The badge every order card shows, from the one place that knows what an
+ * order's four state fields mean together (`utils/orderState`).
+ *
+ * This used to branch on `status` alone, which could only ever say "In transit"
+ * for an order whose cancellation was awaiting the seller's decision, whose
+ * payment had failed, or which had expired unpaid -- and the cancelled tab
+ * hardcoded "Cancelled" over all three.
+ */
 export function getOrderStatusPresentation(order: Order) {
-  if (order.status === "pending_payment") {
-    return {
-      label: "Awaiting payment",
-      tone: "warning" as const,
-      processingLabel: "Payment pending",
-    };
-  }
-  if (order.status === "delivered") {
-    return { label: "Delivered", tone: "success" as const, processingLabel: "Delivered" };
-  }
-  if (order.status === "cancelled") {
-    return { label: "Cancelled", tone: "danger" as const, processingLabel: "Cancelled" };
-  }
+  const state = orderStateCopy(order);
   return {
-    label: "In transit",
-    tone: "info" as const,
-    processingLabel: "Processing",
+    label: state.label,
+    tone: TONE_FOR_STATE[state.tone],
+    processingLabel: state.label,
+    detail: state.detail,
   };
 }
 

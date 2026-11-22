@@ -7,11 +7,13 @@ import {
   formatOrderDateShort,
   formatOrderMoney,
   getOrderPrimaryItem,
+  getOrderStatusPresentation,
   OrderThumbnail,
   useOrderStyles,
 } from "@/components/orders/OrderUi";
 import { ShowMoreButton } from "@/components/ui/ShowMoreButton";
 import { Order } from "@/hooks/useOrders";
+import { cancellationReasonLabel } from "@/utils/orderState";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { rMS } from "@/styles/responsive";
@@ -21,9 +23,14 @@ import { ScrollView, Text, View } from "react-native";
 
 const ORDERS_PAGE_SIZE = 10;
 
-function formatCancelledDate(order: Order) {
+/**
+ * When it ended. Deliberately not "Cancelled <date>": this tab also holds
+ * orders that expired unpaid or whose payment failed, and neither was
+ * cancelled by anyone.
+ */
+function formatClosedDate(order: Order) {
   const value = order.cancelled_at ?? order.updated_at;
-  return `Cancelled ${formatOrderDateShort(value)}`;
+  return formatOrderDateShort(value);
 }
 
 export default function CancelledTab({ orders }: { orders: Order[] }) {
@@ -43,12 +50,21 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
       {orders.length === 0 ? (
         <AccountEmptyState
           icon="close-circle-outline"
-          title="No cancelled orders"
-          message="If an order is ever cancelled, the reason and total will appear here."
+          title="Nothing here"
+          message="Orders that were cancelled, expired before payment, or whose payment failed will appear here."
         />
       ) : (
         visibleOrders.map((order) => {
           const item = getOrderPrimaryItem(order);
+          const status = getOrderStatusPresentation(order);
+          // Only the stored code, never a guess. This line used to fall back
+          // to "Cancelled by the store" on every order without one -- telling
+          // shoppers the seller had cancelled orders they had cancelled
+          // themselves, and orders that simply expired unpaid.
+          const reason =
+            cancellationReasonLabel(order.cancellation_reason_code) ??
+            order.cancellation_reason ??
+            null;
 
           return (
             <AccountListCard key={order.id}>
@@ -59,16 +75,16 @@ export default function CancelledTab({ orders }: { orders: Order[] }) {
                   <Text style={orderStyles.orderTitle}>{item?.title ?? "Order item"}</Text>
                   <Text style={orderStyles.orderMeta}>{item?.category ?? "Product"}</Text>
                   <Text style={[orderStyles.orderMeta, orderStyles.orderMetaDanger]}>
-                    {formatCancelledDate(order)}
+                    {formatClosedDate(order)}
                   </Text>
                 </View>
-                <AccountBadge label="Cancelled" tone="danger" />
+                <AccountBadge label={status.label} tone={status.tone} />
               </View>
 
               <View style={orderStyles.reasonRow}>
                 <Ionicons name="alert-circle-outline" size={rMS(14)} color={colors.iconMuted} />
                 <Text style={orderStyles.reasonText}>
-                  Reason: {order.cancellation_reason || "Cancelled by the store"}
+                  {reason ? `Reason: ${reason}` : status.detail}
                 </Text>
               </View>
 
