@@ -6,7 +6,7 @@ import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useTabBarContentInsetFromContext } from "@/components/navigation/TabBarMetricsContext";
 import { AppColors } from "@/constants/Colors";
 import Fonts from "@/constants/Fonts";
-import { CartItem, useCart } from "@/context/CartContext";
+import { CartItem, cartLineUnitPrice, useCart } from "@/context/CartContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { rMS, rS, rV } from "@/styles/responsive";
@@ -47,7 +47,7 @@ const MyCart = () => {
   );
   const subtotal = useMemo<number>(() => {
     return cart.reduce(
-      (sum: number, item: CartItem) => sum + item.price * item.quantity,
+      (sum: number, item: CartItem) => sum + cartLineUnitPrice(item) * item.quantity,
       0,
     );
   }, [cart]);
@@ -306,6 +306,8 @@ const MyCart = () => {
                 <CartItemCard
                   key={item.id}
                   {...item}
+                  price={cartLineUnitPrice(item)}
+                  listPrice={item.negotiatedUnitPrice != null ? item.price : null}
                   embedded
                   showDivider={index > 0}
                   onIncrease={() => void increaseQty(item.id)}

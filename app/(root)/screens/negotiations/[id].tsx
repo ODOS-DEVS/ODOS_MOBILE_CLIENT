@@ -1,6 +1,7 @@
 import CommerceImage from "@/components/media/CommerceImage";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
   acceptNegotiationOffer,
@@ -53,6 +54,7 @@ export default function NegotiationDetailScreen() {
   const { colors } = useTheme();
   const { horizontalPadding } = useResponsive();
   const { user } = useAuth();
+  const { addItemsToCart } = useCart();
   const params = useLocalSearchParams<{ id?: string }>();
   const negotiationId = parseParam(params.id);
 
@@ -95,6 +97,49 @@ export default function NegotiationDetailScreen() {
       Alert.alert("Negotiation", success);
     } catch (err) {
       Alert.alert("Negotiation", err instanceof Error ? err.message : "That didn't work.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Put the agreed quantity in the basket at the agreed price.
+   *
+   * The price travels with the line for display and for the totals the order
+   * endpoint checks; the server still resolves the agreement from the signed-in
+   * shopper, so this cannot buy anything cheaper than the seller agreed to.
+   */
+  const addAgreed = async (then: "stay" | "checkout") => {
+    const deal = negotiation?.agreement;
+    if (!negotiation || !deal) return;
+    setBusy(true);
+    try {
+      await addItemsToCart([
+        {
+          id: negotiation.productId,
+          title: negotiation.productTitle,
+          price: negotiation.listedUnitPrice,
+          imageUrl: negotiation.productImageUrl ?? undefined,
+          quantity: deal.quantity,
+          negotiatedUnitPrice: deal.agreedUnitPrice,
+          agreementReference: deal.reference,
+        },
+      ]);
+      if (then === "checkout") {
+        router.push({ pathname: "/screens/Checkout" as any, params: { mode: "cart" } });
+        return;
+      }
+      Alert.alert(
+        "Added to your basket",
+        `${deal.quantity} ${deal.quantity === 1 ? "unit" : "units"} at ${money(
+          deal.agreedUnitPrice,
+        )} each. Keep shopping — the agreed price stays with it.`,
+      );
+    } catch (err) {
+      Alert.alert(
+        "We couldn't add that",
+        err instanceof Error ? err.message : "Please try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -255,13 +300,26 @@ export default function NegotiationDetailScreen() {
               </Text>
             ) : null}
             {live && viewerRole === "customer" ? (
-              <View style={{ marginTop: rV(12) }}>
-                {actionButton(`Buy at ${money(agreement.agreedUnitPrice)}`, () =>
-                  router.push({
-                    pathname: "/(root)/screens/[id]" as any,
-                    params: { id: negotiation.productId },
-                  }),
+              /* Both of these put the agreed quantity in the basket at the
+                 agreed price. This used to be a single button that only opened
+                 the product page, so a shopper who had just finished haggling
+                 had to find the item again, re-pick the quantity they had
+                 already agreed, and add it -- with the list price shown
+                 throughout. "Add to basket" leaves them shopping so a
+                 negotiated item can travel with the rest of an order. */
+              <View style={{ marginTop: rV(12), gap: rV(8) }}>
+                {actionButton(
+                  busy
+                    ? "Adding..."
+                    : `Buy now · ${money(agreement.agreedUnitPrice * agreement.quantity)}`,
+                  () => void addAgreed("checkout"),
                 )}
+                {actionButton("Add to basket", () => void addAgreed("stay"), "ghost")}
+                <Text style={{ color: colors.textMuted, fontSize: rV(10.5) }}>
+                  {agreement.quantity} {agreement.quantity === 1 ? "unit" : "units"} at{" "}
+                  {money(agreement.agreedUnitPrice)} each. Add other items to the same order if
+                  you like — only this product is discounted.
+                </Text>
               </View>
             ) : null}
             {agreement.orderNumber ? (

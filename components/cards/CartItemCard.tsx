@@ -13,6 +13,8 @@ interface CartItemProps {
   title: string;
   category?: string;
   price: number;
+  /** List price, when it differs because this line was negotiated. */
+  listPrice?: number | null;
   image?: any;
   imageKey?: string;
   quantity: number;
@@ -30,6 +32,7 @@ const CartItemCard = ({
   title,
   category,
   price,
+  listPrice,
   quantity,
   onIncrease,
   onDecrease,
@@ -141,6 +144,16 @@ const CartItemCard = ({
         priceCol: {
           alignItems: "flex-end",
         },
+        agreed: {
+          fontFamily: Fonts.text,
+          fontSize: rMS(10),
+          color: colors.primary,
+          marginTop: rV(1),
+        },
+        struck: {
+          textDecorationLine: "line-through",
+          color: colors.textMuted,
+        },
         lineTotal: {
           fontFamily: Fonts.titleBold,
           fontSize: rMS(13.5),
@@ -226,6 +239,13 @@ const CartItemCard = ({
               <View style={styles.priceCol}>
                 <Text style={styles.lineTotal}>{formatCurrency(lineTotal)}</Text>
                 <Text style={styles.unit}>{formatCurrency(price)} ea</Text>
+                {typeof listPrice === "number" && listPrice > price ? (
+                  // Proof the agreed price survived into the basket. Without
+                  // it the shopper only sees a number and has to trust it.
+                  <Text style={styles.agreed}>
+                    <Text style={styles.struck}>{formatCurrency(listPrice)}</Text> · your price
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>

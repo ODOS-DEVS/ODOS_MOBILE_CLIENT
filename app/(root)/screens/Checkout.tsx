@@ -24,7 +24,7 @@ import { resolveCatalogImage } from "@/constants/catalogImages";
 import Fonts from "@/constants/Fonts";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useCart } from "@/context/CartContext";
+import { useCart, cartLineUnitPrice } from "@/context/CartContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/context/ToastContext";
 import { useCatalogProduct } from "@/hooks/useCatalog";
@@ -177,7 +177,12 @@ export default function CheckoutScreen() {
           imageUrl: item.imageUrl,
         }),
         quantity: item.quantity,
-        unit_price: item.price,
+        // The agreed price when the shopper negotiated this line. The server
+        // recomputes it from the agreement regardless, but it compares the
+        // totals we sent against the ones it computed -- sending list here
+        // failed checkout with "The order totals didn't match the selected
+        // items", so a negotiated price could never actually be spent.
+        unit_price: cartLineUnitPrice(item),
         selected_color: null,
         selected_size: null,
       }));

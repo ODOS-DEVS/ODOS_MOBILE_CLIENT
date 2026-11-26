@@ -28,7 +28,23 @@ export type CartItem = {
   imageKey?: string;
   imageUrl?: string;
   quantity: number;
+  /**
+   * The price this shopper privately agreed with the seller, when they have
+   * one. Display only: the server resolves the agreement from the signed-in
+   * user and the product, so nothing stored here can set a price.
+   *
+   * It has to travel with the line anyway, because the order endpoint checks
+   * the totals the app sends against the ones it computed -- quoting list for
+   * a negotiated line fails checkout outright.
+   */
+  negotiatedUnitPrice?: number | null;
+  /** The agreement behind `negotiatedUnitPrice`, for the basket to cite. */
+  agreementReference?: string | null;
 };
+
+/** What a line actually costs: the agreed price when there is one, else list. */
+export const cartLineUnitPrice = (item: Pick<CartItem, "price" | "negotiatedUnitPrice">) =>
+  item.negotiatedUnitPrice ?? item.price;
 
 type CartItemInput = Omit<CartItem, "quantity"> & {
   quantity?: number;
@@ -67,6 +83,46 @@ function normalizeProduct(product: CartItemInput): CartItemInput {
     ...product,
     id: String(product.id),
   };
+}
+
+/**
+ * Re-attach the shopper's privately agreed prices to cart lines.
+ *
+ * The server cart stores only the list price, so a plain reload would drop the
+ * agreement and the basket would quote a figure the shopper is not going to be
+ * charged -- and, worse, checkout would then fail the order endpoint's totals
+ * check. Rather than teaching the cart table about agreements, the prices are
+ * looked up fresh from the negotiations the server already owns, so an
+ * agreement that expired or was spent simply stops applying.
+ *
+ * Best effort on purpose: if the lookup fails the cart still loads at list
+ * price, which is the same place it was before any of this existed.
+ */
+async function withAgreedPrices(items: CartItem[], token: string | null): Promise<CartItem[]> {
+  if (!items.length || !token) return items;
+  try {
+    const { listNegotiations } = await import("@/services/negotiationService");
+    const negotiations = await listNegotiations("customer", token);
+    const live = new Map<string, { price: number; reference: string }>();
+    for (const negotiation of negotiations) {
+      const deal = negotiation.agreement;
+      if (deal && deal.status === "accepted" && deal.secondsRemaining > 0) {
+        live.set(negotiation.productId, {
+          price: deal.agreedUnitPrice,
+          reference: deal.reference,
+        });
+      }
+    }
+    if (!live.size) return items;
+    return items.map((item) => {
+      const deal = live.get(item.id);
+      return deal
+        ? { ...item, negotiatedUnitPrice: deal.price, agreementReference: deal.reference }
+        : item;
+    });
+  } catch {
+    return items;
+  }
 }
 
 function parsePrice(value: string): number {
@@ -179,7 +235,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const payload = (await response.json()) as CartApiItem[];
-      setCart(payload.map(mapCartApiItem));
+      setCart(await withAgreedPrices(payload.map(mapCartApiItem), token));
       setCartLoadError(null);
     } catch (error) {
       // Keep current local cart state if sync fails — only surface an error
