@@ -646,6 +646,54 @@ export function AccountChoiceOption({
 
 
 /**
+ * Type a value a picker's list does not contain.
+ *
+ * Ghana has far more towns than any list we ship, so a shopper in a missing
+ * one could previously get no further than scrolling a list that would never
+ * hold their home. This sits above the options and turns the dead end into an
+ * entry.
+ */
+export function AccountChoiceCustomEntry({
+  value,
+  placeholder,
+  onChangeText,
+  onSubmit,
+  minLength = 2,
+}: {
+  value: string;
+  placeholder: string;
+  onChangeText: (next: string) => void;
+  onSubmit: () => void;
+  minLength?: number;
+}) {
+  const { choiceSheetStyles, colors } = useAccountUiStyles();
+  const ready = value.trim().length >= minLength;
+  return (
+    <View style={choiceSheetStyles.customRow}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.placeholder}
+        style={choiceSheetStyles.customInput}
+        autoCapitalize="words"
+        returnKeyType="done"
+        onSubmitEditing={() => ready && onSubmit()}
+      />
+      <TouchableOpacity
+        onPress={onSubmit}
+        disabled={!ready}
+        activeOpacity={0.88}
+        style={[choiceSheetStyles.customButton, !ready && { opacity: 0.45 }]}
+      >
+        <Text style={choiceSheetStyles.customButtonText}>Use</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+
+/**
  * The footer for a progressively disclosed list — see `usePagedList`.
  *
  * Renders nothing while everything already fits, so a short list looks

@@ -13,6 +13,7 @@ import {
   AccountIconShell,
   AccountPickerField,
   useAccountStyles,
+  AccountChoiceCustomEntry,
 } from "@/components/account/AccountUi";
 import ScreenLoader from "@/components/loaders/ScreenLoader";
 import PhoneVerificationField, {
@@ -94,6 +95,13 @@ export default function AddressScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  /**
+   * A town the dataset does not know. Ghana has far more communities than any
+   * list we ship, and someone in a missing one previously had no way past this
+   * picker -- so a custom entry is the difference between finishing the form
+   * and abandoning it.
+   */
+  const [customCity, setCustomCity] = useState("");
   const [fieldErrors, setFieldErrors] = useState<AddressFieldErrors>({});
   const [form, setForm] = useState<Omit<Address, "id">>({
     label: "",
@@ -119,6 +127,15 @@ export default function AddressScreen() {
     () => getCitiesForRegion(form.region, form.city),
     [form.region, form.city],
   );
+
+  const commitCustomCity = () => {
+    const typed = customCity.trim();
+    if (typed.length < 2) return;
+    setForm((current) => ({ ...current, city: typed }));
+    setCustomCity("");
+    setShowCityPicker(false);
+    setFieldErrors((current) => ({ ...current, city: undefined }));
+  };
 
   const resetForm = () => {
     setForm({
@@ -368,9 +385,15 @@ export default function AddressScreen() {
           ) : showCityPicker ? (
             <AccountFormPickerOverlay
               title={`Towns in ${form.region}`}
-              hint={`${cityOptions.length} towns and cities`}
+              hint={`${cityOptions.length} towns and cities · or type your own`}
               onBack={() => setShowCityPicker(false)}
             >
+              <AccountChoiceCustomEntry
+                value={customCity}
+                onChangeText={setCustomCity}
+                onSubmit={commitCustomCity}
+                placeholder="Can't find it? Type the town"
+              />
               {cityOptions.map((option) => (
                 <AccountChoiceOption
                   key={option}

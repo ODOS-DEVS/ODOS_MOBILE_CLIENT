@@ -9,6 +9,7 @@ import {
   AccountProfileHero,
   AccountSectionCard,
   useAccountStyles,
+  AccountChoiceCustomEntry,
 } from "@/components/account/AccountUi";
 import DateOfBirthPicker, {
   AndroidBirthDatePicker,
@@ -68,6 +69,16 @@ const CustomerProfile = () => {
   const [region, setRegion] = useState("");
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  /** A town the shipped list does not hold — see AccountChoiceCustomEntry. */
+  const [customCity, setCustomCity] = useState("");
+
+  const commitCustomCity = () => {
+    const typed = customCity.trim();
+    if (typed.length < 2) return;
+    setCity(typed);
+    setCustomCity("");
+    setShowCityPicker(false);
+  };
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
   const [firstNameError, setFirstNameError] = useState("");
@@ -623,6 +634,12 @@ const CustomerProfile = () => {
         title={`Towns in ${region}`}
         onClose={() => setShowCityPicker(false)}
       >
+        <AccountChoiceCustomEntry
+          value={customCity}
+          onChangeText={setCustomCity}
+          onSubmit={commitCustomCity}
+          placeholder="Can't find it? Type the town"
+        />
         {cityOptions.map((option) => (
           <AccountChoiceOption
             key={option}

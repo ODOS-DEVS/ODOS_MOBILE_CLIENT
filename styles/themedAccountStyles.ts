@@ -675,6 +675,37 @@ function buildChoiceSheetStyles(c: ThemeColors) {
     optionTextSelected: {
       fontFamily: Fonts.titleBold,
     },
+    // Typing a value the list does not hold -- see AccountChoiceCustomEntry.
+    customRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rS(8),
+      paddingHorizontal: rS(16),
+      paddingBottom: rV(10),
+    },
+    customInput: {
+      flex: 1,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.inputBorder,
+      backgroundColor: c.inputBg,
+      borderRadius: rMS(12),
+      paddingHorizontal: rS(12),
+      paddingVertical: rV(10),
+      color: c.text,
+      fontFamily: Fonts.text,
+      fontSize: rMS(13),
+    },
+    customButton: {
+      borderRadius: rMS(12),
+      backgroundColor: c.primary,
+      paddingHorizontal: rS(16),
+      paddingVertical: rV(11),
+    },
+    customButtonText: {
+      color: c.onPrimary,
+      fontFamily: Fonts.titleBold,
+      fontSize: rMS(13),
+    },
   });
 }
 
